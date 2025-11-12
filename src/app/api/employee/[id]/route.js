@@ -1,0 +1,278 @@
+import { NextResponse } from "next/server";
+import {
+  isAdmin,
+  processDateTimeField,
+  isSessionExpired,
+} from "../../../../../lib/validators/authFromToken";
+import { prisma } from "@/lib/db";
+import {
+  uploadFile,
+  deleteFileByRelativePath,
+  getFileFromFormData,
+} from "@/lib/fileHandler";
+
+export async function GET(request, { params }) {
+  try {
+    const admin = await isAdmin(request);
+    if (!admin) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (await isSessionExpired(request)) {
+      return NextResponse.json(
+        { status: false, message: "Session expired" },
+        { status: 401 }
+      );
+    }
+    const { id } = await params;
+    const employee = await prisma.employees.findUnique({
+      where: { employee_id: id },
+      include: {
+        image: true,
+        user: true,
+      },
+    });
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Employee fetched successfully",
+        data: employee,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { status: false, message: "Internal Server Error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const admin = await isAdmin(request);
+    if (!admin) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (await isSessionExpired(request)) {
+      return NextResponse.json(
+        { status: false, message: "Session expired" },
+        { status: 401 }
+      );
+    }
+    const { id } = await params;
+    const employee = await prisma.employees.delete({
+      where: { employee_id: id },
+    });
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Employee deleted successfully",
+        data: employee,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { status: false, message: "Internal Server Error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request, { params }) {
+  try {
+    const admin = await isAdmin(request);
+    if (!admin) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (await isSessionExpired(request)) {
+      return NextResponse.json(
+        { status: false, message: "Session expired" },
+        { status: 401 }
+      );
+    }
+    // Handle both FormData and JSON requests
+    let body;
+    let imageFile = null;
+    let removeImage = false;
+    const contentType = request.headers.get("content-type");
+
+    if (contentType && contentType.includes("application/json")) {
+      body = await request.json();
+    } else {
+      const formData = await request.formData();
+      imageFile = getFileFromFormData(formData, "image");
+      const removeImageValue = formData.get("remove_image");
+      removeImage = removeImageValue === "true" || removeImageValue === true;
+      body = Object.fromEntries(formData.entries());
+    }
+
+    const {
+      first_name,
+      last_name,
+      role,
+      email,
+      phone,
+      dob,
+      join_date,
+      address,
+      emergency_contact_name,
+      emergency_contact_phone,
+      bank_account_name,
+      bank_account_number,
+      bank_account_bsb,
+      supper_account_name,
+      supper_account_number,
+      tfn_number,
+      education,
+      availability,
+      notes,
+    } = body;
+
+    // Parse availability JSON string to object
+    let parsedAvailability = null;
+    if (availability) {
+      if (typeof availability === "string" && availability.trim() !== "") {
+        try {
+          parsedAvailability = JSON.parse(availability);
+        } catch (error) {
+          console.error("Error parsing availability JSON:", error);
+          return NextResponse.json(
+            { status: false, message: "Invalid availability data format" },
+            { status: 400 }
+          );
+        }
+      } else if (typeof availability === "object") {
+        parsedAvailability = availability;
+      }
+    }
+
+    const { id } = await params;
+
+    // Get current employee to check for existing image
+    const currentEmployee = await prisma.employees.findUnique({
+      where: { employee_id: id },
+      include: { image: true },
+    });
+
+    // Update employee first (without image_id)
+    const employee = await prisma.employees.update({
+      where: { employee_id: id },
+      data: {
+        first_name,
+        last_name,
+        role,
+        email,
+        phone,
+        dob: processDateTimeField(dob),
+        join_date: processDateTimeField(join_date),
+        address,
+        emergency_contact_name,
+        emergency_contact_phone,
+        bank_account_name,
+        bank_account_number,
+        bank_account_bsb,
+        supper_account_name,
+        supper_account_number,
+        tfn_number,
+        education,
+        availability: parsedAvailability,
+        notes,
+      },
+    });
+
+    // Handle image removal if requested
+    if (removeImage && !imageFile && currentEmployee.image_id && currentEmployee.image) {
+      try {
+        // Delete old file from disk
+        await deleteFileByRelativePath(currentEmployee.image.url);
+
+        // Delete old media record
+        await prisma.media.delete({
+          where: { id: currentEmployee.image_id },
+        });
+
+        // Update employee to remove image_id
+        await prisma.employees.update({
+          where: { id: employee.id },
+          data: { image_id: null },
+        });
+      } catch (error) {
+        console.error("Error handling image removal:", error);
+        // Continue even if removal fails
+      }
+    }
+    // Handle image upload if image is provided
+    else if (imageFile && imageFile instanceof File) {
+      try {
+        // Delete old image file and media record if exists
+        if (currentEmployee.image_id && currentEmployee.image) {
+          await deleteFileByRelativePath(currentEmployee.image.url);
+          await prisma.media.delete({
+            where: { id: currentEmployee.image_id },
+          });
+        }
+
+        // Upload new image
+        const uploadResult = await uploadFile(imageFile, {
+          uploadDir: "uploads",
+          subDir: "employees",
+          filenameStrategy: "id-based",
+          idPrefix: id,
+        });
+
+        // Create media record
+        const media = await prisma.media.create({
+          data: {
+            url: uploadResult.relativePath,
+            filename: uploadResult.originalFilename,
+            file_type: "employee_photo",
+            mime_type: uploadResult.mimeType,
+            extension: uploadResult.extension,
+            size: uploadResult.size,
+            employee_id: employee.id,
+          },
+        });
+
+        // Update employee with image_id
+        await prisma.employees.update({
+          where: { id: employee.id },
+          data: { image_id: media.id },
+        });
+      } catch (error) {
+        console.error("Error handling image upload:", error);
+        // Continue without image if upload fails
+        // Employee is already updated, so we don't fail the whole request
+      }
+    }
+
+    // Fetch the updated employee with image relation
+    const updatedEmployee = await prisma.employees.findUnique({
+      where: { id: employee.id },
+      include: { image: true },
+    });
+
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Employee updated successfully",
+        data: updatedEmployee,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { status: false, message: "Internal Server Error", error: error.message },
+      { status: 500 }
+    );
+  }
+}

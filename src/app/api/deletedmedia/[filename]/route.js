@@ -1,0 +1,87 @@
+import fs from "fs";
+import path from "path";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import {
+  isAdmin,
+  isSessionExpired,
+} from "../../../../../lib/validators/authFromToken";
+
+export async function DELETE(request, { params }) {
+  try {
+    const admin = await isAdmin(request);
+    if (!admin) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (await isSessionExpired(request)) {
+      return NextResponse.json(
+        { status: false, message: "Session expired" },
+        { status: 401 }
+      );
+    }
+
+    // Get filename from params
+    const { filename } = await params;
+
+    if (!filename) {
+      return NextResponse.json(
+        { status: false, message: "Filename is required" },
+        { status: 400 }
+      );
+    }
+
+    // Find the deleted media by filename
+    const deletedMedia = await prisma.lot_file.findFirst({
+      where: {
+        filename: filename,
+        is_deleted: true,
+      },
+    });
+
+    if (!deletedMedia) {
+      return NextResponse.json(
+        { status: false, message: "Deleted media not found" },
+        { status: 404 }
+      );
+    }
+
+    // Delete the physical file from disk
+    let fileDeleted = false;
+    try {
+      const filePath = path.join(process.cwd(), deletedMedia.url);
+      await fs.promises.unlink(filePath);
+      fileDeleted = true;
+    } catch (fileError) {
+      console.error("❌ Error deleting file from disk:", fileError);
+      console.error(
+        "Attempted path:",
+        path.join(process.cwd(), deletedMedia.url)
+      );
+      // Continue with database deletion even if file deletion fails
+    }
+
+    // Delete the record from database
+    await prisma.lot_file.delete({
+      where: { id: deletedMedia.id },
+    });
+
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Media permanently deleted",
+        filename: deletedMedia.filename,
+        fileDeletedFromDisk: fileDeleted,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Delete error:", error);
+    return NextResponse.json(
+      { status: false, message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}

@@ -1,0 +1,703 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// USERS
+// - Application login identities.
+// - All users must link to exactly one employee via users.employee_id.
+// - One to many with sessions.
+// - Use is_active and is_verified for access control flags.
+// - module_access can store fine grained feature toggles as JSON.
+// - Deleting an employee is restricted if a user exists.
+model users {
+  id                  String               @id @default(uuid())
+  username            String               @unique
+  password            String
+  user_type           String
+  is_active           Boolean              @default(true)
+  // is_verified         Boolean              @default(false)
+  employee_id         String?              @unique
+  // {
+  //   "finance": "false",
+  //   "inventory": "true",
+  // }
+  module_access       Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  sessions            sessions[]
+  employee            employees?           @relation(fields: [employee_id], references: [employee_id], onDelete: Restrict)
+  materials_to_orders materials_to_order[] @relation("MaterialsToBeOrderedCreatedBy")
+  purchase_order      purchase_order[]     @relation("PurchaseOrderOrderedBy")
+  material_selection  material_selection[]
+
+  @@index([employee_id])
+}
+
+// SESSIONS
+// - Auth sessions or API tokens for a user.
+// - Belongs to users via user_id.
+// - Cascade onDelete so removing a user cleans up sessions.
+model sessions {
+  id         String   @id @default(uuid())
+  user_id    String
+  token      String   @unique
+  user_type  String
+  expires_at DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([user_type])
+  @@index([expires_at])
+}
+
+// EMPLOYEES
+// - HR profile for staff members.
+// - Not every employee must be a user, but every user maps to one employee.
+// - Linked back from users via employees.user (0 or 1).
+// - Assigned to stages through the stage_employee join table.
+model employees {
+  id                      String           @id @default(uuid())
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  employee_id             String           @unique
+  first_name              String
+  last_name               String?
+  image_id                String?          @unique
+  image                   media?           @relation(fields: [image_id], references: [id])
+  role                    String
+  email                   String           @unique
+  phone                   String
+  dob                     DateTime?
+  join_date               DateTime?
+  address                 String?
+  emergency_contact_name  String?
+  emergency_contact_phone String?
+  bank_account_name       String?
+  bank_account_number     String?
+  bank_account_bsb        String?
+  supper_account_name     String?
+  supper_account_number   String?
+  tfn_number              String?
+  education               String?
+  // {
+  //   "monday": {
+  //     "start": "09:00",
+  //     "end": "17:00"
+  //   },
+  //   "tuesday": {
+  //     "start": "09:00",
+  //     "end": "17:00"
+  //   }
+  // }
+  availability            Json?
+  notes                   String?
+  user                    users?
+  stages                  stage_employee[]
+
+  @@index([employee_id])
+}
+
+model media {
+  id                   String              @id @default(uuid())
+  url                  String
+  filename             String?
+  file_type            String?
+  mime_type            String?
+  extension            String?
+  size                 Int?
+  is_deleted           Boolean             @default(false)
+  employee_id          String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  employee             employees?
+  materials_to_order   materials_to_order? @relation(fields: [materials_to_orderId], references: [id])
+  materials_to_orderId String?
+
+  @@index([employee_id])
+}
+
+// CONTACT
+// - Individual people at a client.
+// - Belongs to a client.
+// - Deleting a client cascades and removes its contacts.
+model contact {
+  id                       String    @id @default(uuid())
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  contact_id               String    @unique
+  client_id                String?
+  client                   client?   @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  supplier_id              String?
+  supplier                 supplier? @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+  first_name               String
+  last_name                String?
+  email                    String?
+  phone                    String?
+  preferred_contact_method String?
+  notes                    String?   @db.LongText
+
+  @@index([contact_id])
+}
+
+// CLIENT
+// - Organisations you work with.
+// - One to many with lots and contacts.
+// - Lots can also exist without a client and be linked later.
+model client {
+  id             String    @id @default(uuid())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  client_id      String    @unique
+  projects       project[] @relation
+  contacts       contact[] @relation
+  // "builders", "private"
+  client_type    String
+  client_name    String
+  client_address String?
+  client_phone   String?
+  client_email   String?
+  client_website String?
+  client_notes   String?   @db.LongText
+
+  @@index([client_id])
+}
+
+// ENUMS
+// - Allowed workflow statuses for a stage within a lot.
+enum StageStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  DONE
+  NA
+}
+
+enum LotStatus {
+  ACTIVE
+  COMPLETED
+}
+
+// PROJECT
+// - Top level job container.
+// - One to many with lots.
+// - Deleting a project cascades and removes its lots.
+model project {
+  id                 String               @id @default(uuid())
+  name               String
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  project_id         String               @unique
+  lots               lot[]
+  client_id          String?
+  client             client?              @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  materials_to_order materials_to_order[]
+  material_selection material_selection[]
+
+  @@index([project_id])
+}
+
+// LOT
+// - Work package within a project (for Ikonic this is a site or unit).
+// - Must belong to a project.
+// - May optionally link to a client (can be assigned later).
+// - Holds lot level notes and dates.
+// - One to many with stage (the per lot workflow rows).
+model lot {
+  id                     String              @id @default(uuid())
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  lot_id                 String              @unique
+  project_id             String
+  name                   String
+  // client_id              String?
+  status                 LotStatus           @default(ACTIVE)
+  project                project             @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  // client                 client?             @relation(fields: [client_id], references: [client_id], onDelete: SetNull)
+  startDate              DateTime?
+  installationDueDate    DateTime?
+  notes                  String?             @db.LongText
+  stages                 stage[]
+  tabs                   lot_tab[]
+  // stock_transaction      stock_transaction[]
+  materials_to_orders_id String?
+  materials_to_orders    materials_to_order? @relation(fields: [materials_to_orders_id], references: [id])
+  material_selection_id  String?             @unique
+  material_selection     material_selection?
+
+  @@index([lot_id])
+  @@index([project_id])
+}
+
+// STAGE
+// - A single workflow step instance for a specific lot.
+// - Stores status, notes, start and end dates for that step.
+// - Many to many with employees via stage_employee.
+// - Deleting a lot cascades and removes its stages.
+model stage {
+  stage_id    String           @id @default(uuid())
+  lot_id      String
+  lot         lot              @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
+  name        String
+  status      StageStatus
+  notes       String?          @db.LongText
+  startDate   DateTime?
+  endDate     DateTime?
+  assigned_to stage_employee[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([stage_id])
+  @@index([lot_id])
+  @@index([name])
+  @@index([status])
+}
+
+// STAGE_EMPLOYEE
+// - Join table for stage to employees assignments.
+// - One row per employee per stage.
+// - Add a composite unique on (stage_id, employee_id) if you want to prevent duplicates.
+// - Deleting a stage cascades and removes assignments.
+// - Deleting an employee is restricted if referenced.
+model stage_employee {
+  id          String    @id @default(uuid())
+  stage_id    String
+  employee_id String
+  assigned_at DateTime  @default(now())
+  stage       stage     @relation(fields: [stage_id], references: [stage_id], onDelete: Cascade)
+  employee    employees @relation(fields: [employee_id], references: [employee_id], onDelete: Restrict)
+
+  @@unique([stage_id, employee_id])
+  @@index([stage_id])
+  @@index([employee_id])
+}
+
+// Enums for tabs and file kinds
+enum TabKind {
+  ARCHITECTURE_DRAWINGS
+  APPLIANCES_SPECIFICATIONS
+  MATERIAL_SELECTION
+  CABINETRY_DRAWINGS
+  CHANGES_TO_DO
+  SITE_MEASUREMENTS
+}
+
+enum FileKind {
+  PHOTO
+  VIDEO
+  PDF
+  OTHER
+}
+
+// Only used when tab = SITE_MEASUREMENTS
+enum SiteMeasurements {
+  SITE_PHOTOS
+  MEASUREMENT_PHOTOS
+}
+
+// LOT_TAB
+// One row per (lot, tab). Stores the notes for that tab and links to its files.
+// Example tabs: Architecture Drawings, Appliances and Specifications, etc.
+model lot_tab {
+  id        String     @id @default(uuid())
+  lot_id    String
+  tab       TabKind
+  notes     String?    @db.LongText
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  lot       lot        @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
+  files     lot_file[]
+
+  @@unique([lot_id, tab])
+  @@index([lot_id, tab])
+}
+
+// LOT_FILE
+// Metadata for uploaded files (do not store the binary in DB).
+// Works for photos, videos, PDFs, and any other file type.
+// For tab = SITE_MEASUREMENTS, you can split into two groups via site_group.
+model lot_file {
+  id         String            @id @default(uuid())
+  tab_id     String
+  file_kind  FileKind          @default(PHOTO)
+  url        String
+  filename   String
+  mime_type  String? // eg: "application/pdf", "image/jpeg"
+  extension  String? // eg: "pdf", "jpg"
+  size       Int? // size in bytes
+  site_group SiteMeasurements?
+  is_deleted Boolean           @default(false)
+  notes      String?           @db.LongText
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  tab        lot_tab           @relation(fields: [tab_id], references: [id], onDelete: Cascade)
+
+  @@index([tab_id])
+  @@index([file_kind])
+  @@index([site_group])
+  @@index([is_deleted])
+}
+
+// QUOTE
+model quote {
+  id                        String                        @id @default(uuid())
+  quote_id                  String                        @unique
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
+  materialSelections        material_selection[]
+  materialSelectionVersions material_selection_versions[]
+
+  @@index([quote_id])
+}
+
+// MATERIAL_SELECTION
+model material_selection {
+  id                 String                        @id @default(uuid())
+  project_id         String?
+  project            project?                      @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  quote_id           String?
+  quote              quote?                        @relation(fields: [quote_id], references: [quote_id], onDelete: Cascade)
+  createdBy_id       String?
+  createdBy          users?                        @relation(fields: [createdBy_id], references: [id])
+  createdAt          DateTime                      @default(now())
+  current_version_id String?                       @unique
+  currentVersion     material_selection_versions?  @relation("CurrentVersion", fields: [current_version_id], references: [id])
+  versions           material_selection_versions[] @relation("AllVersions")
+  lot_id             String                        @unique
+  lot                lot?                          @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
+
+  @@index([project_id])
+  @@index([id])
+}
+
+// MATERIAL_SELECTION_VERSIONS
+model material_selection_versions {
+  id                    String                            @id @default(uuid())
+  material_selection_id String
+  version_number        Int                               @default(1)
+  is_current            Boolean                           @default(false)
+  quote_id              String?
+  quote                 quote?                            @relation(fields: [quote_id], references: [quote_id], onDelete: Cascade)
+  ceiling_height        Decimal?                          @db.Decimal(10, 2)
+  bulkhead_height       Decimal?                          @db.Decimal(10, 2)
+  kicker_height         Decimal?                          @db.Decimal(10, 2)
+  cabinetry_height      Decimal?                          @db.Decimal(10, 2)
+  notes                 String?                           @db.LongText
+  createdAt             DateTime                          @default(now())
+  updatedAt             DateTime                          @updatedAt
+  material_selection    material_selection                @relation("AllVersions", fields: [material_selection_id], references: [id], onDelete: Cascade)
+  currentFor            material_selection?               @relation("CurrentVersion")
+  areas                 material_selection_version_area[]
+
+  @@unique([material_selection_id, version_number])
+  @@index([material_selection_id])
+  @@index([quote_id])
+}
+
+// MATERIAL_SELECTION_CATEGORY
+model material_selection_version_area {
+  id               String                                 @id @default(uuid())
+  version_id       String
+  version          material_selection_versions            @relation(fields: [version_id], references: [id], onDelete: Cascade)
+  area_name        String
+  area_instance_id Int                                    @default(1)
+  bed_option       String?
+  notes            String?                                @db.LongText
+  items            material_selection_version_area_item[]
+  createdAt        DateTime                               @default(now())
+  updatedAt        DateTime                               @updatedAt
+
+  @@index([id])
+}
+
+// MATERIAL_SELECTION_VERSION_AREA_ITEM
+model material_selection_version_area_item {
+  id              String                          @id @default(uuid())
+  version_area_id String
+  version_area    material_selection_version_area @relation(fields: [version_area_id], references: [id], onDelete: Cascade)
+  name            String
+  category        String?
+  is_applicable   Boolean                         @default(false)
+  item_notes      String?                         @db.LongText
+  createdAt       DateTime                        @default(now())
+  updatedAt       DateTime                        @updatedAt
+
+  @@index([id])
+}
+
+// Inventory
+enum Category {
+  SHEET
+  HANDLE
+  HARDWARE
+  ACCESSORY
+  EDGING_TAPE
+}
+
+model item {
+  item_id                  String                    @id @default(uuid())
+  category                 Category
+  description              String?
+  image                    String?
+  price                    Decimal?                  @db.Decimal(10, 2)
+  quantity                 Int?                      @default(0)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  measurement_unit         String?
+  sheet                    sheet?
+  handle                   handle?
+  hardware                 hardware?
+  accessory                accessory?
+  edging_tape              edging_tape?
+  supplier                 supplier?                 @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+  supplier_id              String?
+  stock_transactions       stock_transaction[]
+  materials_to_order_items materials_to_order_item[]
+  purchase_order_item      purchase_order_item[]
+
+  @@index([category])
+}
+
+model sheet {
+  item_id    String   @id @unique
+  brand      String
+  color      String
+  finish     String
+  face       String?
+  dimensions String
+  is_sunmica Boolean  @default(false)
+  item       item?    @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model handle {
+  item_id    String   @id @unique
+  brand      String
+  color      String
+  type       String
+  dimensions String
+  material   String?
+  item       item?    @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model hardware {
+  item_id      String   @id @unique
+  brand        String
+  name         String
+  type         String
+  dimensions   String
+  // Drawer, Pull, Hinge, Runners, etc.
+  sub_category String
+  item         item?    @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model accessory {
+  item_id   String   @id @unique
+  name      String
+  item      item?    @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model edging_tape {
+  item_id    String   @id @unique
+  brand      String
+  color      String
+  finish     String
+  dimensions String
+  item       item?    @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model supplier {
+  supplier_id    String               @id @default(uuid())
+  name           String               @unique
+  address        String?
+  phone          String?
+  email          String?
+  website        String?
+  notes          String?              @db.LongText
+  contacts       contact[]
+  statements     supplier_statement[]
+  items          item[]
+  purchase_order purchase_order[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([supplier_id])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+model supplier_statement {
+  id               String        @id @default(uuid())
+  month_year       String
+  notes            String?       @db.LongText
+  payment_status   PaymentStatus @default(PENDING)
+  amount           Decimal?      @db.Decimal(10, 2)
+  due_date         DateTime
+  supplier_file_id String
+  supplier_file    supplier_file @relation(fields: [supplier_file_id], references: [id], onDelete: Cascade)
+  supplier         supplier      @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+  supplier_id      String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([supplier_file_id])
+}
+
+model supplier_file {
+  id                 String               @id @default(uuid())
+  url                String
+  filename           String
+  file_type          String // eg: statement, invoice, cost sheet etc.
+  mime_type          String? // eg: "application/pdf", "image/jpeg"
+  extension          String? // eg: "pdf", "jpg"
+  size               Int? // size in bytes
+  is_deleted         Boolean              @default(false)
+  supplier_id        String
+  purchase_order     purchase_order[]
+  supplier_statement supplier_statement[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+enum MTOStatus {
+  DRAFT
+  PARTIALLY_ORDERED
+  FULLY_ORDERED
+  CLOSED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  PARTIALLY_RECEIVED
+  FULLY_RECEIVED
+  CANCELLED
+}
+
+enum OrderItemStatus {
+  OPEN
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model materials_to_order {
+  id             String                    @id @default(uuid())
+  project_id     String
+  project        project                   @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  lots           lot[]
+  status         MTOStatus                 @default(DRAFT)
+  notes          String?                   @db.LongText
+  items          materials_to_order_item[]
+  createdBy_id   String?
+  createdBy      users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id])
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  purchase_order purchase_order[]
+  media          media[]
+
+  @@index([project_id])
+  @@index([status])
+}
+
+model materials_to_order_item {
+  id               String                @id @default(uuid())
+  mto_id           String
+  mto              materials_to_order    @relation(fields: [mto_id], references: [id], onDelete: Cascade)
+  item_id          String
+  item             item                  @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  quantity         Int
+  notes            String?               @db.LongText
+  quantity_ordered Int                   @default(0)
+  ordered_items    purchase_order_item[]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([mto_id])
+  @@index([item_id])
+}
+
+model purchase_order {
+  id             String                @id @default(uuid())
+  order_no       String                @unique
+  supplier_id    String
+  mto_id         String?
+  ordered_at     DateTime?
+  orderedBy_id   String?
+  invoice_url_id String?               @unique
+  total_amount   Decimal?              @db.Decimal(10, 2)
+  notes          String?               @db.LongText
+  mto            materials_to_order?   @relation(fields: [mto_id], references: [id], onDelete: SetNull)
+  status         PurchaseOrderStatus   @default(DRAFT)
+  supplier       supplier              @relation(fields: [supplier_id], references: [supplier_id], onDelete: Restrict)
+  orderedBy      users?                @relation("PurchaseOrderOrderedBy", fields: [orderedBy_id], references: [id])
+  invoice_url    supplier_file?        @relation(fields: [invoice_url_id], references: [id], onDelete: Cascade)
+  items          purchase_order_item[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model purchase_order_item {
+  id                String                   @id @default(uuid())
+  order_id          String
+  order             purchase_order           @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  item_id           String
+  item              item                     @relation(fields: [item_id], references: [item_id], onDelete: Restrict)
+  mto_item_id       String?
+  mto_item          materials_to_order_item? @relation(fields: [mto_item_id], references: [id], onDelete: SetNull)
+  quantity          Int
+  quantity_received Int?                     @default(0)
+  unit_price        Decimal?                 @db.Decimal(10, 2)
+  notes             String?                  @db.LongText
+  stock_additions   stock_transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum StockTransactionType {
+  ADDED
+  USED
+  WASTED
+}
+
+model stock_transaction {
+  id                     String               @id @default(uuid())
+  item_id                String
+  item                   item                 @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  quantity               Int
+  // Added, Used, Wasted
+  type                   StockTransactionType
+  notes                  String?              @db.LongText
+  // Reference to the lot_id
+  // lot_id                 String?
+  // lot                    lot?                 @relation(fields: [lot_id], references: [lot_id], onDelete: SetNull)
+  purchase_order_item_id String?
+  purchase_order_item    purchase_order_item? @relation(fields: [purchase_order_item_id], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // @@index([lot_id])
+  @@index([item_id])
+  @@index([purchase_order_item_id])
+}

@@ -1,0 +1,486 @@
+import { NextResponse } from "next/server";
+import path from "path";
+import {
+  isAdmin,
+  isSessionExpired,
+} from "../../../../../lib/validators/authFromToken";
+import { prisma } from "@/lib/db";
+import {
+  uploadFile,
+  getFileFromFormData,
+} from "@/lib/fileHandler";
+
+export async function GET(request, { params }) {
+  try {
+    const admin = await isAdmin(request);
+    if (!admin) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (await isSessionExpired(request)) {
+      return NextResponse.json(
+        { status: false, message: "Session expired" },
+        { status: 401 }
+      );
+    }
+    const { id } = await params;
+    const po = await prisma.purchase_order.findUnique({
+      where: { id },
+      include: {
+        supplier: true,
+        items: {
+          include: {
+            item: {
+              include: {
+                sheet: true,
+                handle: true,
+                hardware: true,
+                accessory: true,
+              },
+            },
+          },
+        },
+        orderedBy: {
+          select: {
+            employee: {
+              select: { employee_id: true, first_name: true, last_name: true },
+            },
+          },
+        },
+        invoice_url: true,
+      },
+    });
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Purchase order fetched successfully",
+        data: po,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { status: false, message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request, { params }) {
+  try {
+    const admin = await isAdmin(request);
+    if (!admin) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (await isSessionExpired(request)) {
+      return NextResponse.json(
+        { status: false, message: "Session expired" },
+        { status: 401 }
+      );
+    }
+    const { id } = await params;
+
+    // Fetch existing PO to enforce immutable fields and get defaults (e.g., order_no for file naming)
+    const existing = await prisma.purchase_order.findUnique({
+      where: { id },
+      include: {
+        items: true,
+      },
+    });
+    if (!existing) {
+      return NextResponse.json(
+        { status: false, message: "Purchase order not found" },
+        { status: 404 }
+      );
+    }
+
+    const contentType = request.headers.get("content-type") || "";
+
+    let body = {};
+    let items; // optional replacement list
+    let uploadedInvoiceFileId; // new supplier_file id if a file is uploaded
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData();
+
+      // Allowed top-level fields
+      const status = form.get("status") || undefined;
+      const ordered_at = form.get("ordered_at") || undefined;
+      const total_amount_raw = form.get("total_amount");
+      const notes = form.get("notes") || undefined;
+
+      body.status = status;
+      body.ordered_at = ordered_at;
+      body.total_amount =
+        total_amount_raw !== null &&
+        total_amount_raw !== undefined &&
+        total_amount_raw !== ""
+          ? Number(total_amount_raw)
+          : undefined;
+      body.notes = notes;
+
+      // Items can be a JSON string
+      const itemsVal = form.get("items");
+      if (itemsVal) {
+        try {
+          if (typeof itemsVal === "string") {
+            let parsed;
+            try {
+              parsed = JSON.parse(itemsVal);
+            } catch (e1) {
+              const trimmed = itemsVal.trim();
+              if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+                try {
+                  parsed = JSON.parse(`[${trimmed}]`);
+                } catch (e2) {
+                  parsed = undefined;
+                }
+              }
+            }
+            if (parsed && !Array.isArray(parsed)) {
+              items = [parsed];
+            } else if (Array.isArray(parsed)) {
+              items = parsed;
+            }
+          }
+        } catch (_) {
+          // ignore malformed items
+        }
+      }
+
+      // Optional invoice file upload
+      const file = getFileFromFormData(form, "invoice") || getFileFromFormData(form, "file");
+      if (file) {
+        const order_no = existing.order_no; // immutable
+        const supplier_id = existing.supplier_id; // needed for supplier_file link
+        
+        // Upload file with order_no as the filename base
+        const uploadResult = await uploadFile(file, {
+          uploadDir: "uploads",
+          subDir: "purchase_order",
+          filenameStrategy: "id-based",
+          idPrefix: order_no,
+        });
+
+        const createdFile = await prisma.supplier_file.create({
+          data: {
+            url: uploadResult.relativePath,
+            filename: uploadResult.filename,
+            file_type: "invoice",
+            mime_type: uploadResult.mimeType,
+            extension: uploadResult.extension,
+            size: uploadResult.size,
+            supplier_id,
+          },
+        });
+        uploadedInvoiceFileId = createdFile.id;
+      }
+    } else {
+      // JSON
+      body = await request.json();
+      items = body.items;
+    }
+
+    // Build update payload (only include provided allowed fields)
+    const updateData = {};
+
+    // Check if this is a receive operation (updating quantity_received)
+    const receivedItems = body.received_items || body.items_received;
+    if (receivedItems && Array.isArray(receivedItems)) {
+      // This is a receive operation - update quantity_received for items and inventory
+      // Filter out items with no updates (either new_delivery > 0 or quantity_received provided)
+      const itemsToUpdate = receivedItems.filter(
+        (item) =>
+          (item.new_delivery !== undefined && item.new_delivery !== null && parseFloat(item.new_delivery || 0) > 0) ||
+          (item.quantity_received !== undefined && item.quantity_received !== null)
+      );
+
+      if (itemsToUpdate.length > 0) {
+        // Fetch existing items to get current quantity_received and item_id
+        const itemIds = itemsToUpdate.map((item) => item.id);
+        const existingItems = await prisma.purchase_order_item.findMany({
+          where: { id: { in: itemIds } },
+          include: {
+            item: {
+              select: {
+                item_id: true,
+                quantity: true,
+              },
+            },
+          },
+        });
+
+        // Create a map for quick lookup
+        const existingItemsMap = new Map(
+          existingItems.map((item) => [item.id, item])
+        );
+
+        // Update purchase_order_item and item inventory
+        const updatePromises = itemsToUpdate.map(async (itemUpdate) => {
+          const existingItem = existingItemsMap.get(itemUpdate.id);
+          if (!existingItem) {
+            throw new Error(`Purchase order item ${itemUpdate.id} not found`);
+          }
+
+          const currentReceived = parseInt(
+            existingItem.quantity_received || 0,
+            10
+          );
+
+          // Support both formats: quantity_received (total) or new_delivery (incremental)
+          let newTotalReceived;
+          let newDelivery;
+
+          if (itemUpdate.quantity_received !== undefined && itemUpdate.quantity_received !== null) {
+            // Frontend sends total quantity_received
+            newTotalReceived = Math.floor(parseFloat(itemUpdate.quantity_received || 0));
+            newDelivery = newTotalReceived - currentReceived;
+          } else if (itemUpdate.new_delivery !== undefined && itemUpdate.new_delivery !== null) {
+            // Frontend sends incremental new_delivery
+            newDelivery = Math.floor(parseFloat(itemUpdate.new_delivery || 0));
+            newTotalReceived = currentReceived + newDelivery;
+          } else {
+            // Skip if neither is provided
+            return null;
+          }
+
+          // Only update if there's actually a change
+          if (newDelivery === 0) {
+            return null;
+          }
+
+          // Update purchase_order_item quantity_received
+          const poItemUpdate = prisma.purchase_order_item.update({
+            where: { id: itemUpdate.id },
+            data: {
+              quantity_received: newTotalReceived,
+            },
+          });
+
+          // Update item inventory quantity (add new delivery to existing quantity)
+          const itemQuantityResult = await prisma.item.findUnique({
+            where: { item_id: existingItem.item_id },
+            select: { quantity: true },
+          });
+
+          const currentItemQuantity = parseInt(itemQuantityResult?.quantity || 0, 10);
+          const itemUpdateOp = prisma.item.update({
+            where: { item_id: existingItem.item_id },
+            data: {
+              quantity: currentItemQuantity + newDelivery,
+            },
+          });
+
+          return Promise.all([poItemUpdate, itemUpdateOp]);
+        });
+
+        // Filter out null values (skipped items) before awaiting
+        const validPromises = updatePromises.filter((p) => p !== null);
+        if (validPromises.length > 0) {
+          await Promise.all(validPromises);
+        }
+      }
+
+      // Check if all items are fully received to update PO status
+      const updatedPO = await prisma.purchase_order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+        },
+      });
+
+      const allItemsReceived = updatedPO.items.every(
+        (item) => (item.quantity_received || 0) >= item.quantity
+      );
+      const someItemsReceived = updatedPO.items.some(
+        (item) => (item.quantity_received || 0) > 0
+      );
+
+      let newStatus = existing.status;
+      if (allItemsReceived && existing.status !== "CANCELLED") {
+        newStatus = "FULLY_RECEIVED";
+      } else if (
+        someItemsReceived &&
+        !allItemsReceived &&
+        existing.status !== "CANCELLED"
+      ) {
+        newStatus = "PARTIALLY_RECEIVED";
+      }
+
+      // Fetch updated PO with all relations for return
+      const finalPO = await prisma.purchase_order.findUnique({
+        where: { id },
+        include: {
+          supplier: true,
+          items: {
+            include: {
+              item: {
+                include: {
+                  sheet: true,
+                  handle: true,
+                  hardware: true,
+                  accessory: true,
+                },
+              },
+            },
+          },
+          orderedBy: {
+            select: {
+              employee: {
+                select: {
+                  employee_id: true,
+                  first_name: true,
+                  last_name: true,
+                },
+              },
+            },
+          },
+          invoice_url: true,
+          mto: {
+            select: {
+              project: { select: { project_id: true, name: true } },
+              status: true,
+            },
+          },
+        },
+      });
+
+      // Apply status update if needed
+      if (newStatus !== existing.status) {
+        await prisma.purchase_order.update({
+          where: { id },
+          data: { status: newStatus },
+        });
+        // Update finalPO status for response
+        finalPO.status = newStatus;
+      }
+
+      return NextResponse.json(
+        {
+          status: true,
+          message: "Received quantities updated successfully",
+          data: finalPO,
+        },
+        { status: 200 }
+      );
+    }
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.notes !== undefined) updateData.notes = body.notes;
+    if (
+      body.total_amount !== undefined &&
+      body.total_amount !== null &&
+      body.total_amount !== ""
+    )
+      updateData.total_amount = Number(body.total_amount);
+    if (
+      body.ordered_at !== undefined &&
+      body.ordered_at !== null &&
+      body.ordered_at !== ""
+    )
+      updateData.ordered_at = new Date(body.ordered_at);
+    if (uploadedInvoiceFileId)
+      updateData.invoice_url_id = uploadedInvoiceFileId;
+
+    if (items !== undefined) {
+      updateData.items = {
+        deleteMany: {},
+        create:
+          Array.isArray(items) && items.length > 0
+            ? items.map((item) => ({
+                item_id: item.item_id,
+                quantity: Number(item.quantity),
+                notes: item.notes,
+                unit_price:
+                  item.unit_price !== undefined &&
+                  item.unit_price !== null &&
+                  item.unit_price !== ""
+                    ? Number(item.unit_price)
+                    : undefined,
+              }))
+            : [],
+      };
+    }
+
+    const updated = await prisma.purchase_order.update({
+      where: { id },
+      data: updateData,
+      include: {
+        supplier: true,
+        items: {
+          include: {
+            item: {
+              include: {
+                sheet: true,
+                handle: true,
+                hardware: true,
+                accessory: true,
+              },
+            },
+          },
+        },
+        orderedBy: {
+          select: {
+            employee: {
+              select: { employee_id: true, first_name: true, last_name: true },
+            },
+          },
+        },
+        invoice_url: true,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Purchase order updated successfully",
+        data: updated,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { status: false, message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const admin = await isAdmin(request);
+    if (!admin) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (await isSessionExpired(request)) {
+      return NextResponse.json(
+        { status: false, message: "Session expired" },
+        { status: 401 }
+      );
+    }
+    const { id } = await params;
+    const po = await prisma.purchase_order.delete({
+      where: { id },
+    });
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Purchase order deleted successfully",
+        data: po,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { status: false, message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}

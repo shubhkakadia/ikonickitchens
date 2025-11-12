@@ -1,0 +1,46 @@
+export const stages = [
+  "Quotation",
+  "Quote Approval",
+  "Purchase Order",
+  "Material Appliances Selection",
+  "Drafting",
+  "Waiting for Client Approval",
+  "Site Measurements",
+  "Drafting Revision",
+  "Final Approval for Production",
+  "Machining Out",
+  "Material Order",
+  "CNC",
+  "Assembly",
+  "Delivery",
+  "Installation",
+  "Maintenance",
+  "Job Completion",
+];
+
+export const tabs = [
+  { id: "overview", label: "Overview" },
+  { id: "architecture_drawings", label: "Architecture Drawings" },
+  { id: "appliances_specifications", label: "Appliances and Specifications" },
+  { id: "material_selection", label: "Material Selection" },
+  { id: "cabinetry_drawings", label: "Cabinetry Drawings" },
+  { id: "changes_to_do", label: "Changes to Do" },
+  { id: "site_measurements", label: "Site Measurements" },
+  { id: "materials_to_order", label: "Materials to Order" },
+];
+
+export const hardwareSubCategories = [
+  "Legs with plates",
+  "Hinges",
+  "Hinge Plates",
+  "Screws",
+  "Hangin Rode",
+  "Hanging Rode Support & Ends",
+  "Cutlery Tray",
+  "Bin",
+  "Drawer set (Runners)",
+  "Screw Caps (White & Color)",
+  "Plastic Wraps",
+  "Shelf Support",
+  "LED",
+];

@@ -12,7 +12,6 @@ import "react-toastify/dist/ReactToastify.css";
 
 export default function page() {
   const [formData, setFormData] = useState({
-    client_id: "",
     client_name: "",
     client_address: "",
     client_phone: "",
@@ -36,7 +35,7 @@ export default function page() {
       [e.target.name]: e.target.value,
     });
   };
-  
+
   // Filter client types based on search term
   const filteredClientTypes = client_types.filter((type) =>
     type.toLowerCase().includes(searchTerm.toLowerCase())
@@ -95,7 +94,6 @@ export default function page() {
         return;
       }
       const data = JSON.stringify({
-        client_id: formData.client_id,
         client_type: formData.client_type.toLowerCase(),
         client_name: formData.client_name,
         client_address: formData.client_address,
@@ -138,7 +136,6 @@ export default function page() {
 
       // Reset form on success
       setFormData({
-        client_id: "",
         client_name: "",
         client_address: "",
         client_phone: "",
@@ -194,9 +191,6 @@ export default function page() {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.client_id) {
-      newErrors.client_id = "Client ID is required";
-    }
     if (!formData.client_name) {
       newErrors.client_name = "Client Name is required";
     }
@@ -238,20 +232,6 @@ export default function page() {
                       </h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Client ID <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="client_id"
-                          value={formData.client_id}
-                          onChange={handleInputChange}
-                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                          placeholder="Eg. CL001"
-                          required
-                        />
-                      </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
                           Client Name <span className="text-red-500">*</span>
@@ -317,7 +297,7 @@ export default function page() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Client Address <span className="text-red-500">*</span>
+                        Client Address
                       </label>
                       <textarea
                         name="client_address"
@@ -325,7 +305,6 @@ export default function page() {
                         onChange={handleInputChange}
                         className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                         placeholder="Eg. 6 Penna Ave, Glynde, SA 5070"
-                        required
                         rows={3}
                       />
                     </div>
@@ -342,7 +321,7 @@ export default function page() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Mobile Phone <span className="text-red-500">*</span>
+                          Mobile Phone
                         </label>
                         <input
                           type="tel"
@@ -351,12 +330,11 @@ export default function page() {
                           onChange={handleInputChange}
                           className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                           placeholder="Eg. +61 400 000 000"
-                          required
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Email Address <span className="text-red-500">*</span>
+                          Email Address
                         </label>
                         <input
                           type="email"
@@ -365,7 +343,6 @@ export default function page() {
                           onChange={handleInputChange}
                           className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                           placeholder="Eg. contact@example.com"
-                          required
                         />
                       </div>
                       <div>

@@ -152,21 +152,23 @@ model contact {
 // - One to many with lots and contacts.
 // - Lots can also exist without a client and be linked later.
 model client {
-  id             String    @id @default(uuid())
+  // id             String    @id @default(uuid())
+
+  client_id      String    @id @default(uuid())
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-  client_id      String    @unique
   projects       project[] @relation
   contacts       contact[] @relation
   // "builders", "private"
   client_type    String
-  client_name    String
+  client_name    String    @unique
   client_address String?
   client_phone   String?
   client_email   String?
   client_website String?
   client_notes   String?   @db.LongText
 
+  @@index([client_name])
   @@index([client_id])
 }
 
@@ -216,10 +218,8 @@ model lot {
   lot_id                 String              @unique
   project_id             String
   name                   String
-  // client_id              String?
   status                 LotStatus           @default(ACTIVE)
   project                project             @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
-  // client                 client?             @relation(fields: [client_id], references: [client_id], onDelete: SetNull)
   startDate              DateTime?
   installationDueDate    DateTime?
   notes                  String?             @db.LongText
@@ -600,19 +600,20 @@ enum OrderItemStatus {
 }
 
 model materials_to_order {
-  id             String                    @id @default(uuid())
-  project_id     String
-  project        project                   @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
-  lots           lot[]
-  status         MTOStatus                 @default(DRAFT)
-  notes          String?                   @db.LongText
-  items          materials_to_order_item[]
-  createdBy_id   String?
-  createdBy      users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id])
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
-  purchase_order purchase_order[]
-  media          media[]
+  id                 String                    @id @default(uuid())
+  project_id         String
+  project            project                   @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  lots               lot[]
+  status             MTOStatus                 @default(DRAFT)
+  notes              String?                   @db.LongText
+  items              materials_to_order_item[]
+  createdBy_id       String?
+  createdBy          users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id])
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  purchase_order     purchase_order[]
+  media              media[]
+  stock_transactions stock_transaction[]
 
   @@index([project_id])
   @@index([status])
@@ -627,6 +628,7 @@ model materials_to_order_item {
   quantity         Int
   notes            String?               @db.LongText
   quantity_ordered Int                   @default(0)
+  quantity_used    Int                   @default(0)
   ordered_items    purchase_order_item[]
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
@@ -636,24 +638,24 @@ model materials_to_order_item {
 }
 
 model purchase_order {
-  id             String                @id @default(uuid())
-  order_no       String                @unique
-  supplier_id    String
-  mto_id         String?
-  ordered_at     DateTime?
-  orderedBy_id   String?
-  invoice_url_id String?               @unique
-  total_amount   Decimal?              @db.Decimal(10, 2)
-  notes          String?               @db.LongText
-  mto            materials_to_order?   @relation(fields: [mto_id], references: [id], onDelete: SetNull)
-  status         PurchaseOrderStatus   @default(DRAFT)
-  supplier       supplier              @relation(fields: [supplier_id], references: [supplier_id], onDelete: Restrict)
-  orderedBy      users?                @relation("PurchaseOrderOrderedBy", fields: [orderedBy_id], references: [id])
-  invoice_url    supplier_file?        @relation(fields: [invoice_url_id], references: [id], onDelete: Cascade)
-  items          purchase_order_item[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String                @id @default(uuid())
+  order_no           String                @unique
+  supplier_id        String
+  mto_id             String?
+  ordered_at         DateTime?
+  orderedBy_id       String?
+  invoice_url_id     String?               @unique
+  total_amount       Decimal?              @db.Decimal(10, 2)
+  notes              String?               @db.LongText
+  mto                materials_to_order?   @relation(fields: [mto_id], references: [id], onDelete: SetNull)
+  status             PurchaseOrderStatus   @default(DRAFT)
+  supplier           supplier              @relation(fields: [supplier_id], references: [supplier_id], onDelete: Restrict)
+  orderedBy          users?                @relation("PurchaseOrderOrderedBy", fields: [orderedBy_id], references: [id])
+  invoice_url        supplier_file?        @relation(fields: [invoice_url_id], references: [id], onDelete: Cascade)
+  items              purchase_order_item[]
+  stock_transactions stock_transaction[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 }
 
 model purchase_order_item {
@@ -668,7 +670,6 @@ model purchase_order_item {
   quantity_received Int?                     @default(0)
   unit_price        Decimal?                 @db.Decimal(10, 2)
   notes             String?                  @db.LongText
-  stock_additions   stock_transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -681,23 +682,26 @@ enum StockTransactionType {
 }
 
 model stock_transaction {
-  id                     String               @id @default(uuid())
-  item_id                String
-  item                   item                 @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
-  quantity               Int
+  id                    String               @id @default(uuid())
+  item_id               String
+  item                  item                 @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  quantity              Int
   // Added, Used, Wasted
-  type                   StockTransactionType
-  notes                  String?              @db.LongText
+  type                  StockTransactionType
+  notes                 String?              @db.LongText
   // Reference to the lot_id
   // lot_id                 String?
   // lot                    lot?                 @relation(fields: [lot_id], references: [lot_id], onDelete: SetNull)
-  purchase_order_item_id String?
-  purchase_order_item    purchase_order_item? @relation(fields: [purchase_order_item_id], references: [id], onDelete: SetNull)
+  materials_to_order_id String?
+  materials_to_order    materials_to_order?  @relation(fields: [materials_to_order_id], references: [id], onDelete: SetNull)
+  purchase_order_id     String?
+  purchase_order        purchase_order?      @relation(fields: [purchase_order_id], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // @@index([lot_id])
   @@index([item_id])
-  @@index([purchase_order_item_id])
+  @@index([purchase_order_id])
+  @@index([materials_to_order_id])
 }

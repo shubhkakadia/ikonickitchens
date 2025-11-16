@@ -21,7 +21,6 @@ export async function POST(request) {
       );
     }
     const {
-      client_id,
       client_type,
       client_name,
       client_address,
@@ -30,22 +29,21 @@ export async function POST(request) {
       client_website,
       client_notes,
     } = await request.json();
-    // Check if employee_id already exists
+    // Check if client already exists
     const existingClient = await prisma.client.findUnique({
-      where: { client_id },
+      where: { client_name },
     });
     if (existingClient) {
       return NextResponse.json(
         {
           status: false,
-          message: "Client already exists by this client id: " + client_id,
+          message: "Client already exists by this client id: " + client_name,
         },
         { status: 409 }
       );
     }
     const client = await prisma.client.create({
       data: {
-        client_id: client_id.toLowerCase(),
         client_type,
         client_name,
         client_address,

@@ -1265,7 +1265,10 @@ export default function page() {
                                   Purchase Order
                                 </th>
                                 <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                  Notes
+                                  Project Name
+                                </th>
+                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                  Lot ID
                                 </th>
                               </tr>
                             </thead>
@@ -1309,16 +1312,31 @@ export default function page() {
                                       )}
                                     </td>
                                     <td className="py-2 px-3 text-slate-600">
-                                      {transaction.purchase_order_item?.purchase_order?.order_no ? (
+                                      {transaction.type === "ADDED" && transaction.purchase_order?.order_no ? (
                                         <span className="text-xs font-medium text-primary">
-                                          {transaction.purchase_order_item.purchase_order.order_no}
+                                          {transaction.purchase_order.order_no}
                                         </span>
                                       ) : (
                                         "-"
                                       )}
                                     </td>
                                     <td className="py-2 px-3 text-slate-600">
-                                      {transaction.notes || "-"}
+                                      {transaction.type === "USED" && transaction.materials_to_order?.project?.name ? (
+                                        <span className="text-xs font-medium text-slate-800">
+                                          {transaction.materials_to_order.project.name}
+                                        </span>
+                                      ) : (
+                                        "-"
+                                      )}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-600">
+                                      {transaction.type === "USED" && transaction.materials_to_order?.lots && transaction.materials_to_order.lots.length > 0 ? (
+                                        <span className="text-xs font-medium text-slate-800">
+                                          {transaction.materials_to_order.lots.map(lot => lot.lot_id).join(", ")}
+                                        </span>
+                                      ) : (
+                                        "-"
+                                      )}
                                     </td>
                                   </tr>
                                 ))}

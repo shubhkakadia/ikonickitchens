@@ -37,11 +37,53 @@ export async function GET(request, { params }) {
         supplier: true,
         materials_to_order_items: true,
         purchase_order_item: true,
-        stock_transactions: true,
       },
     });
+
+    if (!item) {
+      return NextResponse.json(
+        { status: false, message: "Item not found" },
+        { status: 404 }
+      );
+    }
+
+    // Fetch stock transactions separately for all types (ADDED, USED, WASTED)
+    const stock_transactions = await prisma.stock_transaction.findMany({
+      where: { item_id: id },
+      include: {
+        purchase_order: {
+          select: {
+            order_no: true,
+          },
+        },
+        materials_to_order: {
+          include: {
+            project: {
+              select: {
+                name: true,
+              },
+            },
+            lots: {
+              select: {
+                lot_id: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Attach stock_transactions to item
+    const itemWithTransactions = {
+      ...item,
+      stock_transactions,
+    };
+
     return NextResponse.json(
-      { status: true, message: "Item fetched successfully", data: item },
+      { status: true, message: "Item fetched successfully", data: itemWithTransactions },
       { status: 200 }
     );
   } catch (error) {
@@ -234,15 +276,53 @@ export async function PATCH(request, { params }) {
         edging_tape: true,
         materials_to_order_items: true,
         purchase_order_item: true,
-        stock_transactions: true,
       },
     });
+
+    // Fetch stock transactions separately for all types (ADDED, USED, WASTED)
+    const stock_transactions = await prisma.stock_transaction.findMany({
+      where: { item_id: id },
+      include: {
+        purchase_order_item: {
+          include: {
+            order: {
+              select: {
+                order_no: true,
+              },
+            },
+          },
+        },
+        materials_to_order: {
+          include: {
+            project: {
+              select: {
+                name: true,
+              },
+            },
+            lots: {
+              select: {
+                lot_id: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Attach stock_transactions to item
+    const itemWithTransactions = {
+      ...completeItem,
+      stock_transactions,
+    };
 
     return NextResponse.json(
       {
         status: true,
         message: "Item updated successfully",
-        data: completeItem,
+        data: itemWithTransactions,
       },
       { status: 200 }
     );

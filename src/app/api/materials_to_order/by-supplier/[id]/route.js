@@ -56,6 +56,13 @@ export async function GET(request, { params }) {
           },
         },
 
+        // Include media files (not deleted)
+        media: {
+          where: {
+            is_deleted: false,
+          },
+        },
+
         // Include only items belonging to this supplier
         items: {
           where: {

@@ -155,7 +155,10 @@ export default function page() {
               items = items.filter((item) => item.sheet?.is_sunmica === true);
             } else if (category === "sheet") {
               // Sheet tab: show ONLY non-sunmica items (exclude sunmica)
-              items = items.filter((item) => !item.sheet?.is_sunmica || item.sheet?.is_sunmica === false);
+              items = items.filter(
+                (item) =>
+                  !item.sheet?.is_sunmica || item.sheet?.is_sunmica === false
+              );
             }
             setData(items);
             setLoading(false);
@@ -657,7 +660,6 @@ export default function page() {
           Description: item.description || "",
           Category: item.category || "",
           Price: item.price || 0,
-          Image: item.image ? `https://ikonickitchens.com/${item.image}` : "",
           Face: item.sheet?.face || "",
           IsSunmica: item.sheet?.is_sunmica ? "Yes" : "No",
           CreatedAt: item.createdAt
@@ -678,7 +680,6 @@ export default function page() {
           Description: item.description || "",
           Category: item.category || "",
           Price: item.price || 0,
-          Image: item.image ? `https://ikonickitchens.com/${item.image}` : "",
           CreatedAt: item.createdAt
             ? new Date(item.createdAt).toLocaleDateString()
             : "",
@@ -692,7 +693,6 @@ export default function page() {
           Description: item.description || "",
           Category: item.category || "",
           Price: item.price || 0,
-          Image: item.image ? `https://ikonickitchens.com/${item.image}` : "",
           Name: item.hardware?.name || "",
           Type: item.hardware?.type || "",
           Dimensions: item.hardware?.dimensions || "",
@@ -709,7 +709,6 @@ export default function page() {
           Description: item.description || "",
           Category: item.category || "",
           Price: item.price || 0,
-          Image: item.image ? `https://ikonickitchens.com/${item.image}` : "",
           Name: item.accessory?.name || "",
           CreatedAt: item.createdAt
             ? new Date(item.createdAt).toLocaleDateString()
@@ -724,7 +723,6 @@ export default function page() {
           Description: item.description || "",
           Category: item.category || "",
           Price: item.price || 0,
-          Image: item.image ? `https://ikonickitchens.com/${item.image}` : "",
           Brand: item.edging_tape?.brand || "",
           Color: item.edging_tape?.color || "",
           Finish: item.edging_tape?.finish || "",
@@ -866,7 +864,9 @@ export default function page() {
                     <Search className="h-5 w-5 absolute left-3 text-slate-400" />
                     <input
                       type="text"
-                      placeholder={`Search ${activeTab === "sunmica" ? "sunmica" : activeTab} items by description, brand, color`}
+                      placeholder={`Search ${
+                        activeTab === "sunmica" ? "sunmica" : activeTab
+                      } items by description, brand, color`}
                       className="w-full text-slate-800 p-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
@@ -919,7 +919,8 @@ export default function page() {
                                 Name {getSortIcon("name")}
                               </button>
                             )}
-                            {(activeTab === "sheet" || activeTab === "sunmica") && (
+                            {(activeTab === "sheet" ||
+                              activeTab === "sunmica") && (
                               <button
                                 onClick={() => handleSort("finish")}
                                 className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
@@ -1449,7 +1450,8 @@ export default function page() {
                 {(activeTab === "sheet" || activeTab === "sunmica") && (
                   <div className="space-y-4 pt-4 border-t border-slate-200">
                     <h3 className="font-medium text-slate-700 text-sm tracking-wide">
-                      {activeTab === "sunmica" ? "Sunmica" : "Sheet"} Specific Filters
+                      {activeTab === "sunmica" ? "Sunmica" : "Sheet"} Specific
+                      Filters
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

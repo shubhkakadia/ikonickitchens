@@ -8,6 +8,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
+import DeleteConfirmation from "@/components/DeleteConfirmation";
 import {
   Calendar,
   FileText,
@@ -28,6 +29,7 @@ import {
   X,
   Check,
   Upload,
+  Trash2,
 } from "lucide-react";
 import { pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -70,6 +72,10 @@ export default function page() {
   const [pageNumber, setPageNumber] = useState(1);
   // Invoice upload
   const [uploadingInvoicePOId, setUploadingInvoicePOId] = useState(null);
+  // Invoice delete
+  const [deletingInvoicePOId, setDeletingInvoicePOId] = useState(null);
+  const [showDeleteInvoiceModal, setShowDeleteInvoiceModal] = useState(false);
+  const [invoicePendingDelete, setInvoicePendingDelete] = useState(null);
   const invoiceFileInputRefs = useRef({});
 
   const formatMoney = (value) => {
@@ -350,6 +356,20 @@ export default function page() {
       return;
     }
 
+    // Filter items with new delivery quantity > 0
+    const itemsToProcess = selectedPO.items.filter((item) => {
+      const newDelivery = quantityReceived[item.id] || 0;
+      return newDelivery > 0 && (item.item?.item_id || item.item_id);
+    });
+
+    if (itemsToProcess.length === 0) {
+      toast.warning("No items with new delivery quantities to process", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const sessionToken = getToken();
@@ -361,30 +381,58 @@ export default function page() {
         return;
       }
 
-      // Calculate total: existing received + new delivery
-      const updates = selectedPO.items.map((item) => {
-        const existingReceived = getExistingReceived(item);
-        const newDelivery = quantityReceived[item.id] || 0;
-        const totalReceived = existingReceived + newDelivery;
-        return {
-          id: item.id,
-          quantity_received: totalReceived,
-        };
+      // Create stock transactions for each item with new delivery
+      const transactionPromises = itemsToProcess.map((item) => {
+        const newDelivery = parseFloat(quantityReceived[item.id] || 0);
+        const itemId = item.item?.item_id || item.item_id;
+        
+        if (!itemId) {
+          return Promise.reject(new Error("Missing item_id"));
+        }
+        
+        return axios.post(
+          `/api/stock_transaction/create`,
+          {
+            item_id: itemId,
+            quantity: newDelivery,
+            type: "ADDED",
+            purchase_order_id: selectedPOId,
+          },
+          {
+            headers: { Authorization: `Bearer ${sessionToken}` },
+          }
+        );
       });
 
-      const response = await axios.patch(
-        `/api/purchase_order/${selectedPOId}`,
-        { received_items: updates },
-        {
-          headers: { Authorization: `Bearer ${sessionToken}` },
+      // Execute all transactions in parallel with better error handling
+      const results = await Promise.allSettled(transactionPromises);
+      
+      // Process results
+      const responses = results.map((result) => {
+        if (result.status === "fulfilled") {
+          return result.value;
+        } else {
+          return {
+            data: {
+              status: false,
+              message: result.reason?.response?.data?.message || result.reason?.message || "Transaction failed",
+            },
+          };
         }
-      );
+      });
 
-      if (response.data.status) {
-        toast.success("Materials received updated successfully", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+      // Check if all transactions succeeded
+      const allSucceeded = responses.every((res) => res.data?.status);
+      const failedCount = responses.filter((res) => !res.data?.status).length;
+
+      if (allSucceeded) {
+        toast.success(
+          `Materials received updated successfully for ${itemsToProcess.length} item(s)`,
+          {
+            position: "top-right",
+            autoClose: 3000,
+          }
+        );
         setShowMaterialsReceivedModal(false);
         setSelectedPOId("");
         setSelectedPO(null);
@@ -394,12 +442,14 @@ export default function page() {
         fetchPOs(); // Refresh the list
       } else {
         toast.error(
-          response.data.message || "Failed to update received quantities",
+          `Failed to update ${failedCount} of ${itemsToProcess.length} item(s)`,
           {
             position: "top-right",
             autoClose: 3000,
           }
         );
+        // Still refresh to show partial updates
+        fetchPOs();
       }
     } catch (err) {
       toast.error(
@@ -479,6 +529,66 @@ export default function page() {
     if (file) {
       handleInvoiceUpload(poId, file);
     }
+  };
+
+  const handleInvoiceDelete = (poId) => {
+    setInvoicePendingDelete(poId);
+    setShowDeleteInvoiceModal(true);
+  };
+
+  const handleInvoiceDeleteConfirm = async () => {
+    if (!invoicePendingDelete) return;
+
+    setDeletingInvoicePOId(invoicePendingDelete);
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      const response = await axios.patch(
+        `/api/purchase_order/${invoicePendingDelete}`,
+        { invoice_url: null },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success("Invoice deleted successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        // Refresh the PO list
+        fetchPOs();
+        setShowDeleteInvoiceModal(false);
+        setInvoicePendingDelete(null);
+      } else {
+        toast.error(response.data.message || "Failed to delete invoice", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to delete invoice", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setDeletingInvoicePOId(null);
+    }
+  };
+
+  const handleInvoiceDeleteCancel = () => {
+    setShowDeleteInvoiceModal(false);
+    setInvoicePendingDelete(null);
   };
 
   const handleExportToExcel = async () => {
@@ -994,6 +1104,32 @@ export default function page() {
                                               className="cursor-pointer px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm text-slate-700"
                                             >
                                               View
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleInvoiceDelete(po.id);
+                                              }}
+                                              disabled={
+                                                deletingInvoicePOId === po.id
+                                              }
+                                              className={`cursor-pointer px-3 py-1.5 border border-red-300 rounded-lg hover:bg-red-50 text-sm text-red-700 flex items-center gap-1.5 ${
+                                                deletingInvoicePOId === po.id
+                                                  ? "opacity-50 cursor-not-allowed"
+                                                  : ""
+                                              }`}
+                                            >
+                                              {deletingInvoicePOId === po.id ? (
+                                                <>
+                                                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
+                                                  <span>Deleting...</span>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Trash2 className="w-4 h-4" />
+                                                  <span>Delete</span>
+                                                </>
+                                              )}
                                             </button>
                                             <a
                                               href={po.invoice_url.url}
@@ -1624,7 +1760,8 @@ export default function page() {
                           const existingReceived = getExistingReceived(item);
                           const remainingQty = getRemaining(item);
                           const newDelivery = quantityReceived[item.id] || 0;
-                          const totalAfterDelivery = existingReceived + newDelivery;
+                          const totalAfterDelivery =
+                            existingReceived + newDelivery;
                           const isComplete = totalAfterDelivery >= orderedQty;
                           const exceedsRemaining = newDelivery > remainingQty;
                           return (
@@ -1786,7 +1923,10 @@ export default function page() {
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <div className="flex flex-col gap-1">
                                   <div className="text-sm text-gray-600">
-                                    <span className="font-medium">Remaining:</span> {remainingQty}
+                                    <span className="font-medium">
+                                      Remaining:
+                                    </span>{" "}
+                                    {remainingQty}
                                     {item.item?.measurement_unit && (
                                       <span className="text-gray-400 ml-1">
                                         {item.item.measurement_unit}
@@ -1794,7 +1934,10 @@ export default function page() {
                                     )}
                                   </div>
                                   <div className="text-sm text-gray-600">
-                                    <span className="font-medium">Received:</span> {existingReceived}
+                                    <span className="font-medium">
+                                      Received:
+                                    </span>{" "}
+                                    {existingReceived}
                                     {item.item?.measurement_unit && (
                                       <span className="text-gray-400 ml-1">
                                         {item.item.measurement_unit}
@@ -1906,6 +2049,17 @@ export default function page() {
           setPageNumber={setPageNumber}
         />
       )}
+
+      {/* Delete Invoice Confirmation Modal */}
+      <DeleteConfirmation
+        isOpen={showDeleteInvoiceModal}
+        onClose={handleInvoiceDeleteCancel}
+        onConfirm={handleInvoiceDeleteConfirm}
+        deleteWithInput={false}
+        heading="Invoice"
+        message="This will permanently delete the invoice file. This action cannot be undone."
+        isDeleting={deletingInvoicePOId !== null}
+      />
     </AdminRoute>
   );
 }

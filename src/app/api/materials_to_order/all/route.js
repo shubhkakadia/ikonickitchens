@@ -32,17 +32,24 @@ export async function GET(request) {
           },
         },
         items: {
-          include: {
+          select: {
+            id: true,
+            quantity: true,
+            quantity_used: true,
+            notes: true,
             item: {
               select: {
+                item_id: true,
                 category: true,
                 image: true,
+                description: true,
                 quantity: true,
                 measurement_unit: true,
                 sheet: true,
                 handle: true,
                 hardware: true,
                 accessory: true,
+                edging_tape: true,
                 supplier_id: true,
                 supplier: { select: { supplier_id: true, name: true } },
               },

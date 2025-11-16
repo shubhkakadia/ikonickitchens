@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "@/contexts/AuthContext";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
+import DeleteConfirmation from "@/components/DeleteConfirmation";
 import {
   Package,
   PackagePlus,
@@ -13,7 +14,17 @@ import {
   User,
   FileText,
   Upload,
+  Trash2,
 } from "lucide-react";
+
+const formatMoney = (value) => {
+  const num = Number(value || 0);
+  if (Number.isNaN(num)) return "0.00";
+  return num.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
 
 export default function PurchaseOrder({ supplierId, onCountChange }) {
   const { getToken } = useAuth();
@@ -27,6 +38,10 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
   const [pageNumber, setPageNumber] = useState(1);
   // Invoice upload
   const [uploadingInvoicePOId, setUploadingInvoicePOId] = useState(null);
+  // Invoice delete
+  const [deletingInvoicePOId, setDeletingInvoicePOId] = useState(null);
+  const [showDeleteInvoiceModal, setShowDeleteInvoiceModal] = useState(false);
+  const [invoicePendingDelete, setInvoicePendingDelete] = useState(null);
   const invoiceFileInputRefs = useRef({});
 
   const fetchPurchaseOrders = async () => {
@@ -155,65 +170,102 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
     }
   };
 
+  const handleInvoiceDelete = (poId) => {
+    setInvoicePendingDelete(poId);
+    setShowDeleteInvoiceModal(true);
+  };
+
+  const handleInvoiceDeleteConfirm = async () => {
+    if (!invoicePendingDelete) return;
+
+    setDeletingInvoicePOId(invoicePendingDelete);
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      const response = await axios.patch(
+        `/api/purchase_order/${invoicePendingDelete}`,
+        { invoice_url: null },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success("Invoice deleted successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        // Refresh the PO list
+        fetchPurchaseOrders();
+        setShowDeleteInvoiceModal(false);
+        setInvoicePendingDelete(null);
+      } else {
+        toast.error(response.data.message || "Failed to delete invoice", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to delete invoice", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setDeletingInvoicePOId(null);
+    }
+  };
+
+  const handleInvoiceDeleteCancel = () => {
+    setShowDeleteInvoiceModal(false);
+    setInvoicePendingDelete(null);
+  };
+
+  const filteredPOs = purchaseOrders.filter((po) => {
+    if (poActiveTab === "active") {
+      return (
+        po.status === "DRAFT" ||
+        po.status === "ORDERED" ||
+        po.status === "PARTIALLY_RECEIVED"
+      );
+    } else {
+      return po.status === "FULLY_RECEIVED" || po.status === "CANCELLED";
+    }
+  });
+
   return (
     <div>
       {/* Sub-tabs for Purchase Order */}
-      <div className="border-b border-slate-200 mb-4">
-        <nav className="flex space-x-8">
+      <div className="border-b border-slate-200 mb-2 flex items-center justify-between px-4">
+        <nav className="flex space-x-6">
           <button
             onClick={() => setPoActiveTab("active")}
-            className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
               poActiveTab === "active"
                 ? "border-primary text-primary"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
-            <div className="flex items-center gap-2">
-              Active
-              {purchaseOrders.filter(
-                (po) =>
-                  po.status === "DRAFT" ||
-                  po.status === "ORDERED" ||
-                  po.status === "PARTIALLY_RECEIVED"
-              ).length > 0 && (
-                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                  {
-                    purchaseOrders.filter(
-                      (po) =>
-                        po.status === "DRAFT" ||
-                        po.status === "ORDERED" ||
-                        po.status === "PARTIALLY_RECEIVED"
-                    ).length
-                  }
-                </span>
-              )}
-            </div>
+            Active
           </button>
           <button
             onClick={() => setPoActiveTab("completed")}
-            className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
               poActiveTab === "completed"
                 ? "border-primary text-primary"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
-            <div className="flex items-center gap-2">
-              Completed
-              {purchaseOrders.filter(
-                (po) =>
-                  po.status === "FULLY_RECEIVED" || po.status === "CANCELLED"
-              ).length > 0 && (
-                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                  {
-                    purchaseOrders.filter(
-                      (po) =>
-                        po.status === "FULLY_RECEIVED" ||
-                        po.status === "CANCELLED"
-                    ).length
-                  }
-                </span>
-              )}
-            </div>
+            Completed
           </button>
         </nav>
       </div>
@@ -223,39 +275,43 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
         </div>
-      ) : purchaseOrders && purchaseOrders.length > 0 ? (
-        <div className="space-y-2">
-          {purchaseOrders
-            .filter((po) => {
-              if (poActiveTab === "active") {
-                return (
-                  po.status === "DRAFT" ||
-                  po.status === "ORDERED" ||
-                  po.status === "PARTIALLY_RECEIVED"
-                );
-              } else {
-                return (
-                  po.status === "FULLY_RECEIVED" || po.status === "CANCELLED"
-                );
-              }
-            })
-            .map((po) => (
-              <div key={po.id} className="border border-slate-200 rounded-lg">
-                <button
-                  onClick={() => {
-                    const element = document.getElementById(`po-${po.id}`);
-                    if (element) {
-                      element.classList.toggle("hidden");
-                    }
-                  }}
-                  className="w-full p-4 text-left hover:bg-slate-50 transition-colors flex items-center justify-between"
+      ) : filteredPOs && filteredPOs.length > 0 ? (
+        <div className="bg-white rounded-lg">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-50 border-t border-b border-slate-200 text-xs font-medium text-slate-600 uppercase tracking-wider">
+            <div className="col-span-3">Order / Supplier</div>
+            <div className="col-span-2">Date</div>
+            <div className="col-span-2">Items</div>
+            <div className="col-span-2">Total</div>
+            <div className="col-span-2">Status</div>
+            <div className="col-span-1 text-right">Actions</div>
+          </div>
+
+          {/* Rows */}
+          <div className="space-y-2">
+            {filteredPOs.map((po) => {
+              return (
+                <div
+                  key={po.id}
+                  className="border border-slate-200 rounded-lg overflow-hidden"
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h4 className="text-sm font-bold text-slate-800 w-44 truncate shrink-0">
-                        {po.order_no}
-                      </h4>
-                      <span className="text-xs text-slate-600 w-48 truncate shrink-0">
+                  <button
+                    onClick={() => {
+                      const element = document.getElementById(`po-${po.id}`);
+                      if (element) element.classList.toggle("hidden");
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-3 flex flex-col">
+                        <span className="text-sm font-semibold text-gray-800 truncate">
+                          {po.order_no}
+                        </span>
+                        <span className="text-xs text-slate-600 truncate">
+                          {po.supplier?.name || "-"}
+                        </span>
+                      </div>
+                      <div className="col-span-2 text-sm text-slate-700">
                         {po.ordered_at
                           ? `Ordered: ${new Date(
                               po.ordered_at
@@ -265,255 +321,268 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                 ? new Date(po.createdAt).toLocaleDateString()
                                 : "-"
                             }`}
-                      </span>
-                      <span className="text-xs font-medium text-slate-700 w-36 shrink-0">
-                        Total: ${parseFloat(po.total_amount || 0).toFixed(2)}
-                      </span>
-                      <span className="text-xs text-slate-600 w-24 shrink-0">
-                        Items:{" "}
-                        {Array.isArray(po.items)
-                          ? po.items.reduce(
-                              (sum, it) => sum + (parseFloat(it.quantity) || 0),
-                              0
-                            )
-                          : 0}
-                      </span>
-                      <span
-                        className={`ml-auto px-2 py-1 text-xs font-medium rounded w-36 text-center shrink-0 ${
-                          po.status === "DRAFT"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : po.status === "ORDERED"
-                            ? "bg-blue-100 text-blue-800"
-                            : po.status === "PARTIALLY_RECEIVED"
-                            ? "bg-purple-100 text-purple-800"
-                            : po.status === "FULLY_RECEIVED"
-                            ? "bg-green-100 text-green-800"
-                            : po.status === "CANCELLED"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {po.status}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <ChevronDown className="w-4 h-4 text-slate-500" />
-                  </div>
-                </button>
-                <div
-                  id={`po-${po.id}`}
-                  className="hidden px-4 pb-4 border-t border-slate-100"
-                >
-                  <div className="mt-4">
-                    {/* PO Details */}
-                    <div className="mb-4 p-3 bg-slate-50 rounded-lg">
-                      <div className="flex items-center gap-4 text-xs text-slate-600 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>
-                            <span className="font-medium">Created:</span>{" "}
-                            {po.createdAt
-                              ? new Date(po.createdAt).toLocaleString()
-                              : "No date"}
-                          </span>
-                        </div>
-                        {po.ordered_at && (
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5" />
-                            <span>
-                              <span className="font-medium">Ordered:</span>{" "}
-                              {new Date(po.ordered_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        )}
-                        {po.total_amount && (
-                          <div className="flex items-center gap-1.5">
-                            <Receipt className="w-3.5 h-3.5" />
-                            <span>
-                              <span className="font-medium">Total:</span>{" "}
-                              <span className="font-semibold">
-                                ${parseFloat(po.total_amount).toFixed(2)}
-                              </span>
-                            </span>
-                          </div>
+                      </div>
+                      <div className="col-span-2 text-sm text-slate-700">
+                        {(po.items || []).reduce(
+                          (sum, it) =>
+                            sum + (parseFloat(it.quantity) || 0),
+                          0
                         )}
                       </div>
-                      <div className="mt-3 flex items-start gap-2 text-xs text-slate-600">
-                        <NotebookText className="w-3.5 h-3.5 mt-0.5" />
-                        <span>
-                          <span className="font-medium">Notes:</span>{" "}
-                          {po.notes ? po.notes : ""}
+                      <div className="col-span-2 text-sm text-slate-700">
+                        ${formatMoney(po.total_amount)}
+                      </div>
+                      <div className="col-span-2">
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded ${
+                            po.status === "DRAFT"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : po.status === "ORDERED"
+                              ? "bg-blue-100 text-blue-800"
+                              : po.status === "PARTIALLY_RECEIVED"
+                              ? "bg-purple-100 text-purple-800"
+                              : po.status === "FULLY_RECEIVED"
+                              ? "bg-green-100 text-green-800"
+                              : po.status === "CANCELLED"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {po.status}
                         </span>
                       </div>
-                      {po.mto && (
-                        <div className="mt-3 flex items-center gap-2 text-xs text-slate-600 flex-wrap">
-                          {po.mto.project && (
+                      <div className="col-span-1 text-right">
+                        <ChevronDown className="w-5 h-5 text-slate-500 inline-block" />
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Accordion content */}
+                  <div
+                    id={`po-${po.id}`}
+                    className="hidden px-4 pb-4 border-t border-slate-100"
+                  >
+                    <div className="mt-4">
+                      <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+                        <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-4 h-4" />
+                            <span>
+                              <span className="font-medium">Created:</span>{" "}
+                              {po.createdAt
+                                ? new Date(po.createdAt).toLocaleString()
+                                : "No date"}
+                            </span>
+                          </div>
+                          {po.ordered_at && (
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-4 h-4" />
+                              <span>
+                                <span className="font-medium">Ordered:</span>{" "}
+                                {new Date(po.ordered_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+                          {po.total_amount && (
+                            <div className="flex items-center gap-1.5">
+                              <FileText className="w-4 h-4" />
+                              <span>
+                                <span className="font-medium">Total:</span>{" "}
+                                <span className="font-semibold">
+                                  ${formatMoney(po.total_amount)}
+                                </span>
+                              </span>
+                            </div>
+                          )}
+                          {po.mto?.project && (
                             <span className="px-2 py-0.5 text-xs bg-slate-100 text-slate-700 rounded border border-slate-200">
                               Project: {po.mto.project.project_id} -{" "}
                               {po.mto.project.name}
                             </span>
                           )}
-                          <span
-                            className={`px-2 py-0.5 text-xs rounded ${
-                              po.mto.status === "PARTIALLY_RECEIVED"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-slate-100 text-slate-700"
-                            }`}
-                          >
-                            {po.mto.status}
-                          </span>
-                        </div>
-                      )}
-                      {po.orderedBy && po.orderedBy.employee && (
-                        <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-600">
-                          <User className="w-3.5 h-3.5" />
-                          <span>
-                            <span className="font-medium">Ordered by:</span>{" "}
-                            {po.orderedBy.employee.first_name || ""}{" "}
-                            {po.orderedBy.employee.last_name || ""}
-                          </span>
-                        </div>
-                      )}
-                      {po.invoice_url ? (
-                        <div className="mt-3">
-                          <div className="border border-slate-200 rounded-lg p-3 flex items-center justify-between bg-white">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-10 h-10 bg-slate-100 border border-slate-200 rounded flex items-center justify-center">
-                                <FileText className="w-4 h-4 text-slate-500" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-xs font-medium text-slate-800 truncate">
-                                  {po.invoice_url.filename || "Invoice"}
-                                </div>
-                                <div className="text-xs text-slate-500 truncate">
-                                  {po.invoice_url.mime_type ||
-                                    po.invoice_url.extension}
-                                </div>
-                              </div>
+                          {po.orderedBy?.employee && (
+                            <div className="flex items-center gap-1.5">
+                              <User className="w-4 h-4" />
+                              <span>
+                                <span className="font-medium">Ordered by:</span>{" "}
+                                {po.orderedBy.employee.first_name}{" "}
+                                {po.orderedBy.employee.last_name}
+                              </span>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedInvoiceFile({
-                                    name: po.invoice_url.filename || "Invoice",
-                                    url: po.invoice_url.url,
-                                    type:
-                                      po.invoice_url.mime_type ||
-                                      (po.invoice_url.extension
-                                        ? `application/${po.invoice_url.extension}`
-                                        : "application/pdf"),
-                                    size: po.invoice_url.size || 0,
-                                    isExisting: true,
-                                  });
-                                  setShowInvoicePreview(true);
-                                }}
-                                className="cursor-pointer px-3 py-1.5 border border-slate-300 rounded-md hover:bg-slate-50 text-xs text-slate-700 transition-all duration-200"
-                              >
-                                View
-                              </button>
-                              <a
-                                href={po.invoice_url.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="cursor-pointer px-3 py-1.5 bg-primary/80 hover:bg-primary text-white rounded-md text-xs font-medium transition-all duration-200"
-                              >
-                                Download
-                              </a>
-                            </div>
+                          )}
+                        </div>
+                        {po.notes && (
+                          <div className="mt-3 flex items-start gap-2 text-sm text-gray-600">
+                            <NotebookText className="w-4 h-4 mt-0.5" />
+                            <span>
+                              <span className="font-medium">Notes:</span>{" "}
+                              {po.notes}
+                            </span>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="mt-3">
-                          <div className="border border-slate-200 rounded-lg p-3 bg-white">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
+                        )}
+                        {/* Invoice Section */}
+                        {po.invoice_url ? (
+                          <div className="mt-3">
+                            <div className="border border-slate-200 rounded-lg p-3 flex items-center justify-between bg-white">
+                              <div className="flex items-center gap-3 min-w-0">
                                 <div className="w-10 h-10 bg-slate-100 border border-slate-200 rounded flex items-center justify-center">
-                                  <FileText className="w-4 h-4 text-slate-400" />
+                                  <FileText className="w-5 h-5 text-slate-500" />
                                 </div>
-                                <div>
-                                  <div className="text-xs font-medium text-slate-800">
-                                    No invoice uploaded
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium text-gray-800 truncate">
+                                    {po.invoice_url.filename || "Invoice"}
                                   </div>
-                                  <div className="text-xs text-slate-500">
-                                    Upload an invoice file for this purchase
-                                    order
+                                  <div className="text-xs text-slate-500 truncate">
+                                    {po.invoice_url.mime_type ||
+                                      po.invoice_url.extension}
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  ref={(el) => {
-                                    invoiceFileInputRefs.current[po.id] = el;
-                                  }}
-                                  type="file"
-                                  accept=".pdf,.doc,.docx,image/*"
-                                  onChange={(e) => {
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  onClick={(e) => {
                                     e.stopPropagation();
-                                    handleInvoiceFileChange(po.id, e);
+                                    setSelectedInvoiceFile({
+                                      name:
+                                        po.invoice_url.filename || "Invoice",
+                                      url: po.invoice_url.url,
+                                      type:
+                                        po.invoice_url.mime_type ||
+                                        (po.invoice_url.extension
+                                          ? `application/${po.invoice_url.extension}`
+                                          : "application/pdf"),
+                                      size: po.invoice_url.size || 0,
+                                      isExisting: true,
+                                    });
+                                    setShowInvoicePreview(true);
                                   }}
-                                  className="hidden"
-                                  id={`invoice-upload-${po.id}`}
-                                  disabled={uploadingInvoicePOId === po.id}
-                                />
-                                <label
-                                  htmlFor={`invoice-upload-${po.id}`}
-                                  className={`cursor-pointer px-3 py-1.5 border border-slate-300 rounded-md hover:bg-slate-50 text-xs text-slate-700 font-medium flex items-center gap-2 transition-all duration-200 ${
-                                    uploadingInvoicePOId === po.id
+                                  className="cursor-pointer px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm text-slate-700"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleInvoiceDelete(po.id);
+                                  }}
+                                  disabled={deletingInvoicePOId === po.id}
+                                  className={`cursor-pointer px-3 py-1.5 border border-red-300 rounded-lg hover:bg-red-50 text-sm text-red-700 flex items-center gap-1.5 ${
+                                    deletingInvoicePOId === po.id
                                       ? "opacity-50 cursor-not-allowed"
                                       : ""
                                   }`}
-                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  {uploadingInvoicePOId === po.id ? (
+                                  {deletingInvoicePOId === po.id ? (
                                     <>
-                                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-slate-600"></div>
-                                      <span>Uploading...</span>
+                                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
+                                      <span>Deleting...</span>
                                     </>
                                   ) : (
                                     <>
-                                      <Upload className="w-3.5 h-3.5" />
-                                      <span>Upload Invoice</span>
+                                      <Trash2 className="w-4 h-4" />
+                                      <span>Delete</span>
                                     </>
                                   )}
-                                </label>
+                                </button>
+                                <a
+                                  href={po.invoice_url.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="cursor-pointer px-3 py-1.5 bg-primary/80 hover:bg-primary text-white rounded-lg text-sm"
+                                >
+                                  Download
+                                </a>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
+                        ) : (
+                          <div className="mt-3">
+                            <div className="border border-slate-200 rounded-lg p-3 bg-white">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-slate-100 border border-slate-200 rounded flex items-center justify-center">
+                                    <FileText className="w-5 h-5 text-slate-400" />
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-800">
+                                      No invoice uploaded
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                      Upload an invoice file for this purchase
+                                      order
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    ref={(el) => {
+                                      invoiceFileInputRefs.current[po.id] = el;
+                                    }}
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,image/*"
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      handleInvoiceFileChange(po.id, e);
+                                    }}
+                                    className="hidden"
+                                    id={`invoice-upload-${po.id}`}
+                                    disabled={
+                                      uploadingInvoicePOId === po.id
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`invoice-upload-${po.id}`}
+                                    className={`cursor-pointer px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm text-slate-700 flex items-center gap-2 ${
+                                      uploadingInvoicePOId === po.id
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
+                                    }`}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {uploadingInvoicePOId === po.id ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-600"></div>
+                                        <span>Uploading...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="w-4 h-4" />
+                                        <span>Upload Invoice</span>
+                                      </>
+                                    )}
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Items List */}
-                    {po.items && po.items.length > 0 && (
-                      <div>
-                        <h5 className="text-xs font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                          Items ({po.items.length})
-                        </h5>
+                      {/* Items table */}
+                      {po.items && po.items.length > 0 && (
                         <div className="overflow-x-auto">
-                          <table className="w-full">
+                          <table className="w-full border border-slate-200 rounded-lg">
                             <thead className="bg-slate-50">
                               <tr>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Image
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Category
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Details
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                  Qty
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Quantity
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Received
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Unit Price
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Total
                                 </th>
                               </tr>
@@ -522,10 +591,9 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                               {po.items.map((item) => (
                                 <tr
                                   key={item.id}
-                                  className="hover:bg-slate-50 transition-colors"
+                                  className="hover:bg-slate-50"
                                 >
-                                  {/* Image Column */}
-                                  <td className="px-4 py-2 whitespace-nowrap">
+                                  <td className="px-4 py-3 whitespace-nowrap">
                                     <div className="flex items-center">
                                       {item.item?.image ? (
                                         <img
@@ -548,13 +616,13 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-2">
+                                  <td className="px-4 py-3">
                                     <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
                                       {item.item?.category || "-"}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-2">
-                                    <div className="text-xs text-slate-600 space-y-1">
+                                  <td className="px-4 py-3">
+                                    <div className="text-sm text-gray-600 space-y-1">
                                       {item.item?.sheet && (
                                         <>
                                           <div>
@@ -663,44 +731,44 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                     {item.notes &&
                                       item.item?.description &&
                                       item.notes !== item.item?.description && (
-                                        <div className="text-xs text-slate-500 mt-1 flex items-start gap-1">
-                                          <NotebookText className="w-3 h-3 mt-0.5" />
+                                        <div className="text-xs text-gray-500 mt-1 flex items-start gap-1">
+                                          <FileText className="w-3 h-3 mt-0.5" />
                                           <span>{item.notes}</span>
                                         </div>
                                       )}
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="text-xs text-slate-600">
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="text-sm text-gray-600">
                                       {item.quantity}
                                       {item.item?.measurement_unit && (
-                                        <span className="text-slate-400 ml-1">
+                                        <span className="text-gray-400 ml-1">
                                           {item.item.measurement_unit}
                                         </span>
                                       )}
                                     </div>
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <span className="text-xs text-slate-600">
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className="text-sm text-gray-600">
                                       {item.quantity_received || 0}
                                       {item.item?.measurement_unit && (
-                                        <span className="text-slate-400 ml-1">
+                                        <span className="text-gray-400 ml-1">
                                           {item.item.measurement_unit}
                                         </span>
                                       )}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <span className="text-xs text-slate-600">
-                                      ${parseFloat(item.unit_price).toFixed(2)}
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className="text-sm text-gray-600">
+                                      $
+                                      {parseFloat(item.unit_price).toFixed(2)}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <span className="text-xs font-semibold text-slate-900">
-                                      $
-                                      {(
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className="text-sm font-semibold text-gray-900">
+                                      ${formatMoney(
                                         parseFloat(item.quantity) *
-                                        parseFloat(item.unit_price)
-                                      ).toFixed(2)}
+                                          parseFloat(item.unit_price)
+                                      )}
                                     </span>
                                   </td>
                                 </tr>
@@ -708,17 +776,17 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                             </tbody>
                           </table>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
         </div>
       ) : (
-        <div className="text-center py-8 text-slate-500">
-          <PackagePlus className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-          <p className="text-sm">No purchase orders found for this supplier</p>
+        <div className="text-center py-10 text-slate-500">
+          No purchase orders found
         </div>
       )}
 
@@ -730,6 +798,17 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
           setPageNumber={setPageNumber}
         />
       )}
+
+      {/* Delete Invoice Confirmation Modal */}
+      <DeleteConfirmation
+        isOpen={showDeleteInvoiceModal}
+        onClose={handleInvoiceDeleteCancel}
+        onConfirm={handleInvoiceDeleteConfirm}
+        deleteWithInput={false}
+        heading="Invoice"
+        message="This will permanently delete the invoice file. This action cannot be undone."
+        isDeleting={deletingInvoicePOId !== null}
+      />
     </div>
   );
 }

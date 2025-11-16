@@ -34,6 +34,7 @@ export default function sidebar() {
   const [clientNames, setClientNames] = useState([]);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [suppliersDropdownOpen, setSuppliersDropdownOpen] = useState(false);
+  const [inventoryDropdownOpen, setInventoryDropdownOpen] = useState(false);
   const navdata = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" },
     { icon: IdCardLanyard, label: "Employees", href: "/admin/employees" },
@@ -364,6 +365,146 @@ export default function sidebar() {
                       {
                         name: "Purchase Order",
                         href: "/admin/suppliers/purchaseorder",
+                      }].map((link) => {
+                        const isActiveSub = activeTab.href === link.href;
+                        return (
+                          <button
+                            key={link.href}
+                            onClick={() => {
+                              router.push(link.href);
+                              dispatch(
+                                replaceTab({
+                                  id: uuidv4(),
+                                  title: link.name,
+                                  href: link.href,
+                                })
+                              );
+                            }}
+                            className={`w-full text-left cursor-pointer py-2 px-3 rounded-md transition-all duration-200 flex items-center gap-2 ${
+                              isActiveSub
+                                ? "bg-slate-700 text-white"
+                                : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                            }`}
+                          >
+                            <span className="text-sm">{link.name}</span>
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                dispatch(
+                                  addTab({
+                                    id: uuidv4(),
+                                    title: link.name,
+                                    href: link.href,
+                                  })
+                                );
+                              }}
+                              className="ml-auto p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
+                            >
+                              <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            if (item.label === "Inventory") {
+              const isInventoryActive = activeTab.href.startsWith("/admin/inventory");
+              return (
+                <div key={item.href} className="mx-2 my-1">
+                  <div
+                    className={`w-full py-2 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 group ${
+                      isInventoryActive
+                        ? "bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg shadow-slate-500/20"
+                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                    }`}
+                  >
+                    {/* Main Inventory button area */}
+                    <button
+                      onClick={() => {
+                        router.push(item.href);
+                        dispatch(
+                          replaceTab({
+                            id: uuidv4(),
+                            title: item.label,
+                            href: item.href,
+                          })
+                        );
+                      }}
+                      className="flex items-center gap-3 flex-1 cursor-pointer"
+                    >
+                      <item.icon
+                        className={`w-5 h-5 ${
+                          isInventoryActive ? "text-white" : "text-slate-400 group-hover:text-white"
+                        }`}
+                      />
+                      <h1
+                        className={`font-medium ${
+                          isInventoryActive ? "text-white" : "text-slate-300 group-hover:text-white"
+                        }`}
+                      >
+                        {item.label}
+                      </h1>
+                    </button>
+
+                    {/* Chevron button for dropdown toggle */}
+                    <button
+                      onClick={() => setInventoryDropdownOpen((prev) => !prev)}
+                      className="p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
+                      aria-label={
+                        inventoryDropdownOpen ? "Close inventory dropdown" : "Open inventory dropdown"
+                      }
+                    >
+                      {inventoryDropdownOpen ? (
+                        <ChevronUp className="w-5 h-5 text-slate-400 group-hover:text-white" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-white" />
+                      )}
+                    </button>
+
+                    {/* New tab button */}
+                    <div
+                      className="p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        dispatch(
+                          addTab({
+                            id: uuidv4(),
+                            title: item.label,
+                            href: item.href,
+                          })
+                        );
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          dispatch(
+                            addTab({
+                              id: uuidv4(),
+                              title: item.label,
+                              href: item.href,
+                            })
+                          );
+                        }
+                      }}
+                      aria-label={`Open ${item.label} in new tab`}
+                    >
+                      <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                    </div>
+                  </div>
+
+                  {inventoryDropdownOpen && (
+                    <div className="mt-1 mr-2 mb-2 space-y-1">
+                      {[{
+                        name: "Used Material",
+                        href: "/admin/inventory/usedmaterial",
                       }].map((link) => {
                         const isActiveSub = activeTab.href === link.href;
                         return (

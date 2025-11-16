@@ -36,7 +36,7 @@ export default function page() {
   const [search, setSearch] = useState("");
   const [selectedClientType, setSelectedClientType] = useState([]);
   const [distinctClientType, setDistinctClientType] = useState([]);
-  const [sortField, setSortField] = useState("client_id");
+  const [sortField, setSortField] = useState("client_name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [showClientTypeFilterDropdown, setShowClientTypeFilterDropdown] =
     useState(false);
@@ -76,8 +76,6 @@ export default function page() {
       if (search) {
         const searchLower = search.toLowerCase();
         const matchesSearch =
-          (client.client_id &&
-            client.client_id.toString().toLowerCase().includes(searchLower)) ||
           (client.client_name &&
             client.client_name.toLowerCase().includes(searchLower)) ||
           (client.client_type &&
@@ -105,7 +103,10 @@ export default function page() {
       let bValue = b[sortField] || "";
 
       // Handle projects sorting (by count)
-      if (sortField === "number_of_projects" || sortField === "active_projects") {
+      if (
+        sortField === "number_of_projects" ||
+        sortField === "active_projects"
+      ) {
         aValue = countActiveProjects(a);
         bValue = countActiveProjects(b);
       } else if (sortField === "completed_projects") {
@@ -218,8 +219,7 @@ export default function page() {
           setLoading(false);
           setError(error.response.data.message);
         });
-    } catch (error) {
-    }
+    } catch (error) {}
   };
 
   const handleSort = (field) => {
@@ -270,14 +270,14 @@ export default function page() {
     return (
       search !== "" || // Search is not empty
       selectedClientType.length !== distinctClientType.length || // Role filter is not showing all roles
-      sortField !== "client_id" || // Sort field is not default
+      sortField !== "client_name" || // Sort field is not default
       sortOrder !== "asc" // Sort order is not default
     );
   };
 
   const handleReset = () => {
     setSearch("");
-    setSortField("client_id");
+    setSortField("client_name");
     setSortOrder("asc");
     setSelectedClientType([...distinctClientType]); // Reset to all roles selected
   };
@@ -435,7 +435,7 @@ export default function page() {
                       <Search className="h-5 w-5 absolute left-3 text-slate-400" />
                       <input
                         type="text"
-                        placeholder="Search Client with name, client id, client type"
+                        placeholder="Search Client with name, client type"
                         className="w-full text-slate-800 p-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -526,12 +526,6 @@ export default function page() {
                           <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
                             <div className="py-1">
                               <button
-                                onClick={() => handleSort("client_id")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Client ID {getSortIcon("client_id")}
-                              </button>
-                              <button
                                 onClick={() => handleSort("client_name")}
                                 className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                               >
@@ -559,7 +553,8 @@ export default function page() {
                                 onClick={() => handleSort("completed_projects")}
                                 className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                               >
-                                Completed Projects {getSortIcon("completed_projects")}
+                                Completed Projects{" "}
+                                {getSortIcon("completed_projects")}
                               </button>
                             </div>
                           </div>
@@ -590,15 +585,6 @@ export default function page() {
                       <table className="min-w-full divide-y divide-slate-200">
                         <thead className="bg-slate-50">
                           <tr>
-                            <th
-                              className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("client_id")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Client ID
-                                {getSortIcon("client_id")}
-                              </div>
-                            </th>
                             <th
                               className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                               onClick={() => handleSort("client_name")}
@@ -646,7 +632,7 @@ export default function page() {
                             <tr>
                               <td
                                 className="px-4 py-6 text-sm text-slate-500"
-                                colSpan={7}
+                                colSpan={6}
                               >
                                 Loading clients...
                               </td>
@@ -655,7 +641,7 @@ export default function page() {
                             <tr>
                               <td
                                 className="px-4 py-6 text-sm text-red-600"
-                                colSpan={7}
+                                colSpan={6}
                               >
                                 {error}
                               </td>
@@ -664,7 +650,7 @@ export default function page() {
                             <tr>
                               <td
                                 className="px-4 py-6 text-sm text-slate-500"
-                                colSpan={7}
+                                colSpan={6}
                               >
                                 {search
                                   ? "No clients found matching your search"
@@ -676,7 +662,7 @@ export default function page() {
                           ) : (
                             paginatedClients.map((e) => (
                               <tr
-                                key={e.id}
+                                key={e.client_id}
                                 onClick={() => {
                                   router.push(`/admin/clients/${e.client_id}`);
                                   dispatch(
@@ -689,9 +675,6 @@ export default function page() {
                                 }}
                                 className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
                               >
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                  {e.client_id || "-"}
-                                </td>
                                 <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
                                   {e.client_name || "-"}
                                 </td>

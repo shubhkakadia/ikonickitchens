@@ -8,16 +8,11 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Deploy to Server
         run: |
@@ -25,14 +20,14 @@ jobs:
 
           if [[ "$BRANCH" == "dev" ]]; then
             echo "Deploying to DEVELOPMENT SERVER"
-            REMOTE_PATH="ikonickitchens-dev"
+            REMOTE_PATH="/full/path/to/ikonickitchens-dev"
             ENV_DATA="${{ secrets.DEV_ENV }}"
             PM2_NAME="ikonickitchens-dev"
             PORT=4000
             BACKUP=false
           else
             echo "Deploying to PRODUCTION SERVER"
-            REMOTE_PATH="ikonickitchens"
+            REMOTE_PATH="/full/path/to/ikonickitchens"
             ENV_DATA="${{ secrets.PROD_ENV }}"
             PM2_NAME="ikonickitchens"
             PORT=3000
@@ -41,41 +36,38 @@ jobs:
 
           echo "Remote path: $REMOTE_PATH"
 
-          # Sync project files
+          # Since runner is on the same server, just copy files
           rsync -avz --delete --exclude=".git" --exclude="node_modules" --exclude=".next" \
-            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:$REMOTE_PATH
+            ./ $REMOTE_PATH/
 
-          # Setup app on Server
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << EOF
-            set -e
-            cd $REMOTE_PATH
+          # Setup app
+          cd $REMOTE_PATH
 
-            # Write .env file
-            echo "$ENV_DATA" > .env
+          # Write .env file
+          echo "$ENV_DATA" > .env
 
-            # Install dependencies
-            npm install
+          # Install dependencies
+          npm install
 
-            # ===== PRODUCTION DATABASE BACKUP =====
-            if [[ "$BACKUP" == "true" ]]; then
-              BACKUP_FILE=/home/deployer/db_backup_\$(date +%Y-%m-%d_%H-%M-%S).sql
-              echo "Creating database backup to: \$BACKUP_FILE"
+          # ===== PRODUCTION DATABASE BACKUP =====
+          if [[ "$BACKUP" == "true" ]]; then
+            BACKUP_FILE=/home/deployer/db_backup_$(date +%Y-%m-%d_%H-%M-%S).sql
+            echo "Creating database backup to: $BACKUP_FILE"
 
-              mysqldump -h ${{ secrets.MYSQL_HOST }} -u ${{ secrets.MYSQL_USER }} -p'${{ secrets.MYSQL_PASSWORD }}' ${{ secrets.MYSQL_DB }} > \$BACKUP_FILE
-              echo "Database backup created successfully"
-            fi
+            mysqldump -h ${{ secrets.MYSQL_HOST }} -u ${{ secrets.MYSQL_USER }} -p'${{ secrets.MYSQL_PASSWORD }}' ${{ secrets.MYSQL_DB }} > $BACKUP_FILE
+            echo "Database backup created successfully"
+          fi
 
-            # Run prisma migrations
-            npx prisma migrate deploy
+          # Run prisma migrations
+          npx prisma migrate deploy
 
-            # Generate Prisma client
-            npx prisma generate
+          # Generate Prisma client
+          npx prisma generate
 
-            # Build Next.js app
-            npm run build
+          # Build Next.js app
+          npm run build
 
-            # Start PM2 process
-            pm2 restart $PM2_NAME || pm2 start npm --name $PM2_NAME -- start -- --port $PORT
+          # Start PM2 process
+          pm2 restart $PM2_NAME || pm2 start npm --name $PM2_NAME -- start -- --port $PORT
 
-            pm2 save
-          EOF
+          pm2 save

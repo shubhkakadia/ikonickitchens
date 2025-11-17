@@ -20,14 +20,14 @@ jobs:
 
           if [[ "$BRANCH" == "dev" ]]; then
             echo "Deploying to DEVELOPMENT SERVER"
-            REMOTE_PATH="/full/path/to/ikonickitchens-dev"
+            REMOTE_PATH="ikonickitchens-dev"
             ENV_DATA="${{ secrets.DEV_ENV }}"
             PM2_NAME="ikonickitchens-dev"
             PORT=4000
             BACKUP=false
           else
             echo "Deploying to PRODUCTION SERVER"
-            REMOTE_PATH="/full/path/to/ikonickitchens"
+            REMOTE_PATH="ikonickitchens"
             ENV_DATA="${{ secrets.PROD_ENV }}"
             PM2_NAME="ikonickitchens"
             PORT=3000

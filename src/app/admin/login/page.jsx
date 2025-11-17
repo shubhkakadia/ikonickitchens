@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import versions from "@/config/versions.json";
 
 export default function page() {
   const router = useRouter();
@@ -372,6 +373,11 @@ export default function page() {
               Back to Website
             </Link>
           </div>
+          
+          {/* Version Indicator */}
+          <p className="text-xs text-slate-400 text-center mt-4">
+            v{versions.version}
+          </p>
         </div>
       </div>
       <Footer />

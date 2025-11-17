@@ -23,6 +23,7 @@ import { addTab, replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import versions from "@/config/versions.json";
 
 export default function sidebar() {
   const dispatch = useDispatch();
@@ -717,6 +718,11 @@ export default function sidebar() {
               </h1>
             </div>
           </button>
+          
+          {/* Version Indicator */}
+          <p className="text-xs text-slate-500 text-center mt-2 px-2">
+            v{versions.version}
+          </p>
         </div>
       </div>
     </div>

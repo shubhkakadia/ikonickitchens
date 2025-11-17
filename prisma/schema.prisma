@@ -270,6 +270,8 @@ model stage_employee {
   stage_id    String
   employee_id String
   assigned_at DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   stage       stage     @relation(fields: [stage_id], references: [stage_id], onDelete: Cascade)
   employee    employees @relation(fields: [employee_id], references: [employee_id], onDelete: Restrict)
 
@@ -366,6 +368,7 @@ model material_selection {
   createdBy_id       String?
   createdBy          users?                        @relation(fields: [createdBy_id], references: [id])
   createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
   current_version_id String?                       @unique
   currentVersion     material_selection_versions?  @relation("CurrentVersion", fields: [current_version_id], references: [id])
   versions           material_selection_versions[] @relation("AllVersions")

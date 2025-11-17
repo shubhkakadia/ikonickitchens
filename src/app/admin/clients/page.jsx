@@ -265,6 +265,11 @@ export default function page() {
     setCurrentPage(page);
   };
 
+  // Reset to first page when search or items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, itemsPerPage]);
+
   // Check if any filters are active (not in default state)
   const isAnyFilterActive = () => {
     return (
@@ -394,7 +399,7 @@ export default function page() {
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 flex flex-col overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
@@ -416,406 +421,440 @@ export default function page() {
                 </div>
               </div>
             ) : (
-              <div className="px-4 py-2">
-                <div className="flex justify-between items-center">
-                  <h1 className="text-2xl font-bold text-slate-600">Clients</h1>
-                  <TabsController
-                    href="/admin/clients/addclient"
-                    title="Add Client"
-                  >
-                    <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-md flex items-center gap-2">
-                      <Plus className="h-5 w-5" />
-                      Add Client
-                    </div>
-                  </TabsController>
+              <>
+                <div className="px-3 py-2 flex-shrink-0">
+                  <div className="flex justify-between items-center">
+                    <h1 className="text-xl font-bold text-slate-600">
+                      Clients
+                    </h1>
+                    <TabsController
+                      href="/admin/clients/addclient"
+                      title="Add Client"
+                    >
+                      <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
+                        <Plus className="h-4 w-4" />
+                        Add Client
+                      </div>
+                    </TabsController>
+                  </div>
                 </div>
-                <div className="mt-4 bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2 w-[500px] relative">
-                      <Search className="h-5 w-5 absolute left-3 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search Client with name, client type"
-                        className="w-full text-slate-800 p-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
 
-                    {/* reset, sort by, filter by, export to excel */}
-                    <div className="flex items-center gap-3">
-                      {isAnyFilterActive() && (
-                        <button
-                          onClick={handleReset}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                          <span>Reset</span>
-                        </button>
-                      )}
+                <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3">
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                    {/* Fixed Header Section */}
+                    <div className="p-3 flex-shrink-0">
+                      <div className="flex items-center justify-between">
+                        {/* search bar */}
+                        <div className="flex items-center gap-2 w-[500px] relative">
+                          <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Search Client with name, client type"
+                            className="w-full text-slate-800 p-2 pl-9 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                          />
+                        </div>
 
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() =>
-                            setShowClientTypeFilterDropdown(
-                              !showClientTypeFilterDropdown
-                            )
-                          }
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <Funnel className="h-4 w-4" />
-                          <span>Filter by Client Type</span>
-                          {distinctClientType.length -
-                            selectedClientType.length >
-                            0 && (
-                            <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
-                              {distinctClientType.length -
-                                selectedClientType.length}
-                            </span>
-                          )}
-                        </button>
-                        {showClientTypeFilterDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                            <div className="py-1">
-                              <button
-                                onClick={() =>
-                                  handleClientTypeToggle("Select All")
-                                }
-                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                <span>Select All</span>
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    selectedClientType.length ===
-                                    distinctClientType.length
-                                  }
-                                  onChange={() => {}}
-                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                />
-                              </button>
-                              {distinctClientType.map((role) => (
-                                <button
-                                  key={role}
-                                  onClick={() => handleClientTypeToggle(role)}
-                                  className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  <span>{role}</span>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedClientType.includes(role)}
-                                    onChange={() => {}}
-                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() => setShowSortDropdown(!showSortDropdown)}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <ArrowUpDown className="h-4 w-4" />
-                          <span>Sort by</span>
-                        </button>
-                        {showSortDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                            <div className="py-1">
-                              <button
-                                onClick={() => handleSort("client_name")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Client Name {getSortIcon("client_name")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("client_type")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Client Type {getSortIcon("client_type")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("client_email")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Client Email {getSortIcon("client_email")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("active_projects")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Active Projects {getSortIcon("active_projects")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("completed_projects")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Completed Projects{" "}
-                                {getSortIcon("completed_projects")}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={handleExportToExcel}
-                        disabled={
-                          isExporting || filteredAndSortedClients.length === 0
-                        }
-                        className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium ${
-                          isExporting || filteredAndSortedClients.length === 0
-                            ? "opacity-50 cursor-not-allowed"
-                            : "cursor-pointer hover:bg-slate-100"
-                        }`}
-                      >
-                        <Sheet className="h-4 w-4" />
-                        <span>
-                          {isExporting ? "Exporting..." : "Export to Excel"}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* table */}
-                  <div className="mt-4">
-                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                      <table className="min-w-full divide-y divide-slate-200">
-                        <thead className="bg-slate-50">
-                          <tr>
-                            <th
-                              className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("client_name")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Client Name
-                                {getSortIcon("client_name")}
-                              </div>
-                            </th>
-                            <th
-                              className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("client_type")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Client Type
-                                {getSortIcon("client_type")}
-                              </div>
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                              Client Email
-                            </th>
-                            <th
-                              className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("active_projects")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Active Projects
-                                {getSortIcon("active_projects")}
-                              </div>
-                            </th>
-                            <th
-                              className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("completed_projects")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Completed Projects
-                                {getSortIcon("completed_projects")}
-                              </div>
-                            </th>
-                          </tr>
-                        </thead>
-
-                        <tbody className="bg-white divide-y divide-slate-100">
-                          {loading ? (
-                            <tr>
-                              <td
-                                className="px-4 py-6 text-sm text-slate-500"
-                                colSpan={6}
-                              >
-                                Loading clients...
-                              </td>
-                            </tr>
-                          ) : error ? (
-                            <tr>
-                              <td
-                                className="px-4 py-6 text-sm text-red-600"
-                                colSpan={6}
-                              >
-                                {error}
-                              </td>
-                            </tr>
-                          ) : paginatedClients.length === 0 ? (
-                            <tr>
-                              <td
-                                className="px-4 py-6 text-sm text-slate-500"
-                                colSpan={6}
-                              >
-                                {search
-                                  ? "No clients found matching your search"
-                                  : selectedClientType.length === 0
-                                  ? "No clients found - please select at least one role to view clients"
-                                  : "No clients found"}
-                              </td>
-                            </tr>
-                          ) : (
-                            paginatedClients.map((e) => (
-                              <tr
-                                key={e.client_id}
-                                onClick={() => {
-                                  router.push(`/admin/clients/${e.client_id}`);
-                                  dispatch(
-                                    replaceTab({
-                                      id: uuidv4(),
-                                      title: e.client_name,
-                                      href: `/admin/clients/${e.client_id}`,
-                                    })
-                                  );
-                                }}
-                                className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
-                              >
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                  {e.client_name || "-"}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                  {e.client_type || "-"}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-slate-700">
-                                  {e.client_email || "-"}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                  {countActiveProjects(e)}
-                                </td>
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                  {countCompletedProjects(e)}
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Pagination Controls */}
-                  {!loading && !error && paginatedClients.length > 0 && (
-                    <div className="mt-6 flex items-center justify-between">
-                      {/* Items per page dropdown and showing indicator */}
-                      <div className="flex items-center gap-4">
+                        {/* reset, sort by, filter by, export to excel */}
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-slate-600">
-                            Showing
-                          </span>
+                          {isAnyFilterActive() && (
+                            <button
+                              onClick={handleReset}
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              <span>Reset</span>
+                            </button>
+                          )}
+
                           <div className="relative dropdown-container">
                             <button
                               onClick={() =>
-                                setShowItemsPerPageDropdown(
-                                  !showItemsPerPageDropdown
+                                setShowClientTypeFilterDropdown(
+                                  !showClientTypeFilterDropdown
                                 )
                               }
-                              className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
                             >
-                              <span>
-                                {itemsPerPage === 0 ? "All" : itemsPerPage}
-                              </span>
-                              <ChevronDown className="h-4 w-4" />
+                              <Funnel className="h-4 w-4" />
+                              <span>Filter by Client Type</span>
+                              {distinctClientType.length -
+                                selectedClientType.length >
+                                0 && (
+                                <span className="bg-primary text-white text-xs px-2 py-1 rounded-full">
+                                  {distinctClientType.length -
+                                    selectedClientType.length}
+                                </span>
+                              )}
                             </button>
-                            {showItemsPerPageDropdown && (
-                              <div className="absolute top-full left-0 mt-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                            {showClientTypeFilterDropdown && (
+                              <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
                                 <div className="py-1">
-                                  {[10, 25, 50, 100, 0].map((value) => (
-                                    <button
-                                      key={value}
-                                      onClick={() =>
-                                        handleItemsPerPageChange(value)
+                                  <button
+                                    onClick={() =>
+                                      handleClientTypeToggle("Select All")
+                                    }
+                                    className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    <span>Select All</span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedClientType.length ===
+                                        distinctClientType.length
                                       }
-                                      className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </button>
+                                  {distinctClientType.map((role) => (
+                                    <button
+                                      key={role}
+                                      onClick={() =>
+                                        handleClientTypeToggle(role)
+                                      }
+                                      className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                                     >
-                                      {value === 0 ? "All" : value}
+                                      <span>{role}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedClientType.includes(
+                                          role
+                                        )}
+                                        onChange={() => {}}
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
                                     </button>
                                   ))}
                                 </div>
                               </div>
                             )}
                           </div>
-                          <span className="text-sm text-slate-600">
-                            of {totalItems} results
-                          </span>
-                        </div>
-                      </div>
 
-                      {/* Pagination buttons - only show when not showing all items */}
-                      {itemsPerPage > 0 && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handlePageChange(1)}
-                            disabled={currentPage === 1}
-                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                          >
-                            <ChevronsLeft className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </button>
-
-                          {/* Page numbers */}
-                          <div className="flex items-center gap-1">
-                            {Array.from(
-                              { length: Math.min(5, totalPages) },
-                              (_, i) => {
-                                let pageNum;
-                                if (totalPages <= 5) {
-                                  pageNum = i + 1;
-                                } else if (currentPage <= 3) {
-                                  pageNum = i + 1;
-                                } else if (currentPage >= totalPages - 2) {
-                                  pageNum = totalPages - 4 + i;
-                                } else {
-                                  pageNum = currentPage - 2 + i;
-                                }
-
-                                return (
-                                  <button
-                                    key={pageNum}
-                                    onClick={() => handlePageChange(pageNum)}
-                                    className={`cursor-pointer px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-                                      currentPage === pageNum
-                                        ? "bg-primary text-white"
-                                        : "text-slate-600 hover:bg-slate-100"
-                                    }`}
-                                  >
-                                    {pageNum}
-                                  </button>
-                                );
+                          <div className="relative dropdown-container">
+                            <button
+                              onClick={() =>
+                                setShowSortDropdown(!showSortDropdown)
                               }
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                            >
+                              <ArrowUpDown className="h-4 w-4" />
+                              <span>Sort by</span>
+                            </button>
+                            {showSortDropdown && (
+                              <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() => handleSort("client_name")}
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Client Name {getSortIcon("client_name")}
+                                  </button>
+                                  <button
+                                    onClick={() => handleSort("client_type")}
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Client Type {getSortIcon("client_type")}
+                                  </button>
+                                  <button
+                                    onClick={() => handleSort("client_email")}
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Client Email {getSortIcon("client_email")}
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleSort("active_projects")
+                                    }
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Active Projects{" "}
+                                    {getSortIcon("active_projects")}
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleSort("completed_projects")
+                                    }
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Completed Projects{" "}
+                                    {getSortIcon("completed_projects")}
+                                  </button>
+                                </div>
+                              </div>
                             )}
                           </div>
-
                           <button
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                            onClick={handleExportToExcel}
+                            disabled={
+                              isExporting ||
+                              filteredAndSortedClients.length === 0
+                            }
+                            className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium ${
+                              isExporting ||
+                              filteredAndSortedClients.length === 0
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                            }`}
                           >
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handlePageChange(totalPages)}
-                            disabled={currentPage === totalPages}
-                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                          >
-                            <ChevronsRight className="h-4 w-4" />
+                            <Sheet className="h-4 w-4" />
+                            <span>
+                              {isExporting ? "Exporting..." : "Export to Excel"}
+                            </span>
                           </button>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  )}
+
+                    {/* Scrollable Table Section */}
+                    <div className="flex-1 overflow-auto px-3">
+                      <div className="border border-slate-200 rounded-lg overflow-hidden">
+                        <table className="min-w-full divide-y divide-slate-200">
+                          <thead className="bg-slate-50 sticky top-0 z-10">
+                            <tr>
+                              <th
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("client_name")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Client Name
+                                  {getSortIcon("client_name")}
+                                </div>
+                              </th>
+                              <th
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("client_type")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Client Type
+                                  {getSortIcon("client_type")}
+                                </div>
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                Client Email
+                              </th>
+                              <th
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("active_projects")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Active Projects
+                                  {getSortIcon("active_projects")}
+                                </div>
+                              </th>
+                              <th
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("completed_projects")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Completed Projects
+                                  {getSortIcon("completed_projects")}
+                                </div>
+                              </th>
+                            </tr>
+                          </thead>
+
+                          <tbody className="bg-white divide-y divide-slate-100">
+                            {loading ? (
+                              <tr>
+                                <td
+                                  className="px-3 py-3 text-xs text-slate-500"
+                                  colSpan={5}
+                                >
+                                  Loading clients...
+                                </td>
+                              </tr>
+                            ) : error ? (
+                              <tr>
+                                <td
+                                  className="px-3 py-3 text-xs text-red-600"
+                                  colSpan={5}
+                                >
+                                  {error}
+                                </td>
+                              </tr>
+                            ) : paginatedClients.length === 0 ? (
+                              <tr>
+                                <td
+                                  className="px-3 py-3 text-xs text-slate-500"
+                                  colSpan={5}
+                                >
+                                  {search
+                                    ? "No clients found matching your search"
+                                    : selectedClientType.length === 0
+                                    ? "No clients found - please select at least one client type to view clients"
+                                    : "No clients found"}
+                                </td>
+                              </tr>
+                            ) : (
+                              paginatedClients.map((e) => (
+                                <tr
+                                  key={e.client_id}
+                                  onClick={() => {
+                                    router.push(
+                                      `/admin/clients/${e.client_id}`
+                                    );
+                                    dispatch(
+                                      replaceTab({
+                                        id: uuidv4(),
+                                        title: e.client_name,
+                                        href: `/admin/clients/${e.client_id}`,
+                                      })
+                                    );
+                                  }}
+                                  className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                                >
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
+                                    {e.client_name || "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
+                                    {e.client_type || "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-xs text-slate-700">
+                                    {e.client_email || "-"}
+                                  </td>
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
+                                    {countActiveProjects(e)}
+                                  </td>
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
+                                    {countCompletedProjects(e)}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Fixed Pagination Footer */}
+                    {!loading && !error && paginatedClients.length > 0 && (
+                      <div className="px-3 py-2 flex-shrink-0 border-t border-slate-200">
+                        <div className="flex items-center justify-between">
+                          {/* Items per page dropdown and showing indicator */}
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-600">
+                                Showing
+                              </span>
+                              <div className="relative dropdown-container">
+                                <button
+                                  onClick={() =>
+                                    setShowItemsPerPageDropdown(
+                                      !showItemsPerPageDropdown
+                                    )
+                                  }
+                                  className="cursor-pointer flex items-center gap-2 px-2 py-1 text-xs border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+                                >
+                                  <span>
+                                    {itemsPerPage === 0 ? "All" : itemsPerPage}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4" />
+                                </button>
+                                {showItemsPerPageDropdown && (
+                                  <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                                    <div className="py-1">
+                                      {[10, 25, 50, 100, 0].map((value) => (
+                                        <button
+                                          key={value}
+                                          onClick={() =>
+                                            handleItemsPerPageChange(value)
+                                          }
+                                          className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100"
+                                        >
+                                          {value === 0 ? "All" : value}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-xs text-slate-600">
+                                of {totalItems} results
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Pagination buttons - only show when not showing all items */}
+                          {itemsPerPage > 0 && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handlePageChange(1)}
+                                disabled={currentPage === 1}
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                              >
+                                <ChevronsLeft className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handlePageChange(currentPage - 1)
+                                }
+                                disabled={currentPage === 1}
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </button>
+
+                              {/* Page numbers */}
+                              <div className="flex items-center gap-1">
+                                {Array.from(
+                                  { length: Math.min(5, totalPages) },
+                                  (_, i) => {
+                                    let pageNum;
+                                    if (totalPages <= 5) {
+                                      pageNum = i + 1;
+                                    } else if (currentPage <= 3) {
+                                      pageNum = i + 1;
+                                    } else if (currentPage >= totalPages - 2) {
+                                      pageNum = totalPages - 4 + i;
+                                    } else {
+                                      pageNum = currentPage - 2 + i;
+                                    }
+
+                                    return (
+                                      <button
+                                        key={pageNum}
+                                        onClick={() =>
+                                          handlePageChange(pageNum)
+                                        }
+                                        className={`cursor-pointer px-2 py-1 text-xs rounded-md transition-colors duration-200 ${
+                                          currentPage === pageNum
+                                            ? "bg-primary text-white"
+                                            : "text-slate-600 hover:bg-slate-100"
+                                        }`}
+                                      >
+                                        {pageNum}
+                                      </button>
+                                    );
+                                  }
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() =>
+                                  handlePageChange(currentPage + 1)
+                                }
+                                disabled={currentPage === totalPages}
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handlePageChange(totalPages)}
+                                disabled={currentPage === totalPages}
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                              >
+                                <ChevronsRight className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>

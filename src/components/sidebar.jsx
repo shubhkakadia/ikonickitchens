@@ -112,97 +112,91 @@ export default function sidebar() {
     getClientNames();
   }, []);
   return (
-    <div className="flex flex-col bg-slate-800 w-64 h-screen py-4 space-y-4">
-      <Link href="/" className="flex flex-col items-center">
-        <Image loading="lazy" src="/logo.webp" alt="logo" width={150} height={150} />
-      </Link>
+    <div className="bg-slate-900 w-60 h-screen border-r border-slate-800">
+      <div className="flex flex-col h-full px-3 py-3 gap-3">
+        <Link href="/" className="flex flex-col items-center gap-1 py-1">
+          <Image
+            loading="lazy"
+            src="/logo.webp"
+            alt="logo"
+            width={120}
+            height={120}
+            className="drop-shadow-sm"
+          />
+        </Link>
 
-      <div className="flex flex-col justify-between h-full min-h-0">
-        <div className="flex flex-col overflow-y-auto pr-1">
-          {navdata.map((item) => {
-            // Check if this item is active based on the current active tab href
-            const isActive = activeTab.href === item.href;
-            if (item.label === "Projects") {
-              const isProjectsActive =
-                activeTab.href.startsWith("/admin/projects");
-              return (
-                <div key={item.href} className="mx-2 my-1">
-                  <div
-                    className={`w-full py-2 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 group ${
-                      isProjectsActive
-                        ? "bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg shadow-slate-500/20"
-                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                    }`}
-                  >
-                    {/* Main Projects button area */}
-                    <button
-                      onClick={() => {
-                        router.push(item.href);
-                        dispatch(
-                          replaceTab({
-                            id: uuidv4(),
-                            title: item.label,
-                            href: item.href,
-                          })
-                        );
-                      }}
-                      className="flex items-center gap-3 flex-1 cursor-pointer"
-                    >
-                      <item.icon
-                        className={`w-5 h-5 ${
-                          isProjectsActive
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-white"
-                        }`}
-                      />
-                      <h1
-                        className={`font-medium ${
-                          isProjectsActive
-                            ? "text-white"
-                            : "text-slate-300 group-hover:text-white"
-                        }`}
-                      >
-                        {item.label}
-                      </h1>
-                    </button>
-
-                    {/* Chevron button for dropdown toggle */}
-                    <button
-                      onClick={() => setProjectDropdownOpen((prev) => !prev)}
-                      className="p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
-                      aria-label={
-                        projectDropdownOpen
-                          ? "Close projects dropdown"
-                          : "Open projects dropdown"
-                      }
-                    >
-                      {projectDropdownOpen ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400 group-hover:text-white" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-white" />
-                      )}
-                    </button>
-
-                    {/* New tab button */}
+        <div className="flex flex-col justify-between flex-1 min-h-0 gap-3">
+          <div className="flex flex-col overflow-y-auto pr-1 gap-1">
+            {navdata.map((item) => {
+              // Check if this item is active based on the current active tab href
+              const isActive = activeTab.href === item.href;
+              if (item.label === "Projects") {
+                const isProjectsActive =
+                  activeTab.href.startsWith("/admin/projects");
+                return (
+                  <div key={item.href} className="space-y-1">
                     <div
-                      className="p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        dispatch(
-                          addTab({
-                            id: uuidv4(),
-                            title: item.label,
-                            href: item.href,
-                          })
-                        );
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
+                      className={`w-full rounded-md border transition-all duration-200 flex items-center gap-2 px-3 py-2 ${
+                        isProjectsActive
+                          ? "border-slate-600 bg-slate-800 text-white shadow-sm"
+                          : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                      }`}
+                    >
+                      {/* Main Projects button area */}
+                      <button
+                        onClick={() => {
+                          router.push(item.href);
+                          dispatch(
+                            replaceTab({
+                              id: uuidv4(),
+                              title: item.label,
+                              href: item.href,
+                            })
+                          );
+                        }}
+                        className="flex items-center gap-2 flex-1 cursor-pointer text-sm"
+                      >
+                        <item.icon
+                          className={`w-4 h-4 ${
+                            isProjectsActive
+                              ? "text-white"
+                              : "text-slate-400 group-hover:text-white"
+                          }`}
+                        />
+                        <h1
+                          className={`text-sm font-medium ${
+                            isProjectsActive
+                              ? "text-white"
+                              : "text-slate-300 group-hover:text-white"
+                          }`}
+                        >
+                          {item.label}
+                        </h1>
+                      </button>
+
+                      {/* Chevron button for dropdown toggle */}
+                      <button
+                        onClick={() => setProjectDropdownOpen((prev) => !prev)}
+                        className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                        aria-label={
+                          projectDropdownOpen
+                            ? "Close projects dropdown"
+                            : "Open projects dropdown"
+                        }
+                      >
+                        {projectDropdownOpen ? (
+                          <ChevronUp className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                        )}
+                      </button>
+
+                      {/* New tab button */}
+                      <div
+                        className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                        onClick={(e) => {
                           e.stopPropagation();
+                          e.preventDefault();
                           dispatch(
                             addTab({
                               id: uuidv4(),
@@ -210,138 +204,151 @@ export default function sidebar() {
                               href: item.href,
                             })
                           );
-                        }
-                      }}
-                      aria-label={`Open ${item.label} in new tab`}
-                    >
-                      <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dispatch(
+                              addTab({
+                                id: uuidv4(),
+                                title: item.label,
+                                href: item.href,
+                              })
+                            );
+                          }
+                        }}
+                        aria-label={`Open ${item.label} in new tab`}
+                      >
+                        <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                      </div>
                     </div>
-                  </div>
-                  {projectDropdownOpen && (
-                    <div className="mt-1 mr-2 mb-2 space-y-1">
-                      {[{
-                        name: "Lots at a Glance",
-                        href: "/admin/projects/lotatglance",
-                      }].map((link) => {
-                        const isActiveSub = activeTab.href === link.href;
-                        return (
-                          <button
-                            key={link.href}
-                            onClick={() => {
-                              router.push(link.href);
-                              dispatch(
-                                replaceTab({
-                                  id: uuidv4(),
-                                  title: link.name,
-                                  href: link.href,
-                                })
-                              );
-                            }}
-                            className={`w-full text-left cursor-pointer py-2 px-3 rounded-md transition-all duration-200 flex items-center gap-2 ${
-                              isActiveSub
-                                ? "bg-slate-700 text-white"
-                                : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                            }`}
-                          >
-                            <span className="text-sm">{link.name}</span>
-                            <div
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
+                    {projectDropdownOpen && (
+                      <div className="mt-1 space-y-1">
+                        {[
+                          {
+                            name: "Lots at a Glance",
+                            href: "/admin/projects/lotatglance",
+                          },
+                        ].map((link) => {
+                          const isActiveSub = activeTab.href === link.href;
+                          return (
+                            <button
+                              key={link.href}
+                              onClick={() => {
+                                router.push(link.href);
                                 dispatch(
-                                  addTab({
+                                  replaceTab({
                                     id: uuidv4(),
                                     title: link.name,
                                     href: link.href,
                                   })
                                 );
                               }}
-                              className="ml-auto p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
+                              className={`w-full text-left cursor-pointer px-3 py-1.5 rounded-md border transition-all duration-200 flex items-center gap-2 ${
+                                isActiveSub
+                                  ? "bg-slate-800 text-white border-slate-700"
+                                  : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                              }`}
                             >
-                              <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            if (item.label === "Suppliers") {
-              const isSuppliersActive = activeTab.href.startsWith("/admin/suppliers");
-              return (
-                <div key={item.href} className="mx-2 my-1">
-                  <div
-                    className={`w-full py-2 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 group ${
-                      isSuppliersActive
-                        ? "bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg shadow-slate-500/20"
-                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                    }`}
-                  >
-                    {/* Main Suppliers button area */}
-                    <button
-                      onClick={() => {
-                        router.push(item.href);
-                        dispatch(
-                          replaceTab({
-                            id: uuidv4(),
-                            title: item.label,
-                            href: item.href,
-                          })
-                        );
-                      }}
-                      className="flex items-center gap-3 flex-1 cursor-pointer"
-                    >
-                      <item.icon
-                        className={`w-5 h-5 ${
-                          isSuppliersActive ? "text-white" : "text-slate-400 group-hover:text-white"
-                        }`}
-                      />
-                      <h1
-                        className={`font-medium ${
-                          isSuppliersActive ? "text-white" : "text-slate-300 group-hover:text-white"
-                        }`}
-                      >
-                        {item.label}
-                      </h1>
-                    </button>
-
-                    {/* Chevron button for dropdown toggle */}
-                    <button
-                      onClick={() => setSuppliersDropdownOpen((prev) => !prev)}
-                      className="p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
-                      aria-label={
-                        suppliersDropdownOpen ? "Close suppliers dropdown" : "Open suppliers dropdown"
-                      }
-                    >
-                      {suppliersDropdownOpen ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400 group-hover:text-white" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-white" />
-                      )}
-                    </button>
-
-                    {/* New tab button */}
+                              <span className="text-xs font-medium">
+                                {link.name}
+                              </span>
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  dispatch(
+                                    addTab({
+                                      id: uuidv4(),
+                                      title: link.name,
+                                      href: link.href,
+                                    })
+                                  );
+                                }}
+                                className="ml-auto p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                              >
+                                <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              if (item.label === "Suppliers") {
+                const isSuppliersActive =
+                  activeTab.href.startsWith("/admin/suppliers");
+                return (
+                  <div key={item.href} className="space-y-1">
                     <div
-                      className="p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        dispatch(
-                          addTab({
-                            id: uuidv4(),
-                            title: item.label,
-                            href: item.href,
-                          })
-                        );
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
+                      className={`w-full rounded-md border transition-all duration-200 flex items-center gap-2 px-3 py-2 ${
+                        isSuppliersActive
+                          ? "border-slate-600 bg-slate-800 text-white shadow-sm"
+                          : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                      }`}
+                    >
+                      {/* Main Suppliers button area */}
+                      <button
+                        onClick={() => {
+                          router.push(item.href);
+                          dispatch(
+                            replaceTab({
+                              id: uuidv4(),
+                              title: item.label,
+                              href: item.href,
+                            })
+                          );
+                        }}
+                        className="flex items-center gap-2 flex-1 cursor-pointer text-sm"
+                      >
+                        <item.icon
+                          className={`w-4 h-4 ${
+                            isSuppliersActive
+                              ? "text-white"
+                              : "text-slate-400 group-hover:text-white"
+                          }`}
+                        />
+                        <h1
+                          className={`text-sm font-medium ${
+                            isSuppliersActive
+                              ? "text-white"
+                              : "text-slate-300 group-hover:text-white"
+                          }`}
+                        >
+                          {item.label}
+                        </h1>
+                      </button>
+
+                      {/* Chevron button for dropdown toggle */}
+                      <button
+                        onClick={() =>
+                          setSuppliersDropdownOpen((prev) => !prev)
+                        }
+                        className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                        aria-label={
+                          suppliersDropdownOpen
+                            ? "Close suppliers dropdown"
+                            : "Open suppliers dropdown"
+                        }
+                      >
+                        {suppliersDropdownOpen ? (
+                          <ChevronUp className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                        )}
+                      </button>
+
+                      {/* New tab button */}
+                      <div
+                        className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                        onClick={(e) => {
                           e.stopPropagation();
+                          e.preventDefault();
                           dispatch(
                             addTab({
                               id: uuidv4(),
@@ -349,143 +356,156 @@ export default function sidebar() {
                               href: item.href,
                             })
                           );
-                        }
-                      }}
-                      aria-label={`Open ${item.label} in new tab`}
-                    >
-                      <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dispatch(
+                              addTab({
+                                id: uuidv4(),
+                                title: item.label,
+                                href: item.href,
+                              })
+                            );
+                          }
+                        }}
+                        aria-label={`Open ${item.label} in new tab`}
+                      >
+                        <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                      </div>
                     </div>
-                  </div>
 
-                  {suppliersDropdownOpen && (
-                    <div className="mt-1 mr-2 mb-2 space-y-1">
-                      {[{
-                        name: "Materials to Order",
-                        href: "/admin/suppliers/materialstoorder",
-                      },
-                      {
-                        name: "Purchase Order",
-                        href: "/admin/suppliers/purchaseorder",
-                      }].map((link) => {
-                        const isActiveSub = activeTab.href === link.href;
-                        return (
-                          <button
-                            key={link.href}
-                            onClick={() => {
-                              router.push(link.href);
-                              dispatch(
-                                replaceTab({
-                                  id: uuidv4(),
-                                  title: link.name,
-                                  href: link.href,
-                                })
-                              );
-                            }}
-                            className={`w-full text-left cursor-pointer py-2 px-3 rounded-md transition-all duration-200 flex items-center gap-2 ${
-                              isActiveSub
-                                ? "bg-slate-700 text-white"
-                                : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                            }`}
-                          >
-                            <span className="text-sm">{link.name}</span>
-                            <div
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
+                    {suppliersDropdownOpen && (
+                      <div className="mt-1 space-y-1">
+                        {[
+                          {
+                            name: "Materials to Order",
+                            href: "/admin/suppliers/materialstoorder",
+                          },
+                          {
+                            name: "Purchase Order",
+                            href: "/admin/suppliers/purchaseorder",
+                          },
+                        ].map((link) => {
+                          const isActiveSub = activeTab.href === link.href;
+                          return (
+                            <button
+                              key={link.href}
+                              onClick={() => {
+                                router.push(link.href);
                                 dispatch(
-                                  addTab({
+                                  replaceTab({
                                     id: uuidv4(),
                                     title: link.name,
                                     href: link.href,
                                   })
                                 );
                               }}
-                              className="ml-auto p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
+                              className={`w-full text-left cursor-pointer px-3 py-1.5 rounded-md border transition-all duration-200 flex items-center gap-2 ${
+                                isActiveSub
+                                  ? "bg-slate-800 text-white border-slate-700"
+                                  : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                              }`}
                             >
-                              <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            if (item.label === "Inventory") {
-              const isInventoryActive = activeTab.href.startsWith("/admin/inventory");
-              return (
-                <div key={item.href} className="mx-2 my-1">
-                  <div
-                    className={`w-full py-2 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 group ${
-                      isInventoryActive
-                        ? "bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg shadow-slate-500/20"
-                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                    }`}
-                  >
-                    {/* Main Inventory button area */}
-                    <button
-                      onClick={() => {
-                        router.push(item.href);
-                        dispatch(
-                          replaceTab({
-                            id: uuidv4(),
-                            title: item.label,
-                            href: item.href,
-                          })
-                        );
-                      }}
-                      className="flex items-center gap-3 flex-1 cursor-pointer"
-                    >
-                      <item.icon
-                        className={`w-5 h-5 ${
-                          isInventoryActive ? "text-white" : "text-slate-400 group-hover:text-white"
-                        }`}
-                      />
-                      <h1
-                        className={`font-medium ${
-                          isInventoryActive ? "text-white" : "text-slate-300 group-hover:text-white"
-                        }`}
-                      >
-                        {item.label}
-                      </h1>
-                    </button>
-
-                    {/* Chevron button for dropdown toggle */}
-                    <button
-                      onClick={() => setInventoryDropdownOpen((prev) => !prev)}
-                      className="p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
-                      aria-label={
-                        inventoryDropdownOpen ? "Close inventory dropdown" : "Open inventory dropdown"
-                      }
-                    >
-                      {inventoryDropdownOpen ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400 group-hover:text-white" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-white" />
-                      )}
-                    </button>
-
-                    {/* New tab button */}
+                              <span className="text-xs font-medium">
+                                {link.name}
+                              </span>
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  dispatch(
+                                    addTab({
+                                      id: uuidv4(),
+                                      title: link.name,
+                                      href: link.href,
+                                    })
+                                  );
+                                }}
+                                className="ml-auto p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                              >
+                                <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              if (item.label === "Inventory") {
+                const isInventoryActive =
+                  activeTab.href.startsWith("/admin/inventory");
+                return (
+                  <div key={item.href} className="space-y-1">
                     <div
-                      className="p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        dispatch(
-                          addTab({
-                            id: uuidv4(),
-                            title: item.label,
-                            href: item.href,
-                          })
-                        );
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
+                      className={`w-full rounded-md border transition-all duration-200 flex items-center gap-2 px-3 py-2 ${
+                        isInventoryActive
+                          ? "border-slate-600 bg-slate-800 text-white shadow-sm"
+                          : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                      }`}
+                    >
+                      {/* Main Inventory button area */}
+                      <button
+                        onClick={() => {
+                          router.push(item.href);
+                          dispatch(
+                            replaceTab({
+                              id: uuidv4(),
+                              title: item.label,
+                              href: item.href,
+                            })
+                          );
+                        }}
+                        className="flex items-center gap-2 flex-1 cursor-pointer text-sm"
+                      >
+                        <item.icon
+                          className={`w-4 h-4 ${
+                            isInventoryActive
+                              ? "text-white"
+                              : "text-slate-400 group-hover:text-white"
+                          }`}
+                        />
+                        <h1
+                          className={`text-sm font-medium ${
+                            isInventoryActive
+                              ? "text-white"
+                              : "text-slate-300 group-hover:text-white"
+                          }`}
+                        >
+                          {item.label}
+                        </h1>
+                      </button>
+
+                      {/* Chevron button for dropdown toggle */}
+                      <button
+                        onClick={() =>
+                          setInventoryDropdownOpen((prev) => !prev)
+                        }
+                        className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                        aria-label={
+                          inventoryDropdownOpen
+                            ? "Close inventory dropdown"
+                            : "Open inventory dropdown"
+                        }
+                      >
+                        {inventoryDropdownOpen ? (
+                          <ChevronUp className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                        )}
+                      </button>
+
+                      {/* New tab button */}
+                      <div
+                        className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                        onClick={(e) => {
                           e.stopPropagation();
+                          e.preventDefault();
                           dispatch(
                             addTab({
                               id: uuidv4(),
@@ -493,119 +513,123 @@ export default function sidebar() {
                               href: item.href,
                             })
                           );
-                        }
-                      }}
-                      aria-label={`Open ${item.label} in new tab`}
-                    >
-                      <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dispatch(
+                              addTab({
+                                id: uuidv4(),
+                                title: item.label,
+                                href: item.href,
+                              })
+                            );
+                          }
+                        }}
+                        aria-label={`Open ${item.label} in new tab`}
+                      >
+                        <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                      </div>
                     </div>
-                  </div>
 
-                  {inventoryDropdownOpen && (
-                    <div className="mt-1 mr-2 mb-2 space-y-1">
-                      {[{
-                        name: "Used Material",
-                        href: "/admin/inventory/usedmaterial",
-                      }].map((link) => {
-                        const isActiveSub = activeTab.href === link.href;
-                        return (
-                          <button
-                            key={link.href}
-                            onClick={() => {
-                              router.push(link.href);
-                              dispatch(
-                                replaceTab({
-                                  id: uuidv4(),
-                                  title: link.name,
-                                  href: link.href,
-                                })
-                              );
-                            }}
-                            className={`w-full text-left cursor-pointer py-2 px-3 rounded-md transition-all duration-200 flex items-center gap-2 ${
-                              isActiveSub
-                                ? "bg-slate-700 text-white"
-                                : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                            }`}
-                          >
-                            <span className="text-sm">{link.name}</span>
-                            <div
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
+                    {inventoryDropdownOpen && (
+                      <div className="mt-1 space-y-1">
+                        {[
+                          {
+                            name: "Used Material",
+                            href: "/admin/inventory/usedmaterial",
+                          },
+                        ].map((link) => {
+                          const isActiveSub = activeTab.href === link.href;
+                          return (
+                            <button
+                              key={link.href}
+                              onClick={() => {
+                                router.push(link.href);
                                 dispatch(
-                                  addTab({
+                                  replaceTab({
                                     id: uuidv4(),
                                     title: link.name,
                                     href: link.href,
                                   })
                                 );
                               }}
-                              className="ml-auto p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
+                              className={`w-full text-left cursor-pointer px-3 py-1.5 rounded-md border transition-all duration-200 flex items-center gap-2 ${
+                                isActiveSub
+                                  ? "bg-slate-800 text-white border-slate-700"
+                                  : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                              }`}
                             >
-                              <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            return (
-              <button
-                onClick={() => {
-                  router.push(item.href);
-                  dispatch(
-                    replaceTab({
-                      id: uuidv4(),
-                      title: item.label,
-                      href: item.href,
-                    })
-                  );
-                }}
-                key={item.href}
-                className={`cursor-pointer mx-2 my-1 py-2 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 group ${
-                  isActive
-                    ? "bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg shadow-slate-500/20"
-                    : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                }`}
-              >
-                <item.icon
-                  className={`w-8 h-8 ${
-                    isActive
-                      ? "text-white"
-                      : "text-slate-400 group-hover:text-white"
-                  }`}
-                />
-                <div className="flex items-center gap-2 w-full">
-                  <h1
-                    className={`font-medium ${
-                      isActive
-                        ? "text-white"
-                        : "text-slate-300 group-hover:text-white"
-                    }`}
-                  >
-                    {item.label}
-                  </h1>
-                </div>
-                <div
-                  className="p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                              <span className="text-xs font-medium">
+                                {link.name}
+                              </span>
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  dispatch(
+                                    addTab({
+                                      id: uuidv4(),
+                                      title: link.name,
+                                      href: link.href,
+                                    })
+                                  );
+                                }}
+                                className="ml-auto p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                              >
+                                <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              return (
+                <button
+                  onClick={() => {
+                    router.push(item.href);
                     dispatch(
-                      addTab({
+                      replaceTab({
                         id: uuidv4(),
                         title: item.label,
                         href: item.href,
                       })
                     );
                   }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
+                  key={item.href}
+                  className={`cursor-pointer rounded-md px-3 py-2 transition-all duration-200 flex items-center gap-2 border ${
+                    isActive
+                      ? "border-slate-600 bg-slate-800 text-white shadow-sm"
+                      : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                  }`}
+                >
+                  <item.icon
+                    className={`w-4 h-4 ${
+                      isActive
+                        ? "text-white"
+                        : "text-slate-400 group-hover:text-white"
+                    }`}
+                  />
+                  <div className="flex items-center gap-2 w-full">
+                    <h1
+                      className={`text-sm font-medium ${
+                        isActive
+                          ? "text-white"
+                          : "text-slate-300 group-hover:text-white"
+                      }`}
+                    >
+                      {item.label}
+                    </h1>
+                  </div>
+                  <div
+                    className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                    onClick={(e) => {
                       e.stopPropagation();
                       dispatch(
                         addTab({
@@ -614,68 +638,68 @@ export default function sidebar() {
                           href: item.href,
                         })
                       );
-                    }
-                  }}
-                  aria-label={`Open ${item.label} in new tab`}
-                >
-                  <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-col">
-          <button
-            onClick={() => {
-              router.push("/admin/settings");
-              dispatch(
-                replaceTab({
-                  id: uuidv4(),
-                  title: "Settings",
-                  href: "/admin/settings",
-                })
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dispatch(
+                          addTab({
+                            id: uuidv4(),
+                            title: item.label,
+                            href: item.href,
+                          })
+                        );
+                      }
+                    }}
+                    aria-label={`Open ${item.label} in new tab`}
+                  >
+                    <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+                  </div>
+                </button>
               );
-            }}
-            className={`cursor-pointer mx-2 my-1 py-3 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 group ${
-              activeTab.href === "/admin/settings"
-                ? "bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-lg shadow-slate-500/20"
-                : "text-slate-300 hover:bg-slate-700 hover:text-white"
-            }`}
-          >
-            <Settings
-              className={`w-5 h-5 ${
-                activeTab.href === "/admin/settings"
-                  ? "text-white"
-                  : "text-slate-400 group-hover:text-white"
-              }`}
-            />
-            <h1
-              className={`text-sm font-medium ${
-                activeTab.href === "/admin/settings"
-                  ? "text-white"
-                  : "text-slate-300 group-hover:text-white"
-              }`}
-            >
-              Settings
-            </h1>
-            <div
-              className="ml-auto p-1 rounded hover:bg-slate-600 transition-colors duration-200 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
+            })}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => {
+                router.push("/admin/settings");
                 dispatch(
-                  addTab({
+                  replaceTab({
                     id: uuidv4(),
                     title: "Settings",
                     href: "/admin/settings",
                   })
                 );
               }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
+              className={`cursor-pointer rounded-md px-3 py-2 border transition-all duration-200 flex items-center gap-2 ${
+                activeTab.href === "/admin/settings"
+                  ? "border-slate-600 bg-slate-800 text-white shadow-sm"
+                  : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+              }`}
+            >
+              <Settings
+                className={`w-4 h-4 ${
+                  activeTab.href === "/admin/settings"
+                    ? "text-white"
+                    : "text-slate-400 group-hover:text-white"
+                }`}
+              />
+              <h1
+                className={`text-sm font-medium ${
+                  activeTab.href === "/admin/settings"
+                    ? "text-white"
+                    : "text-slate-300 group-hover:text-white"
+                }`}
+              >
+                Settings
+              </h1>
+              <div
+                className="ml-auto p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                onClick={(e) => {
                   e.stopPropagation();
                   dispatch(
                     addTab({
@@ -684,45 +708,60 @@ export default function sidebar() {
                       href: "/admin/settings",
                     })
                   );
-                }
-              }}
-              aria-label="Open Settings in new tab"
-            >
-              <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 group-hover:text-white" />
-            </div>
-          </button>
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dispatch(
+                      addTab({
+                        id: uuidv4(),
+                        title: "Settings",
+                        href: "/admin/settings",
+                      })
+                    );
+                  }
+                }}
+                aria-label="Open Settings in new tab"
+              >
+                <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
+              </div>
+            </button>
 
-          <button onClick={() => logout()}>
-            <div
-              className={`cursor-pointer mx-2 my-1 py-3 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 group ${
-                pathname === "/admin/logout"
-                  ? "bg-red-50 text-red-700 shadow-sm"
-                  : "text-slate-300 hover:bg-red-50 hover:text-red-600"
-              }`}
-            >
-              <LogOut
-                className={`w-5 h-5 ${
+            <button onClick={() => logout()}>
+              <div
+                className={`cursor-pointer rounded-md px-3 py-2 transition-all duration-200 flex items-center gap-2 border ${
                   pathname === "/admin/logout"
-                    ? "text-red-700"
-                    : "text-red-400 "
-                }`}
-              />
-              <h1
-                className={`text-sm font-medium ${
-                  pathname === "/admin/logout"
-                    ? "text-red-700"
-                    : "text-red-400 "
+                    ? "border-red-200/60 bg-red-50 text-red-700 shadow-sm"
+                    : "border-transparent text-slate-300 hover:border-red-200 hover:bg-red-50/30 hover:text-red-500"
                 }`}
               >
-                Logout
-              </h1>
-            </div>
-          </button>
-          
-          {/* Version Indicator */}
-          <p className="text-xs text-slate-500 text-center mt-2 px-2">
-            v{versions.version}
-          </p>
+                <LogOut
+                  className={`w-4 h-4 ${
+                    pathname === "/admin/logout"
+                      ? "text-red-700"
+                      : "text-red-400 "
+                  }`}
+                />
+                <h1
+                  className={`text-sm font-medium ${
+                    pathname === "/admin/logout"
+                      ? "text-red-700"
+                      : "text-red-400 "
+                  }`}
+                >
+                  Logout
+                </h1>
+              </div>
+            </button>
+
+            {/* Version Indicator */}
+            <p className="text-xs text-slate-500/80 text-center mt-1 px-2">
+              v{versions.version}
+            </p>
+          </div>
         </div>
       </div>
     </div>

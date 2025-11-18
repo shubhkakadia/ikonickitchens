@@ -823,184 +823,189 @@ export default function page() {
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
-          <div className="h-full w-full">
-            <div className="px-4 py-2">
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-3 py-2 flex-shrink-0">
               <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-slate-600">Inventory</h1>
+                <h1 className="text-xl font-bold text-slate-600">Inventory</h1>
                 <TabsController
                   href="/admin/inventory/additem"
                   title="Add Item"
                 >
-                  <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-md flex items-center gap-2">
-                    <Plus className="h-5 w-5" />
+                  <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
+                    <Plus className="h-4 w-4" />
                     Add Item
                   </div>
                 </TabsController>
               </div>
-              <div className="mt-4 bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                <div className="mb-6">
-                  <div className="border-b border-slate-200">
-                    <nav className="-mb-px flex space-x-8 overflow-x-auto">
-                      {tabs.map((tab) => (
-                        <button
-                          key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                            activeTab === tab.id
-                              ? "border-secondary text-secondary"
-                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
-                    </nav>
-                  </div>
+            </div>
+
+            <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                {/* Tabs Section */}
+                <div className="px-3 flex-shrink-0 border-b border-slate-200">
+                  <nav className="-mb-px flex space-x-8 overflow-x-auto">
+                    {tabs.map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                          activeTab === tab.id
+                            ? "border-secondary text-secondary"
+                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </nav>
                 </div>
 
-                <div className="flex items-center justify-between mb-6">
-                  {/* search bar */}
-                  <div className="flex items-center gap-2 w-[500px] relative">
-                    <Search className="h-5 w-5 absolute left-3 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder={`Search ${
-                        activeTab === "sunmica" ? "sunmica" : activeTab
-                      } items by description, brand, color`}
-                      className="w-full text-slate-800 p-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
-                  {/* reset, sort by, filter by, export to excel */}
-                  <div className="flex items-center gap-3">
-                    {isAnyFilterActive() && (
-                      <button
-                        onClick={handleReset}
-                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        <span>Reset</span>
-                      </button>
-                    )}
-
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => setShowSortDropdown(!showSortDropdown)}
-                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium"
-                      >
-                        <ArrowUpDown className="h-4 w-4" />
-                        <span>Sort by</span>
-                      </button>
-                      {showSortDropdown && (
-                        <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                          <div className="py-1">
-                            {activeTab !== "accessory" && (
-                              <button
-                                onClick={() => handleSort("brand")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Brand {getSortIcon("brand")}
-                              </button>
-                            )}
-                            {activeTab !== "accessory" && (
-                              <button
-                                onClick={() => handleSort("color")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Color {getSortIcon("color")}
-                              </button>
-                            )}
-                            {activeTab === "accessory" && (
-                              <button
-                                onClick={() => handleSort("name")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Name {getSortIcon("name")}
-                              </button>
-                            )}
-                            {(activeTab === "sheet" ||
-                              activeTab === "sunmica") && (
-                              <button
-                                onClick={() => handleSort("finish")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Finish {getSortIcon("finish")}
-                              </button>
-                            )}
-                            {activeTab === "handle" && (
-                              <button
-                                onClick={() => handleSort("type")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Type {getSortIcon("type")}
-                              </button>
-                            )}
-                            {activeTab === "hardware" && (
-                              <button
-                                onClick={() => handleSort("sub_category")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Sub Category {getSortIcon("sub_category")}
-                              </button>
-                            )}
-                            {activeTab === "handle" && (
-                              <button
-                                onClick={() => handleSort("material")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Material {getSortIcon("material")}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleSort("quantity")}
-                              className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                            >
-                              Quantity {getSortIcon("quantity")}
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                {/* Fixed Header Section */}
+                <div className="p-3 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    {/* search bar */}
+                    <div className="flex items-center gap-2 w-[500px] relative">
+                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder={`Search ${
+                          activeTab === "sunmica" ? "sunmica" : activeTab
+                        } items by description, brand, color`}
+                        className="w-full text-slate-800 p-2 pl-9 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
                     </div>
-
-                    <button
-                      onClick={() => setShowFilterPopup(true)}
-                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium relative"
-                    >
-                      <Funnel className="h-4 w-4" />
-                      <span>Filter</span>
-                      {getActiveFilterCount() > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                          {getActiveFilterCount()}
-                        </span>
+                    {/* reset, sort by, filter by, export to excel */}
+                    <div className="flex items-center gap-2">
+                      {isAnyFilterActive() && (
+                        <button
+                          onClick={handleReset}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          <span>Reset</span>
+                        </button>
                       )}
-                    </button>
 
-                    <button
-                      onClick={handleExportToExcel}
-                      disabled={
-                        isExporting || filteredAndSortedData.length === 0
-                      }
-                      className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium ${
-                        isExporting || filteredAndSortedData.length === 0
-                          ? "opacity-50 cursor-not-allowed"
-                          : "cursor-pointer hover:bg-slate-100"
-                      }`}
-                    >
-                      <Sheet className="h-4 w-4" />
-                      <span>
-                        {isExporting ? "Exporting..." : "Export to Excel"}
-                      </span>
-                    </button>
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() => setShowSortDropdown(!showSortDropdown)}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                        >
+                          <ArrowUpDown className="h-4 w-4" />
+                          <span>Sort by</span>
+                        </button>
+                        {showSortDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <div className="py-1">
+                              {activeTab !== "accessory" && (
+                                <button
+                                  onClick={() => handleSort("brand")}
+                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  Brand {getSortIcon("brand")}
+                                </button>
+                              )}
+                              {activeTab !== "accessory" && (
+                                <button
+                                  onClick={() => handleSort("color")}
+                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  Color {getSortIcon("color")}
+                                </button>
+                              )}
+                              {activeTab === "accessory" && (
+                                <button
+                                  onClick={() => handleSort("name")}
+                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  Name {getSortIcon("name")}
+                                </button>
+                              )}
+                              {(activeTab === "sheet" ||
+                                activeTab === "sunmica") && (
+                                <button
+                                  onClick={() => handleSort("finish")}
+                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  Finish {getSortIcon("finish")}
+                                </button>
+                              )}
+                              {activeTab === "handle" && (
+                                <button
+                                  onClick={() => handleSort("type")}
+                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  Type {getSortIcon("type")}
+                                </button>
+                              )}
+                              {activeTab === "hardware" && (
+                                <button
+                                  onClick={() => handleSort("sub_category")}
+                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  Sub Category {getSortIcon("sub_category")}
+                                </button>
+                              )}
+                              {activeTab === "handle" && (
+                                <button
+                                  onClick={() => handleSort("material")}
+                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  Material {getSortIcon("material")}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleSort("quantity")}
+                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                              >
+                                Quantity {getSortIcon("quantity")}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => setShowFilterPopup(true)}
+                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium relative"
+                      >
+                        <Funnel className="h-4 w-4" />
+                        <span>Filter</span>
+                        {getActiveFilterCount() > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                            {getActiveFilterCount()}
+                          </span>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={handleExportToExcel}
+                        disabled={
+                          isExporting || filteredAndSortedData.length === 0
+                        }
+                        className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium ${
+                          isExporting || filteredAndSortedData.length === 0
+                            ? "opacity-50 cursor-not-allowed"
+                            : "cursor-pointer hover:bg-slate-100"
+                        }`}
+                      >
+                        <Sheet className="h-4 w-4" />
+                        <span>
+                          {isExporting ? "Exporting..." : "Export to Excel"}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-                {/* table */}
-                <div className="mt-4">
-                  <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                {/* Scrollable Table Section */}
+                <div className="flex-1 overflow-auto px-3">
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
                     <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50">
+                      <thead className="bg-slate-50 sticky top-0 z-10">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                             Image
                           </th>
                           {(activeTab === "sheet" ||
@@ -1009,7 +1014,7 @@ export default function page() {
                             activeTab === "hardware" ||
                             activeTab === "edging_tape") && (
                             <th
-                              className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                              className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                               onClick={() => handleSort("brand")}
                             >
                               <div className="flex items-center gap-2">
@@ -1023,7 +1028,7 @@ export default function page() {
                             activeTab === "handle" ||
                             activeTab === "edging_tape") && (
                             <th
-                              className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                              className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                               onClick={() => handleSort("color")}
                             >
                               <div className="flex items-center gap-2">
@@ -1037,7 +1042,7 @@ export default function page() {
                             activeTab === "edging_tape") && (
                             <>
                               <th
-                                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                                 onClick={() => handleSort("finish")}
                               >
                                 <div className="flex items-center gap-2">
@@ -1045,7 +1050,7 @@ export default function page() {
                                   {getSortIcon("finish")}
                                 </div>
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                 Dimensions
                               </th>
                             </>
@@ -1053,7 +1058,7 @@ export default function page() {
                           {activeTab === "handle" && (
                             <>
                               <th
-                                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                                 onClick={() => handleSort("type")}
                               >
                                 <div className="flex items-center gap-2">
@@ -1062,7 +1067,7 @@ export default function page() {
                                 </div>
                               </th>
                               <th
-                                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                                 onClick={() => handleSort("material")}
                               >
                                 <div className="flex items-center gap-2">
@@ -1070,7 +1075,7 @@ export default function page() {
                                   {getSortIcon("material")}
                                 </div>
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                 Dimensions
                               </th>
                             </>
@@ -1078,7 +1083,7 @@ export default function page() {
                           {activeTab === "hardware" && (
                             <>
                               <th
-                                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                                 onClick={() => handleSort("name")}
                               >
                                 <div className="flex items-center gap-2">
@@ -1087,7 +1092,7 @@ export default function page() {
                                 </div>
                               </th>
                               <th
-                                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                                 onClick={() => handleSort("sub_category")}
                               >
                                 <div className="flex items-center gap-2">
@@ -1095,7 +1100,7 @@ export default function page() {
                                   {getSortIcon("sub_category")}
                                 </div>
                               </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                 Dimensions
                               </th>
                             </>
@@ -1103,7 +1108,7 @@ export default function page() {
                           {activeTab === "accessory" && (
                             <>
                               <th
-                                className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                                 onClick={() => handleSort("name")}
                               >
                                 <div className="flex items-center gap-2">
@@ -1114,7 +1119,7 @@ export default function page() {
                             </>
                           )}
                           <th
-                            className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                             onClick={() => handleSort("quantity")}
                           >
                             <div className="flex items-center gap-2">
@@ -1128,7 +1133,7 @@ export default function page() {
                         {loading ? (
                           <tr>
                             <td
-                              className="px-4 py-6 text-sm text-slate-500"
+                              className="px-3 py-3 text-xs text-slate-500"
                               colSpan={columnCount}
                             >
                               Loading {activeTab} items...
@@ -1137,7 +1142,7 @@ export default function page() {
                         ) : error ? (
                           <tr>
                             <td
-                              className="px-4 py-6 text-sm text-red-600"
+                              className="px-3 py-3 text-xs text-red-600"
                               colSpan={columnCount}
                             >
                               {error}
@@ -1146,7 +1151,7 @@ export default function page() {
                         ) : paginatedData.length === 0 ? (
                           <tr>
                             <td
-                              className="px-4 py-6 text-sm text-slate-500"
+                              className="px-3 py-3 text-xs text-slate-500"
                               colSpan={columnCount}
                             >
                               {search
@@ -1170,18 +1175,18 @@ export default function page() {
                               }}
                               className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
                             >
-                              <td className="px-4 py-3">
-                                <div className="w-12 h-12">
+                              <td className="px-3 py-2">
+                                <div className="w-10 h-10">
                                   {item.image ? (
                                     <Image
                                       src={`/${item.image}`}
                                       alt={item.description || "Item"}
-                                      width={48}
-                                      height={48}
+                                      width={40}
+                                      height={40}
                                       className="w-full h-full object-cover rounded-md"
                                     />
                                   ) : (
-                                    <div className="w-12 h-12 bg-slate-200 rounded-md text-center flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-slate-200 rounded-md text-center flex items-center justify-center">
                                       <ImageIcon className="h-4 w-4" />
                                     </div>
                                   )}
@@ -1192,7 +1197,7 @@ export default function page() {
                                 activeTab === "handle" ||
                                 activeTab === "hardware" ||
                                 activeTab === "edging_tape") && (
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                   {item.sheet?.brand ||
                                     item.handle?.brand ||
                                     item.hardware?.brand ||
@@ -1204,7 +1209,7 @@ export default function page() {
                                 activeTab === "sunmica" ||
                                 activeTab === "handle" ||
                                 activeTab === "edging_tape") && (
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                   {item.sheet?.color ||
                                     item.handle?.color ||
                                     item.edging_tape?.color ||
@@ -1215,12 +1220,12 @@ export default function page() {
                                 activeTab === "sunmica" ||
                                 activeTab === "edging_tape") && (
                                 <>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {item.sheet?.finish ||
                                       item.edging_tape?.finish ||
                                       "N/A"}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {item.sheet?.dimensions ||
                                       item.edging_tape?.dimensions ||
                                       "N/A"}
@@ -1229,37 +1234,37 @@ export default function page() {
                               )}
                               {activeTab === "handle" && (
                                 <>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {item.handle?.type || "N/A"}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {item.handle?.material || "N/A"}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {item.handle?.dimensions || "N/A"}
                                   </td>
                                 </>
                               )}
                               {activeTab === "hardware" && (
                                 <>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {item.hardware?.name || "N/A"}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {item.hardware?.sub_category || "N/A"}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {item.hardware?.dimensions || "N/A"}
                                   </td>
                                 </>
                               )}
                               {activeTab === "accessory" && (
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                   {item.accessory?.name || "N/A"}
                                 </td>
                               )}
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 border border-green-200">
+                              <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
+                                <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs text-green-800 border border-green-200">
                                   {item.quantity || 0}
                                   {item.measurement_unit && (
                                     <span className="ml-1 text-green-700">
@@ -1276,118 +1281,122 @@ export default function page() {
                   </div>
                 </div>
 
-                {/* Pagination Controls */}
+                {/* Fixed Pagination Footer */}
                 {!loading && !error && paginatedData.length > 0 && (
-                  <div className="mt-6 flex items-center justify-between">
-                    {/* Items per page dropdown and showing indicator */}
-                    <div className="flex items-center gap-4">
+                  <div className="px-3 py-2 flex-shrink-0 border-t border-slate-200">
+                    <div className="flex items-center justify-between">
+                      {/* Items per page dropdown and showing indicator */}
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-600">Showing</span>
-                        <div className="relative dropdown-container">
-                          <button
-                            onClick={() =>
-                              setShowItemsPerPageDropdown(
-                                !showItemsPerPageDropdown
-                              )
-                            }
-                            className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200"
-                          >
-                            <span>
-                              {itemsPerPage === 0 ? "All" : itemsPerPage}
-                            </span>
-                            <ChevronDown className="h-4 w-4" />
-                          </button>
-                          {showItemsPerPageDropdown && (
-                            <div className="absolute top-full left-0 mt-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                              <div className="py-1">
-                                {[10, 25, 50, 100, 0].map((value) => (
-                                  <button
-                                    key={value}
-                                    onClick={() =>
-                                      handleItemsPerPageChange(value)
-                                    }
-                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                                  >
-                                    {value === 0 ? "All" : value}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-sm text-slate-600">
-                          of {totalItems} results
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Pagination buttons - only show when not showing all items */}
-                    {itemsPerPage > 0 && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handlePageChange(1)}
-                          disabled={currentPage === 1}
-                          className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                        >
-                          <ChevronsLeft className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </button>
-
-                        {/* Page numbers */}
-                        <div className="flex items-center gap-1">
-                          {Array.from(
-                            { length: Math.min(5, totalPages) },
-                            (_, i) => {
-                              let pageNum;
-                              if (totalPages <= 5) {
-                                pageNum = i + 1;
-                              } else if (currentPage <= 3) {
-                                pageNum = i + 1;
-                              } else if (currentPage >= totalPages - 2) {
-                                pageNum = totalPages - 4 + i;
-                              } else {
-                                pageNum = currentPage - 2 + i;
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-600">
+                            Showing
+                          </span>
+                          <div className="relative dropdown-container">
+                            <button
+                              onClick={() =>
+                                setShowItemsPerPageDropdown(
+                                  !showItemsPerPageDropdown
+                                )
                               }
-
-                              return (
-                                <button
-                                  key={pageNum}
-                                  onClick={() => handlePageChange(pageNum)}
-                                  className={`cursor-pointer px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-                                    currentPage === pageNum
-                                      ? "bg-primary text-white"
-                                      : "text-slate-600 hover:bg-slate-100"
-                                  }`}
-                                >
-                                  {pageNum}
-                                </button>
-                              );
-                            }
-                          )}
+                              className="cursor-pointer flex items-center gap-2 px-2 py-1 text-xs border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+                            >
+                              <span>
+                                {itemsPerPage === 0 ? "All" : itemsPerPage}
+                              </span>
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                            {showItemsPerPageDropdown && (
+                              <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                                <div className="py-1">
+                                  {[10, 25, 50, 100, 0].map((value) => (
+                                    <button
+                                      key={value}
+                                      onClick={() =>
+                                        handleItemsPerPageChange(value)
+                                      }
+                                      className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100"
+                                    >
+                                      {value === 0 ? "All" : value}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs text-slate-600">
+                            of {totalItems} results
+                          </span>
                         </div>
-
-                        <button
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handlePageChange(totalPages)}
-                          disabled={currentPage === totalPages}
-                          className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                        >
-                          <ChevronsRight className="h-4 w-4" />
-                        </button>
                       </div>
-                    )}
+
+                      {/* Pagination buttons - only show when not showing all items */}
+                      {itemsPerPage > 0 && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handlePageChange(1)}
+                            disabled={currentPage === 1}
+                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <ChevronsLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+
+                          {/* Page numbers */}
+                          <div className="flex items-center gap-1">
+                            {Array.from(
+                              { length: Math.min(5, totalPages) },
+                              (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = currentPage - 2 + i;
+                                }
+
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    onClick={() => handlePageChange(pageNum)}
+                                    className={`cursor-pointer px-2 py-1 text-xs rounded-md transition-colors duration-200 ${
+                                      currentPage === pageNum
+                                        ? "bg-primary text-white"
+                                        : "text-slate-600 hover:bg-slate-100"
+                                    }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              }
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <ChevronsRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

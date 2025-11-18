@@ -172,6 +172,7 @@ export default function page() {
         setShowSortDropdown(false);
         setShowItemsPerPageDropdown(false);
         setShowClientNameFilterDropdown(false);
+        setShowClientTypeFilterDropdown(false);
       }
     };
 
@@ -321,6 +322,11 @@ export default function page() {
     setCurrentPage(page);
   };
 
+  // Reset to first page when search or items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, itemsPerPage]);
+
   // Check if any filters are active (not in default state)
   const isAnyFilterActive = () => {
     return (
@@ -440,223 +446,232 @@ export default function page() {
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
-          <div className="h-full w-full">
-            <div className="px-4 py-2">
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-3 py-2 flex-shrink-0">
               <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-slate-600">Projects</h1>
+                <h1 className="text-xl font-bold text-slate-600">Projects</h1>
                 <TabsController
                   href="/admin/projects/addproject"
                   title="Add Project"
                 >
-                  <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-md flex items-center gap-2">
-                    <Plus className="h-5 w-5" />
+                  <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
+                    <Plus className="h-4 w-4" />
                     Add Project
                   </div>
                 </TabsController>
               </div>
-              <div className="mt-4 bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2 w-[300px] relative">
-                    <Search className="h-5 w-5 absolute left-3 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search Project with name, project id"
-                      className="w-full text-slate-800 p-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
+            </div>
 
-                  {/* reset, sort by, export to excel */}
-                  <div className="flex items-center gap-3">
-                    {isAnyFilterActive() && (
-                      <button
-                        onClick={handleReset}
-                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        <span>Reset</span>
-                      </button>
-                    )}
+            <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                {/* Fixed Header Section */}
+                <div className="p-3 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    {/* search bar */}
+                    <div className="flex items-center gap-2 w-[500px] relative">
+                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search Project with name, project id"
+                        className="w-full text-slate-800 p-2 pl-9 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
+                    </div>
 
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() =>
-                          setShowClientTypeFilterDropdown(
-                            !showClientTypeFilterDropdown
-                          )
-                        }
-                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium"
-                      >
-                        <Funnel className="h-4 w-4" />
-                        <span>Filter by Client Type</span>
-                        {distinctClientType.length - selectedClientType.length >
-                          0 && (
-                          <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
-                            {distinctClientType.length -
-                              selectedClientType.length}
-                          </span>
-                        )}
-                      </button>
-                      {showClientTypeFilterDropdown && (
-                        <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                          <div className="py-1">
-                            <button
-                              onClick={() =>
-                                handleClientTypeToggle("Select All")
-                              }
-                              className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                            >
-                              <span>Select All</span>
-                              <input
-                                type="checkbox"
-                                checked={
-                                  selectedClientType.length ===
-                                  distinctClientType.length
-                                }
-                                onChange={() => {}}
-                                className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                              />
-                            </button>
-                            {distinctClientType.map((role) => (
+                    {/* reset, sort by, filter by, export to excel */}
+                    <div className="flex items-center gap-2">
+                      {isAnyFilterActive() && (
+                        <button
+                          onClick={handleReset}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() =>
+                            setShowClientTypeFilterDropdown(
+                              !showClientTypeFilterDropdown
+                            )
+                          }
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                        >
+                          <Funnel className="h-4 w-4" />
+                          <span>Filter by Client Type</span>
+                          {distinctClientType.length -
+                            selectedClientType.length >
+                            0 && (
+                            <span className="bg-primary text-white text-xs px-2 py-1 rounded-full">
+                              {distinctClientType.length -
+                                selectedClientType.length}
+                            </span>
+                          )}
+                        </button>
+                        {showClientTypeFilterDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <div className="py-1">
                               <button
-                                key={role}
-                                onClick={() => handleClientTypeToggle(role)}
-                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                onClick={() =>
+                                  handleClientTypeToggle("Select All")
+                                }
+                                className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                               >
-                                <span>{role}</span>
+                                <span>Select All</span>
                                 <input
                                   type="checkbox"
-                                  checked={selectedClientType.includes(role)}
+                                  checked={
+                                    selectedClientType.length ===
+                                    distinctClientType.length
+                                  }
                                   onChange={() => {}}
                                   className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                 />
                               </button>
-                            ))}
+                              {distinctClientType.map((role) => (
+                                <button
+                                  key={role}
+                                  onClick={() => handleClientTypeToggle(role)}
+                                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  <span>{role}</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedClientType.includes(role)}
+                                    onChange={() => {}}
+                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                  />
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() =>
-                          setShowClientNameFilterDropdown(
-                            !showClientNameFilterDropdown
-                          )
-                        }
-                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium"
-                      >
-                        <Funnel className="h-4 w-4" />
-                        <span>Filter by Client Name</span>
-                        {distinctClientName.length - selectedClientName.length >
-                          0 && (
-                          <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full">
-                            {distinctClientName.length -
-                              selectedClientName.length}
-                          </span>
                         )}
-                      </button>
-                      {showClientNameFilterDropdown && (
-                        <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                          <div className="py-1">
-                            <button
-                              onClick={() =>
-                                handleClientNameToggle("Select All")
-                              }
-                              className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                            >
-                              <span>Select All</span>
-                              <input
-                                type="checkbox"
-                                checked={
-                                  selectedClientName.length ===
-                                  distinctClientName.length
-                                }
-                                onChange={() => {}}
-                                className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                              />
-                            </button>
-                            {distinctClientName.map((name) => (
+                      </div>
+
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() =>
+                            setShowClientNameFilterDropdown(
+                              !showClientNameFilterDropdown
+                            )
+                          }
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                        >
+                          <Funnel className="h-4 w-4" />
+                          <span>Filter by Client Name</span>
+                          {distinctClientName.length -
+                            selectedClientName.length >
+                            0 && (
+                            <span className="bg-primary text-white text-xs px-2 py-1 rounded-full">
+                              {distinctClientName.length -
+                                selectedClientName.length}
+                            </span>
+                          )}
+                        </button>
+                        {showClientNameFilterDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <div className="py-1">
                               <button
-                                key={name}
-                                onClick={() => handleClientNameToggle(name)}
-                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                onClick={() =>
+                                  handleClientNameToggle("Select All")
+                                }
+                                className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                               >
-                                <span>{name}</span>
+                                <span>Select All</span>
                                 <input
                                   type="checkbox"
+                                  checked={
+                                    selectedClientName.length ===
+                                    distinctClientName.length
+                                  }
                                   onChange={() => {}}
-                                  checked={selectedClientName.includes(name)}
                                   className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                 />
                               </button>
-                            ))}
+                              {distinctClientName.map((name) => (
+                                <button
+                                  key={name}
+                                  onClick={() => handleClientNameToggle(name)}
+                                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  <span>{name}</span>
+                                  <input
+                                    type="checkbox"
+                                    onChange={() => {}}
+                                    checked={selectedClientName.includes(name)}
+                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                  />
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
 
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => setShowSortDropdown(!showSortDropdown)}
-                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium"
-                      >
-                        <ArrowUpDown className="h-4 w-4" />
-                        <span>Sort by</span>
-                      </button>
-                      {showSortDropdown && (
-                        <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                          <div className="py-1">
-                            <button
-                              onClick={() => handleSort("project_id")}
-                              className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                            >
-                              Project ID {getSortIcon("project_id")}
-                            </button>
-                            <button
-                              onClick={() => handleSort("name")}
-                              className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                            >
-                              Project Name {getSortIcon("name")}
-                            </button>
-                            <button
-                              onClick={() => handleSort("number_of_lots")}
-                              className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                            >
-                              Number of Lots {getSortIcon("number_of_lots")}
-                            </button>
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() => setShowSortDropdown(!showSortDropdown)}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                        >
+                          <ArrowUpDown className="h-4 w-4" />
+                          <span>Sort by</span>
+                        </button>
+                        {showSortDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <div className="py-1">
+                              <button
+                                onClick={() => handleSort("project_id")}
+                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                              >
+                                Project ID {getSortIcon("project_id")}
+                              </button>
+                              <button
+                                onClick={() => handleSort("name")}
+                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                              >
+                                Project Name {getSortIcon("name")}
+                              </button>
+                              <button
+                                onClick={() => handleSort("number_of_lots")}
+                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                              >
+                                Number of Lots {getSortIcon("number_of_lots")}
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                      <button
+                        onClick={handleExportToExcel}
+                        disabled={
+                          isExporting || filteredAndSortedProjects.length === 0
+                        }
+                        className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium ${
+                          isExporting || filteredAndSortedProjects.length === 0
+                            ? "opacity-50 cursor-not-allowed"
+                            : "cursor-pointer hover:bg-slate-100"
+                        }`}
+                      >
+                        <Sheet className="h-4 w-4" />
+                        <span>
+                          {isExporting ? "Exporting..." : "Export to Excel"}
+                        </span>
+                      </button>
                     </div>
-                    <button
-                      onClick={handleExportToExcel}
-                      disabled={
-                        isExporting || filteredAndSortedProjects.length === 0
-                      }
-                      className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium ${
-                        isExporting || filteredAndSortedProjects.length === 0
-                          ? "opacity-50 cursor-not-allowed"
-                          : "cursor-pointer hover:bg-slate-100"
-                      }`}
-                    >
-                      <Sheet className="h-4 w-4" />
-                      <span>
-                        {isExporting ? "Exporting..." : "Export to Excel"}
-                      </span>
-                    </button>
                   </div>
                 </div>
 
-                {/* table */}
-                <div className="mt-4">
-                  <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                {/* Scrollable Table Section */}
+                <div className="flex-1 overflow-auto px-3">
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
                     <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50">
+                      <thead className="bg-slate-50 sticky top-0 z-10">
                         <tr>
                           <th
-                            className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                             onClick={() => handleSort("name")}
                           >
                             <div className="flex items-center gap-2">
@@ -665,7 +680,7 @@ export default function page() {
                             </div>
                           </th>
                           <th
-                            className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                             onClick={() => handleSort("project_id")}
                           >
                             <div className="flex items-center gap-2">
@@ -674,7 +689,7 @@ export default function page() {
                             </div>
                           </th>
                           <th
-                            className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                             onClick={() => handleSort("number_of_lots")}
                           >
                             <div className="flex items-center gap-2">
@@ -682,7 +697,7 @@ export default function page() {
                               {getSortIcon("number_of_lots")}
                             </div>
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                             Client
                           </th>
                         </tr>
@@ -692,8 +707,8 @@ export default function page() {
                         {loading ? (
                           <tr>
                             <td
-                              className="px-4 py-6 text-sm text-slate-500"
-                              colSpan={5}
+                              className="px-3 py-3 text-xs text-slate-500"
+                              colSpan={4}
                             >
                               Loading projects...
                             </td>
@@ -701,8 +716,8 @@ export default function page() {
                         ) : error ? (
                           <tr>
                             <td
-                              className="px-4 py-6 text-sm text-red-600"
-                              colSpan={5}
+                              className="px-3 py-3 text-xs text-red-600"
+                              colSpan={4}
                             >
                               {error}
                             </td>
@@ -710,8 +725,8 @@ export default function page() {
                         ) : paginatedProjects.length === 0 ? (
                           <tr>
                             <td
-                              className="px-4 py-6 text-sm text-slate-500"
-                              colSpan={5}
+                              className="px-3 py-3 text-xs text-slate-500"
+                              colSpan={4}
                             >
                               {search
                                 ? "No projects found matching your search"
@@ -738,18 +753,18 @@ export default function page() {
                                 }}
                                 className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
                               >
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                   {project.name || "-"}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
+                                <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap font-medium">
                                   {project.project_id || "-"}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                   {project.lots ? project.lots.length : 0}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-slate-700">
+                                <td className="px-3 py-2 text-xs text-slate-700">
                                   {clientName ? (
-                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 border border-blue-200">
+                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800 border border-blue-200">
                                       {clientName}
                                     </span>
                                   ) : (
@@ -767,118 +782,122 @@ export default function page() {
                   </div>
                 </div>
 
-                {/* Pagination Controls */}
+                {/* Fixed Pagination Footer */}
                 {!loading && !error && paginatedProjects.length > 0 && (
-                  <div className="mt-6 flex items-center justify-between">
-                    {/* Items per page dropdown and showing indicator */}
-                    <div className="flex items-center gap-4">
+                  <div className="px-3 py-2 flex-shrink-0 border-t border-slate-200">
+                    <div className="flex items-center justify-between">
+                      {/* Items per page dropdown and showing indicator */}
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-600">Showing</span>
-                        <div className="relative dropdown-container">
-                          <button
-                            onClick={() =>
-                              setShowItemsPerPageDropdown(
-                                !showItemsPerPageDropdown
-                              )
-                            }
-                            className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200"
-                          >
-                            <span>
-                              {itemsPerPage === 0 ? "All" : itemsPerPage}
-                            </span>
-                            <ChevronDown className="h-4 w-4" />
-                          </button>
-                          {showItemsPerPageDropdown && (
-                            <div className="absolute top-full left-0 mt-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                              <div className="py-1">
-                                {[10, 25, 50, 100, 0].map((value) => (
-                                  <button
-                                    key={value}
-                                    onClick={() =>
-                                      handleItemsPerPageChange(value)
-                                    }
-                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                                  >
-                                    {value === 0 ? "All" : value}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-sm text-slate-600">
-                          of {totalItems} results
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Pagination buttons - only show when not showing all items */}
-                    {itemsPerPage > 0 && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handlePageChange(1)}
-                          disabled={currentPage === 1}
-                          className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                        >
-                          <ChevronsLeft className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </button>
-
-                        {/* Page numbers */}
-                        <div className="flex items-center gap-1">
-                          {Array.from(
-                            { length: Math.min(5, totalPages) },
-                            (_, i) => {
-                              let pageNum;
-                              if (totalPages <= 5) {
-                                pageNum = i + 1;
-                              } else if (currentPage <= 3) {
-                                pageNum = i + 1;
-                              } else if (currentPage >= totalPages - 2) {
-                                pageNum = totalPages - 4 + i;
-                              } else {
-                                pageNum = currentPage - 2 + i;
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-600">
+                            Showing
+                          </span>
+                          <div className="relative dropdown-container">
+                            <button
+                              onClick={() =>
+                                setShowItemsPerPageDropdown(
+                                  !showItemsPerPageDropdown
+                                )
                               }
-
-                              return (
-                                <button
-                                  key={pageNum}
-                                  onClick={() => handlePageChange(pageNum)}
-                                  className={`cursor-pointer px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-                                    currentPage === pageNum
-                                      ? "bg-primary text-white"
-                                      : "text-slate-600 hover:bg-slate-100"
-                                  }`}
-                                >
-                                  {pageNum}
-                                </button>
-                              );
-                            }
-                          )}
+                              className="cursor-pointer flex items-center gap-2 px-2 py-1 text-xs border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+                            >
+                              <span>
+                                {itemsPerPage === 0 ? "All" : itemsPerPage}
+                              </span>
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                            {showItemsPerPageDropdown && (
+                              <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                                <div className="py-1">
+                                  {[10, 25, 50, 100, 0].map((value) => (
+                                    <button
+                                      key={value}
+                                      onClick={() =>
+                                        handleItemsPerPageChange(value)
+                                      }
+                                      className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100"
+                                    >
+                                      {value === 0 ? "All" : value}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs text-slate-600">
+                            of {totalItems} results
+                          </span>
                         </div>
-
-                        <button
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handlePageChange(totalPages)}
-                          disabled={currentPage === totalPages}
-                          className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                        >
-                          <ChevronsRight className="h-4 w-4" />
-                        </button>
                       </div>
-                    )}
+
+                      {/* Pagination buttons - only show when not showing all items */}
+                      {itemsPerPage > 0 && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handlePageChange(1)}
+                            disabled={currentPage === 1}
+                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <ChevronsLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+
+                          {/* Page numbers */}
+                          <div className="flex items-center gap-1">
+                            {Array.from(
+                              { length: Math.min(5, totalPages) },
+                              (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                  pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                  pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                  pageNum = totalPages - 4 + i;
+                                } else {
+                                  pageNum = currentPage - 2 + i;
+                                }
+
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    onClick={() => handlePageChange(pageNum)}
+                                    className={`cursor-pointer px-2 py-1 text-xs rounded-md transition-colors duration-200 ${
+                                      currentPage === pageNum
+                                        ? "bg-primary text-white"
+                                        : "text-slate-600 hover:bg-slate-100"
+                                    }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              }
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          >
+                            <ChevronsRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

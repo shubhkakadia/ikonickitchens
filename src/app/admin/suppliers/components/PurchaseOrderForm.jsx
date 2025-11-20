@@ -63,7 +63,7 @@ export default function PurchaseOrderForm({
 
           return {
             id: item.id,
-            item_id: item.item_id,
+            item_id: item.item?.item_id, // Fallback to item.item.item_id if item_id is not directly on the MTO item
             item: item.item,
             // Use remaining for partially ordered lists to continue ordering the balance
             quantity:

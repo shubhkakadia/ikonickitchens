@@ -287,26 +287,26 @@ export default function page() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-3 py-2 flex-shrink-0">
+            <div className="px-4 py-2 flex-shrink-0">
               <div className="flex justify-between items-center">
-                <h1 className="text-xl font-bold text-slate-600">
+                <h1 className="text-xl font-bold text-slate-700">
                   Lots at a Glance
                 </h1>
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3">
+            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                 {/* Fixed Header Section */}
-                <div className="p-3 flex-shrink-0">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="p-4 flex-shrink-0 border-b border-slate-200">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
                     {/* Search */}
-                    <div className="flex items-center gap-2 w-[500px] relative">
+                    <div className="flex items-center gap-2 flex-1 max-w-sm relative">
                       <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                       <input
                         type="text"
                         placeholder="Search by project name or lot ID"
-                        className="w-full text-slate-800 p-2 pl-9 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
+                        className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                       />
@@ -316,7 +316,7 @@ export default function page() {
                       {hasActiveFilters && (
                         <button
                           onClick={handleResetFilters}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-3 py-2 rounded-md text-xs font-medium"
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                         >
                           <RotateCcw className="h-4 w-4" />
                           <span>Reset Filters</span>
@@ -326,7 +326,7 @@ export default function page() {
                       <button
                         onClick={handleExportToExcel}
                         disabled={isExporting || filteredLots.length === 0}
-                        className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium ${
+                        className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium ${
                           isExporting || filteredLots.length === 0
                             ? "opacity-50 cursor-not-allowed"
                             : "cursor-pointer hover:bg-slate-100"
@@ -359,7 +359,7 @@ export default function page() {
                       <div className="py-1">
                         <button
                           onClick={() => handleStageFilterChange(stage, "ALL")}
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 ${
+                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
                             filterStatus === "ALL"
                               ? "bg-slate-100 font-medium"
                               : ""
@@ -371,7 +371,7 @@ export default function page() {
                           onClick={() =>
                             handleStageFilterChange(stage, "NOT_STARTED")
                           }
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 ${
+                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
                             filterStatus === "NOT_STARTED"
                               ? "bg-slate-100 font-medium"
                               : ""
@@ -383,7 +383,7 @@ export default function page() {
                           onClick={() =>
                             handleStageFilterChange(stage, "IN_PROGRESS")
                           }
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 ${
+                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
                             filterStatus === "IN_PROGRESS"
                               ? "bg-slate-100 font-medium"
                               : ""
@@ -393,7 +393,7 @@ export default function page() {
                         </button>
                         <button
                           onClick={() => handleStageFilterChange(stage, "DONE")}
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 ${
+                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
                             filterStatus === "DONE"
                               ? "bg-slate-100 font-medium"
                               : ""
@@ -403,7 +403,7 @@ export default function page() {
                         </button>
                         <button
                           onClick={() => handleStageFilterChange(stage, "NA")}
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 ${
+                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
                             filterStatus === "NA"
                               ? "bg-slate-100 font-medium"
                               : ""
@@ -417,25 +417,25 @@ export default function page() {
                 })}
 
                 {/* Scrollable Table Section */}
-                <div className="flex-1 overflow-auto px-3">
+                <div className="flex-1 overflow-auto">
                   {loading ? (
-                    <div className="p-8 text-center text-xs text-slate-500">
+                    <div className="p-8 text-center text-sm text-slate-500 font-medium">
                       Loading active lots...
                     </div>
                   ) : error ? (
-                    <div className="p-8 text-center text-xs text-red-600">
+                    <div className="p-8 text-center text-sm text-red-600 font-medium">
                       {error}
                     </div>
                   ) : activeLots.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-slate-500">
+                    <div className="p-8 text-center text-sm text-slate-500 font-medium">
                       No active lots found
                     </div>
                   ) : (
-                    <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                    <div className="min-w-full">
                       <table className="min-w-full divide-y divide-slate-200">
                         <thead className="bg-slate-50 sticky top-0 z-10">
                           <tr>
-                            <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider sticky left-0 bg-slate-50 z-20 border-r border-slate-200">
+                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider sticky left-0 bg-slate-50 z-20 border-r border-slate-200">
                               Project Name - Lot Number
                             </th>
                             {stages.map((stage) => {
@@ -445,7 +445,7 @@ export default function page() {
                               return (
                                 <th
                                   key={stage}
-                                  className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[150px]"
+                                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider min-w-[150px]"
                                 >
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="truncate">{stage}</span>
@@ -477,12 +477,12 @@ export default function page() {
                             })}
                           </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-slate-100">
+                        <tbody className="bg-white divide-y divide-slate-200">
                           {filteredLots.length === 0 ? (
                             <tr>
                               <td
                                 colSpan={stages.length + 1}
-                                className="px-3 py-8 text-center text-xs text-slate-500"
+                                className="px-4 py-8 text-center text-sm text-slate-500"
                               >
                                 <div className="flex flex-col items-center gap-3">
                                   <p>
@@ -492,7 +492,7 @@ export default function page() {
                                   {hasActiveFilters && (
                                     <button
                                       onClick={handleResetFilters}
-                                      className="flex items-center gap-2 cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-3 py-2 rounded-md text-xs font-medium"
+                                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                                     >
                                       <RotateCcw className="h-4 w-4" />
                                       Reset Filters
@@ -507,7 +507,7 @@ export default function page() {
                                 key={lot.lot_id}
                                 className="group hover:bg-slate-50 transition-colors duration-200"
                               >
-                                <td className="px-3 py-2 text-xs text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap">
+                                <td className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap">
                                   {lot.project?.name || "N/A"} - {lot.lot_id}
                                 </td>
                                 {stages.map((stage) => {
@@ -518,10 +518,10 @@ export default function page() {
                                   return (
                                     <td
                                       key={stage}
-                                      className="px-3 py-2 text-xs"
+                                      className="px-4 py-3 text-sm"
                                     >
                                       <span
-                                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs border ${statusColor}`}
+                                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border ${statusColor}`}
                                       >
                                         {formattedStatus}
                                       </span>

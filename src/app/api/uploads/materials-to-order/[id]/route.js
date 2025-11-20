@@ -6,7 +6,6 @@ import {
 } from "../../../../../../lib/validators/authFromToken";
 import {
   uploadMultipleFiles,
-  deleteFileByRelativePath,
   validateMultipartRequest,
   getFileFromFormData,
 } from "@/lib/fileHandler";
@@ -56,8 +55,8 @@ export async function POST(request, { params }) {
     // Upload multiple files
     const uploadResults = await uploadMultipleFiles(files, {
       uploadDir: "uploads",
-      subDir: `materials_to_order/${id}`,
-      filenameStrategy: "unique",
+      subDir: `materials_to_order/${mto.project_id}`,
+      filenameStrategy: "original",
     });
 
     if (uploadResults.successful.length === 0) {
@@ -129,31 +128,36 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Find the media record
-    const media = await prisma.media.findUnique({
-      where: { id: mediaId },
+    // Find the media record (only if not already deleted)
+    const media = await prisma.media.findFirst({
+      where: {
+        id: mediaId,
+        materials_to_orderId: id,
+        is_deleted: false,
+      },
     });
 
-    if (!media || media.materials_to_orderId !== id) {
+    if (!media) {
       return NextResponse.json(
         { status: false, message: "Media not found" },
         { status: 404 }
       );
     }
 
-    // Mark as deleted (soft delete)
-    await prisma.media.update({
+    // Mark as deleted (soft delete) - don't physically delete the file
+    const updatedMedia = await prisma.media.update({
       where: { id: mediaId },
       data: { is_deleted: true },
     });
 
-    // Delete the file from disk
-    await deleteFileByRelativePath(media.url);
-
     return NextResponse.json(
       {
         status: true,
-        message: "Media deleted successfully",
+        message: "Media marked as deleted successfully",
+        data: {
+          fileId: updatedMedia.id,
+          filename: updatedMedia.filename,
+        },
       },
       { status: 200 }
     );
@@ -165,4 +169,3 @@ export async function DELETE(request, { params }) {
     );
   }
 }
-

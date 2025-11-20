@@ -12,6 +12,9 @@ import {
   Trash,
   X,
   File,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import Image from "next/image";
 import PurchaseOrderForm from "./PurchaseOrderForm";
@@ -107,6 +110,29 @@ export default function MaterialsToOrder({
     setShowCreatePurchaseOrderModal(true);
   };
 
+  const [sortField, setSortField] = useState("project");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [openAccordionId, setOpenAccordionId] = useState(null);
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const getSortIcon = (field) => {
+    if (sortField !== field)
+      return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
+    if (sortOrder === "asc")
+      return <ArrowUp className="h-4 w-4 text-primary" />;
+    if (sortOrder === "desc")
+      return <ArrowDown className="h-4 w-4 text-primary" />;
+    return null;
+  };
+
   const filteredMTOs = useMemo(() => {
     // Tab filter
     let list = materialsToOrder.filter((mto) =>
@@ -129,8 +155,39 @@ export default function MaterialsToOrder({
       };
     });
 
+    // Sort
+    withCounts.sort((a, b) => {
+      const dir = sortOrder === "asc" ? 1 : -1;
+      let aVal;
+      let bVal;
+      switch (sortField) {
+        case "project":
+          aVal = (a.project?.name || "").toLowerCase();
+          bVal = (b.project?.name || "").toLowerCase();
+          break;
+        case "status":
+          aVal = (a.status || "").toLowerCase();
+          bVal = (b.status || "").toLowerCase();
+          break;
+        case "items":
+          aVal = a.__itemsCount;
+          bVal = b.__itemsCount;
+          break;
+        case "remaining":
+          aVal = a.__itemsRemaining;
+          bVal = b.__itemsRemaining;
+          break;
+        default:
+          aVal = 0;
+          bVal = 0;
+      }
+      if (aVal < bVal) return -1 * dir;
+      if (aVal > bVal) return 1 * dir;
+      return 0;
+    });
+
     return withCounts;
-  }, [materialsToOrder, mtoActiveTab]);
+  }, [materialsToOrder, mtoActiveTab, sortField, sortOrder]);
 
   const handleOpenMediaModal = (mto) => {
     setSelectedMtoForMedia(mto);
@@ -185,7 +242,7 @@ export default function MaterialsToOrder({
       });
 
       const response = await axios.post(
-        `/api/materials_to_order/${selectedMtoForMedia.id}/media`,
+        `/api/uploads/materials-to-order/${selectedMtoForMedia.id}`,
         formData,
         {
           headers: {
@@ -245,7 +302,7 @@ export default function MaterialsToOrder({
       }
 
       const response = await axios.delete(
-        `/api/materials_to_order/${selectedMtoForMedia.id}/media?mediaId=${pendingDeleteMediaId}`,
+        `/api/uploads/materials-to-order/${selectedMtoForMedia.id}?mediaId=${pendingDeleteMediaId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -290,7 +347,7 @@ export default function MaterialsToOrder({
   const handleViewExistingFile = (file) => {
     setSelectedFile({
       name: file.filename || "File",
-      url: file.url,
+      url: `/${file.url}`,
       type:
         file.mime_type ||
         (file.extension ? `application/${file.extension}` : "application/pdf"),
@@ -338,59 +395,94 @@ export default function MaterialsToOrder({
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
         </div>
       ) : filteredMTOs && filteredMTOs.length > 0 ? (
-        <div className="bg-white rounded-lg">
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-50 border-t border-b border-slate-200 text-xs font-medium text-slate-600 uppercase tracking-wider">
-            <div className="col-span-5">Project / Lots</div>
-            <div className="col-span-2">Items</div>
-            <div className="col-span-2">Items Remaining</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-1 text-right">Actions</div>
-          </div>
-
-          {/* Rows */}
-          <div className="space-y-2">
-            {filteredMTOs.map((mto) => {
-              return (
-                <div
-                  key={mto.id}
-                  className="border border-slate-200 rounded-lg overflow-hidden"
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50 sticky top-0 z-10">
+              <tr>
+                <th
+                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                  onClick={() => handleSort("project")}
                 >
-                  <button
-                    onClick={() => {
-                      const element = document.getElementById(`mto-${mto.id}`);
-                      if (element) element.classList.toggle("hidden");
-                    }}
-                    className="w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="grid grid-cols-12 gap-2 items-center">
-                      <div className="col-span-5 flex flex-row items-center gap-3">
-                        <span className="text-sm font-semibold text-gray-800 truncate">
-                          {mto.project?.name || "Project"}
-                        </span>
-                        <div className="flex flex-wrap gap-1 mt-1 md:mt-0">
-                          {mto.lots?.map((lot) => (
-                            <span
-                              key={lot.lot_id || lot.id}
-                              className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-800 rounded"
-                            >
-                              {lot.name}
-                            </span>
-                          ))}
+                  <div className="flex items-center gap-2">
+                    Project / Lots
+                    {getSortIcon("project")}
+                  </div>
+                </th>
+                <th
+                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                  onClick={() => handleSort("items")}
+                >
+                  <div className="flex items-center gap-2">
+                    Items
+                    {getSortIcon("items")}
+                  </div>
+                </th>
+                <th
+                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                  onClick={() => handleSort("remaining")}
+                >
+                  <div className="flex items-center gap-2">
+                    Items Remaining
+                    {getSortIcon("remaining")}
+                  </div>
+                </th>
+                <th
+                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                  onClick={() => handleSort("status")}
+                >
+                  <div className="flex items-center gap-2">
+                    Status
+                    {getSortIcon("status")}
+                  </div>
+                </th>
+                <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
+              {filteredMTOs.map((mto) => {
+                return (
+                  <React.Fragment key={mto.id}>
+                    <tr
+                      onClick={() => {
+                        if (openAccordionId === mto.id) {
+                          setOpenAccordionId(null);
+                        } else {
+                          setOpenAccordionId(mto.id);
+                        }
+                      }}
+                      className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex flex-row items-center gap-3">
+                          <span className="text-sm font-semibold text-gray-800 truncate">
+                            {mto.project?.name || "Project"}
+                          </span>
+                          <div className="flex flex-wrap gap-1 mt-1 md:mt-0">
+                            {mto.lots?.map((lot) => (
+                              <span
+                                key={lot.lot_id || lot.id}
+                                className="text-[10px] px-2 py-1 bg-purple-100 text-purple-800 rounded"
+                              >
+                                {lot.name}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      <div className="col-span-2 text-sm text-slate-700">
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
                         {mto.__itemsCount ?? (mto.items?.length || 0)}
-                      </div>
-                      <div className="col-span-2 text-sm text-slate-700">
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
                         {mto.__itemsRemaining ??
                           (mto.items?.filter(
                             (it) =>
                               (it.quantity_ordered || 0) < (it.quantity || 0)
                           ).length ||
                             0)}
-                      </div>
-                      <div className="col-span-2">
+                      </td>
+                      <td className="px-4 py-3">
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded ${
                             mto.status === "DRAFT"
@@ -404,288 +496,466 @@ export default function MaterialsToOrder({
                         >
                           {mto.status}
                         </span>
-                      </div>
-                      <div className="col-span-1 text-right">
-                        <ChevronDown className="w-5 h-5 text-slate-500 inline-block" />
-                      </div>
-                    </div>
-                  </button>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <ChevronDown
+                          className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${
+                            openAccordionId === mto.id ? "rotate-180" : ""
+                          }`}
+                        />
+                      </td>
+                    </tr>
 
-                  {/* Accordion content */}
-                  <div
-                    id={`mto-${mto.id}`}
-                    className="hidden px-4 pb-4 border-t border-slate-100"
-                  >
-                    <div className="mt-4">
-                      <div className="mb-4 p-3 bg-slate-50 rounded-lg">
-                        <div className="flex justify-between gap-4">
-                          <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
-                            <div className="flex items-center gap-1.5">
-                              <Calendar className="w-4 h-4" />
-                              <span>
-                                <span className="font-medium">Created:</span>{" "}
-                                {mto.createdAt
-                                  ? new Date(mto.createdAt).toLocaleString()
-                                  : "No date"}
-                              </span>
+                    {/* Accordion content */}
+                    {openAccordionId === mto.id && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 pb-4 border-t border-slate-200 bg-slate-50"
+                        >
+                          <div id={`mto-${mto.id}`} className="mt-2">
+                            <div className="mb-2 p-2 bg-slate-50 rounded-lg">
+                              <div className="flex items-center gap-4 text-xs text-gray-600">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>
+                                    <span className="font-medium">
+                                      Created:
+                                    </span>{" "}
+                                    {mto.createdAt
+                                      ? new Date(mto.createdAt).toLocaleString()
+                                      : "No date"}
+                                  </span>
+                                </div>
+                                {mto.notes && (
+                                  <div className="flex items-center gap-1.5">
+                                    <FileText className="w-4 h-4" />
+                                    <span>
+                                      <span className="font-medium">
+                                        Notes:
+                                      </span>{" "}
+                                      {mto.notes}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1.5">
+                                  <FileText className="w-4 h-4" />
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenMediaModal(mto);
+                                    }}
+                                    className="cursor-pointer text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+                                  >
+                                    <span>Media Files:</span>
+                                    <span className="px-2 py-0.5 bg-primary/10 text-primary rounded">
+                                      {(mto.media || []).length}
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
                             </div>
-                            {mto.notes && (
-                              <div className="flex items-center gap-1.5">
-                                <FileText className="w-4 h-4" />
-                                <span>
-                                  <span className="font-medium">Notes:</span>{" "}
-                                  {mto.notes}
-                                </span>
+
+                            {/* Items grouped by supplier */}
+                            {!!(mto.items && mto.items.length) && (
+                              <div className="space-y-2">
+                                {(() => {
+                                  // Group items by supplier name (Unassigned last)
+                                  const groups = new Map();
+                                  mto.items.forEach((it) => {
+                                    const supplierName =
+                                      it.item?.supplier?.name || "Unassigned";
+                                    if (!groups.has(supplierName))
+                                      groups.set(supplierName, []);
+                                    groups.get(supplierName).push(it);
+                                  });
+                                  const orderedGroupNames = Array.from(
+                                    groups.keys()
+                                  ).sort((a, b) => {
+                                    if (
+                                      a === "Unassigned" &&
+                                      b !== "Unassigned"
+                                    )
+                                      return 1;
+                                    if (
+                                      b === "Unassigned" &&
+                                      a !== "Unassigned"
+                                    )
+                                      return -1;
+                                    return a.localeCompare(b);
+                                  });
+                                  return orderedGroupNames.map((name) => (
+                                    <div key={name}>
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="text-xs font-semibold text-slate-700">
+                                          {name}
+                                        </div>
+                                        {mtoActiveTab === "active" &&
+                                          name !== "Unassigned" && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                const firstItem =
+                                                  groups.get(name)?.[0];
+                                                const supplierId =
+                                                  firstItem?.item?.supplier
+                                                    ?.supplier_id ||
+                                                  firstItem?.item
+                                                    ?.supplier_id ||
+                                                  null;
+                                                if (!supplierId) return;
+                                                openCreatePOForSupplier(
+                                                  name,
+                                                  supplierId,
+                                                  mto.id
+                                                );
+                                              }}
+                                              className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
+                                            >
+                                              <Plus className="inline w-3 h-3 mr-1" />{" "}
+                                              Create Purchase Order
+                                            </button>
+                                          )}
+                                      </div>
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full border border-slate-200 rounded-lg">
+                                          <thead className="bg-slate-50">
+                                            <tr>
+                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Image
+                                              </th>
+                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Category
+                                              </th>
+                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Details
+                                              </th>
+                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Quantity
+                                              </th>
+                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Status
+                                              </th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="bg-white divide-y divide-slate-200">
+                                            {groups.get(name).map((item) => (
+                                              <tr
+                                                key={item.id}
+                                                className="hover:bg-slate-50"
+                                              >
+                                                <td className="px-3 py-2 whitespace-nowrap">
+                                                  <div className="flex items-center">
+                                                    {item.item?.image ? (
+                                                      <img
+                                                        src={`/${item.item.image}`}
+                                                        alt={item.item_id}
+                                                        className="w-10 h-10 object-cover rounded border border-slate-200"
+                                                        onError={(e) => {
+                                                          e.target.style.display =
+                                                            "none";
+                                                          e.target.nextSibling.style.display =
+                                                            "flex";
+                                                        }}
+                                                      />
+                                                    ) : null}
+                                                    <div
+                                                      className={`w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
+                                                        item.item?.image
+                                                          ? "hidden"
+                                                          : "flex"
+                                                      }`}
+                                                    >
+                                                      <Package className="w-5 h-5 text-slate-400" />
+                                                    </div>
+                                                  </div>
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap">
+                                                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                                    {item.item?.category}
+                                                  </span>
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                  <div className="text-xs text-gray-600 space-y-1">
+                                                    {item.item?.sheet && (
+                                                      <>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Brand:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.sheet
+                                                              .brand || "-"
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Color:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.sheet
+                                                              .color
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Finish:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.sheet
+                                                              .finish
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Face:
+                                                          </span>{" "}
+                                                          {item.item.sheet
+                                                            .face || "-"}
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Dimensions:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.sheet
+                                                              .dimensions
+                                                          }
+                                                        </div>
+                                                      </>
+                                                    )}
+                                                    {item.item?.handle && (
+                                                      <>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Brand:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.handle
+                                                              .brand || "-"
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Color:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.handle
+                                                              .color
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Type:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.handle
+                                                              .type
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Dimensions:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.handle
+                                                              .dimensions
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Material:
+                                                          </span>{" "}
+                                                          {item.item.handle
+                                                            .material || "-"}
+                                                        </div>
+                                                      </>
+                                                    )}
+                                                    {item.item?.hardware && (
+                                                      <>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Brand:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.hardware
+                                                              .brand || "-"
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Name:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.hardware
+                                                              .name
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Type:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.hardware
+                                                              .type
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Dimensions:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.hardware
+                                                              .dimensions
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Sub Category:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.hardware
+                                                              .sub_category
+                                                          }
+                                                        </div>
+                                                      </>
+                                                    )}
+                                                    {item.item?.accessory && (
+                                                      <>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Name:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.accessory
+                                                              .name
+                                                          }
+                                                        </div>
+                                                      </>
+                                                    )}
+                                                    {item.item?.edging_tape && (
+                                                      <>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Brand:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.edging_tape
+                                                              .brand || "-"
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Color:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.edging_tape
+                                                              .color || "-"
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Finish:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.edging_tape
+                                                              .finish || "-"
+                                                          }
+                                                        </div>
+                                                        <div>
+                                                          <span className="font-medium">
+                                                            Dimensions:
+                                                          </span>{" "}
+                                                          {
+                                                            item.item.edging_tape
+                                                              .dimensions || "-"
+                                                          }
+                                                        </div>
+                                                      </>
+                                                    )}
+                                                  </div>
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap">
+                                                  <div className="text-xs text-gray-600">
+                                                    <div className="flex items-center gap-1.5 mb-1">
+                                                      <Package className="w-4 h-4 text-gray-500" />
+                                                      <span>
+                                                        <span className="font-medium">
+                                                          Qty:
+                                                        </span>{" "}
+                                                        {item.quantity}{" "}
+                                                        {
+                                                          item.item
+                                                            ?.measurement_unit
+                                                        }
+                                                      </span>
+                                                    </div>
+                                                    {item.quantity_ordered >
+                                                      0 && (
+                                                      <div className="flex items-center gap-1.5 text-blue-600 text-xs">
+                                                        <span>
+                                                          Ordered:{" "}
+                                                          {
+                                                            item.quantity_ordered
+                                                          }
+                                                        </span>
+                                                      </div>
+                                                    )}
+                                                    {item.quantity_received >
+                                                      0 && (
+                                                      <div className="flex items-center gap-1.5 text-green-600 text-xs">
+                                                        <span>
+                                                          Received:{" "}
+                                                          {
+                                                            item.quantity_received
+                                                          }
+                                                        </span>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap">
+                                                  {item.quantity_ordered >
+                                                    0 && (
+                                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                                      Ordered
+                                                    </span>
+                                                  )}
+                                                  {item.quantity_received >
+                                                    0 && (
+                                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                                                      Received
+                                                    </span>
+                                                  )}
+                                                  {item.quantity_ordered ===
+                                                    0 &&
+                                                    item.quantity_received ===
+                                                      0 && (
+                                                      <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                                                        Pending
+                                                      </span>
+                                                    )}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  ));
+                                })()}
                               </div>
                             )}
-                            <div className="flex items-center gap-1.5">
-                              <FileText className="w-4 h-4" />
-                              <button
-                                onClick={() => handleOpenMediaModal(mto)}
-                                className="cursor-pointer text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1"
-                              >
-                                <span>Media Files:</span>
-                                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded">
-                                  {(mto.media || []).length}
-                                </span>
-                              </button>
-                            </div>
                           </div>
-                          {mtoActiveTab === "active" && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!supplierId) return;
-                                openCreatePOForSupplier(
-                                  supplier?.name || "Supplier",
-                                  supplierId,
-                                  mto.id
-                                );
-                              }}
-                              className="cursor-pointer px-3 py-1.5 h-fit text-sm border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors flex items-center gap-1.5 shrink-0"
-                            >
-                              <Plus className="w-4 h-4" />
-                              Create Purchase Order
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Items */}
-                      {mto.items.length > 0 && (
-                        <div>
-                          <div className="overflow-x-auto">
-                            <table className="w-full border border-slate-200 rounded-lg">
-                              <thead className="bg-slate-50">
-                                <tr>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Image
-                                  </th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Category
-                                  </th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Details
-                                  </th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Quantity
-                                  </th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="bg-white divide-y divide-slate-200">
-                                {mto.items.map((item) => (
-                                  <tr
-                                    key={item.id}
-                                    className="hover:bg-slate-50"
-                                  >
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                      <div className="flex items-center">
-                                        {item.item?.image ? (
-                                          <img
-                                            src={`/${item.item.image}`}
-                                            alt={item.item_id}
-                                            className="w-12 h-12 object-cover rounded border border-slate-200"
-                                            onError={(e) => {
-                                              e.target.style.display = "none";
-                                              e.target.nextSibling.style.display =
-                                                "flex";
-                                            }}
-                                          />
-                                        ) : null}
-                                        <div
-                                          className={`w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                            item.item?.image ? "hidden" : "flex"
-                                          }`}
-                                        >
-                                          <Package className="w-6 h-6 text-slate-400" />
-                                        </div>
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                        {item.item?.category}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <div className="text-sm text-gray-600 space-y-1">
-                                        {item.item?.sheet && (
-                                          <>
-                                            <div>
-                                              <span className="font-medium">
-                                                Color:
-                                              </span>{" "}
-                                              {item.item.sheet.color}
-                                            </div>
-                                            <div>
-                                              <span className="font-medium">
-                                                Finish:
-                                              </span>{" "}
-                                              {item.item.sheet.finish}
-                                            </div>
-                                            <div>
-                                              <span className="font-medium">
-                                                Face:
-                                              </span>{" "}
-                                              {item.item.sheet.face || "-"}
-                                            </div>
-                                            <div>
-                                              <span className="font-medium">
-                                                Dimensions:
-                                              </span>{" "}
-                                              {item.item.sheet.dimensions}
-                                            </div>
-                                          </>
-                                        )}
-                                        {item.item?.handle && (
-                                          <>
-                                            <div>
-                                              <span className="font-medium">
-                                                Color:
-                                              </span>{" "}
-                                              {item.item.handle.color}
-                                            </div>
-                                            <div>
-                                              <span className="font-medium">
-                                                Type:
-                                              </span>{" "}
-                                              {item.item.handle.type}
-                                            </div>
-                                            <div>
-                                              <span className="font-medium">
-                                                Dimensions:
-                                              </span>{" "}
-                                              {item.item.handle.dimensions}
-                                            </div>
-                                            <div>
-                                              <span className="font-medium">
-                                                Material:
-                                              </span>{" "}
-                                              {item.item.handle.material || "-"}
-                                            </div>
-                                          </>
-                                        )}
-                                        {item.item?.hardware && (
-                                          <>
-                                            <div>
-                                              <span className="font-medium">
-                                                Name:
-                                              </span>{" "}
-                                              {item.item.hardware.name}
-                                            </div>
-                                            <div>
-                                              <span className="font-medium">
-                                                Type:
-                                              </span>{" "}
-                                              {item.item.hardware.type}
-                                            </div>
-                                            <div>
-                                              <span className="font-medium">
-                                                Dimensions:
-                                              </span>{" "}
-                                              {item.item.hardware.dimensions}
-                                            </div>
-                                            <div>
-                                              <span className="font-medium">
-                                                Sub Category:
-                                              </span>{" "}
-                                              {item.item.hardware.sub_category}
-                                            </div>
-                                          </>
-                                        )}
-                                        {item.item?.accessory && (
-                                          <>
-                                            <div>
-                                              <span className="font-medium">
-                                                Name:
-                                              </span>{" "}
-                                              {item.item.accessory.name}
-                                            </div>
-                                          </>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                      <div className="text-sm text-gray-600">
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                          <Package className="w-4 h-4 text-gray-500" />
-                                          <span>
-                                            <span className="font-medium">
-                                              Qty:
-                                            </span>{" "}
-                                            {item.quantity}{" "}
-                                            {item.item?.measurement_unit}
-                                          </span>
-                                        </div>
-                                        {item.quantity_ordered > 0 && (
-                                          <div className="flex items-center gap-1.5 text-blue-600 text-xs">
-                                            <span>
-                                              Ordered: {item.quantity_ordered}
-                                            </span>
-                                          </div>
-                                        )}
-                                        {item.quantity_received > 0 && (
-                                          <div className="flex items-center gap-1.5 text-green-600 text-xs">
-                                            <span>
-                                              Received: {item.quantity_received}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                      {item.quantity_ordered > 0 && (
-                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                          Ordered
-                                        </span>
-                                      )}
-                                      {item.quantity_received > 0 && (
-                                        <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-                                          Received
-                                        </span>
-                                      )}
-                                      {item.quantity_ordered === 0 &&
-                                        item.quantity_received === 0 && (
-                                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                            Pending
-                                          </span>
-                                        )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="text-center py-10 text-slate-500">

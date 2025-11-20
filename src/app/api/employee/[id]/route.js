@@ -133,17 +133,20 @@ export async function PATCH(request, { params }) {
       supper_account_name,
       supper_account_number,
       tfn_number,
+      abn_number,
       education,
       availability,
       notes,
     } = body;
 
-    // Parse availability JSON string to object
-    let parsedAvailability = null;
-    if (availability) {
+    // Parse availability JSON string to object for validation, then stringify for Prisma
+    let availabilityString = null;
+    if (availability !== null && availability !== undefined) {
       if (typeof availability === "string" && availability.trim() !== "") {
+        // Validate it's valid JSON, but keep as string for Prisma
         try {
-          parsedAvailability = JSON.parse(availability);
+          JSON.parse(availability);
+          availabilityString = availability;
         } catch (error) {
           console.error("Error parsing availability JSON:", error);
           return NextResponse.json(
@@ -151,8 +154,9 @@ export async function PATCH(request, { params }) {
             { status: 400 }
           );
         }
-      } else if (typeof availability === "object") {
-        parsedAvailability = availability;
+      } else if (typeof availability === "object" && availability !== null) {
+        // Convert object to JSON string for Prisma
+        availabilityString = JSON.stringify(availability);
       }
     }
 
@@ -184,28 +188,38 @@ export async function PATCH(request, { params }) {
         supper_account_name,
         supper_account_number,
         tfn_number,
+        abn_number,
         education,
-        availability: parsedAvailability,
+        availability: availabilityString,
         notes,
       },
     });
 
     // Handle image removal if requested
-    if (removeImage && !imageFile && currentEmployee.image_id && currentEmployee.image) {
+    if (
+      removeImage &&
+      !imageFile &&
+      currentEmployee.image_id &&
+      currentEmployee.image
+    ) {
       try {
-        // Delete old file from disk
-        await deleteFileByRelativePath(currentEmployee.image.url);
+        // Store the image URL and ID before removing the reference
+        const imageUrl = currentEmployee.image.url;
+        const imageId = currentEmployee.image_id;
 
-        // Delete old media record
-        await prisma.media.delete({
-          where: { id: currentEmployee.image_id },
-        });
-
-        // Update employee to remove image_id
+        // First, update employee to remove image_id (remove foreign key reference)
         await prisma.employees.update({
           where: { id: employee.id },
           data: { image_id: null },
         });
+
+        // Now safe to delete the media record (no foreign key constraint)
+        await prisma.media.delete({
+          where: { id: imageId },
+        });
+
+        // Finally, delete the file from disk
+        await deleteFileByRelativePath(imageUrl);
       } catch (error) {
         console.error("Error handling image removal:", error);
         // Continue even if removal fails
@@ -216,10 +230,23 @@ export async function PATCH(request, { params }) {
       try {
         // Delete old image file and media record if exists
         if (currentEmployee.image_id && currentEmployee.image) {
-          await deleteFileByRelativePath(currentEmployee.image.url);
-          await prisma.media.delete({
-            where: { id: currentEmployee.image_id },
+          // Store the image URL and ID before removing the reference
+          const oldImageUrl = currentEmployee.image.url;
+          const oldImageId = currentEmployee.image_id;
+
+          // First, update employee to remove image_id (remove foreign key reference)
+          await prisma.employees.update({
+            where: { id: employee.id },
+            data: { image_id: null },
           });
+
+          // Now safe to delete the media record (no foreign key constraint)
+          await prisma.media.delete({
+            where: { id: oldImageId },
+          });
+
+          // Finally, delete the file from disk
+          await deleteFileByRelativePath(oldImageUrl);
         }
 
         // Upload new image

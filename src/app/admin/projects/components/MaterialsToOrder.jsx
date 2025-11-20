@@ -1162,7 +1162,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
       });
 
       const response = await axios.post(
-        `/api/materials_to_order/${currentMtoId}/media`,
+        `/api/uploads/materials-to-order/${currentMtoId}`,
         formData,
         {
           headers: {
@@ -1214,7 +1214,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
     try {
       const sessionToken = getToken();
       const response = await axios.delete(
-        `/api/materials_to_order/${currentMtoId}/media?mediaId=${mediaId}`,
+        `/api/uploads/materials-to-order/${currentMtoId}?mediaId=${mediaId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,

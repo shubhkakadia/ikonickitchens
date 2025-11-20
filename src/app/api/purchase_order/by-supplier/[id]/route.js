@@ -43,6 +43,7 @@ export async function GET(request, { params }) {
                 handle: true,
                 hardware: true,
                 accessory: true,
+                edging_tape: true,
               },
             },
           },

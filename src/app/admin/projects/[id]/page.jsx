@@ -738,7 +738,7 @@ export default function page() {
         formData.append("notes", uploadNotes);
       }
 
-      const apiUrl = `/api/uploads/${id.toUpperCase()}/${
+      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
         selectedLotData.lot_id
       }/${categorySlug}`;
 
@@ -779,14 +779,6 @@ export default function page() {
     setViewFileModal(true);
   };
 
-  // View new file before upload
-  const handleViewFile = (file) => {
-    // Pass the actual File object with isExisting flag
-    const fileWithFlag = Object.assign(file, { isExisting: false });
-    setSelectedFile(fileWithFlag);
-    setViewFileModal(true);
-  };
-
   // Handle file selection - upload immediately
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files);
@@ -797,20 +789,6 @@ export default function page() {
 
     // Reset the input so the same file can be selected again if needed
     e.target.value = "";
-  };
-
-  // Remove file from upload queue
-  const handleRemoveFile = (indexToRemove) => {
-    setUploadedFiles((prev) =>
-      prev.filter((_, index) => index !== indexToRemove)
-    );
-  };
-
-  // Cancel upload
-  const handleCancelUpload = () => {
-    setUploadedFiles([]);
-    setUploadNotes("");
-    toast.info("Changes cancelled");
   };
 
   // Function to open delete confirmation
@@ -836,7 +814,7 @@ export default function page() {
       const tabEnum = getTabEnum(activeTab);
 
       const response = await axios.delete(
-        `/uploads/${id.toLowerCase()}/${
+        `/api/uploads/lots/${id.toUpperCase()}/${
           selectedLotData.lot_id
         }/${getCategorySlug(tabEnum)}/${fileToDelete.filename}`,
         {

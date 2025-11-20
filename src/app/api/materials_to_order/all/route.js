@@ -36,6 +36,7 @@ export async function GET(request) {
             id: true,
             quantity: true,
             quantity_used: true,
+            quantity_ordered: true,
             notes: true,
             item: {
               select: {
@@ -56,8 +57,12 @@ export async function GET(request) {
             },
           },
         },
+        media: { where: { is_deleted: false } },
       },
     });
+
+
+
     return NextResponse.json(
       {
         status: true,

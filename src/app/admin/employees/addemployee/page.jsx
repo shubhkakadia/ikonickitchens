@@ -43,6 +43,7 @@ export default function page() {
     supper_account_name: "",
     supper_account_number: "",
     tfn_number: "",
+    abn_number: "",
     education: "",
     availability: "",
     notes: "",
@@ -55,6 +56,8 @@ export default function page() {
     wednesday: { start: "", end: "" },
     thursday: { start: "", end: "" },
     friday: { start: "", end: "" },
+    saturday: { start: "", end: "" },
+    sunday: { start: "", end: "" },
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -239,6 +242,7 @@ export default function page() {
         supper_account_name: "",
         supper_account_number: "",
         tfn_number: "",
+        abn_number: "",
         education: "",
         availability: "",
         notes: "",
@@ -252,6 +256,8 @@ export default function page() {
         wednesday: { start: "", end: "" },
         thursday: { start: "", end: "" },
         friday: { start: "", end: "" },
+        saturday: { start: "", end: "" },
+        sunday: { start: "", end: "" },
       });
 
       // Reset role dropdown
@@ -708,6 +714,20 @@ export default function page() {
                             onChange={handleInputChange}
                             className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                             placeholder="Eg. 123456789"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            ABN Number
+                          </label>
+                          <input
+                            type="text"
+                            name="abn_number"
+                            value={formData.abn_number}
+                            onChange={handleInputChange}
+                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                            placeholder="Eg. 12345678901"
                           />
                         </div>
                       </div>

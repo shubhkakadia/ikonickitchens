@@ -42,24 +42,24 @@ export default function SiteMeasurementsSection({
   const handleSitePhotosFileSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    
+
     // Upload files immediately
     await handleUploadSitePhotos(files);
-    
+
     // Reset the input so the same file can be selected again if needed
-    e.target.value = '';
+    e.target.value = "";
   };
 
   // Handle file selection for measurement photos - upload immediately
   const handleMeasurementPhotosFileSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    
+
     // Upload files immediately
     await handleUploadMeasurementPhotos(files);
-    
+
     // Reset the input so the same file can be selected again if needed
-    e.target.value = '';
+    e.target.value = "";
   };
 
   // Remove file from site photos upload queue
@@ -79,7 +79,7 @@ export default function SiteMeasurementsSection({
   // Upload site photos
   const handleUploadSitePhotos = async (filesToUpload = null) => {
     const files = filesToUpload || sitePhotosFiles;
-    
+
     try {
       setIsUploadingSitePhotos(true);
       const sessionToken = getToken();
@@ -107,7 +107,7 @@ export default function SiteMeasurementsSection({
 
       formData.append("site_group", "SITE_PHOTOS");
 
-      const apiUrl = `/api/uploads/${id.toUpperCase()}/${
+      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
         selectedLotData.lot_id
       }/site_measurements`;
 
@@ -136,7 +136,7 @@ export default function SiteMeasurementsSection({
   // Upload measurement photos
   const handleUploadMeasurementPhotos = async (filesToUpload = null) => {
     const files = filesToUpload || measurementPhotosFiles;
-    
+
     try {
       setIsUploadingMeasurementPhotos(true);
       const sessionToken = getToken();
@@ -164,7 +164,7 @@ export default function SiteMeasurementsSection({
 
       formData.append("site_group", "MEASUREMENT_PHOTOS");
 
-      const apiUrl = `/api/uploads/${id.toUpperCase()}/${
+      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
         selectedLotData.lot_id
       }/site_measurements`;
 
@@ -424,7 +424,11 @@ export default function SiteMeasurementsSection({
         <label className="block text-sm font-medium text-slate-600 mb-2">
           Select Files {isUploading && "(Uploading...)"}
         </label>
-        <div className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+        <div
+          className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+            isUploading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+        >
           <input
             type="file"
             multiple

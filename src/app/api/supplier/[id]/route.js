@@ -25,13 +25,13 @@ export async function GET(request, { params }) {
       where: {
         supplier_id: id,
       },
-      include: { 
-        contacts: true, 
+      include: {
+        contacts: true,
         statements: {
           include: {
-            supplier_file: true
-          }
-        }
+            supplier_file: true,
+          },
+        },
       },
     });
     if (!supplier) {
@@ -72,13 +72,18 @@ export async function PATCH(request, { params }) {
       );
     }
     const { id } = await params;
-    const { name, email, phone, address, notes, website } = await request.json();
+    const { name, email, phone, address, notes, website, abn_number } =
+      await request.json();
     const supplier = await prisma.supplier.update({
       where: { supplier_id: id },
-      data: { name, email, phone, address, notes, website },
+      data: { name, email, phone, address, notes, website, abn_number },
     });
     return NextResponse.json(
-      { status: true, message: "Supplier updated successfully", data: supplier },
+      {
+        status: true,
+        message: "Supplier updated successfully",
+        data: supplier,
+      },
       { status: 200 }
     );
   } catch (error) {
@@ -109,7 +114,11 @@ export async function DELETE(request, { params }) {
       where: { supplier_id: id },
     });
     return NextResponse.json(
-      { status: true, message: "Supplier deleted successfully", data: supplier },
+      {
+        status: true,
+        message: "Supplier deleted successfully",
+        data: supplier,
+      },
       { status: 200 }
     );
   } catch (error) {

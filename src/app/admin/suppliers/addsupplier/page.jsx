@@ -18,6 +18,7 @@ export default function page() {
     address: "",
     website: "",
     notes: "",
+    abn_number: "",
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +56,7 @@ export default function page() {
         address: formData.address,
         notes: formData.notes,
         website: formData.website,
+        abn_number: formData.abn_number,
       });
 
       const config = {
@@ -96,6 +98,7 @@ export default function page() {
         address: "",
         website: "",
         notes: "",
+        abn_number: "",
       });
 
       // Show success toast
@@ -200,7 +203,9 @@ export default function page() {
                           required
                         />
                         {errors.name && (
-                          <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+                          <p className="mt-1 text-sm text-red-500">
+                            {errors.name}
+                          </p>
                         )}
                       </div>
                       <div>
@@ -218,7 +223,9 @@ export default function page() {
                           placeholder="Eg. contact@polytec.com.au"
                         />
                         {errors.email && (
-                          <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+                          <p className="mt-1 text-sm text-red-500">
+                            {errors.email}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -245,7 +252,7 @@ export default function page() {
                       </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
                           Phone Number
@@ -270,6 +277,19 @@ export default function page() {
                           onChange={handleInputChange}
                           className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                           placeholder="Eg. https://www.polytec.com.au"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          ABN Number
+                        </label>
+                        <input
+                          type="text"
+                          name="abn_number"
+                          value={formData.abn_number}
+                          onChange={handleInputChange}
+                          className="w-full text-sm text-slate-800 font-mono px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                          placeholder="Eg. 12345678901"
                         />
                       </div>
                     </div>

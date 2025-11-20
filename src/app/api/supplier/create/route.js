@@ -20,19 +20,22 @@ export async function POST(request) {
         { status: 401 }
       );
     }
-    const { name, email, phone, address, notes, website } =
+    const { name, email, phone, address, notes, website, abn_number } =
       await request.json();
     const existingSupplier = await prisma.supplier.findUnique({
       where: { name },
     });
     if (existingSupplier) {
       return NextResponse.json(
-        { status: false, message: "Supplier already exists by this name: " + name },
+        {
+          status: false,
+          message: "Supplier already exists by this name: " + name,
+        },
         { status: 409 }
       );
     }
     const supplier = await prisma.supplier.create({
-      data: { name, email, phone, address, notes, website },
+      data: { name, email, phone, address, notes, website, abn_number },
     });
     return NextResponse.json(
       {

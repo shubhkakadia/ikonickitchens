@@ -37,7 +37,7 @@ export default function page() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
   const [showItemsPerPageDropdown, setShowItemsPerPageDropdown] =
     useState(false);
@@ -203,9 +203,12 @@ export default function page() {
   };
 
   const getSortIcon = (field) => {
-    if (sortField !== field) return <ArrowUpDown className="h-4 w-4" />;
-    if (sortOrder === "asc") return <ArrowUp className="h-4 w-4" />;
-    if (sortOrder === "desc") return <ArrowDown className="h-4 w-4" />;
+    if (sortField !== field)
+      return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
+    if (sortOrder === "asc")
+      return <ArrowUp className="h-4 w-4 text-primary" />;
+    if (sortOrder === "desc")
+      return <ArrowDown className="h-4 w-4 text-primary" />;
     return null;
   };
 
@@ -305,17 +308,21 @@ export default function page() {
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-slate-600">Loading suppliers details...</p>
+                  <p className="text-sm text-slate-600 font-medium">
+                    Loading suppliers details...
+                  </p>
                 </div>
               </div>
             ) : error ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="h-12 w-12 text-red-500 mx-auto mb-4">⚠️</div>
-                  <p className="text-red-600 mb-4">{error}</p>
+                  <p className="text-sm text-red-600 mb-4 font-medium">
+                    {error}
+                  </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="btn-primary"
+                    className="btn-primary px-4 py-2 text-sm font-medium rounded-lg"
                   >
                     Try Again
                   </button>
@@ -323,16 +330,16 @@ export default function page() {
               </div>
             ) : (
               <>
-                <div className="px-3 py-2 flex-shrink-0">
+                <div className="px-4 py-2 flex-shrink-0">
                   <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-slate-600">
+                    <h1 className="text-xl font-bold text-slate-700">
                       Suppliers
                     </h1>
                     <TabsController
                       href="/admin/suppliers/addsupplier"
                       title="Add Supplier"
                     >
-                      <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-3 py-2 rounded-md flex items-center gap-2 text-sm">
+                      <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
                         <Plus className="h-4 w-4" />
                         Add Supplier
                       </div>
@@ -340,18 +347,18 @@ export default function page() {
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3">
+                <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
                   <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                     {/* Fixed Header Section */}
-                    <div className="p-3 flex-shrink-0">
-                      <div className="flex items-center justify-between">
+                    <div className="p-4 flex-shrink-0 border-b border-slate-200">
+                      <div className="flex items-center justify-between gap-3">
                         {/* search bar */}
-                        <div className="flex items-center gap-2 w-[500px] relative">
+                        <div className="flex items-center gap-2 flex-1 max-w-sm relative">
                           <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                           <input
                             type="text"
                             placeholder="Search suppliers by name or email"
-                            className="w-full text-slate-800 p-2 pl-9 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
+                            className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                           />
@@ -362,7 +369,7 @@ export default function page() {
                           {isAnyFilterActive() && (
                             <button
                               onClick={handleReset}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                             >
                               <RotateCcw className="h-4 w-4" />
                               <span>Reset</span>
@@ -374,17 +381,17 @@ export default function page() {
                               onClick={() =>
                                 setShowSortDropdown(!showSortDropdown)
                               }
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                             >
                               <ArrowUpDown className="h-4 w-4" />
                               <span>Sort by</span>
                             </button>
                             {showSortDropdown && (
-                              <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                              <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
                                 <div className="py-1">
                                   <button
                                     onClick={() => handleSort("name")}
-                                    className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                                   >
                                     Name {getSortIcon("name")}
                                   </button>
@@ -398,7 +405,7 @@ export default function page() {
                               isExporting ||
                               filteredAndSortedSuppliers.length === 0
                             }
-                            className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium ${
+                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium ${
                               isExporting ||
                               filteredAndSortedSuppliers.length === 0
                                 ? "opacity-50 cursor-not-allowed"
@@ -415,13 +422,13 @@ export default function page() {
                     </div>
 
                     {/* Scrollable Table Section */}
-                    <div className="flex-1 overflow-auto px-3">
-                      <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="flex-1 overflow-auto">
+                      <div className="min-w-full">
                         <table className="min-w-full divide-y divide-slate-200">
                           <thead className="bg-slate-50 sticky top-0 z-10">
                             <tr>
                               <th
-                                className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                                 onClick={() => handleSort("name")}
                               >
                                 <div className="flex items-center gap-2">
@@ -429,20 +436,20 @@ export default function page() {
                                   {getSortIcon("name")}
                                 </div>
                               </th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                 Email
                               </th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                 Phone
                               </th>
                             </tr>
                           </thead>
 
-                          <tbody className="bg-white divide-y divide-slate-100">
+                          <tbody className="bg-white divide-y divide-slate-200">
                             {loading ? (
                               <tr>
                                 <td
-                                  className="px-3 py-3 text-xs text-slate-500"
+                                  className="px-4 py-4 text-sm text-slate-500 text-center"
                                   colSpan={3}
                                 >
                                   Loading suppliers...
@@ -451,7 +458,7 @@ export default function page() {
                             ) : error ? (
                               <tr>
                                 <td
-                                  className="px-3 py-3 text-xs text-red-600"
+                                  className="px-4 py-4 text-sm text-red-600 text-center"
                                   colSpan={3}
                                 >
                                   {error}
@@ -460,7 +467,7 @@ export default function page() {
                             ) : paginatedSuppliers.length === 0 ? (
                               <tr>
                                 <td
-                                  className="px-3 py-3 text-xs text-slate-500"
+                                  className="px-4 py-4 text-sm text-slate-500 text-center"
                                   colSpan={3}
                                 >
                                   {search
@@ -486,13 +493,13 @@ export default function page() {
                                   }}
                                   className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
                                 >
-                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
+                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
                                     {supplier.name || "-"}
                                   </td>
-                                  <td className="px-3 py-2 text-xs text-slate-700">
+                                  <td className="px-4 py-3 text-sm text-slate-600">
                                     {supplier.email || "-"}
                                   </td>
-                                  <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
+                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
                                     {supplier.phone || "-"}
                                   </td>
                                 </tr>
@@ -505,12 +512,12 @@ export default function page() {
 
                     {/* Fixed Pagination Footer */}
                     {!loading && !error && paginatedSuppliers.length > 0 && (
-                      <div className="px-3 py-2 flex-shrink-0 border-t border-slate-200">
+                      <div className="px-4 py-3 flex-shrink-0 border-t border-slate-200 bg-slate-50">
                         <div className="flex items-center justify-between">
                           {/* Items per page dropdown and showing indicator */}
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-slate-600">
+                              <span className="text-sm text-slate-600 font-medium">
                                 Showing
                               </span>
                               <div className="relative dropdown-container">
@@ -520,7 +527,7 @@ export default function page() {
                                       !showItemsPerPageDropdown
                                     )
                                   }
-                                  className="cursor-pointer flex items-center gap-2 px-2 py-1 text-xs border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+                                  className="cursor-pointer flex items-center gap-2 px-2 py-1 text-sm border border-slate-300 rounded-lg hover:bg-white transition-colors duration-200 bg-white font-medium"
                                 >
                                   <span>
                                     {itemsPerPage === 0 ? "All" : itemsPerPage}
@@ -530,13 +537,13 @@ export default function page() {
                                 {showItemsPerPageDropdown && (
                                   <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
                                     <div className="py-1">
-                                      {[10, 25, 50, 100, 0].map((value) => (
+                                      {[25, 50, 100, 0].map((value) => (
                                         <button
                                           key={value}
                                           onClick={() =>
                                             handleItemsPerPageChange(value)
                                           }
-                                          className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100"
+                                          className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                                         >
                                           {value === 0 ? "All" : value}
                                         </button>
@@ -545,7 +552,7 @@ export default function page() {
                                   </div>
                                 )}
                               </div>
-                              <span className="text-xs text-slate-600">
+                              <span className="text-sm text-slate-600 font-medium">
                                 of {totalItems} results
                               </span>
                             </div>
@@ -553,11 +560,11 @@ export default function page() {
 
                           {/* Pagination buttons - only show when not showing all items */}
                           {itemsPerPage > 0 && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handlePageChange(1)}
                                 disabled={currentPage === 1}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                               >
                                 <ChevronsLeft className="h-4 w-4" />
                               </button>
@@ -566,7 +573,7 @@ export default function page() {
                                   handlePageChange(currentPage - 1)
                                 }
                                 disabled={currentPage === 1}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                               >
                                 <ChevronLeft className="h-4 w-4" />
                               </button>
@@ -593,10 +600,10 @@ export default function page() {
                                         onClick={() =>
                                           handlePageChange(pageNum)
                                         }
-                                        className={`cursor-pointer px-2 py-1 text-xs rounded-md transition-colors duration-200 ${
+                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${
                                           currentPage === pageNum
-                                            ? "bg-primary text-white"
-                                            : "text-slate-600 hover:bg-slate-100"
+                                            ? "bg-primary text-white shadow-sm"
+                                            : "text-slate-600 hover:bg-white"
                                         }`}
                                       >
                                         {pageNum}
@@ -611,14 +618,14 @@ export default function page() {
                                   handlePageChange(currentPage + 1)
                                 }
                                 disabled={currentPage === totalPages}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                               >
                                 <ChevronRight className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handlePageChange(totalPages)}
                                 disabled={currentPage === totalPages}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                               >
                                 <ChevronsRight className="h-4 w-4" />
                               </button>

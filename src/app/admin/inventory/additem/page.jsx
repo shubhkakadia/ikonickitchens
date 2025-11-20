@@ -444,7 +444,7 @@ export default function page() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="relative" ref={dropdownRef}>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Category <span className="text-red-500">*</span>
+                            Category
                           </label>
                           <div className="relative">
                             <input
@@ -454,7 +454,6 @@ export default function page() {
                               onFocus={() => setIsDropdownOpen(true)}
                               className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                               placeholder="Search or select category..."
-                              required
                             />
                             <button
                               type="button"
@@ -651,14 +650,7 @@ export default function page() {
                               ].map((field) => (
                                 <div key={field}>
                                   <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                    {field}{" "}
-                                    {field === "face" ? (
-                                      <span className="text-slate-400">
-                                        (Optional)
-                                      </span>
-                                    ) : (
-                                      <span className="text-red-500">*</span>
-                                    )}
+                                    {field}
                                   </label>
                                   <input
                                     type="text"
@@ -672,7 +664,6 @@ export default function page() {
                                         : ""
                                     }`}
                                     placeholder={`Enter ${field}`}
-                                    required={field !== "face"}
                                   />
                                 </div>
                               ))}
@@ -710,14 +701,7 @@ export default function page() {
                             ].map((field) => (
                               <div key={field}>
                                 <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                  {field}{" "}
-                                  {field === "material" ? (
-                                    <span className="text-slate-400">
-                                      (Optional)
-                                    </span>
-                                  ) : (
-                                    <span className="text-red-500">*</span>
-                                  )}
+                                  {field}
                                 </label>
                                 <input
                                   type="text"
@@ -726,7 +710,6 @@ export default function page() {
                                   onChange={handleInputChange}
                                   className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                                   placeholder={`Enter ${field}`}
-                                  required={field !== "material"}
                                 />
                               </div>
                             ))}
@@ -740,8 +723,7 @@ export default function page() {
                               ref={subCategoryDropdownRef}
                             >
                               <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                Sub Category{" "}
-                                <span className="text-red-500">*</span>
+                                Sub Category
                               </label>
                               <div className="relative">
                                 <input
@@ -760,7 +742,6 @@ export default function page() {
                                   }}
                                   className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                                   placeholder="Search or select sub category..."
-                                  required
                                 />
                                 <button
                                   type="button"
@@ -812,8 +793,7 @@ export default function page() {
                               (field) => (
                                 <div key={field}>
                                   <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                    {field.replace("_", " ")}{" "}
-                                    <span className="text-red-500">*</span>
+                                    {field.replace("_", " ")}
                                   </label>
                                   <input
                                     type="text"
@@ -825,7 +805,6 @@ export default function page() {
                                       "_",
                                       " "
                                     )}`}
-                                    required
                                   />
                                 </div>
                               )
@@ -837,8 +816,7 @@ export default function page() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Item Name{" "}
-                                <span className="text-red-500">*</span>
+                                Item Name
                               </label>
                               <input
                                 type="text"
@@ -847,7 +825,6 @@ export default function page() {
                                 onChange={handleInputChange}
                                 className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                                 placeholder="Eg. Marker Pen"
-                                required
                               />
                             </div>
                           </div>
@@ -859,8 +836,7 @@ export default function page() {
                               (field) => (
                                 <div key={field}>
                                   <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                    {field}{" "}
-                                    <span className="text-red-500">*</span>
+                                    {field}
                                   </label>
                                   <input
                                     type="text"
@@ -869,7 +845,6 @@ export default function page() {
                                     onChange={handleInputChange}
                                     className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                                     placeholder={`Enter ${field}`}
-                                    required
                                   />
                                 </div>
                               )

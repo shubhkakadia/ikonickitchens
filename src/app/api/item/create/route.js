@@ -62,7 +62,6 @@ export async function POST(request, { params }) {
     const createdItem = await prisma.item.create({
       data: {
         description,
-        image: null,
         price: price ? parseFloat(price) : null,
         quantity: quantity ? parseInt(quantity) : null,
         category: category.toUpperCase(),
@@ -71,23 +70,44 @@ export async function POST(request, { params }) {
       },
     });
 
-    let imagePath = null;
+    let imageId = null;
 
     // Handle file upload if image is provided
     if (imageFile) {
-      const uploadResult = await uploadFile(imageFile, {
-        uploadDir: "uploads",
-        subDir: `items/${category}`,
-        filenameStrategy: "id-based",
-        idPrefix: createdItem.item_id,
-      });
-      imagePath = uploadResult.relativePath;
+      try {
+        // Upload file with ID-based naming
+        const uploadResult = await uploadFile(imageFile, {
+          uploadDir: "uploads",
+          subDir: `items/${category}`,
+          filenameStrategy: "id-based",
+          idPrefix: createdItem.item_id,
+        });
 
-      // Update item with image path
-      await prisma.item.update({
-        where: { item_id: createdItem.item_id },
-        data: { image: imagePath },
-      });
+        // Create media record
+        const media = await prisma.media.create({
+          data: {
+            url: uploadResult.relativePath,
+            filename: uploadResult.originalFilename,
+            file_type: uploadResult.fileType,
+            mime_type: uploadResult.mimeType,
+            extension: uploadResult.extension,
+            size: uploadResult.size,
+            item_id: createdItem.item_id,
+          },
+        });
+
+        imageId = media.id;
+
+        // Update item with image_id
+        await prisma.item.update({
+          where: { item_id: createdItem.item_id },
+          data: { image_id: imageId },
+        });
+      } catch (error) {
+        console.error("Error handling image upload:", error);
+        // Continue without image if upload fails
+        // Item is already created, so we don't fail the whole request
+      }
     }
 
     // Create category-specific record using item_id
@@ -149,22 +169,24 @@ export async function POST(request, { params }) {
       });
     }
 
-    // include sheet, handle, hardware, accessory in item
-    const item = {
-      ...createdItem,
-      image: imagePath || createdItem.image,
-      sheet,
-      handle,
-      hardware,
-      accessory,
-      edging_tape,
-    };
+    // Fetch the updated item with image relation
+    const updatedItem = await prisma.item.findUnique({
+      where: { item_id: createdItem.item_id },
+      include: {
+        image: true,
+        sheet: true,
+        handle: true,
+        hardware: true,
+        accessory: true,
+        edging_tape: true,
+      },
+    });
 
     return NextResponse.json(
       {
         status: true,
         message: "Item created successfully",
-        data: item,
+        data: updatedItem,
       },
       { status: 201 }
     );

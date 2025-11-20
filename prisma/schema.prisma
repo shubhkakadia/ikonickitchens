@@ -362,9 +362,9 @@ model item {
 
 model sheet {
   item_id    String   @id @unique
-  brand      String
-  color      String
-  finish     String
+  brand      String?
+  color      String?
+  finish     String?
   face       String?
   dimensions String
   is_sunmica Boolean  @default(false)
@@ -375,10 +375,10 @@ model sheet {
 
 model handle {
   item_id    String   @id @unique
-  brand      String
-  color      String
-  type       String
-  dimensions String
+  brand      String?
+  color      String?
+  type       String?
+  dimensions String?
   material   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -387,11 +387,11 @@ model handle {
 
 model hardware {
   item_id      String   @id @unique
-  brand        String
-  name         String
-  type         String
-  dimensions   String
-  sub_category String
+  brand        String?
+  name         String?
+  type         String?
+  dimensions   String?
+  sub_category String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   item         item     @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
@@ -399,7 +399,7 @@ model hardware {
 
 model accessory {
   item_id   String   @id @unique
-  name      String
+  name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   item      item     @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
@@ -407,10 +407,10 @@ model accessory {
 
 model edging_tape {
   item_id    String   @id @unique
-  brand      String
-  color      String
-  finish     String
-  dimensions String
+  brand      String?
+  color      String?
+  finish     String?
+  dimensions String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   item       item     @relation(fields: [item_id], references: [item_id], onDelete: Cascade)

@@ -38,6 +38,7 @@ export async function GET(request, { params }) {
                 hardware: true,
                 accessory: true,
                 edging_tape: true,
+                image: true,
               },
             },
           },
@@ -136,6 +137,7 @@ export async function PATCH(request, { params }) {
                 hardware: true,
                 accessory: true,
                 edging_tape: true,
+                image: true,
               },
             },
           },
@@ -194,7 +196,7 @@ export async function DELETE(request, { params }) {
       );
     }
     const { id } = await params;
-    
+
     // Update lots to remove reference to this MTO
     await prisma.lot.updateMany({
       where: { materials_to_orders_id: id },

@@ -68,11 +68,13 @@ export async function GET(request, { params }) {
             name: true,
           },
         },
-        versions: {select: {
-          id: true,
-          version_number: true,
-          createdAt: true,
-        }}
+        versions: {
+          select: {
+            id: true,
+            version_number: true,
+            createdAt: true,
+          },
+        },
       },
     });
 
@@ -115,7 +117,6 @@ export async function PATCH(request, { params }) {
         { status: 401 }
       );
     }
-    
   } catch (error) {
     return NextResponse.json(
       { status: false, message: "Internal Server Error", error: error.message },
@@ -139,7 +140,6 @@ export async function DELETE(request, { params }) {
         { status: 401 }
       );
     }
-   
   } catch (error) {
     return NextResponse.json(
       { status: false, message: "Internal Server Error", error: error.message },

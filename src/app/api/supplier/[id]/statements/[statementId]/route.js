@@ -44,14 +44,18 @@ export async function PATCH(request, { params }) {
 
     if (existingStatement.supplier_id !== id) {
       return NextResponse.json(
-        { status: false, message: "Statement does not belong to this supplier" },
+        {
+          status: false,
+          message: "Statement does not belong to this supplier",
+        },
         { status: 403 }
       );
     }
 
     // Check Content-Type
     const contentType = request.headers.get("Content-Type");
-    const isFormData = contentType && contentType.includes("multipart/form-data");
+    const isFormData =
+      contentType && contentType.includes("multipart/form-data");
 
     let month_year, due_date, amount, payment_status, notes, file;
 
@@ -84,8 +88,10 @@ export async function PATCH(request, { params }) {
     const updateData = {};
     if (month_year !== undefined) updateData.month_year = month_year;
     if (due_date !== undefined) updateData.due_date = new Date(due_date);
-    if (amount !== undefined) updateData.amount = amount ? parseFloat(amount) : null;
-    if (payment_status !== undefined) updateData.payment_status = payment_status;
+    if (amount !== undefined)
+      updateData.amount = amount ? parseFloat(amount) : null;
+    if (payment_status !== undefined)
+      updateData.payment_status = payment_status;
     if (notes !== undefined) updateData.notes = notes || null;
 
     // Handle file upload if new file is provided
@@ -96,10 +102,9 @@ export async function PATCH(request, { params }) {
       }
 
       // Upload new file
-      const sanitizedMonthYear = (month_year || existingStatement.month_year).replace(
-        /[^a-zA-Z0-9_-]/g,
-        "_"
-      );
+      const sanitizedMonthYear = (
+        month_year || existingStatement.month_year
+      ).replace(/[^a-zA-Z0-9_-]/g, "_");
       const uploadResult = await uploadFile(file, {
         uploadDir: "uploads",
         subDir: `suppliers/${id}/statements`,
@@ -198,7 +203,10 @@ export async function DELETE(request, { params }) {
 
     if (statement.supplier_id !== id) {
       return NextResponse.json(
-        { status: false, message: "Statement does not belong to this supplier" },
+        {
+          status: false,
+          message: "Statement does not belong to this supplier",
+        },
         { status: 403 }
       );
     }
@@ -232,4 +240,3 @@ export async function DELETE(request, { params }) {
     );
   }
 }
-

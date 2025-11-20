@@ -261,6 +261,21 @@ export default function page() {
 
   // Validate and format image URL
   const getImageUrl = (image) => {
+    // Handle image object (media relation) - extract URL
+    if (image && typeof image === "object" && image.url) {
+      const url = image.url;
+      // If it's already a full URL, return as is
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        return url;
+      }
+      // If it's a relative path, ensure it starts with /
+      if (url.startsWith("/")) {
+        return url;
+      }
+      // Otherwise, add leading slash
+      return `/${url}`;
+    }
+    // Handle string format (backward compatibility)
     if (
       !image ||
       typeof image !== "string" ||

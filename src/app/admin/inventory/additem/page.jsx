@@ -1,13 +1,7 @@
 "use client";
 import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
-import {
-  ChevronLeft,
-  ChevronDown,
-  Upload,
-  X,
-  Package,
-} from "lucide-react";
+import { ChevronLeft, ChevronDown, Upload, X, Package } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import React, { useState, useRef, useEffect } from "react";
@@ -36,7 +30,13 @@ export default function page() {
   const fileInputRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState("Sheet");
   const [imagePreview, setImagePreview] = useState(null);
-  const categories = ["Sheet", "Handle", "Hardware", "Accessory", "Edging Tape"];
+  const categories = [
+    "Sheet",
+    "Handle",
+    "Hardware",
+    "Accessory",
+    "Edging Tape",
+  ];
   const [formData, setFormData] = useState({
     image: "",
     category: selectedCategory.toLowerCase(),
@@ -208,13 +208,13 @@ export default function page() {
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const inputValue = type === "checkbox" ? checked : value;
-    
+
     setFormData((prev) => {
       const updated = {
         ...prev,
         [name]: inputValue,
       };
-      
+
       // If is_sunmica is checked, set face to "1" and disable it
       if (name === "is_sunmica" && checked) {
         updated.face = "1";
@@ -223,7 +223,7 @@ export default function page() {
       if (name === "is_sunmica" && !checked && prev.face === "1") {
         updated.face = "";
       }
-      
+
       return updated;
     });
   };
@@ -246,7 +246,7 @@ export default function page() {
       const data = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
         // Convert boolean to string for FormData
-        if (typeof value === 'boolean') {
+        if (typeof value === "boolean") {
           data.append(key, value.toString());
         } else if (value !== null && value !== undefined) {
           data.append(key, value);
@@ -657,7 +657,9 @@ export default function page() {
                                     name={field}
                                     value={formData[field]}
                                     onChange={handleInputChange}
-                                    disabled={field === "face" && formData.is_sunmica}
+                                    disabled={
+                                      field === "face" && formData.is_sunmica
+                                    }
                                     className={`w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
                                       field === "face" && formData.is_sunmica
                                         ? "bg-slate-100 cursor-not-allowed"
@@ -683,7 +685,8 @@ export default function page() {
                               </label>
                               {formData.is_sunmica && (
                                 <p className="mt-1 text-xs text-slate-500">
-                                  Face field is automatically set to "1" for sunmica items
+                                  Face field is automatically set to "1" for
+                                  sunmica items
                                 </p>
                               )}
                             </div>

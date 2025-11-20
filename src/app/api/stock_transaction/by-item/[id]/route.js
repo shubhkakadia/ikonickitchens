@@ -20,7 +20,7 @@ export async function GET(request, { params }) {
         { status: 401 }
       );
     }
-    
+
     const { id } = await params;
     const stockTransactions = await prisma.stock_transaction.findMany({
       where: { item_id: id },

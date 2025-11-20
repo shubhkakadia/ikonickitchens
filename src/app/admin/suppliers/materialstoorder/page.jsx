@@ -280,7 +280,7 @@ export default function page() {
         const rows = (mto.items || []).map((it) => {
           const item = it.item || {};
           const supplierName = item.supplier?.name || "";
-          const imageUrl = item.image ? `${origin}/${item.image}` : "";
+          const imageUrl = item.image?.url ? `${origin}/${item.image.url}` : "";
           const category = item.category || "";
           // Sheet details
           const sheetColor = item.sheet?.color || "";
@@ -1031,9 +1031,10 @@ export default function page() {
                                                                   <td className="px-3 py-2 whitespace-nowrap">
                                                                     <div className="flex items-center">
                                                                       {item.item
-                                                                        ?.image ? (
+                                                                        ?.image
+                                                                        ?.url ? (
                                                                         <img
-                                                                          src={`/${item.item.image}`}
+                                                                          src={`/${item.item.image.url}`}
                                                                           alt={
                                                                             item.item_id
                                                                           }
@@ -1053,6 +1054,7 @@ export default function page() {
                                                                           item
                                                                             .item
                                                                             ?.image
+                                                                            ?.url
                                                                             ? "hidden"
                                                                             : "flex"
                                                                         }`}

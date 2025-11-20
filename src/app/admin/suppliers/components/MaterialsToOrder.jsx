@@ -647,9 +647,9 @@ export default function MaterialsToOrder({
                                               >
                                                 <td className="px-3 py-2 whitespace-nowrap">
                                                   <div className="flex items-center">
-                                                    {item.item?.image ? (
+                                                    {item.item?.image?.url ? (
                                                       <img
-                                                        src={`/${item.item.image}`}
+                                                        src={`/${item.item.image.url}`}
                                                         alt={item.item_id}
                                                         className="w-10 h-10 object-cover rounded border border-slate-200"
                                                         onError={(e) => {
@@ -662,7 +662,7 @@ export default function MaterialsToOrder({
                                                     ) : null}
                                                     <div
                                                       className={`w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                                        item.item?.image
+                                                        item.item?.image?.url
                                                           ? "hidden"
                                                           : "flex"
                                                       }`}
@@ -684,10 +684,8 @@ export default function MaterialsToOrder({
                                                           <span className="font-medium">
                                                             Brand:
                                                           </span>{" "}
-                                                          {
-                                                            item.item.sheet
-                                                              .brand || "-"
-                                                          }
+                                                          {item.item.sheet
+                                                            .brand || "-"}
                                                         </div>
                                                         <div>
                                                           <span className="font-medium">
@@ -731,10 +729,8 @@ export default function MaterialsToOrder({
                                                           <span className="font-medium">
                                                             Brand:
                                                           </span>{" "}
-                                                          {
-                                                            item.item.handle
-                                                              .brand || "-"
-                                                          }
+                                                          {item.item.handle
+                                                            .brand || "-"}
                                                         </div>
                                                         <div>
                                                           <span className="font-medium">
@@ -778,10 +774,8 @@ export default function MaterialsToOrder({
                                                           <span className="font-medium">
                                                             Brand:
                                                           </span>{" "}
-                                                          {
-                                                            item.item.hardware
-                                                              .brand || "-"
-                                                          }
+                                                          {item.item.hardware
+                                                            .brand || "-"}
                                                         </div>
                                                         <div>
                                                           <span className="font-medium">
@@ -840,37 +834,29 @@ export default function MaterialsToOrder({
                                                           <span className="font-medium">
                                                             Brand:
                                                           </span>{" "}
-                                                          {
-                                                            item.item.edging_tape
-                                                              .brand || "-"
-                                                          }
+                                                          {item.item.edging_tape
+                                                            .brand || "-"}
                                                         </div>
                                                         <div>
                                                           <span className="font-medium">
                                                             Color:
                                                           </span>{" "}
-                                                          {
-                                                            item.item.edging_tape
-                                                              .color || "-"
-                                                          }
+                                                          {item.item.edging_tape
+                                                            .color || "-"}
                                                         </div>
                                                         <div>
                                                           <span className="font-medium">
                                                             Finish:
                                                           </span>{" "}
-                                                          {
-                                                            item.item.edging_tape
-                                                              .finish || "-"
-                                                          }
+                                                          {item.item.edging_tape
+                                                            .finish || "-"}
                                                         </div>
                                                         <div>
                                                           <span className="font-medium">
                                                             Dimensions:
                                                           </span>{" "}
-                                                          {
-                                                            item.item.edging_tape
-                                                              .dimensions || "-"
-                                                          }
+                                                          {item.item.edging_tape
+                                                            .dimensions || "-"}
                                                         </div>
                                                       </>
                                                     )}

@@ -456,9 +456,9 @@ export default function PurchaseOrderForm({
                           {/* Image Column */}
                           <td className="px-4 py-2 whitespace-nowrap">
                             <div className="flex items-center">
-                              {item.item.image ? (
+                              {item.item.image?.url ? (
                                 <img
-                                  src={`/${item.item.image}`}
+                                  src={`/${item.item.image.url}`}
                                   alt={item.item_id}
                                   className="w-12 h-12 object-cover rounded border border-slate-200"
                                   onError={(e) => {
@@ -469,7 +469,7 @@ export default function PurchaseOrderForm({
                               ) : null}
                               <div
                                 className={`w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                  item.item.image ? "hidden" : "flex"
+                                  item.item.image?.url ? "hidden" : "flex"
                                 }`}
                               >
                                 <Package className="w-6 h-6 text-slate-400" />

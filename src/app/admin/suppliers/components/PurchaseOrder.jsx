@@ -736,9 +736,9 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                       >
                                         <td className="px-3 py-2 whitespace-nowrap">
                                           <div className="flex items-center">
-                                            {item.item?.image ? (
+                                            {item.item?.image?.url ? (
                                               <img
-                                                src={`/${item.item.image}`}
+                                                src={`/${item.item.image.url}`}
                                                 alt={item.item.item_id}
                                                 className="w-10 h-10 object-cover rounded border border-slate-200"
                                                 onError={(e) => {
@@ -751,7 +751,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                             ) : null}
                                             <div
                                               className={`w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                                item.item?.image
+                                                item.item?.image?.url
                                                   ? "hidden"
                                                   : "flex"
                                               }`}

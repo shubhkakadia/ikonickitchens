@@ -13,14 +13,13 @@ export default function CRMLayout() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const tabContainerRef = useRef(null);
-  
+
   useEffect(() => {
     if (router.pathname === "/") {
       dispatch(setActiveTab(tabs[0]));
       router.push(tabs[0].href);
     }
-  }, [router])
-  
+  }, [router]);
 
   // Check scroll position and update button states
   const checkScrollPosition = () => {

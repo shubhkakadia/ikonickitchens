@@ -40,7 +40,11 @@ export async function GET(request) {
       where: { is_deleted: true },
     });
 
-    const deletedMedia = [...lotFilesDeletedMedia, ...mediaDeletedMedia, ...supplierFilesDeletedMedia];
+    const deletedMedia = [
+      ...lotFilesDeletedMedia,
+      ...mediaDeletedMedia,
+      ...supplierFilesDeletedMedia,
+    ];
 
     return NextResponse.json(
       {

@@ -94,8 +94,7 @@ export async function DELETE(request, { params }) {
         { status: 401 }
       );
     }
-  }
-  catch (error) {
+  } catch (error) {
     return NextResponse.json(
       { status: false, message: "Internal Server Error", error: error.message },
       { status: 500 }

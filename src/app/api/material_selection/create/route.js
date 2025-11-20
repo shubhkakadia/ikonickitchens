@@ -211,7 +211,7 @@ export async function POST(request) {
       // Find the highest version number for this specific material_selection_id
       // This ensures version numbers are scoped to the same lot_id (since material_selection is unique per lot_id)
       const latestVersion = await tx.material_selection_versions.findFirst({
-        where: { 
+        where: {
           material_selection_id: materialSelectionId, // Scoped to this material_selection (which is unique per lot_id)
         },
         orderBy: { version_number: "desc" },
@@ -251,7 +251,8 @@ export async function POST(request) {
             create: area.items.map((item) => ({
               name: item.name,
               category: item.category || null,
-              is_applicable: item.is_applicable !== undefined ? item.is_applicable : false,
+              is_applicable:
+                item.is_applicable !== undefined ? item.is_applicable : false,
               item_notes: item.item_notes || null,
             })),
           };

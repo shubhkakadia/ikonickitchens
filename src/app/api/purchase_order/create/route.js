@@ -5,10 +5,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
-import {
-  uploadFile,
-  getFileFromFormData,
-} from "@/lib/fileHandler";
+import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
 
 export async function POST(request) {
   try {
@@ -85,7 +82,9 @@ export async function POST(request) {
         }
       }
 
-      const file = getFileFromFormData(form, "invoice") || getFileFromFormData(form, "file");
+      const file =
+        getFileFromFormData(form, "invoice") ||
+        getFileFromFormData(form, "file");
       if (file) {
         if (!order_no) {
           return NextResponse.json(
@@ -186,13 +185,10 @@ export async function POST(request) {
           },
         });
 
-        const itemIdToMtoItem = new Map(
-          mtoItems.map((mi) => [mi.item_id, mi])
-        );
+        const itemIdToMtoItem = new Map(mtoItems.map((mi) => [mi.item_id, mi]));
 
         // Apply cumulative ordered quantity per matching item
         for (const poi of createdPO.items) {
-
           const mtoItem = itemIdToMtoItem.get(poi.item_id);
           if (!mtoItem) continue;
           const alreadyOrdered = Number(mtoItem.quantity_ordered || 0);

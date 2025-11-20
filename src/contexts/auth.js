@@ -2,10 +2,10 @@ import { getCookie, setCookie, deleteCookie } from "cookies-next";
 
 /**
  * Authentication utility functions for token/cookie management.
- * 
+ *
  * NOTE: This is a utility file, not a React context.
  * For React context and hooks, use AuthContext.jsx and the useAuth() hook.
- * 
+ *
  * This file provides low-level cookie/token management functions that are used
  * by both the AuthContext and Redux actions for authentication state management.
  */

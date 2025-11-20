@@ -61,7 +61,7 @@ export default function Carousel({ images = [], projectTitle = "" }) {
               }`}
             >
               <Image
-              loading="lazy"
+                loading="lazy"
                 src={image}
                 alt={`${projectTitle} - Image ${index + 1}`}
                 fill
@@ -148,7 +148,7 @@ export default function Carousel({ images = [], projectTitle = "" }) {
               aria-label={`Go to image ${index + 1}`}
             >
               <Image
-              loading="lazy"
+                loading="lazy"
                 src={image}
                 alt={`Thumbnail ${index + 1}`}
                 fill

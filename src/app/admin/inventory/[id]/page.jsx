@@ -961,10 +961,15 @@ export default function page() {
                                 </p>
                               </div>
                             </div>
-                          ) : item.image || imagePreview ? (
-                            <button onClick={() => setSelectedFile(true)}>
+                          ) : item.image?.url || imagePreview ? (
+                            <button
+                              onClick={() =>
+                                (item.image?.url || imagePreview) &&
+                                setSelectedFile(true)
+                              }
+                            >
                               <Image
-                                src={imagePreview || `/${item.image}`}
+                                src={imagePreview || `/${item.image.url}`}
                                 alt={item.item_id}
                                 fill
                                 className="cursor-pointer object-cover rounded-lg border border-slate-200 transition-all duration-300 group-hover:scale-110"
@@ -1247,7 +1252,8 @@ export default function page() {
                         <Package className="w-4 h-4" />
                         Stock Transactions
                       </h3>
-                      {item.stock_transactions && item.stock_transactions.length > 0 ? (
+                      {item.stock_transactions &&
+                      item.stock_transactions.length > 0 ? (
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
@@ -1274,14 +1280,20 @@ export default function page() {
                             </thead>
                             <tbody>
                               {item.stock_transactions
-                                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                                .sort(
+                                  (a, b) =>
+                                    new Date(b.createdAt) -
+                                    new Date(a.createdAt)
+                                )
                                 .map((transaction) => (
                                   <tr
                                     key={transaction.id}
                                     className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
                                   >
                                     <td className="py-2 px-3 text-slate-700">
-                                      {new Date(transaction.createdAt).toLocaleString("en-US", {
+                                      {new Date(
+                                        transaction.createdAt
+                                      ).toLocaleString("en-US", {
                                         year: "numeric",
                                         month: "short",
                                         day: "numeric",
@@ -1312,7 +1324,8 @@ export default function page() {
                                       )}
                                     </td>
                                     <td className="py-2 px-3 text-slate-600">
-                                      {transaction.type === "ADDED" && transaction.purchase_order?.order_no ? (
+                                      {transaction.type === "ADDED" &&
+                                      transaction.purchase_order?.order_no ? (
                                         <span className="text-xs font-medium text-primary">
                                           {transaction.purchase_order.order_no}
                                         </span>
@@ -1321,18 +1334,28 @@ export default function page() {
                                       )}
                                     </td>
                                     <td className="py-2 px-3 text-slate-600">
-                                      {transaction.type === "USED" && transaction.materials_to_order?.project?.name ? (
+                                      {transaction.type === "USED" &&
+                                      transaction.materials_to_order?.project
+                                        ?.name ? (
                                         <span className="text-xs font-medium text-slate-800">
-                                          {transaction.materials_to_order.project.name}
+                                          {
+                                            transaction.materials_to_order
+                                              .project.name
+                                          }
                                         </span>
                                       ) : (
                                         "-"
                                       )}
                                     </td>
                                     <td className="py-2 px-3 text-slate-600">
-                                      {transaction.type === "USED" && transaction.materials_to_order?.lots && transaction.materials_to_order.lots.length > 0 ? (
+                                      {transaction.type === "USED" &&
+                                      transaction.materials_to_order?.lots &&
+                                      transaction.materials_to_order.lots
+                                        .length > 0 ? (
                                         <span className="text-xs font-medium text-slate-800">
-                                          {transaction.materials_to_order.lots.map(lot => lot.lot_id).join(", ")}
+                                          {transaction.materials_to_order.lots
+                                            .map((lot) => lot.lot_id)
+                                            .join(", ")}
                                         </span>
                                       ) : (
                                         "-"
@@ -1384,7 +1407,9 @@ export default function page() {
                 <h3 className="text-lg font-semibold text-slate-800 truncate">
                   {getItemTitle()}
                 </h3>
-                <p className="text-xs text-slate-500">{item.image}</p>
+                <p className="text-xs text-slate-500">
+                  {imagePreview ? "New image" : item.image?.url || "-"}
+                </p>
               </div>
               <button
                 onClick={() => {
@@ -1399,26 +1424,42 @@ export default function page() {
             {/* Modal Content */}
             <div className="relative flex-1 overflow-auto p-6 bg-slate-50">
               <div className="flex items-center justify-center h-full">
-                <Image
-                  loading="lazy"
-                  src={`/${item.image}`}
-                  alt={item.item_id}
-                  width={1000}
-                  height={1000}
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                />
+                {imagePreview ? (
+                  <Image
+                    loading="lazy"
+                    src={imagePreview}
+                    alt={item.item_id}
+                    width={1000}
+                    height={1000}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                  />
+                ) : item.image?.url ? (
+                  <Image
+                    loading="lazy"
+                    src={`/${item.image.url}`}
+                    alt={item.item_id}
+                    width={1000}
+                    height={1000}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-slate-500">
+                    No image available
+                  </div>
+                )}
               </div>
 
               {/* Floating Info and Download Button */}
               <div className="sticky bottom-4 left-4 right-4 flex items-center justify-between gap-4 z-50 pointer-events-auto">
                 <button
                   onClick={() => {
-                    // Check if it's a File/Blob object (has type property and is an object)
-                    if (typeof item.image === "string") {
+                    // Check if image URL exists
+                    if (item.image?.url) {
                       // For existing files (URL string like /upload/item/item.jpeg)
                       const a = document.createElement("a");
-                      a.href = item.image;
-                      a.download = item.item_id || "download";
+                      a.href = `/${item.image.url}`;
+                      a.download =
+                        item.image.filename || item.item_id || "download";
                       a.target = "_blank";
                       document.body.appendChild(a);
                       a.click();

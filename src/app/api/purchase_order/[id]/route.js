@@ -5,10 +5,7 @@ import {
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
-import {
-  uploadFile,
-  getFileFromFormData,
-} from "@/lib/fileHandler";
+import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
 
 export async function GET(request, { params }) {
   try {
@@ -38,6 +35,8 @@ export async function GET(request, { params }) {
                 handle: true,
                 hardware: true,
                 accessory: true,
+                edging_tape: true,
+                image: true,
               },
             },
           },
@@ -159,11 +158,13 @@ export async function PATCH(request, { params }) {
       }
 
       // Optional invoice file upload
-      const file = getFileFromFormData(form, "invoice") || getFileFromFormData(form, "file");
+      const file =
+        getFileFromFormData(form, "invoice") ||
+        getFileFromFormData(form, "file");
       if (file) {
         const order_no = existing.order_no; // immutable
         const supplier_id = existing.supplier_id; // needed for supplier_file link
-        
+
         // Upload file with order_no as the filename base
         const uploadResult = await uploadFile(file, {
           uploadDir: "uploads",
@@ -215,8 +216,11 @@ export async function PATCH(request, { params }) {
       // Filter out items with no updates (either new_delivery > 0 or quantity_received provided)
       const itemsToUpdate = receivedItems.filter(
         (item) =>
-          (item.new_delivery !== undefined && item.new_delivery !== null && parseFloat(item.new_delivery || 0) > 0) ||
-          (item.quantity_received !== undefined && item.quantity_received !== null)
+          (item.new_delivery !== undefined &&
+            item.new_delivery !== null &&
+            parseFloat(item.new_delivery || 0) > 0) ||
+          (item.quantity_received !== undefined &&
+            item.quantity_received !== null)
       );
 
       if (itemsToUpdate.length > 0) {
@@ -255,11 +259,19 @@ export async function PATCH(request, { params }) {
           let newTotalReceived;
           let newDelivery;
 
-          if (itemUpdate.quantity_received !== undefined && itemUpdate.quantity_received !== null) {
+          if (
+            itemUpdate.quantity_received !== undefined &&
+            itemUpdate.quantity_received !== null
+          ) {
             // Frontend sends total quantity_received
-            newTotalReceived = Math.floor(parseFloat(itemUpdate.quantity_received || 0));
+            newTotalReceived = Math.floor(
+              parseFloat(itemUpdate.quantity_received || 0)
+            );
             newDelivery = newTotalReceived - currentReceived;
-          } else if (itemUpdate.new_delivery !== undefined && itemUpdate.new_delivery !== null) {
+          } else if (
+            itemUpdate.new_delivery !== undefined &&
+            itemUpdate.new_delivery !== null
+          ) {
             // Frontend sends incremental new_delivery
             newDelivery = Math.floor(parseFloat(itemUpdate.new_delivery || 0));
             newTotalReceived = currentReceived + newDelivery;
@@ -287,7 +299,10 @@ export async function PATCH(request, { params }) {
             select: { quantity: true },
           });
 
-          const currentItemQuantity = parseInt(itemQuantityResult?.quantity || 0, 10);
+          const currentItemQuantity = parseInt(
+            itemQuantityResult?.quantity || 0,
+            10
+          );
           const itemUpdateOp = prisma.item.update({
             where: { item_id: existingItem.item_id },
             data: {

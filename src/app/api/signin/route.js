@@ -48,8 +48,8 @@ export async function POST(request) {
     }
 
     // Generate session token (using random bytes for better security)
-    const sessionToken = crypto.randomBytes(32).toString('hex');
-    
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+
     // Set session expiry (1 month from now)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
@@ -63,7 +63,6 @@ export async function POST(request) {
         expires_at: expiresAt,
       },
     });
-
 
     return NextResponse.json(
       {

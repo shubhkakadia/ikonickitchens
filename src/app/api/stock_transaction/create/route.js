@@ -13,7 +13,7 @@ import {
  */
 async function handleUsedTransaction(data) {
   const { item_id, quantity, materials_to_order_id, notes } = data;
-  
+
   // Find the materials_to_order_item by mto_id and item_id
   const mtoItem = await prisma.materials_to_order_item.findFirst({
     where: {
@@ -347,7 +347,14 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { item_id, quantity, type, notes, purchase_order_id, materials_to_order_id } = body;
+    const {
+      item_id,
+      quantity,
+      type,
+      notes,
+      purchase_order_id,
+      materials_to_order_id,
+    } = body;
 
     // Validate required fields
     if (!item_id || quantity === undefined || quantity === null || !type) {

@@ -278,7 +278,7 @@ export default function page() {
                           {previewImages.map((preview, index) => (
                             <div key={index} className="relative">
                               <Image
-                              loading="lazy"
+                                loading="lazy"
                                 width={100}
                                 height={100}
                                 src={preview}

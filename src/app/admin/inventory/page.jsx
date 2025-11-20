@@ -1182,9 +1182,9 @@ export default function page() {
                             >
                               <td className="px-4 py-2">
                                 <div className="w-10 h-10">
-                                  {item.image ? (
+                                  {item.image?.url ? (
                                     <Image
-                                      src={`/${item.image}`}
+                                      src={`/${item.image.url}`}
                                       alt={item.description || "Item"}
                                       width={40}
                                       height={40}

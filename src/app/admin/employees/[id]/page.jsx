@@ -109,7 +109,10 @@ export default function EmployeeDetailPage() {
       if (response.data.status) {
         const employeeData = response.data.data;
         // Parse availability if it's a JSON string
-        if (employeeData.availability && typeof employeeData.availability === 'string') {
+        if (
+          employeeData.availability &&
+          typeof employeeData.availability === "string"
+        ) {
           try {
             employeeData.availability = JSON.parse(employeeData.availability);
           } catch (e) {
@@ -211,15 +214,15 @@ export default function EmployeeDetailPage() {
       // Determine content type and data to send
       const isFormData = imageFile !== null || removeImage;
       let dataToSend = isFormData ? formDataToSend : updatedData;
-      
+
       // If sending JSON, ensure availability is stringified
       if (!isFormData && updatedData.availability) {
         dataToSend = {
           ...updatedData,
-          availability: JSON.stringify(updatedData.availability)
+          availability: JSON.stringify(updatedData.availability),
         };
       }
-      
+
       const contentType = isFormData
         ? "multipart/form-data"
         : "application/json";
@@ -282,7 +285,7 @@ export default function EmployeeDetailPage() {
       // Initialize availability with all days, using existing data or empty strings
       // Parse availability if it's a JSON string
       let availability = employee.availability || {};
-      if (typeof availability === 'string') {
+      if (typeof availability === "string") {
         try {
           availability = JSON.parse(availability);
         } catch (e) {
@@ -293,14 +296,20 @@ export default function EmployeeDetailPage() {
       const formattedAvailability = {};
 
       // Always initialize all weekdays for editing
-      ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].forEach(
-        (day) => {
-          formattedAvailability[day] = {
-            start: availability[day]?.start || "",
-            end: availability[day]?.end || "",
-          };
-        }
-      );
+      [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ].forEach((day) => {
+        formattedAvailability[day] = {
+          start: availability[day]?.start || "",
+          end: availability[day]?.end || "",
+        };
+      });
 
       setEditData({
         employee_id: employee.employee_id,
@@ -932,90 +941,94 @@ export default function EmployeeDetailPage() {
                       )}
                       <div className="flex-1">
                         {isEditing ? (
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  value={editData.first_name || ""}
-                                  onChange={(e) =>
-                                    handleInputChange(
-                                      "first_name",
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder={employee.first_name}
-                                  className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                />
-                                <input
-                                  type="text"
-                                  value={editData.last_name || ""}
-                                  onChange={(e) =>
-                                    handleInputChange("last_name", e.target.value)
-                                  }
-                                  placeholder={employee.last_name}
-                                  className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                />
-                                <select
-                                  value={editData.role || ""}
-                                  onChange={(e) =>
-                                    handleInputChange("role", e.target.value)
-                                  }
-                                  className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                >
-                                  <option value="">Select Type</option>
-                                  <option value="Administrator">
-                                    Administrator
-                                  </option>
-                                  <option value="Site Manager">Site Manager</option>
-                                  <option value="Supervisor">Supervisor</option>
-                                  <option value="Employee">Employee</option>
-                                  <option value="Contractor">Contractor</option>
-                                  <option value="CNC Operator">CNC Operator</option>
-                                </select>
-                              </div>
-                              <p className="text-sm text-slate-500">
-                                Employee ID: {employee.employee_id}
-                              </p>
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editData.first_name || ""}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "first_name",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder={employee.first_name}
+                                className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                              />
+                              <input
+                                type="text"
+                                value={editData.last_name || ""}
+                                onChange={(e) =>
+                                  handleInputChange("last_name", e.target.value)
+                                }
+                                placeholder={employee.last_name}
+                                className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                              />
+                              <select
+                                value={editData.role || ""}
+                                onChange={(e) =>
+                                  handleInputChange("role", e.target.value)
+                                }
+                                className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                              >
+                                <option value="">Select Type</option>
+                                <option value="Administrator">
+                                  Administrator
+                                </option>
+                                <option value="Site Manager">
+                                  Site Manager
+                                </option>
+                                <option value="Supervisor">Supervisor</option>
+                                <option value="Employee">Employee</option>
+                                <option value="Contractor">Contractor</option>
+                                <option value="CNC Operator">
+                                  CNC Operator
+                                </option>
+                              </select>
+                            </div>
+                            <p className="text-sm text-slate-500">
+                              Employee ID: {employee.employee_id}
+                            </p>
 
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Mail className="w-4 h-4 text-slate-600" />
-                                  <input
-                                    type="email"
-                                    value={editData.email || ""}
-                                    onChange={(e) =>
-                                      handleInputChange("email", e.target.value)
-                                    }
-                                    placeholder={employee.email || "Email"}
-                                    className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Phone className="w-4 h-4 text-slate-600" />
-                                  <input
-                                    type="tel"
-                                    value={editData.phone || ""}
-                                    onChange={(e) =>
-                                      handleInputChange("phone", e.target.value)
-                                    }
-                                    placeholder={employee.phone || "Phone"}
-                                    className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="w-4 h-4 text-slate-600" />
-                                  <input
-                                    type="text"
-                                    value={editData.address || ""}
-                                    onChange={(e) =>
-                                      handleInputChange("address", e.target.value)
-                                    }
-                                    placeholder={employee.address || "Address"}
-                                    className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
-                                  />
-                                </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Mail className="w-4 h-4 text-slate-600" />
+                                <input
+                                  type="email"
+                                  value={editData.email || ""}
+                                  onChange={(e) =>
+                                    handleInputChange("email", e.target.value)
+                                  }
+                                  placeholder={employee.email || "Email"}
+                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-4 h-4 text-slate-600" />
+                                <input
+                                  type="tel"
+                                  value={editData.phone || ""}
+                                  onChange={(e) =>
+                                    handleInputChange("phone", e.target.value)
+                                  }
+                                  placeholder={employee.phone || "Phone"}
+                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-4 h-4 text-slate-600" />
+                                <input
+                                  type="text"
+                                  value={editData.address || ""}
+                                  onChange={(e) =>
+                                    handleInputChange("address", e.target.value)
+                                  }
+                                  placeholder={employee.address || "Address"}
+                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                />
                               </div>
                             </div>
+                          </div>
                         ) : (
                           <>
                             <div className="flex items-center gap-2 mb-2">
@@ -1290,7 +1303,7 @@ export default function EmployeeDetailPage() {
                       employee.availability ? (
                         Object.entries(
                           (() => {
-                            if (typeof employee.availability === 'string') {
+                            if (typeof employee.availability === "string") {
                               try {
                                 return JSON.parse(employee.availability);
                               } catch (e) {
@@ -1300,28 +1313,26 @@ export default function EmployeeDetailPage() {
                             }
                             return employee.availability;
                           })()
-                        ).map(
-                          ([day, schedule]) => (
-                            <div
-                              key={day}
-                              className="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg"
-                            >
-                              <span className="text-xs font-medium text-slate-700 capitalize">
-                                {day}
+                        ).map(([day, schedule]) => (
+                          <div
+                            key={day}
+                            className="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg"
+                          >
+                            <span className="text-xs font-medium text-slate-700 capitalize">
+                              {day}
+                            </span>
+                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                              <span>{formatTime(schedule.start)}</span>
+                              <span>
+                                {formatTime(schedule.start) !== "-" &&
+                                formatTime(schedule.end) !== "-"
+                                  ? "-"
+                                  : ""}
                               </span>
-                              <div className="flex items-center gap-2 text-xs text-slate-600">
-                                <span>{formatTime(schedule.start)}</span>
-                                <span>
-                                  {formatTime(schedule.start) !== "-" &&
-                                  formatTime(schedule.end) !== "-"
-                                    ? "-"
-                                    : ""}
-                                </span>
-                                <span>{formatTime(schedule.end)}</span>
-                              </div>
+                              <span>{formatTime(schedule.end)}</span>
                             </div>
-                          )
-                        )
+                          </div>
+                        ))
                       ) : (
                         <div className="text-center py-6 text-slate-500">
                           <Clock className="w-6 h-6 mx-auto mb-2 text-slate-400" />
@@ -1539,9 +1550,7 @@ export default function EmployeeDetailPage() {
                     <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                       Username
                     </div>
-                    <div className="text-slate-700">
-                      {user.username}
-                    </div>
+                    <div className="text-slate-700">{user.username}</div>
                   </div>
                   <div>
                     <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
@@ -1609,9 +1618,7 @@ export default function EmployeeDetailPage() {
                         <option value="employee">Employee</option>
                       </select>
                     ) : (
-                      <div className="text-slate-700">
-                        {user.user_type}
-                      </div>
+                      <div className="text-slate-700">{user.user_type}</div>
                     )}
                   </div>
                 </div>

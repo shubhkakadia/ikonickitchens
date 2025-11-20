@@ -22,7 +22,7 @@ export async function performSessionCleanup() {
 export async function cleanupSessionsAPI(request) {
   try {
     const cleanedCount = await performSessionCleanup();
-    
+
     return {
       status: true,
       message: `Successfully cleaned up ${cleanedCount} expired sessions`,

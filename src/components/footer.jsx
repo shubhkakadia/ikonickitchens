@@ -90,7 +90,7 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <div className="mb-6">
               <Image
-              loading="lazy"
+                loading="lazy"
                 src={companylogo}
                 alt="Ikonic Kitchens"
                 width={200}

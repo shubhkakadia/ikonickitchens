@@ -102,7 +102,7 @@ export default function GalleryPage({ title, description, images }) {
               onClick={(e) => e.stopPropagation()}
             >
               <Image
-              loading="lazy"
+                loading="lazy"
                 src={selectedImage}
                 alt={`${title} Design`}
                 width={1200}
@@ -137,7 +137,7 @@ export default function GalleryPage({ title, description, images }) {
               >
                 <div className="relative aspect-square overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105">
                   <Image
-                  loading="lazy"
+                    loading="lazy"
                     src={imageSrc}
                     alt={`${title} ${index + 1}`}
                     fill

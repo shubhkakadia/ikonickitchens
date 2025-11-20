@@ -1,6 +1,6 @@
-import { NodeSelection, Selection, TextSelection } from "@tiptap/pm/state"
+import { NodeSelection, Selection, TextSelection } from "@tiptap/pm/state";
 
-export const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export const MAC_SYMBOLS = {
   mod: "⌘",
@@ -15,8 +15,8 @@ export const MAC_SYMBOLS = {
   delete: "⌦",
   enter: "⏎",
   escape: "⎋",
-  capslock: "⇪"
-}
+  capslock: "⇪",
+};
 
 export function cn(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -27,7 +27,10 @@ export function cn(...classes) {
  * @returns boolean indicating if the current platform is Mac
  */
 export function isMac() {
-  return (typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac"));
+  return (
+    typeof navigator !== "undefined" &&
+    navigator.platform.toLowerCase().includes("mac")
+  );
 }
 
 /**
@@ -37,18 +40,14 @@ export function isMac() {
  * @param capitalize - Whether to capitalize the key (default: true)
  * @returns Formatted shortcut key symbol
  */
-export const formatShortcutKey = (
-  key,
-  isMac,
-  capitalize = true
-) => {
+export const formatShortcutKey = (key, isMac, capitalize = true) => {
   if (isMac) {
-    const lowerKey = key.toLowerCase()
+    const lowerKey = key.toLowerCase();
     return MAC_SYMBOLS[lowerKey] || (capitalize ? key.toUpperCase() : key);
   }
 
   return capitalize ? key.charAt(0).toUpperCase() + key.slice(1) : key;
-}
+};
 
 /**
  * Parses a shortcut key string into an array of formatted key symbols
@@ -58,15 +57,15 @@ export const formatShortcutKey = (
  * @returns Array of formatted shortcut key symbols
  */
 export const parseShortcutKeys = (props) => {
-  const { shortcutKeys, delimiter = "+", capitalize = true } = props
+  const { shortcutKeys, delimiter = "+", capitalize = true } = props;
 
-  if (!shortcutKeys) return []
+  if (!shortcutKeys) return [];
 
   return shortcutKeys
     .split(delimiter)
     .map((key) => key.trim())
     .map((key) => formatShortcutKey(key, isMac(), capitalize));
-}
+};
 
 /**
  * Checks if a mark exists in the editor schema
@@ -75,9 +74,9 @@ export const parseShortcutKeys = (props) => {
  * @returns boolean indicating if the mark exists in the schema
  */
 export const isMarkInSchema = (markName, editor) => {
-  if (!editor?.schema) return false
+  if (!editor?.schema) return false;
   return editor.schema.spec.marks.get(markName) !== undefined;
-}
+};
 
 /**
  * Checks if a node exists in the editor schema
@@ -86,9 +85,9 @@ export const isMarkInSchema = (markName, editor) => {
  * @returns boolean indicating if the node exists in the schema
  */
 export const isNodeInSchema = (nodeName, editor) => {
-  if (!editor?.schema) return false
+  if (!editor?.schema) return false;
   return editor.schema.spec.nodes.get(nodeName) !== undefined;
-}
+};
 
 /**
  * Moves the focus to the next node in the editor
@@ -96,30 +95,30 @@ export const isNodeInSchema = (nodeName, editor) => {
  * @returns boolean indicating if the focus was moved
  */
 export function focusNextNode(editor) {
-  const { state, view } = editor
-  const { doc, selection } = state
+  const { state, view } = editor;
+  const { doc, selection } = state;
 
-  const nextSel = Selection.findFrom(selection.$to, 1, true)
+  const nextSel = Selection.findFrom(selection.$to, 1, true);
   if (nextSel) {
-    view.dispatch(state.tr.setSelection(nextSel).scrollIntoView())
-    return true
+    view.dispatch(state.tr.setSelection(nextSel).scrollIntoView());
+    return true;
   }
 
-  const paragraphType = state.schema.nodes.paragraph
+  const paragraphType = state.schema.nodes.paragraph;
   if (!paragraphType) {
-    console.warn("No paragraph node type found in schema.")
-    return false
+    console.warn("No paragraph node type found in schema.");
+    return false;
   }
 
-  const end = doc.content.size
-  const para = paragraphType.create()
-  let tr = state.tr.insert(end, para)
+  const end = doc.content.size;
+  const para = paragraphType.create();
+  let tr = state.tr.insert(end, para);
 
   // Place the selection inside the new paragraph
-  const $inside = tr.doc.resolve(end + 1)
-  tr = tr.setSelection(TextSelection.near($inside)).scrollIntoView()
-  view.dispatch(tr)
-  return true
+  const $inside = tr.doc.resolve(end + 1);
+  tr = tr.setSelection(TextSelection.near($inside)).scrollIntoView();
+  view.dispatch(tr);
+  return true;
 }
 
 /**
@@ -128,7 +127,7 @@ export function focusNextNode(editor) {
  * @returns boolean indicating if the value is a valid number
  */
 export function isValidPosition(pos) {
-  return typeof pos === "number" && pos >= 0
+  return typeof pos === "number" && pos >= 0;
 }
 
 /**
@@ -138,22 +137,25 @@ export function isValidPosition(pos) {
  * @returns True if at least one of the extensions is available, false otherwise
  */
 export function isExtensionAvailable(editor, extensionNames) {
-  if (!editor) return false
+  if (!editor) return false;
 
   const names = Array.isArray(extensionNames)
     ? extensionNames
-    : [extensionNames]
+    : [extensionNames];
 
   const found = names.some((name) =>
-    editor.extensionManager.extensions.some((ext) => ext.name === name))
+    editor.extensionManager.extensions.some((ext) => ext.name === name)
+  );
 
   if (!found) {
     console.warn(
-      `None of the extensions [${names.join(", ")}] were found in the editor schema. Ensure they are included in the editor configuration.`
-    )
+      `None of the extensions [${names.join(
+        ", "
+      )}] were found in the editor schema. Ensure they are included in the editor configuration.`
+    );
   }
 
-  return found
+  return found;
 }
 
 /**
@@ -164,15 +166,15 @@ export function isExtensionAvailable(editor, extensionNames) {
  */
 export function findNodeAtPosition(editor, position) {
   try {
-    const node = editor.state.doc.nodeAt(position)
+    const node = editor.state.doc.nodeAt(position);
     if (!node) {
-      console.warn(`No node found at position ${position}`)
-      return null
+      console.warn(`No node found at position ${position}`);
+      return null;
     }
-    return node
+    return node;
   } catch (error) {
-    console.error(`Error getting node at position ${position}:`, error)
-    return null
+    console.error(`Error getting node at position ${position}:`, error);
+    return null;
   }
 }
 
@@ -185,48 +187,48 @@ export function findNodeAtPosition(editor, position) {
  * @returns An object with the position and node, or null if not found
  */
 export function findNodePosition(props) {
-  const { editor, node, nodePos } = props
+  const { editor, node, nodePos } = props;
 
-  if (!editor || !editor.state?.doc) return null
+  if (!editor || !editor.state?.doc) return null;
 
   // Zero is valid position
-  const hasValidNode = node !== undefined && node !== null
-  const hasValidPos = isValidPosition(nodePos)
+  const hasValidNode = node !== undefined && node !== null;
+  const hasValidPos = isValidPosition(nodePos);
 
   if (!hasValidNode && !hasValidPos) {
-    return null
+    return null;
   }
 
   // First search for the node in the document if we have a node
   if (hasValidNode) {
-    let foundPos = -1
-    let foundNode = null
+    let foundPos = -1;
+    let foundNode = null;
 
     editor.state.doc.descendants((currentNode, pos) => {
       // TODO: Needed?
       // if (currentNode.type && currentNode.type.name === node!.type.name) {
       if (currentNode === node) {
-        foundPos = pos
-        foundNode = currentNode
-        return false
+        foundPos = pos;
+        foundNode = currentNode;
+        return false;
       }
-      return true
-    })
+      return true;
+    });
 
     if (foundPos !== -1 && foundNode !== null) {
-      return { pos: foundPos, node: foundNode }
+      return { pos: foundPos, node: foundNode };
     }
   }
 
   // If we have a valid position, use findNodeAtPosition
   if (hasValidPos) {
-    const nodeAtPos = findNodeAtPosition(editor, nodePos)
+    const nodeAtPos = findNodeAtPosition(editor, nodePos);
     if (nodeAtPos) {
       return { pos: nodePos, node: nodeAtPos };
     }
   }
 
-  return null
+  return null;
 }
 
 /**
@@ -236,19 +238,19 @@ export function findNodePosition(props) {
  * @returns boolean indicating if the selected node matches any of the specified types
  */
 export function isNodeTypeSelected(editor, types = []) {
-  if (!editor || !editor.state.selection) return false
+  if (!editor || !editor.state.selection) return false;
 
-  const { state } = editor
-  const { selection } = state
+  const { state } = editor;
+  const { selection } = state;
 
-  if (selection.empty) return false
+  if (selection.empty) return false;
 
   if (selection instanceof NodeSelection) {
-    const node = selection.node
+    const node = selection.node;
     return node ? types.includes(node.type.name) : false;
   }
 
-  return false
+  return false;
 }
 
 /**
@@ -261,34 +263,33 @@ export function isNodeTypeSelected(editor, types = []) {
 export const handleImageUpload = async (file, onProgress, abortSignal) => {
   // Validate file
   if (!file) {
-    throw new Error("No file provided")
+    throw new Error("No file provided");
   }
 
   if (file.size > MAX_FILE_SIZE) {
-    throw new Error(`File size exceeds maximum allowed (${MAX_FILE_SIZE / (1024 * 1024)}MB)`)
+    throw new Error(
+      `File size exceeds maximum allowed (${MAX_FILE_SIZE / (1024 * 1024)}MB)`
+    );
   }
 
   // For demo/testing: Simulate upload progress. In production, replace the following code
   // with your own upload implementation.
   for (let progress = 0; progress <= 100; progress += 10) {
     if (abortSignal?.aborted) {
-      throw new Error("Upload cancelled")
+      throw new Error("Upload cancelled");
     }
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    onProgress?.({ progress })
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    onProgress?.({ progress });
   }
 
-  return "/images/tiptap-ui-placeholder-image.jpg"
-}
+  return "/images/tiptap-ui-placeholder-image.jpg";
+};
 
 const ATTR_WHITESPACE =
   // eslint-disable-next-line no-control-regex
-  /[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g
+  /[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g;
 
-export function isAllowedUri(
-  uri,
-  protocols
-) {
+export function isAllowedUri(uri, protocols) {
   const allowedProtocols = [
     "http",
     "https",
@@ -300,32 +301,41 @@ export function isAllowedUri(
     "sms",
     "cid",
     "xmpp",
-  ]
+  ];
 
   if (protocols) {
     protocols.forEach((protocol) => {
       const nextProtocol =
-        typeof protocol === "string" ? protocol : protocol.scheme
+        typeof protocol === "string" ? protocol : protocol.scheme;
 
       if (nextProtocol) {
-        allowedProtocols.push(nextProtocol)
+        allowedProtocols.push(nextProtocol);
       }
-    })
+    });
   }
 
-  return (!uri || uri.replace(ATTR_WHITESPACE, "").match(new RegExp(// eslint-disable-next-line no-useless-escape
-  `^(?:(?:${allowedProtocols.join("|")}):|[^a-z]|[a-z0-9+.\-]+(?:[^a-z+.\-:]|$))`, "i")));
+  return (
+    !uri ||
+    uri.replace(ATTR_WHITESPACE, "").match(
+      new RegExp( // eslint-disable-next-line no-useless-escape
+        `^(?:(?:${allowedProtocols.join(
+          "|"
+        )}):|[^a-z]|[a-z0-9+.\-]+(?:[^a-z+.\-:]|$))`,
+        "i"
+      )
+    )
+  );
 }
 
 export function sanitizeUrl(inputUrl, baseUrl, protocols) {
   try {
-    const url = new URL(inputUrl, baseUrl)
+    const url = new URL(inputUrl, baseUrl);
 
     if (isAllowedUri(url.href, protocols)) {
-      return url.href
+      return url.href;
     }
   } catch {
     // If URL creation fails, it's considered invalid
   }
-  return "#"
+  return "#";
 }

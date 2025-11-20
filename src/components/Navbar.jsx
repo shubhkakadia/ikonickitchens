@@ -65,7 +65,7 @@ export default function Navbar({ bar }) {
         <div className="flex justify-between items-center py-2">
           <Link href="/" className="flex items-center py-2">
             <Image
-            loading="lazy"
+              loading="lazy"
               src="/logo.webp"
               alt="Ikoniq Logo"
               width={150}

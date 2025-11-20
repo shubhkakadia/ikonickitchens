@@ -103,7 +103,7 @@ export default function page() {
                 {/* Project Image */}
                 <div className="relative h-64 overflow-hidden">
                   <Image
-                  loading="lazy"
+                    loading="lazy"
                     src={project.images[0]}
                     alt={project.address}
                     fill

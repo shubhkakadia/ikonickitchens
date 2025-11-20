@@ -341,8 +341,7 @@ export default function Home() {
                 >
                   <div className="relative h-48 sm:h-56 lg:h-64 overflow-hidden">
                     <Image
-                    
-                    loading="lazy"
+                      loading="lazy"
                       src={item.imageurl}
                       alt={item.title}
                       fill
@@ -391,7 +390,7 @@ export default function Home() {
                   className="block h-64 sm:h-80 lg:h-96"
                 >
                   <Image
-                  loading="lazy"
+                    loading="lazy"
                     src="/Polytec.jpg"
                     alt="Polytec Collection"
                     fill
@@ -419,7 +418,7 @@ export default function Home() {
                   className="block h-64 sm:h-80 lg:h-96"
                 >
                   <Image
-                  loading="lazy"
+                    loading="lazy"
                     src="/Laminex.jpg"
                     alt="Laminex Collection"
                     fill
@@ -447,7 +446,7 @@ export default function Home() {
                   className="block h-64 sm:h-80 lg:h-96"
                 >
                   <Image
-                  loading="lazy"
+                    loading="lazy"
                     src="/AustralianTimber.jpg"
                     alt="Australian Timber Collection"
                     fill
@@ -475,7 +474,7 @@ export default function Home() {
                   className="block h-64 sm:h-80 lg:h-96"
                 >
                   <Image
-                  loading="lazy"
+                    loading="lazy"
                     src="/Acrilam.jpg"
                     alt="Acrilam Collection"
                     fill

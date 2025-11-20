@@ -21,14 +21,8 @@ export async function POST(request) {
         { status: 401 }
       );
     }
-    const {
-      lot_id,
-      name,
-      project_id,
-      startDate,
-      installationDueDate,
-      notes,
-    } = await request.json();
+    const { lot_id, name, project_id, startDate, installationDueDate, notes } =
+      await request.json();
     const existingLot = await prisma.lot.findUnique({
       where: { lot_id: lot_id.toLowerCase() },
     });
@@ -46,8 +40,10 @@ export async function POST(request) {
         lot_id: lot_id.toLowerCase(),
         name,
         project_id: project_id.toLowerCase(),
-        startDate: startDate? processDateTimeField(startDate) : null,
-        installationDueDate: installationDueDate? processDateTimeField(installationDueDate) : null,
+        startDate: startDate ? processDateTimeField(startDate) : null,
+        installationDueDate: installationDueDate
+          ? processDateTimeField(installationDueDate)
+          : null,
         notes,
         status: "ACTIVE",
       },

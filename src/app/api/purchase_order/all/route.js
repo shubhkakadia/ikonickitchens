@@ -38,6 +38,7 @@ export async function GET(request) {
                 hardware: true,
                 accessory: true,
                 edging_tape: true,
+                image: true,
               },
             },
           },

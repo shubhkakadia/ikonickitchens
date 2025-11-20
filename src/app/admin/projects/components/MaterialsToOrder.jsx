@@ -1477,10 +1477,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                             className="border-b border-slate-100 hover:bg-slate-50"
                           >
                             <td className="py-2 px-3">
-                              {row.item.image ? (
+                              {row.item.image?.url ? (
                                 <div className="relative w-12 h-12 rounded overflow-hidden bg-slate-100">
                                   <Image
-                                    src={`/${row.item.image}`}
+                                    src={`/${row.item.image.url}`}
                                     alt={row.item.item_id}
                                     fill
                                     className="object-cover"
@@ -1575,10 +1575,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                 className="cursor-pointer w-full text-left p-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors"
                               >
                                 <div className="flex items-center gap-3">
-                                  {item.image ? (
+                                  {item.image?.url ? (
                                     <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
                                       <Image
-                                        src={`/${item.image}`}
+                                        src={`/${item.image.url}`}
                                         alt={item.item_id}
                                         fill
                                         className="object-cover"
@@ -1680,10 +1680,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                             className="border-b border-slate-100 hover:bg-slate-50"
                           >
                             <td className="py-2 px-3">
-                              {row.item.image ? (
+                              {row.item.image?.url ? (
                                 <div className="relative w-12 h-12 rounded overflow-hidden bg-slate-100">
                                   <Image
-                                    src={`/${row.item.image}`}
+                                    src={`/${row.item.image.url}`}
                                     alt={row.item.item_id}
                                     fill
                                     className="object-cover"
@@ -1793,10 +1793,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                   className="cursor-pointer w-full text-left p-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors"
                                 >
                                   <div className="flex items-center gap-3">
-                                    {item.image ? (
+                                    {item.image?.url ? (
                                       <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
                                         <Image
-                                          src={`/${item.image}`}
+                                          src={`/${item.image.url}`}
                                           alt={item.item_id}
                                           fill
                                           className="object-cover"
@@ -1901,10 +1901,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                             className="border-b border-slate-100 hover:bg-slate-50"
                           >
                             <td className="py-2 px-3">
-                              {row.item.image ? (
+                              {row.item.image?.url ? (
                                 <div className="relative w-12 h-12 rounded overflow-hidden bg-slate-100">
                                   <Image
-                                    src={`/${row.item.image}`}
+                                    src={`/${row.item.image.url}`}
                                     alt={row.item.item_id}
                                     fill
                                     className="object-cover"
@@ -2005,10 +2005,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                 className="cursor-pointer w-full text-left p-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors"
                               >
                                 <div className="flex items-center gap-3">
-                                  {item.image ? (
+                                  {item.image?.url ? (
                                     <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
                                       <Image
-                                        src={`/${item.image}`}
+                                        src={`/${item.image.url}`}
                                         alt={item.item_id}
                                         fill
                                         className="object-cover"
@@ -2109,10 +2109,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                             className="border-b border-slate-100 hover:bg-slate-50"
                           >
                             <td className="py-2 px-3">
-                              {row.item.image ? (
+                              {row.item.image?.url ? (
                                 <div className="relative w-12 h-12 rounded overflow-hidden bg-slate-100">
                                   <Image
-                                    src={`/${row.item.image}`}
+                                    src={`/${row.item.image.url}`}
                                     alt={row.item.item_id}
                                     fill
                                     className="object-cover"
@@ -2215,10 +2215,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                 className="cursor-pointer w-full text-left p-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors"
                               >
                                 <div className="flex items-center gap-3">
-                                  {item.image ? (
+                                  {item.image?.url ? (
                                     <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
                                       <Image
-                                        src={`/${item.image}`}
+                                        src={`/${item.image.url}`}
                                         alt={item.item_id}
                                         fill
                                         className="object-cover"
@@ -2310,10 +2310,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                             className="border-b border-slate-100 hover:bg-slate-50"
                           >
                             <td className="py-2 px-3">
-                              {row.item.image ? (
+                              {row.item.image?.url ? (
                                 <div className="relative w-12 h-12 rounded overflow-hidden bg-slate-100">
                                   <Image
-                                    src={`/${row.item.image}`}
+                                    src={`/${row.item.image.url}`}
                                     alt={row.item.item_id}
                                     fill
                                     className="object-cover"
@@ -2413,10 +2413,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                   className="cursor-pointer w-full text-left p-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors"
                                 >
                                   <div className="flex items-center gap-3">
-                                    {item.image ? (
+                                    {item.image?.url ? (
                                       <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
                                         <Image
-                                          src={`/${item.image}`}
+                                          src={`/${item.image.url}`}
                                           alt={item.item_id}
                                           fill
                                           className="object-cover"

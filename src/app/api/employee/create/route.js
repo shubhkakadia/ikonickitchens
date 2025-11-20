@@ -29,7 +29,7 @@ export async function POST(request) {
     // Validate and parse multipart/form-data
     const formData = await validateMultipartRequest(request);
     const body = Object.fromEntries(formData.entries());
-    
+
     const imageFile = getFileFromFormData(formData, "image");
     const {
       employee_id,

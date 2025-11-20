@@ -49,7 +49,8 @@ export const loginUser = (formdata) => async (dispatch) => {
 };
 
 // Action to handle user logout
-export const logoutUser = (token = null) =>
+export const logoutUser =
+  (token = null) =>
   async (dispatch) => {
     dispatch(setUserLoading(true));
 
@@ -58,7 +59,6 @@ export const logoutUser = (token = null) =>
 
     try {
       if (authToken) {
-        
         const response = await axios.post(
           `/api/signout`,
           {}, // empty body (since fetch POST has no body)
@@ -78,7 +78,9 @@ export const logoutUser = (token = null) =>
           console.error("Signout failed:", data.message);
         }
       } else {
-        console.warn("No auth token found for logout - clearing local state only");
+        console.warn(
+          "No auth token found for logout - clearing local state only"
+        );
       }
     } catch (error) {
       console.error("Signout API error:", error);

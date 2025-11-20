@@ -49,7 +49,10 @@ export async function POST(request, { params }) {
     const measurement_unit = formData.get("measurement_unit");
     // Handle is_sunmica - FormData sends booleans as strings
     const is_sunmicaValue = formData.get("is_sunmica");
-    const is_sunmica = is_sunmicaValue === "true" || is_sunmicaValue === true || is_sunmicaValue === "1";
+    const is_sunmica =
+      is_sunmicaValue === "true" ||
+      is_sunmicaValue === true ||
+      is_sunmicaValue === "1";
 
     if (!CATEGORIES.includes(category)) {
       return NextResponse.json(

@@ -17,7 +17,7 @@ export async function POST(request) {
     }
 
     const sessionToken = authHeader.substring(7); // Remove "Bearer " prefix
-    
+
     // Find and delete the session from database
     const deletedSession = await prisma.sessions.deleteMany({
       where: {

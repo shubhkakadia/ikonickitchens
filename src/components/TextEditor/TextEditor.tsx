@@ -98,7 +98,7 @@ const TextEditor = ({
 
         // Set new timer for auto-save
         debounceTimerRef.current = setTimeout(async () => {
-          const html = editor.getHTML();// Debug log
+          const html = editor.getHTML(); // Debug log
 
           try {
             // Call onSave and wait if it's async

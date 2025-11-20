@@ -632,7 +632,7 @@ export default function page() {
 
         const rows = (po.items || []).map((it) => {
           const item = it.item || {};
-          const imageUrl = item.image ? `${origin}/${item.image}` : "";
+          const imageUrl = item.image?.url ? `${origin}/${item.image.url}` : "";
           const category = item.category || "";
           // Separate detail columns
           const sheetColor = item.sheet?.color || "";
@@ -1356,9 +1356,10 @@ export default function page() {
                                                     >
                                                       <td className="px-3 py-2 whitespace-nowrap">
                                                         <div className="flex items-center">
-                                                          {item.item?.image ? (
+                                                          {item.item?.image
+                                                            ?.url ? (
                                                             <img
-                                                              src={`/${item.item.image}`}
+                                                              src={`/${item.item.image.url}`}
                                                               alt={
                                                                 item.item
                                                                   .item_id
@@ -1375,6 +1376,7 @@ export default function page() {
                                                           <div
                                                             className={`w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
                                                               item.item?.image
+                                                                ?.url
                                                                 ? "hidden"
                                                                 : "flex"
                                                             }`}
@@ -1988,9 +1990,9 @@ export default function page() {
                             <tr key={item.id} className="hover:bg-slate-50">
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <div className="flex items-center">
-                                  {item.item?.image ? (
+                                  {item.item?.image?.url ? (
                                     <img
-                                      src={`/${item.item.image}`}
+                                      src={`/${item.item.image.url}`}
                                       alt={item.item.item_id}
                                       className="w-12 h-12 object-cover rounded border border-slate-200"
                                       onError={(e) => {
@@ -2002,7 +2004,7 @@ export default function page() {
                                   ) : null}
                                   <div
                                     className={`w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                      item.item?.image ? "hidden" : "flex"
+                                      item.item?.image?.url ? "hidden" : "flex"
                                     }`}
                                   >
                                     <Package className="w-6 h-6 text-slate-400" />

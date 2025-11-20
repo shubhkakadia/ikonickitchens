@@ -1,7 +1,17 @@
 "use client";
 import Footer from "@/components/footer";
 import Navbar from "@/components/Navbar";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, XCircle, Phone, Mail as MailIcon } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  AlertCircle,
+  XCircle,
+  Phone,
+  Mail as MailIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -107,8 +117,11 @@ export default function page() {
       } else {
         // Handle different error types based on the message
         const errorMessage = result.error || "Login failed. Please try again.";
-        
-        if (errorMessage === "User not found" || errorMessage === "Invalid password") {
+
+        if (
+          errorMessage === "User not found" ||
+          errorMessage === "Invalid password"
+        ) {
           setErrorType("invalid_credentials");
         } else if (errorMessage === "User account is not active") {
           setErrorType("inactive");
@@ -161,7 +174,6 @@ export default function page() {
           {/* Login Form */}
           <div className="bg-slate-50 backdrop-blur-lg rounded-2xl border border-slate-200 p-8 shadow-2xl">
             <form onSubmit={handleSubmit} className="space-y-6">
-
               {/* username Field */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
@@ -281,7 +293,8 @@ export default function page() {
                           Authentication Failed
                         </h3>
                         <p className="text-sm text-red-700 mb-3">
-                          Username or password is incorrect. Please check your credentials and try again.
+                          Username or password is incorrect. Please check your
+                          credentials and try again.
                         </p>
                       </div>
                     </div>
@@ -299,10 +312,13 @@ export default function page() {
                           Account Inactive
                         </h3>
                         <p className="text-sm text-amber-700 mb-3">
-                          Your admin account is currently inactive. Please contact support to reactivate your account.
+                          Your admin account is currently inactive. Please
+                          contact support to reactivate your account.
                         </p>
                         <div className="bg-amber-100 rounded-lg p-4">
-                          <p className="text-sm font-medium text-amber-800 mb-2">Contact Support:</p>
+                          <p className="text-sm font-medium text-amber-800 mb-2">
+                            Contact Support:
+                          </p>
                           <div className="space-y-1 text-sm text-amber-700">
                             <div className="flex items-center">
                               <Phone className="h-4 w-4 mr-2" />
@@ -352,9 +368,7 @@ export default function page() {
                         <h3 className="text-sm font-semibold text-red-800 mb-2">
                           Login Error
                         </h3>
-                        <p className="text-sm text-red-700">
-                          {errors.general}
-                        </p>
+                        <p className="text-sm text-red-700">{errors.general}</p>
                       </div>
                     </div>
                   </div>
@@ -373,7 +387,7 @@ export default function page() {
               Back to Website
             </Link>
           </div>
-          
+
           {/* Version Indicator */}
           <p className="text-xs text-slate-400 text-center mt-4">
             v{versions.version}

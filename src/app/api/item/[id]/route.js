@@ -29,6 +29,7 @@ export async function GET(request, { params }) {
     const item = await prisma.item.findUnique({
       where: { item_id: id },
       include: {
+        image: true,
         sheet: true,
         handle: true,
         hardware: true,
@@ -72,7 +73,7 @@ export async function GET(request, { params }) {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
@@ -83,7 +84,11 @@ export async function GET(request, { params }) {
     };
 
     return NextResponse.json(
-      { status: true, message: "Item fetched successfully", data: itemWithTransactions },
+      {
+        status: true,
+        message: "Item fetched successfully",
+        data: itemWithTransactions,
+      },
       { status: 200 }
     );
   } catch (error) {
@@ -142,32 +147,21 @@ export async function PATCH(request, { params }) {
     const measurement_unit = formData.get("measurement_unit");
     // Handle is_sunmica - FormData sends booleans as strings
     const is_sunmicaValue = formData.get("is_sunmica");
-    const is_sunmica = is_sunmicaValue === "true" || is_sunmicaValue === true || is_sunmicaValue === "1";
+    const is_sunmica =
+      is_sunmicaValue === "true" ||
+      is_sunmicaValue === true ||
+      is_sunmicaValue === "1";
 
     // check if item already exists
     const existingItem = await prisma.item.findUnique({
       where: { item_id: id },
+      include: { image: true },
     });
     if (!existingItem) {
       return NextResponse.json(
         { status: false, message: "Item does not exist" },
         { status: 404 }
       );
-    }
-    let imagePath = null;
-
-    // Handle file upload if image is provided
-    if (imageFile) {
-      const uploadResult = await uploadFile(imageFile, {
-        uploadDir: "uploads",
-        subDir: `items/${existingItem.category}`,
-        filenameStrategy: "id-based",
-        idPrefix: id,
-      });
-      imagePath = uploadResult.relativePath;
-    }
-    if (imageFile === "") {
-      imagePath = "";
     }
 
     // Prepare update data - only include fields that are provided
@@ -178,16 +172,100 @@ export async function PATCH(request, { params }) {
       updateData.price = parseFloat(price);
     if (quantity !== null && quantity !== undefined)
       updateData.quantity = parseInt(quantity);
-    // Only update image if a new one was uploaded
-    if (imagePath !== null) updateData.image = imagePath;
     if (supplier_id !== null && supplier_id !== undefined)
       updateData.supplier_id = supplier_id;
     if (measurement_unit !== null && measurement_unit !== undefined)
       updateData.measurement_unit = measurement_unit;
+
+    // Update item first (without image_id)
     await prisma.item.update({
       where: { item_id: id },
       data: updateData,
     });
+
+    // Handle image removal if imageFile is empty string
+    if (imageFile === "") {
+      try {
+        if (existingItem.image_id && existingItem.image) {
+          // Store the image URL and ID before removing the reference
+          const imageUrl = existingItem.image.url;
+          const imageId = existingItem.image_id;
+
+          // First, update item to remove image_id (remove foreign key reference)
+          await prisma.item.update({
+            where: { item_id: id },
+            data: { image_id: null },
+          });
+
+          // Now safe to delete the media record (no foreign key constraint)
+          await prisma.media.delete({
+            where: { id: imageId },
+          });
+
+          // Finally, delete the file from disk
+          await deleteFileByRelativePath(imageUrl);
+        }
+      } catch (error) {
+        console.error("Error handling image removal:", error);
+        // Continue even if removal fails
+      }
+    }
+    // Handle file upload if image is provided
+    else if (imageFile && imageFile instanceof File) {
+      try {
+        // Delete old image file and media record if exists
+        if (existingItem.image_id && existingItem.image) {
+          // Store the image URL and ID before removing the reference
+          const oldImageUrl = existingItem.image.url;
+          const oldImageId = existingItem.image_id;
+
+          // First, update item to remove image_id (remove foreign key reference)
+          await prisma.item.update({
+            where: { item_id: id },
+            data: { image_id: null },
+          });
+
+          // Now safe to delete the media record (no foreign key constraint)
+          await prisma.media.delete({
+            where: { id: oldImageId },
+          });
+
+          // Finally, delete the file from disk
+          await deleteFileByRelativePath(oldImageUrl);
+        }
+
+        // Upload new image
+        const uploadResult = await uploadFile(imageFile, {
+          uploadDir: "uploads",
+          subDir: `items/${existingItem.category.toLowerCase()}`,
+          filenameStrategy: "id-based",
+          idPrefix: id,
+        });
+
+        // Create media record
+        const media = await prisma.media.create({
+          data: {
+            url: uploadResult.relativePath,
+            filename: uploadResult.originalFilename,
+            file_type: uploadResult.fileType,
+            mime_type: uploadResult.mimeType,
+            extension: uploadResult.extension,
+            size: uploadResult.size,
+            item_id: id,
+          },
+        });
+
+        // Update item with image_id
+        await prisma.item.update({
+          where: { item_id: id },
+          data: { image_id: media.id },
+        });
+      } catch (error) {
+        console.error("Error handling image upload:", error);
+        // Continue without image if upload fails
+        // Item is already updated, so we don't fail the whole request
+      }
+    }
 
     // Update category-specific data
     if (existingItem.category.toLowerCase() === "sheet") {
@@ -250,13 +328,14 @@ export async function PATCH(request, { params }) {
           data: accessoryData,
         });
       }
-    }
-    else if (existingItem.category.toLowerCase() === "edging_tape") {
+    } else if (existingItem.category.toLowerCase() === "edging_tape") {
       const edging_tapeData = {};
       if (brand !== null && brand !== undefined) edging_tapeData.brand = brand;
       if (color !== null && color !== undefined) edging_tapeData.color = color;
-      if (finish !== null && finish !== undefined) edging_tapeData.finish = finish;
-      if (dimensions !== null && dimensions !== undefined) edging_tapeData.dimensions = dimensions;
+      if (finish !== null && finish !== undefined)
+        edging_tapeData.finish = finish;
+      if (dimensions !== null && dimensions !== undefined)
+        edging_tapeData.dimensions = dimensions;
       if (Object.keys(edging_tapeData).length > 0) {
         await prisma.edging_tape.update({
           where: { item_id: id },
@@ -268,6 +347,7 @@ export async function PATCH(request, { params }) {
     const completeItem = await prisma.item.findUnique({
       where: { item_id: id },
       include: {
+        image: true,
         sheet: true,
         handle: true,
         hardware: true,
@@ -283,13 +363,9 @@ export async function PATCH(request, { params }) {
     const stock_transactions = await prisma.stock_transaction.findMany({
       where: { item_id: id },
       include: {
-        purchase_order_item: {
-          include: {
-            order: {
-              select: {
-                order_no: true,
-              },
-            },
+        purchase_order: {
+          select: {
+            order_no: true,
           },
         },
         materials_to_order: {
@@ -308,7 +384,7 @@ export async function PATCH(request, { params }) {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 

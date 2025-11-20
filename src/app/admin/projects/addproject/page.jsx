@@ -55,9 +55,14 @@ export default function page() {
     if (clientSearchTerm === "") {
       setFilteredClients(clients);
     } else {
-      const filtered = clients.filter((client) =>
-        client.client_name.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
-        client.client_id.toLowerCase().includes(clientSearchTerm.toLowerCase())
+      const filtered = clients.filter(
+        (client) =>
+          client.client_name
+            .toLowerCase()
+            .includes(clientSearchTerm.toLowerCase()) ||
+          client.client_id
+            .toLowerCase()
+            .includes(clientSearchTerm.toLowerCase())
       );
       setFilteredClients(filtered);
     }
@@ -100,7 +105,7 @@ export default function page() {
     const value = e.target.value;
     setClientSearchTerm(value);
     setIsClientDropdownOpen(true);
-    
+
     // Clear client_id if search term is cleared manually
     if (value === "") {
       setFormData({
@@ -128,9 +133,10 @@ export default function page() {
         return;
       }
 
-      const clientIdToSend = formData.client_id && formData.client_id.trim() !== "" 
-        ? formData.client_id.trim() 
-        : null;
+      const clientIdToSend =
+        formData.client_id && formData.client_id.trim() !== ""
+          ? formData.client_id.trim()
+          : null;
 
       const data = JSON.stringify({
         name: formData.name,

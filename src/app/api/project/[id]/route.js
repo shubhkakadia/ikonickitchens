@@ -109,18 +109,18 @@ export async function PATCH(request, { params }) {
     }
     const { id } = await params;
     const { name, client_id } = await request.json();
-    
+
     // Build update data object with only provided fields
     const updateData = {};
-    
+
     if (name !== undefined) {
       updateData.name = name;
     }
-    
+
     if (client_id !== undefined) {
       updateData.client_id = client_id ? client_id.toLowerCase() : null;
     }
-    
+
     const project = await prisma.project.update({
       where: { project_id: id },
       data: updateData,

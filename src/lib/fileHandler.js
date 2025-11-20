@@ -156,7 +156,9 @@ export async function uploadFile(file, options = {}) {
 
   // Validate file size
   if (maxSize && file.size > maxSize) {
-    throw new Error(`File size exceeds maximum allowed size of ${maxSize} bytes`);
+    throw new Error(
+      `File size exceeds maximum allowed size of ${maxSize} bytes`
+    );
   }
 
   // Validate MIME type
@@ -166,7 +168,10 @@ export async function uploadFile(file, options = {}) {
 
   // Validate extension
   const fileExtension = path.extname(file.name);
-  if (allowedExtensions && !allowedExtensions.includes(fileExtension.toLowerCase())) {
+  if (
+    allowedExtensions &&
+    !allowedExtensions.includes(fileExtension.toLowerCase())
+  ) {
     throw new Error(`File extension ${fileExtension} is not allowed`);
   }
 
@@ -289,4 +294,3 @@ export function getFileFromFormData(formData, fieldName, getAll = false) {
   const file = formData.get(fieldName);
   return file instanceof File ? file : null;
 }
-

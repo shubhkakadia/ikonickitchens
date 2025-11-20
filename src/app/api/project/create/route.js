@@ -22,10 +22,11 @@ export async function POST(request) {
     }
     const { name, project_id, client_id } = await request.json();
     // Normalize client_id - handle empty string, null, or undefined
-    const normalizedClientId = client_id && client_id.trim() !== "" 
-      ? client_id.trim().toLowerCase() 
-      : null;
-      
+    const normalizedClientId =
+      client_id && client_id.trim() !== ""
+        ? client_id.trim().toLowerCase()
+        : null;
+
     const existingProject = await prisma.project.findUnique({
       where: { project_id },
     });
@@ -38,7 +39,7 @@ export async function POST(request) {
         { status: 409 }
       );
     }
-    
+
     // Validate client_id if provided
     if (normalizedClientId) {
       const existingClient = await prisma.client.findUnique({
@@ -54,7 +55,7 @@ export async function POST(request) {
         );
       }
     }
-    
+
     const project = await prisma.project.create({
       data: {
         name,

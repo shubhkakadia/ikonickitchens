@@ -74,10 +74,10 @@ export default function ProtectedRoute({
   // Show loading state
   if (isLoading || loading) {
     return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        </div>
-      )
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   // Show children if authorized
@@ -85,7 +85,11 @@ export default function ProtectedRoute({
 }
 
 // Convenience components for specific user types
-export function AdminRoute({ children, redirectTo = "/admin/login", fallback }) {
+export function AdminRoute({
+  children,
+  redirectTo = "/admin/login",
+  fallback,
+}) {
   return (
     <ProtectedRoute
       requiredUserType={["admin", "master-admin"]}
@@ -97,7 +101,11 @@ export function AdminRoute({ children, redirectTo = "/admin/login", fallback }) 
   );
 }
 
-export function MasterAdminRoute({ children, redirectTo = "/admin/login", fallback }) {
+export function MasterAdminRoute({
+  children,
+  redirectTo = "/admin/login",
+  fallback,
+}) {
   return (
     <ProtectedRoute
       requiredUserType="master-admin"

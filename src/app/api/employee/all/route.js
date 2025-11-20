@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { isAdmin, isSessionExpired } from "../../../../../lib/validators/authFromToken";
+import {
+  isAdmin,
+  isSessionExpired,
+} from "../../../../../lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 
 export async function GET(request) {

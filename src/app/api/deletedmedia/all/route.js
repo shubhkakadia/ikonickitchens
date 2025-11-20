@@ -21,7 +21,7 @@ export async function GET(request) {
       );
     }
     // get lot details for each deleted media
-    const deletedMedia = await prisma.lot_file.findMany({
+    const lotFilesDeletedMedia = await prisma.lot_file.findMany({
       where: { is_deleted: true },
       include: {
         tab: {
@@ -31,6 +31,17 @@ export async function GET(request) {
         },
       },
     });
+
+    const mediaDeletedMedia = await prisma.media.findMany({
+      where: { is_deleted: true },
+    });
+
+    const supplierFilesDeletedMedia = await prisma.supplier_file.findMany({
+      where: { is_deleted: true },
+    });
+
+    const deletedMedia = [...lotFilesDeletedMedia, ...mediaDeletedMedia, ...supplierFilesDeletedMedia];
+
     return NextResponse.json(
       {
         status: true,

@@ -113,6 +113,7 @@ export async function PATCH(request, { params }) {
       const ordered_at = form.get("ordered_at") || undefined;
       const total_amount_raw = form.get("total_amount");
       const notes = form.get("notes") || undefined;
+      const invoice_url_raw = form.get("invoice_url");
 
       body.status = status;
       body.ordered_at = ordered_at;
@@ -123,6 +124,10 @@ export async function PATCH(request, { params }) {
           ? Number(total_amount_raw)
           : undefined;
       body.notes = notes;
+      // Handle invoice_url deletion (can be "null" string or null)
+      if (invoice_url_raw === "null" || invoice_url_raw === null) {
+        body.invoice_url = null;
+      }
 
       // Items can be a JSON string
       const itemsVal = form.get("items");
@@ -188,6 +193,20 @@ export async function PATCH(request, { params }) {
 
     // Build update payload (only include provided allowed fields)
     const updateData = {};
+
+    // Handle invoice soft deletion if invoice_url is explicitly set to null
+    if (body.invoice_url === null || body.invoice_url_id === null) {
+      if (existing.invoice_url_id) {
+        // Soft delete: Mark the supplier_file as deleted instead of permanently deleting
+        await prisma.supplier_file.update({
+          where: { id: existing.invoice_url_id },
+          data: { is_deleted: true },
+        });
+
+        // Set invoice_url_id to null in updateData to unlink from purchase_order
+        updateData.invoice_url_id = null;
+      }
+    }
 
     // Check if this is a receive operation (updating quantity_received)
     const receivedItems = body.received_items || body.items_received;

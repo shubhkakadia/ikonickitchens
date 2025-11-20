@@ -3,12 +3,10 @@ import { NextResponse } from "next/server";
 import {
   isAdmin,
   isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+} from "../../../../../../lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
-import {
-  uploadFile,
-  validateMultipartRequest,
-} from "@/lib/fileHandler";
+import { uploadFile, validateMultipartRequest } from "@/lib/fileHandler";
+import fs from "fs";
 
 function ensureArray(value) {
   if (!value) return [];
@@ -24,16 +22,6 @@ const VALID_TABKINDS = [
   "changes_to_do",
   "site_measurements",
 ];
-
-// Mapping TabKind enum to abbreviations
-const TABKIND_ABBREVIATIONS = {
-  architecture_drawings: "AD",
-  appliances_specifications: "AS",
-  material_selection: "MS",
-  cabinetry_drawings: "CD",
-  changes_to_do: "CTD",
-  site_measurements: "SM",
-};
 
 // Mapping lowercase to proper enum format for database
 const TABKIND_TO_ENUM = {
@@ -56,6 +44,79 @@ function getFileKind(mimeType) {
   return "OTHER";
 }
 
+export async function GET(request, { params }) {
+  try {
+    const resolvedParams = await params;
+    const segments = ensureArray(resolvedParams?.path);
+    if (segments.length === 0) {
+      return NextResponse.json(
+        { status: false, message: "Missing path" },
+        { status: 404 }
+      );
+    }
+    const targetPath = path.join(process.cwd(), "uploads", ...segments);
+
+    // Prevent path traversal
+    const uploadsRoot = path.join(process.cwd(), "uploads");
+    const normalized = path.normalize(targetPath);
+    if (!normalized.startsWith(uploadsRoot)) {
+      return NextResponse.json(
+        { status: false, message: "Not found" },
+        { status: 404 }
+      );
+    }
+
+    let stat;
+    try {
+      stat = await fs.promises.stat(normalized);
+    } catch {
+      return NextResponse.json(
+        { status: false, message: "Not found" },
+        { status: 404 }
+      );
+    }
+    if (!stat.isFile()) {
+      return NextResponse.json(
+        { status: false, message: "Not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if file is marked as deleted in database
+    const relativePath = path
+      .relative(process.cwd(), normalized)
+      .replaceAll("\\", "/");
+    const fileRecord = await prisma.lot_file.findFirst({
+      where: {
+        url: relativePath,
+      },
+    });
+
+    // If file exists in DB and is marked as deleted, return 404
+    if (fileRecord && fileRecord.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Not found" },
+        { status: 404 }
+      );
+    }
+
+    const mimeType = getMimeType(normalized);
+    const data = await fs.promises.readFile(normalized);
+
+    return new NextResponse(data, {
+      headers: {
+        "Content-Type": mimeType,
+        "Content-Disposition": "inline", // This tells the browser to display the file inline
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { status: false, message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request, { params }) {
   try {
@@ -141,7 +202,6 @@ export async function POST(request, { params }) {
       }
     }
 
-
     // Find or create the lot_tab record
     const tabKindEnum = TABKIND_TO_ENUM[tabKind];
     const lot = await prisma.lot.findUnique({
@@ -223,6 +283,144 @@ export async function POST(request, { params }) {
     );
   } catch (error) {
     console.error("Upload error:", error);
+    return NextResponse.json(
+      { status: false, message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const admin = await isAdmin(request);
+    if (!admin) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 200 }
+      );
+    }
+    if (await isSessionExpired(request)) {
+      return NextResponse.json(
+        { status: false, message: "Session expired" },
+        { status: 200 }
+      );
+    }
+
+    const resolvedParams = await params;
+    const segments = ensureArray(resolvedParams?.path);
+    if (segments.length === 0) {
+      return NextResponse.json(
+        { status: false, message: "Missing path" },
+        { status: 404 }
+      );
+    }
+    const targetPath = path.join(process.cwd(), "uploads", ...segments);
+
+    // Prevent path traversal
+    const uploadsRoot = path.join(process.cwd(), "uploads");
+    const normalized = path.normalize(targetPath);
+    if (!normalized.startsWith(uploadsRoot)) {
+      return NextResponse.json(
+        { status: false, message: "Not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if file exists
+    let stat;
+    try {
+      stat = await fs.promises.stat(normalized);
+    } catch {
+      return NextResponse.json(
+        { status: false, message: "File not found" },
+        { status: 404 }
+      );
+    }
+    if (!stat.isFile()) {
+      return NextResponse.json(
+        { status: false, message: "Not a file" },
+        { status: 404 }
+      );
+    }
+
+    // Mark file as deleted in database instead of physically deleting it
+    const relativePath = path
+      .relative(process.cwd(), normalized)
+      .replaceAll("\\", "/");
+
+    // Try to find file by URL first
+    let fileRecord = await prisma.lot_file.findFirst({
+      where: {
+        url: relativePath,
+        is_deleted: false,
+      },
+    });
+
+    // If not found by URL, try to find by filename and path segments
+    // This handles cases where the path might not match exactly
+    if (!fileRecord && segments.length >= 3) {
+      console.log(
+        "File not found by URL, trying to find by filename and path segments"
+      );
+      const [projectId, lotId, tabKind, filename] = segments;
+      const tabKindEnum = TABKIND_TO_ENUM[tabKind] || tabKind.toUpperCase();
+
+      // Find the lot_tab first
+      const lotTab = await prisma.lot_tab.findFirst({
+        where: {
+          lot_id: lotId,
+          tab: tabKindEnum,
+        },
+      });
+
+      if (lotTab) {
+        // Try to find by filename in this tab
+        fileRecord = await prisma.lot_file.findFirst({
+          where: {
+            tab_id: lotTab.id,
+            filename: filename,
+            is_deleted: false,
+          },
+        });
+      }
+    }
+
+    if (!fileRecord) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: "File record not found in database",
+          debug: {
+            relativePath,
+            segments,
+          },
+        },
+        { status: 404 }
+      );
+    }
+
+    // Update the is_deleted flag to true
+    const updatedFile = await prisma.lot_file.update({
+      where: {
+        id: fileRecord.id,
+      },
+      data: {
+        is_deleted: true,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        status: true,
+        message: "File marked as deleted successfully",
+        data: {
+          fileId: updatedFile.id,
+          filename: updatedFile.filename,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
     return NextResponse.json(
       { status: false, message: "Internal server error", error: error.message },
       { status: 500 }

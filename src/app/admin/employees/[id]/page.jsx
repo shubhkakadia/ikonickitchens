@@ -107,7 +107,17 @@ export default function EmployeeDetailPage() {
       });
 
       if (response.data.status) {
-        setEmployee(response.data.data);
+        const employeeData = response.data.data;
+        // Parse availability if it's a JSON string
+        if (employeeData.availability && typeof employeeData.availability === 'string') {
+          try {
+            employeeData.availability = JSON.parse(employeeData.availability);
+          } catch (e) {
+            console.error("Error parsing availability:", e);
+            employeeData.availability = {};
+          }
+        }
+        setEmployee(employeeData);
         setUser(response.data.user || null);
       } else {
         setError(response.data.message || "Failed to fetch employee data");
@@ -200,7 +210,16 @@ export default function EmployeeDetailPage() {
 
       // Determine content type and data to send
       const isFormData = imageFile !== null || removeImage;
-      const dataToSend = isFormData ? formDataToSend : updatedData;
+      let dataToSend = isFormData ? formDataToSend : updatedData;
+      
+      // If sending JSON, ensure availability is stringified
+      if (!isFormData && updatedData.availability) {
+        dataToSend = {
+          ...updatedData,
+          availability: JSON.stringify(updatedData.availability)
+        };
+      }
+      
       const contentType = isFormData
         ? "multipart/form-data"
         : "application/json";
@@ -261,11 +280,20 @@ export default function EmployeeDetailPage() {
   const handleEdit = () => {
     if (employee) {
       // Initialize availability with all days, using existing data or empty strings
-      const availability = employee.availability || {};
+      // Parse availability if it's a JSON string
+      let availability = employee.availability || {};
+      if (typeof availability === 'string') {
+        try {
+          availability = JSON.parse(availability);
+        } catch (e) {
+          console.error("Error parsing availability in handleEdit:", e);
+          availability = {};
+        }
+      }
       const formattedAvailability = {};
 
       // Always initialize all weekdays for editing
-      ["monday", "tuesday", "wednesday", "thursday", "friday"].forEach(
+      ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].forEach(
         (day) => {
           formattedAvailability[day] = {
             start: availability[day]?.start || "",
@@ -292,6 +320,7 @@ export default function EmployeeDetailPage() {
         supper_account_name: employee.supper_account_name || "",
         supper_account_number: employee.supper_account_number || "",
         tfn_number: employee.tfn_number || "",
+        abn_number: employee.abn_number || "",
         education: employee.education || "",
         availability: formattedAvailability,
         notes: employee.notes || "",
@@ -1098,6 +1127,26 @@ export default function EmployeeDetailPage() {
                           </p>
                         )}
                       </div>
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          ABN Number
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.abn_number || ""}
+                            onChange={(e) =>
+                              handleInputChange("abn_number", e.target.value)
+                            }
+                            placeholder={formatValue(employee.abn_number)}
+                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700 font-mono">
+                            {formatValue(employee.abn_number)}
+                          </p>
+                        )}
+                      </div>
                       <div className="col-span-2">
                         <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
                           Education
@@ -1196,6 +1245,8 @@ export default function EmployeeDetailPage() {
                           "wednesday",
                           "thursday",
                           "friday",
+                          "saturday",
+                          "sunday",
                         ].map((day) => (
                           <div
                             key={day}
@@ -1237,7 +1288,19 @@ export default function EmployeeDetailPage() {
                         ))
                       ) : // Show existing availability or empty state when not editing
                       employee.availability ? (
-                        Object.entries(employee.availability).map(
+                        Object.entries(
+                          (() => {
+                            if (typeof employee.availability === 'string') {
+                              try {
+                                return JSON.parse(employee.availability);
+                              } catch (e) {
+                                console.error("Error parsing availability:", e);
+                                return {};
+                              }
+                            }
+                            return employee.availability;
+                          })()
+                        ).map(
                           ([day, schedule]) => (
                             <div
                               key={day}

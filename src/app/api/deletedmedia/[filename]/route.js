@@ -33,13 +33,38 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Find the deleted media by filename
-    const deletedMedia = await prisma.lot_file.findFirst({
+    // Decode filename in case it's URL encoded
+    const decodedFilename = decodeURIComponent(filename);
+
+    // Find the deleted media by filename in all three tables
+    let deletedMedia = await prisma.lot_file.findFirst({
       where: {
-        filename: filename,
+        filename: decodedFilename,
         is_deleted: true,
       },
     });
+
+    let tableName = "lot_file";
+
+    if (!deletedMedia) {
+      deletedMedia = await prisma.media.findFirst({
+        where: {
+          filename: decodedFilename,
+          is_deleted: true,
+        },
+      });
+      tableName = "media";
+    }
+
+    if (!deletedMedia) {
+      deletedMedia = await prisma.supplier_file.findFirst({
+        where: {
+          filename: decodedFilename,
+          is_deleted: true,
+        },
+      });
+      tableName = "supplier_file";
+    }
 
     if (!deletedMedia) {
       return NextResponse.json(
@@ -63,10 +88,20 @@ export async function DELETE(request, { params }) {
       // Continue with database deletion even if file deletion fails
     }
 
-    // Delete the record from database
-    await prisma.lot_file.delete({
-      where: { id: deletedMedia.id },
-    });
+    // Delete the record from database based on table type
+    if (tableName === "lot_file") {
+      await prisma.lot_file.delete({
+        where: { id: deletedMedia.id },
+      });
+    } else if (tableName === "media") {
+      await prisma.media.delete({
+        where: { id: deletedMedia.id },
+      });
+    } else if (tableName === "supplier_file") {
+      await prisma.supplier_file.delete({
+        where: { id: deletedMedia.id },
+      });
+    }
 
     return NextResponse.json(
       {

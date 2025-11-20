@@ -359,26 +359,36 @@ export default function page() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-3 py-2 flex-shrink-0">
-              <h1 className="text-xl font-bold text-slate-600">
+            <div className="px-4 py-2 flex-shrink-0">
+              <h1 className="text-xl font-bold text-slate-700">
                 Used Material
               </h1>
             </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3">
+            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                 {loading ? (
                   <div className="flex justify-center items-center h-full">
-                    <div className="text-xs text-slate-500">
-                      Loading MTOs...
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                      <p className="text-sm text-slate-600 font-medium">
+                        Loading MTOs...
+                      </p>
                     </div>
                   </div>
                 ) : mtos.length === 0 ? (
                   <div className="flex justify-center items-center h-full">
-                    <div className="text-xs text-slate-500">No Jobs found</div>
+                    <div className="text-center">
+                      <div className="h-12 w-12 text-slate-400 mx-auto mb-4">
+                        📦
+                      </div>
+                      <p className="text-sm text-slate-500 font-medium">
+                        No Jobs found
+                      </p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex-1 overflow-auto px-3 py-2">
+                  <div className="flex-1 overflow-auto px-4 py-3">
                     <div className="space-y-2">
                       {mtos.map((mto) => {
                         const isExpanded = expandedMto === mto.id;
@@ -398,7 +408,7 @@ export default function page() {
                             {/* Accordion Header */}
                             <button
                               onClick={() => toggleAccordion(mto.id)}
-                              className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                              className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                             >
                               <div className="flex items-center gap-3 flex-1 text-left">
                                 <div className="flex-shrink-0">
@@ -409,10 +419,10 @@ export default function page() {
                                   )}
                                 </div>
                                 <div className="flex-1">
-                                  <div className="text-xs font-semibold text-slate-700">
+                                  <div className="text-sm font-semibold text-slate-700">
                                     {mto.project?.name || "Unknown Project"}
                                   </div>
-                                  <div className="text-xs text-slate-500 mt-0.5">
+                                  <div className="text-sm text-slate-500 mt-0.5">
                                     Lot ID: {lotIds}
                                   </div>
                                 </div>
@@ -421,29 +431,29 @@ export default function page() {
 
                             {/* Accordion Content */}
                             {isExpanded && (
-                              <div className="border-t border-slate-200 px-3 py-2 bg-slate-50">
+                              <div className="border-t border-slate-200 px-4 py-3 bg-slate-50">
                                 {Object.keys(groupedItems).length === 0 ? (
-                                  <div className="text-xs text-slate-500 text-center py-3">
+                                  <div className="text-sm text-slate-500 text-center py-4 font-medium">
                                     No items in this MTO
                                   </div>
                                 ) : (
-                                  <div className="space-y-2">
+                                  <div className="space-y-3">
                                     {Object.entries(groupedItems).map(
                                       ([category, items]) => (
                                         <div
                                           key={category}
-                                          className="bg-white rounded-md p-2 border border-slate-200"
+                                          className="bg-white rounded-lg p-3 border border-slate-200"
                                         >
-                                          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200">
+                                          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
                                             {getCategoryIcon(category)}
-                                            <h3 className="text-xs font-semibold text-slate-700">
+                                            <h3 className="text-sm font-semibold text-slate-700">
                                               {formatCategoryName(category)}
                                             </h3>
-                                            <span className="text-xs text-slate-500 ml-auto">
+                                            <span className="text-sm text-slate-500 ml-auto font-medium">
                                               {items.length} item(s)
                                             </span>
                                           </div>
-                                          <div className="space-y-2">
+                                          <div className="space-y-3">
                                             {items.map((mtoItem) => {
                                               const itemDetails =
                                                 getItemDetails(mtoItem.item);
@@ -455,14 +465,14 @@ export default function page() {
                                               return (
                                                 <div
                                                   key={mtoItem.id}
-                                                  className="bg-slate-50 rounded-lg p-2 border border-slate-200 hover:bg-slate-100 transition-colors"
+                                                  className="bg-slate-50 rounded-lg p-3 border border-slate-200 hover:bg-slate-100 transition-colors"
                                                 >
                                                   {/* Single Row: Item Details + Quantity Columns */}
-                                                  <div className="flex gap-3 items-center">
+                                                  <div className="flex gap-4 items-center">
                                                     {/* Item Image */}
                                                     <div className="flex-shrink-0">
                                                       {itemDetails?.image ? (
-                                                        <div className="w-16 h-16 rounded-md overflow-hidden border border-slate-300 bg-white flex items-center justify-center relative">
+                                                        <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-300 bg-white flex items-center justify-center relative">
                                                           <img
                                                             src={
                                                               itemDetails.image
@@ -485,12 +495,12 @@ export default function page() {
                                                               }
                                                             }}
                                                           />
-                                                          <div className="hidden image-fallback absolute inset-0 w-16 h-16 rounded-md border border-slate-300 bg-slate-200 items-center justify-center">
+                                                          <div className="hidden image-fallback absolute inset-0 w-16 h-16 rounded-lg border border-slate-300 bg-slate-200 items-center justify-center">
                                                             <ImageIcon className="w-6 h-6 text-slate-400" />
                                                           </div>
                                                         </div>
                                                       ) : (
-                                                        <div className="w-16 h-16 rounded-md border border-slate-300 bg-slate-200 flex items-center justify-center">
+                                                        <div className="w-16 h-16 rounded-lg border border-slate-300 bg-slate-200 flex items-center justify-center">
                                                           <ImageIcon className="w-6 h-6 text-slate-400" />
                                                         </div>
                                                       )}
@@ -498,18 +508,18 @@ export default function page() {
 
                                                     {/* Item Details */}
                                                     <div className="flex-1 min-w-0">
-                                                      <div className="text-xs font-semibold text-slate-800 mb-1">
+                                                      <div className="text-sm font-semibold text-slate-800 mb-1.5">
                                                         {itemDetails?.name ||
                                                           "Unknown Item"}
                                                       </div>
 
-                                                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
                                                         {itemDetails?.brand && (
                                                           <div>
-                                                            <span className="text-slate-500">
+                                                            <span className="text-slate-500 font-bold">
                                                               Brand:
                                                             </span>{" "}
-                                                            <span className="text-slate-700 font-medium">
+                                                            <span className="text-slate-700">
                                                               {
                                                                 itemDetails.brand
                                                               }
@@ -518,10 +528,10 @@ export default function page() {
                                                         )}
                                                         {itemDetails?.color && (
                                                           <div>
-                                                            <span className="text-slate-500">
+                                                            <span className="text-slate-500 font-bold">
                                                               Color:
                                                             </span>{" "}
-                                                            <span className="text-slate-700 font-medium">
+                                                            <span className="text-slate-700">
                                                               {
                                                                 itemDetails.color
                                                               }
@@ -530,10 +540,10 @@ export default function page() {
                                                         )}
                                                         {itemDetails?.finish && (
                                                           <div>
-                                                            <span className="text-slate-500">
+                                                            <span className="text-slate-500 font-bold">
                                                               Finish:
                                                             </span>{" "}
-                                                            <span className="text-slate-700 font-medium">
+                                                            <span className="text-slate-700">
                                                               {
                                                                 itemDetails.finish
                                                               }
@@ -542,10 +552,10 @@ export default function page() {
                                                         )}
                                                         {itemDetails?.material && (
                                                           <div>
-                                                            <span className="text-slate-500">
+                                                            <span className="text-slate-500 font-bold">
                                                               Material:
                                                             </span>{" "}
-                                                            <span className="text-slate-700 font-medium">
+                                                            <span className="text-slate-700">
                                                               {
                                                                 itemDetails.material
                                                               }
@@ -554,20 +564,20 @@ export default function page() {
                                                         )}
                                                         {itemDetails?.type && (
                                                           <div>
-                                                            <span className="text-slate-500">
+                                                            <span className="text-slate-500 font-bold">
                                                               Type:
                                                             </span>{" "}
-                                                            <span className="text-slate-700 font-medium">
+                                                            <span className="text-slate-700">
                                                               {itemDetails.type}
                                                             </span>
                                                           </div>
                                                         )}
                                                         {itemDetails?.sub_category && (
                                                           <div>
-                                                            <span className="text-slate-500">
+                                                            <span className="text-slate-500 font-bold">
                                                               Sub Category:
                                                             </span>{" "}
-                                                            <span className="text-slate-700 font-medium">
+                                                            <span className="text-slate-700">
                                                               {
                                                                 itemDetails.sub_category
                                                               }
@@ -576,20 +586,20 @@ export default function page() {
                                                         )}
                                                         {itemDetails?.face && (
                                                           <div>
-                                                            <span className="text-slate-500">
+                                                            <span className="text-slate-500 font-bold">
                                                               Face:
                                                             </span>{" "}
-                                                            <span className="text-slate-700 font-medium">
+                                                            <span className="text-slate-700">
                                                               {itemDetails.face}
                                                             </span>
                                                           </div>
                                                         )}
                                                         {itemDetails?.dimensions && (
                                                           <div>
-                                                            <span className="text-slate-500">
+                                                            <span className="text-slate-500 font-bold">
                                                               Dimensions:
                                                             </span>{" "}
-                                                            <span className="text-slate-700 font-medium">
+                                                            <span className="text-slate-700">
                                                               {
                                                                 itemDetails.dimensions
                                                               }
@@ -599,10 +609,10 @@ export default function page() {
                                                         {mtoItem.item
                                                           ?.supplier && (
                                                           <div>
-                                                            <span className="text-slate-500">
+                                                            <span className="text-slate-500 font-bold">
                                                               Supplier:
                                                             </span>{" "}
-                                                            <span className="text-slate-700 font-medium">
+                                                            <span className="text-slate-700">
                                                               {
                                                                 mtoItem.item
                                                                   .supplier.name
@@ -614,11 +624,11 @@ export default function page() {
                                                     </div>
 
                                                     {/* Total Quantity Column */}
-                                                    <div className="text-center min-w-[80px]">
-                                                      <div className="text-xs text-slate-500 mb-1">
+                                                    <div className="text-center min-w-[90px]">
+                                                      <div className="text-sm text-slate-500 mb-1.5 font-medium">
                                                         Total
                                                       </div>
-                                                      <div className="text-sm font-bold text-slate-700">
+                                                      <div className="text-base font-bold text-slate-700">
                                                         {mtoItem.quantity}
                                                       </div>
                                                       {mtoItem.item
@@ -633,11 +643,11 @@ export default function page() {
                                                     </div>
 
                                                     {/* Used Count Column */}
-                                                    <div className="text-center min-w-[70px]">
-                                                      <div className="text-xs text-slate-500 mb-1">
+                                                    <div className="text-center min-w-[80px]">
+                                                      <div className="text-sm text-slate-500 mb-1.5 font-medium">
                                                         Used
                                                       </div>
-                                                      <div className="text-sm font-bold text-slate-700">
+                                                      <div className="text-base font-bold text-slate-700">
                                                         {mtoItem.quantity_used ||
                                                           0}
                                                       </div>
@@ -653,8 +663,8 @@ export default function page() {
                                                     </div>
 
                                                     {/* Input Field Column */}
-                                                    <div className="text-center min-w-[90px]">
-                                                      <div className="text-xs text-slate-500 mb-1">
+                                                    <div className="text-center min-w-[100px]">
+                                                      <div className="text-sm text-slate-500 mb-1.5 font-medium">
                                                         New Used
                                                       </div>
                                                       <div className="space-y-1">
@@ -682,7 +692,7 @@ export default function page() {
                                                               value
                                                             );
                                                           }}
-                                                          className="w-full px-2 py-1 text-xs border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-center"
+                                                          className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-center font-medium"
                                                           disabled={saving}
                                                         />
                                                         {mtoItem.item
@@ -701,7 +711,7 @@ export default function page() {
                                                             mtoItem.id
                                                           ] >
                                                             mtoItem.quantity && (
-                                                            <div className="text-xs text-red-600">
+                                                            <div className="text-xs text-red-600 font-medium">
                                                               Max:{" "}
                                                               {mtoItem.quantity}
                                                             </div>
@@ -710,12 +720,12 @@ export default function page() {
                                                     </div>
 
                                                     {/* Actions Column */}
-                                                    <div className="text-center min-w-[70px]">
-                                                      <div className="text-xs text-slate-500 mb-1">
+                                                    <div className="text-center min-w-[80px]">
+                                                      <div className="text-sm text-slate-500 mb-1.5 font-medium">
                                                         Actions
                                                       </div>
                                                       {hasChanges ? (
-                                                        <div className="flex gap-1 justify-center">
+                                                        <div className="flex gap-1.5 justify-center">
                                                           <button
                                                             onClick={() =>
                                                               handleCancelEdit(
@@ -723,10 +733,10 @@ export default function page() {
                                                               )
                                                             }
                                                             disabled={saving}
-                                                            className="p-1 rounded hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
+                                                            className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
                                                             title="Cancel"
                                                           >
-                                                            <X className="w-3 h-3" />
+                                                            <X className="w-4 h-4" />
                                                           </button>
                                                           <button
                                                             onClick={() =>
@@ -745,14 +755,14 @@ export default function page() {
                                                                 ] >
                                                                   mtoItem.quantity)
                                                             }
-                                                            className="p-1 rounded hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                             title="Save"
                                                           >
-                                                            <Check className="w-3 h-3" />
+                                                            <Check className="w-4 h-4" />
                                                           </button>
                                                         </div>
                                                       ) : (
-                                                        <div className="text-xs text-slate-400">
+                                                        <div className="text-sm text-slate-400">
                                                           -
                                                         </div>
                                                       )}

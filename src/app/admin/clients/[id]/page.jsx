@@ -26,12 +26,14 @@ import {
   ArrowDown,
   RotateCcw,
   ChevronRight,
+  Copy,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
+import ContactPopup from "@/components/contactpopup";
 import { CiMenuKebab } from "react-icons/ci";
 
 export default function page() {
@@ -42,7 +44,6 @@ export default function page() {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editData, setEditData] = useState({});
-  const [isCreatingContact, setIsCreatingContact] = useState(false);
   const [showDeleteClientModal, setShowDeleteClientModal] = useState(false);
   const [isDeletingClient, setIsDeletingClient] = useState(false);
   const [showDeleteContactModal, setShowDeleteContactModal] = useState(false);
@@ -53,27 +54,7 @@ export default function page() {
   const [error, setError] = useState(null);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
-  const [isEditingContact, setIsEditingContact] = useState(false);
-  const [editContactDraft, setEditContactDraft] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    preferred_contact_method: "",
-    notes: "",
-  });
-  const [isUpdatingContact, setIsUpdatingContact] = useState(false);
   const [contacts, setContacts] = useState([]);
-  const [showAddContactModal, setShowAddContactModal] = useState(false);
-  const [newContact, setNewContact] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    preferred_contact_method: "",
-    notes: "",
-    client_id: "",
-  });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
   const [search, setSearch] = useState("");
@@ -133,10 +114,6 @@ export default function page() {
       if (response.data.status) {
         setClient(response.data.data);
         setContacts(response.data.data.contacts || []);
-        setNewContact((prev) => ({
-          ...prev,
-          client_id: response.data.data.client_id || "",
-        }));
       } else {
         setError(response.data.message || "Failed to fetch client data");
       }
@@ -240,51 +217,27 @@ export default function page() {
   const openContactModal = (contact) => {
     setSelectedContact(contact);
     setIsContactModalOpen(true);
-    setIsEditingContact(false);
   };
 
   const closeContactModal = () => {
     setIsContactModalOpen(false);
     setSelectedContact(null);
-    setIsEditingContact(false);
   };
 
-  const startEditContact = () => {
-    if (!selectedContact) return;
-    setEditContactDraft({
-      first_name: selectedContact.first_name || "",
-      last_name: selectedContact.last_name || "",
-      email: selectedContact.email || "",
-      phone: selectedContact.phone || "",
-      preferred_contact_method: selectedContact.preferred_contact_method || "",
-      notes: selectedContact.notes || "",
-    });
-    setIsEditingContact(true);
-  };
-
-  const saveEditContact = async () => {
-    if (!selectedContact) return;
+  const saveEditContact = async (contactData, contactId) => {
     try {
-      setIsUpdatingContact(true);
       const sessionToken = getToken();
       if (!sessionToken) {
         toast.error("No valid session found. Please login again.");
         return;
       }
       const payload = {
-        first_name: editContactDraft.first_name,
-        last_name: editContactDraft.last_name,
-        email: editContactDraft.email,
-        phone: editContactDraft.phone,
-        preferred_contact_method: editContactDraft.preferred_contact_method,
-        notes: editContactDraft.notes,
-        client_id: selectedContact.client_id || client?.client_id || "",
+        ...contactData,
+        client_id: selectedContact?.client_id || client?.client_id || "",
       };
-      const response = await axios.patch(
-        `/api/contact/${selectedContact.contact_id}`,
-        payload,
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
-      );
+      const response = await axios.patch(`/api/contact/${contactId}`, payload, {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
       if (!response?.data?.status) {
         toast.error(response?.data?.message || "Failed to update contact");
         return;
@@ -294,13 +247,11 @@ export default function page() {
         prev.map((c) => (c.contact_id === updated.contact_id ? updated : c))
       );
       setSelectedContact(updated);
-      setIsEditingContact(false);
       toast.success("Contact updated successfully");
     } catch (err) {
       console.error("Update contact failed", err);
       toast.error(err?.response?.data?.message || "An error occurred");
-    } finally {
-      setIsUpdatingContact(false);
+      throw err;
     }
   };
 
@@ -596,9 +547,8 @@ export default function page() {
     }
   };
 
-  const handleCreateContact = async () => {
+  const handleCreateContact = async (contactData) => {
     try {
-      setIsCreatingContact(true);
       const sessionToken = getToken();
       if (!sessionToken) {
         toast.error("No valid session found. Please login again.");
@@ -606,13 +556,8 @@ export default function page() {
       }
 
       const payload = {
-        first_name: newContact.first_name,
-        last_name: newContact.last_name,
-        email: newContact.email,
-        phone: newContact.phone,
-        preferred_contact_method: newContact.preferred_contact_method,
-        notes: newContact.notes,
-        client_id: client?.client_id || newContact.client_id || "",
+        ...contactData,
+        client_id: client?.client_id || "",
       };
 
       const response = await axios.post("/api/contact/create", payload, {
@@ -621,28 +566,24 @@ export default function page() {
 
       if (!response?.data?.status) {
         toast.error(response?.data?.message || "Failed to create contact");
-        return;
+        throw new Error(response?.data?.message || "Failed to create contact");
       }
 
       const created = response.data.data;
       setContacts((prev) => [created, ...prev]);
       toast.success("Contact created successfully");
-      setShowAddContactModal(false);
-      setNewContact({
-        first_name: "",
-        last_name: "",
-        email: "",
-        phone: "",
-        preferred_contact_method: "",
-        notes: "",
-        client_id: client?.client_id || "",
-      });
+      setIsContactModalOpen(false);
+      setSelectedContact(null);
     } catch (err) {
       console.error("Create contact failed", err);
       toast.error(err?.response?.data?.message || "An error occurred");
-    } finally {
-      setIsCreatingContact(false);
+      throw err;
     }
+  };
+
+  const openAddContactModal = () => {
+    setSelectedContact(null);
+    setIsContactModalOpen(true);
   };
 
   const handleCreateProject = async () => {
@@ -1098,7 +1039,7 @@ export default function page() {
                             </div>
                           )}
                           <button
-                            onClick={() => setShowAddContactModal(true)}
+                            onClick={openAddContactModal}
                             className="cursor-pointer flex items-center text-sm hover:text-secondary mt-4 text-left"
                           >
                             <Plus className="w-4 h-4 mr-1" />
@@ -1248,10 +1189,16 @@ export default function page() {
                       </div>
                     </div>
 
-                    {!client?.projects || client.projects.length === 0 ? (
+                    {!client?.projects ||
+                    client.projects.length === 0 ||
+                    filteredAndSortedProjects.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
                         <Building className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                        <p>No jobs found for this client</p>
+                        <p>
+                          {activeTab === "ACTIVE"
+                            ? "No active jobs found for this client"
+                            : "No completed jobs found for this client"}
+                        </p>
                       </div>
                     ) : (
                       <>
@@ -1523,375 +1470,16 @@ export default function page() {
       </div>
 
       {/* Contact Detail Modal */}
-      {isContactModalOpen && selectedContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
-          <div
-            className="absolute inset-0 bg-slate-900/40"
-            onClick={closeContactModal}
-          />
-          <div className="relative bg-white w-full max-w-lg mx-4 rounded-xl shadow-xl border border-slate-200">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
-                  <User className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-lg font-semibold text-slate-700">
-                    {selectedContact.first_name} {selectedContact.last_name}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {selectedContact.contact_id}
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={closeContactModal}
-                className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {isEditingContact && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                      First Name
-                    </div>
-                    <input
-                      type="text"
-                      value={editContactDraft.first_name}
-                      placeholder={selectedContact.first_name || "First name"}
-                      onChange={(e) =>
-                        setEditContactDraft({
-                          ...editContactDraft,
-                          first_name: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                      Last Name
-                    </div>
-                    <input
-                      type="text"
-                      value={editContactDraft.last_name}
-                      placeholder={selectedContact.last_name || "Last name"}
-                      onChange={(e) =>
-                        setEditContactDraft({
-                          ...editContactDraft,
-                          last_name: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-start gap-3">
-                <Mail className="w-5 h-5 text-slate-500 mt-0.5" />
-                <div className="w-full">
-                  <div className="text-xs uppercase tracking-wide text-slate-500">
-                    Email
-                  </div>
-                  {!isEditingContact ? (
-                    <div className="text-slate-700">
-                      {selectedContact.email || "-"}
-                    </div>
-                  ) : (
-                    <input
-                      type="email"
-                      value={editContactDraft.email}
-                      placeholder={selectedContact.email || "Email"}
-                      onChange={(e) =>
-                        setEditContactDraft({
-                          ...editContactDraft,
-                          email: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    />
-                  )}
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Phone className="w-5 h-5 text-slate-500 mt-0.5" />
-                <div className="w-full">
-                  <div className="text-xs uppercase tracking-wide text-slate-500">
-                    Phone
-                  </div>
-                  {!isEditingContact ? (
-                    <div className="text-slate-700">
-                      {selectedContact.phone || "-"}
-                    </div>
-                  ) : (
-                    <input
-                      type="text"
-                      value={editContactDraft.phone}
-                      placeholder={selectedContact.phone || "Phone"}
-                      onChange={(e) =>
-                        setEditContactDraft({
-                          ...editContactDraft,
-                          phone: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    />
-                  )}
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <NotebookText className="w-5 h-5 text-slate-500 mt-0.5" />
-                <div className="w-full">
-                  <div className="text-xs uppercase tracking-wide text-slate-500">
-                    Notes
-                  </div>
-                  {!isEditingContact ? (
-                    <div className="text-slate-700 whitespace-pre-line">
-                      {selectedContact.notes || "No notes"}
-                    </div>
-                  ) : (
-                    <textarea
-                      rows={3}
-                      value={editContactDraft.notes}
-                      placeholder={selectedContact.notes || "Notes"}
-                      onChange={(e) =>
-                        setEditContactDraft({
-                          ...editContactDraft,
-                          notes: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    />
-                  )}
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 mt-0.5" />
-                <div className="w-full">
-                  <div className="text-xs uppercase tracking-wide text-slate-500">
-                    Preferred Contact
-                  </div>
-                  {!isEditingContact ? (
-                    <div className="text-slate-700">
-                      {selectedContact.preferred_contact_method || "-"}
-                    </div>
-                  ) : (
-                    <select
-                      value={editContactDraft.preferred_contact_method}
-                      onChange={(e) =>
-                        setEditContactDraft({
-                          ...editContactDraft,
-                          preferred_contact_method: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                    >
-                      <option value="">Select method</option>
-                      <option value="phone">Phone</option>
-                      <option value="email">Email</option>
-                    </select>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
-              {!isEditingContact ? (
-                <>
-                  <button
-                    onClick={startEditContact}
-                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                  >
-                    Edit Contact
-                  </button>
-                  <button
-                    onClick={closeContactModal}
-                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                  >
-                    Close
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setIsEditingContact(false)}
-                    disabled={isUpdatingContact}
-                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveEditContact}
-                    disabled={isUpdatingContact}
-                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isUpdatingContact ? "Saving..." : "Save"}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add/Link Contact Modal */}
-      {showAddContactModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
-          <div
-            className="absolute inset-0 bg-slate-900/40"
-            onClick={() => setShowAddContactModal(false)}
-          />
-          <div className="relative bg-white w-full max-w-2xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-800">
-                Add Contact
-              </h2>
-              <button
-                onClick={() => setShowAddContactModal(false)}
-                className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Create New Contact */}
-              <div>
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                  Create New Contact
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Client ID
-                    </label>
-                    <input
-                      type="text"
-                      value={newContact.client_id}
-                      disabled
-                      className="w-full text-sm text-slate-500 px-4 py-3 border border-slate-300 rounded-lg bg-slate-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newContact.first_name}
-                      onChange={(e) =>
-                        setNewContact({
-                          ...newContact,
-                          first_name: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                      placeholder="e.g. Sophia"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newContact.last_name}
-                      onChange={(e) =>
-                        setNewContact({
-                          ...newContact,
-                          last_name: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                      placeholder="e.g. Evans"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={newContact.email}
-                      onChange={(e) =>
-                        setNewContact({ ...newContact, email: e.target.value })
-                      }
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                      placeholder="e.g. sophia.evans@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Phone
-                    </label>
-                    <input
-                      type="text"
-                      value={newContact.phone}
-                      onChange={(e) =>
-                        setNewContact({ ...newContact, phone: e.target.value })
-                      }
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                      placeholder="e.g. +61 434 888 999"
-                    />
-                  </div>
-                  <div className="">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Preferred Contact Method
-                    </label>
-                    <select
-                      value={newContact.preferred_contact_method}
-                      onChange={(e) =>
-                        setNewContact({
-                          ...newContact,
-                          preferred_contact_method: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                    >
-                      <option value="">Select method</option>
-                      <option value="phone">Phone</option>
-                      <option value="email">Email</option>
-                    </select>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Notes
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={newContact.notes}
-                      onChange={(e) =>
-                        setNewContact({ ...newContact, notes: e.target.value })
-                      }
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                      placeholder="Add notes"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
-              <button
-                onClick={() => setShowAddContactModal(false)}
-                className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateContact}
-                disabled={isCreatingContact}
-                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCreatingContact ? "Creating..." : "Create Contact"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ContactPopup
+        isOpen={isContactModalOpen}
+        contact={selectedContact}
+        onClose={closeContactModal}
+        onSave={saveEditContact}
+        onCreate={handleCreateContact}
+        parentId={client?.client_id || ""}
+        parentType="client"
+        parentName={client?.client_name || ""}
+      />
 
       {/* Delete Client Confirmation Modal */}
       <DeleteConfirmation

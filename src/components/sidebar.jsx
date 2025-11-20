@@ -12,6 +12,7 @@ import {
   SquareArrowOutUpRight,
   ChevronDown,
   ChevronUp,
+  Trash2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -85,12 +86,18 @@ export default function sidebar() {
       ],
     },
     { icon: Landmark, label: "Finance", href: "/admin/finance", subtabs: [] },
+    {
+      icon: Trash2,
+      label: "Deleted Media",
+      href: "/admin/deletefiles",
+      subtabs: [],
+    },
   ];
 
   return (
     <div className="bg-slate-900 w-60 h-screen border-r border-slate-800">
-      <div className="flex flex-col h-full px-3 py-3 gap-3">
-        <Link href="/" className="flex flex-col items-center gap-1 py-1">
+      <div className="flex flex-col h-full px-4 py-4 gap-4">
+        <Link href="/" className="flex flex-col items-center gap-2 py-2">
           <Image
             loading="lazy"
             src="/logo.webp"
@@ -101,7 +108,7 @@ export default function sidebar() {
           />
         </Link>
 
-        <div className="flex flex-col justify-between flex-1 min-h-0 gap-3">
+        <div className="flex flex-col justify-between flex-1 min-h-0 gap-4">
           <div className="flex flex-col overflow-y-auto pr-1 gap-1">
             {navdata.map((item) => {
               const isActive = activeTab.href === item.href;
@@ -130,7 +137,7 @@ export default function sidebar() {
                 return (
                   <div key={item.href} className="space-y-1">
                     <div
-                      className={`w-full rounded-md border transition-all duration-200 flex items-center gap-2 px-3 py-2 ${
+                      className={`w-full rounded-lg border transition-all duration-200 flex items-center gap-2 px-3 py-2 ${
                         isParentActive
                           ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                           : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
@@ -218,7 +225,7 @@ export default function sidebar() {
                     </div>
 
                     {dropdownOpen && (
-                      <div className="mt-1 space-y-1">
+                      <div className="mt-1.5 space-y-1.5 ml-2">
                         {item.subtabs.map((link) => {
                           const isActiveSub = activeTab.href === link.href;
                           return (
@@ -234,13 +241,13 @@ export default function sidebar() {
                                   })
                                 );
                               }}
-                              className={`w-full text-left cursor-pointer px-3 py-1.5 rounded-md border transition-all duration-200 flex items-center gap-2 ${
+                              className={`w-full text-left cursor-pointer px-3 py-2 rounded-lg border transition-all duration-200 flex items-center gap-2 ${
                                 isActiveSub
                                   ? "bg-slate-800 text-white border-slate-700"
                                   : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
                               }`}
                             >
-                              <span className="text-xs font-medium">
+                              <span className="text-sm font-medium">
                                 {link.name}
                               </span>
                               <div
@@ -282,7 +289,7 @@ export default function sidebar() {
                     );
                   }}
                   key={item.href}
-                  className={`cursor-pointer rounded-md px-3 py-2 transition-all duration-200 flex items-center gap-2 border ${
+                  className={`cursor-pointer rounded-lg px-3 py-2.5 transition-all duration-200 flex items-center gap-2 border ${
                     isActive
                       ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                       : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
@@ -352,7 +359,7 @@ export default function sidebar() {
                   })
                 );
               }}
-              className={`cursor-pointer rounded-md px-3 py-2 border transition-all duration-200 flex items-center gap-2 ${
+              className={`cursor-pointer rounded-lg px-3 py-2.5 border transition-all duration-200 flex items-center gap-2 ${
                 activeTab.href === "/admin/settings"
                   ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                   : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
@@ -409,7 +416,7 @@ export default function sidebar() {
 
             <button onClick={() => logout()}>
               <div
-                className={`cursor-pointer rounded-md px-3 py-2 transition-all duration-200 flex items-center gap-2 border ${
+                className={`cursor-pointer rounded-lg px-3 py-2.5 transition-all duration-200 flex items-center gap-2 border ${
                   pathname === "/admin/logout"
                     ? "border-red-200/60 bg-red-50 text-red-700 shadow-sm"
                     : "border-transparent text-slate-300 hover:border-red-200 hover:bg-red-50/30 hover:text-red-500"
@@ -434,7 +441,7 @@ export default function sidebar() {
               </div>
             </button>
 
-            <p className="text-xs text-slate-500/80 text-center mt-1 px-2">
+            <p className="text-xs text-slate-500/80 text-center mt-2 px-2">
               v{versions.version}
             </p>
           </div>

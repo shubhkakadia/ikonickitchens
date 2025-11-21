@@ -244,7 +244,7 @@ export default function page() {
       }
       const updated = response.data.data;
       setContacts((prev) =>
-        prev.map((c) => (c.contact_id === updated.contact_id ? updated : c))
+        prev.map((c) => (c.id === updated.id ? updated : c))
       );
       setSelectedContact(updated);
       toast.success("Contact updated successfully");
@@ -500,7 +500,7 @@ export default function page() {
         toast.error("No valid session found. Please login again.");
         return;
       }
-      const contactId = contactPendingDelete.contact_id;
+      const contactId = contactPendingDelete.id;
       const response = await axios.delete(`/api/contact/${contactId}`, {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
@@ -508,7 +508,7 @@ export default function page() {
         toast.error(response?.data?.message || "Failed to delete contact");
         return;
       }
-      setContacts((prev) => prev.filter((c) => c.contact_id !== contactId));
+      setContacts((prev) => prev.filter((c) => c.id !== contactId));
       toast.success("Contact deleted successfully");
       setShowDeleteContactModal(false);
       setContactPendingDelete(null);

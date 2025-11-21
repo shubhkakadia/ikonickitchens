@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
@@ -107,6 +108,13 @@ export async function POST(request) {
       media: media,
     };
 
+    const logged = await withLogging(request, "materials_to_order", mto.id, "CREATE", `Materials to order created successfully for project: ${completeMto.project.name}`);
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log materials to order creation" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

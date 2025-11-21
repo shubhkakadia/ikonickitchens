@@ -8,6 +8,7 @@ import { X, FileText, Eye, Trash2, Package } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
+import Image from "next/image";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -457,23 +458,19 @@ export default function PurchaseOrderForm({
                           <td className="px-4 py-2 whitespace-nowrap">
                             <div className="flex items-center">
                               {item.item.image?.url ? (
-                                <img
+                                <Image
+                                  loading="lazy"
                                   src={`/${item.item.image.url}`}
                                   alt={item.item_id}
                                   className="w-12 h-12 object-cover rounded border border-slate-200"
-                                  onError={(e) => {
-                                    e.target.style.display = "none";
-                                    e.target.nextSibling.style.display = "flex";
-                                  }}
+                                  width={48}
+                                  height={48}
                                 />
-                              ) : null}
-                              <div
-                                className={`w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                  item.item.image?.url ? "hidden" : "flex"
-                                }`}
-                              >
-                                <Package className="w-6 h-6 text-slate-400" />
-                              </div>
+                              ) : (
+                                <div className="w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                  <Package className="w-6 h-6 text-slate-400" />
+                                </div>
+                              )}
                             </div>
                           </td>
 
@@ -707,10 +704,13 @@ export default function PurchaseOrderForm({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {poInvoicePreview ? (
-                        <img
+                        <Image
+                          loading="lazy"
                           src={poInvoicePreview}
                           alt="Invoice preview"
                           className="w-16 h-16 object-cover rounded border border-slate-200"
+                          width={64}
+                          height={64}
                         />
                       ) : (
                         <div className="w-16 h-16 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">

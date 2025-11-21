@@ -9,6 +9,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
+import Image from "next/image";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -54,6 +55,8 @@ export default function page() {
     name: "",
     supplier_id: "",
     measurement_unit: "",
+    supplier_reference: "",
+    supplier_product_link: "",
     is_sunmica: false,
   });
   const filteredCategories = categories.filter((category) =>
@@ -290,6 +293,8 @@ export default function page() {
         name: "",
         supplier_id: "",
         measurement_unit: "",
+        supplier_reference: "",
+        supplier_product_link: "",
         is_sunmica: false,
       });
       setImagePreview(null);
@@ -386,10 +391,13 @@ export default function page() {
                           {imagePreview ? (
                             <div className="relative">
                               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary shadow-lg">
-                                <img
+                                <Image
+                                  loading="lazy"
                                   src={imagePreview}
                                   alt="Preview"
                                   className="w-full h-full object-cover"
+                                  width={128}
+                                  height={128}
                                 />
                               </div>
                               <button
@@ -604,6 +612,34 @@ export default function page() {
                             onChange={handleInputChange}
                             className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                             placeholder="Eg. sheet, meter, pcs, set, kit, etc."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Supplier Reference{" "}
+                            <span className="text-slate-400">(Optional)</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="supplier_reference"
+                            value={formData.supplier_reference}
+                            onChange={handleInputChange}
+                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                            placeholder="Eg. SUP-12345"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Supplier Product Link{" "}
+                            <span className="text-slate-400">(Optional)</span>
+                          </label>
+                          <input
+                            type="url"
+                            name="supplier_product_link"
+                            value={formData.supplier_product_link}
+                            onChange={handleInputChange}
+                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                            placeholder="Eg. https://supplier.com/product/123"
                           />
                         </div>
                       </div>

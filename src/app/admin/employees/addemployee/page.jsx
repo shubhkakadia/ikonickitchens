@@ -23,6 +23,7 @@ import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/contexts/AuthContext";
+import Image from "next/image";
 
 export default function page() {
   const [formData, setFormData] = useState({
@@ -348,10 +349,13 @@ export default function page() {
                           {imagePreview ? (
                             <div className="relative">
                               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary shadow-lg">
-                                <img
+                                <Image
+                                  loading="lazy"
                                   src={imagePreview}
                                   alt="Preview"
                                   className="w-full h-full object-cover"
+                                  width={128}
+                                  height={128}
                                 />
                               </div>
                               <button

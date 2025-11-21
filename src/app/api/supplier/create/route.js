@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
@@ -37,6 +38,20 @@ export async function POST(request) {
     const supplier = await prisma.supplier.create({
       data: { name, email, phone, address, notes, website, abn_number },
     });
+
+    const logged = await withLogging(
+      request,
+      "supplier",
+      supplier.supplier_id,
+      "CREATE",
+      `Supplier created successfully: ${supplier.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log supplier creation" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

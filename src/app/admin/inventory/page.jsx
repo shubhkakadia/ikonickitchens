@@ -912,14 +912,15 @@ export default function page() {
                                   Brand {getSortIcon("brand")}
                                 </button>
                               )}
-                              {activeTab !== "accessory" && (
-                                <button
-                                  onClick={() => handleSort("color")}
-                                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  Color {getSortIcon("color")}
-                                </button>
-                              )}
+                              {activeTab !== "accessory" &&
+                                activeTab !== "hardware" && (
+                                  <button
+                                    onClick={() => handleSort("color")}
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Color {getSortIcon("color")}
+                                  </button>
+                                )}
                               {activeTab === "accessory" && (
                                 <button
                                   onClick={() => handleSort("name")}
@@ -943,6 +944,14 @@ export default function page() {
                                   className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                                 >
                                   Type {getSortIcon("type")}
+                                </button>
+                              )}
+                              {activeTab === "hardware" && (
+                                <button
+                                  onClick={() => handleSort("name")}
+                                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  Name {getSortIcon("name")}
                                 </button>
                               )}
                               {activeTab === "hardware" && (

@@ -9,6 +9,7 @@ import {
   validateMultipartRequest,
   getFileFromFormData,
 } from "@/lib/fileHandler";
+import { withLogging } from "../../../../../../lib/withLogging";
 
 // Upload media files to MTO
 export async function POST(request, { params }) {
@@ -82,6 +83,26 @@ export async function POST(request, { params }) {
         })
       )
     );
+
+    // log all the uploaded media ids
+    const logged = await Promise.all(
+      uploadedMedia.map((media) =>
+        withLogging(
+          request,
+          "media",
+          media.id,
+          "CREATE",
+          `Media uploaded successfully: ${media.filename} for MTO: ${mto.id}`
+        )
+      )
+    );
+
+    if (logged.some((log) => !log)) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log media upload" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {

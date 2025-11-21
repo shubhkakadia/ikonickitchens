@@ -10,6 +10,7 @@ import {
   getFileFromFormData,
 } from "@/lib/fileHandler";
 import path from "path";
+import { withLogging } from "../../../../../../../lib/withLogging";
 
 export async function PATCH(request, { params }) {
   try {
@@ -143,12 +144,30 @@ export async function PATCH(request, { params }) {
     // Update statement
     const updatedStatement = await prisma.supplier_statement.update({
       where: { id: statementId },
-      data: updateData,
       include: {
         supplier_file: true,
+        supplier: {
+          select: {
+            name: true,
+          },
+        },
       },
+      data: updateData,
     });
 
+    const logged = await withLogging(
+      request,
+      "supplier_statement",
+      statementId,
+      "UPDATE",
+      `Statement updated successfully: ${updatedStatement.month_year} for supplier: ${updatedStatement.supplier.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log statement update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,
@@ -191,7 +210,14 @@ export async function DELETE(request, { params }) {
     // Validate statement exists
     const statement = await prisma.supplier_statement.findUnique({
       where: { id: statementId },
-      include: { supplier_file: true },
+      include: {
+        supplier_file: true,
+        supplier: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
 
     if (!statement) {
@@ -221,6 +247,19 @@ export async function DELETE(request, { params }) {
       where: { id: statementId },
     });
 
+    const logged = await withLogging(
+      request,
+      "supplier_statement",
+      statementId,
+      "DELETE",
+      `Statement deleted successfully: ${statement.month_year} for supplier: ${statement.supplier.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log statement deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

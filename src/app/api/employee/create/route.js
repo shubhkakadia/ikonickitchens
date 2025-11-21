@@ -10,6 +10,7 @@ import {
   validateMultipartRequest,
   getFileFromFormData,
 } from "@/lib/fileHandler";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
@@ -85,17 +86,24 @@ export async function POST(request) {
       );
     }
 
-    // Parse availability JSON string to object
-    let parsedAvailability = null;
-    if (availability && availability.trim() !== "") {
-      try {
-        parsedAvailability = JSON.parse(availability);
-      } catch (error) {
-        console.error("Error parsing availability JSON:", error);
-        return NextResponse.json(
-          { status: false, message: "Invalid availability data format" },
-          { status: 400 }
-        );
+    // Parse availability JSON string to object for validation, then stringify for Prisma
+    let availabilityString = null;
+    if (availability !== null && availability !== undefined) {
+      if (typeof availability === "string" && availability.trim() !== "") {
+        // Validate it's valid JSON, but keep as string for Prisma
+        try {
+          JSON.parse(availability);
+          availabilityString = availability;
+        } catch (error) {
+          console.error("Error parsing availability JSON:", error);
+          return NextResponse.json(
+            { status: false, message: "Invalid availability data format" },
+            { status: 400 }
+          );
+        }
+      } else if (typeof availability === "object" && availability !== null) {
+        // Convert object to JSON string for Prisma
+        availabilityString = JSON.stringify(availability);
       }
     }
 
@@ -121,7 +129,7 @@ export async function POST(request) {
         tfn_number,
         abn_number,
         education,
-        availability: parsedAvailability,
+        availability: availabilityString,
         notes,
       },
     });
@@ -170,6 +178,20 @@ export async function POST(request) {
       where: { id: employee.id },
       include: { image: true },
     });
+
+    const logged = await withLogging(
+      request,
+      "employee",
+      employee.id,
+      "CREATE",
+      `Employee created successfully: ${employee.first_name} ${employee.last_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log employee creation" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {

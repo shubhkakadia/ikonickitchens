@@ -6,6 +6,7 @@ import {
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
@@ -224,6 +225,20 @@ export async function POST(request) {
 
       return createdPO;
     });
+
+    const logged = await withLogging(
+      request,
+      "purchase_order",
+      result.id,
+      "CREATE",
+      `Purchase order created successfully for project: ${result.mto_id}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log purchase order creation" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {

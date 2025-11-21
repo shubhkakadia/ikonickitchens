@@ -5,6 +5,7 @@ import {
   isSessionExpired,
   processDateTimeField,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
@@ -26,6 +27,13 @@ export async function POST(request) {
 
     // Create the stage first
     const stage = await prisma.stage.create({
+      include: {
+        lot: {
+          select: {
+            project: { select: { project_id: true, name: true } },
+          },
+        },
+      },
       data: {
         lot_id: lot_id.toLowerCase(),
         name: name.toLowerCase(),
@@ -45,6 +53,21 @@ export async function POST(request) {
         })),
         skipDuplicates: true, // Skip if the relationship already exists
       });
+    }
+
+    // lot id and project name for logging
+    const logged = await withLogging(
+      request,
+      "stage",
+      stage.stage_id,
+      "CREATE",
+      `Stage created successfully: ${stage.name} for lot: ${stage.lot_id} and project: ${stage.lot?.project?.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log stage creation" },
+        { status: 500 }
+      );
     }
     return NextResponse.json(
       { status: true, message: "Stage created successfully", data: stage },

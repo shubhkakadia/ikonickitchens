@@ -4,7 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
-
+import { withLogging } from "../../../../../lib/withLogging";
 export async function POST(request) {
   try {
     const admin = await isAdmin(request);
@@ -63,6 +63,19 @@ export async function POST(request) {
         client_id: normalizedClientId,
       },
     });
+    const logged = await withLogging(
+      request,
+      "project",
+      project.project_id,
+      "CREATE",
+      `Project created successfully: ${project.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log project creation" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Project created successfully", data: project },
       { status: 201 }

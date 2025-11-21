@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 // Helper function to get user from token
 async function getUserFromToken(req) {
@@ -91,6 +92,9 @@ export async function POST(request) {
     // Verify that lot exists
     const lot = await prisma.lot.findUnique({
       where: { lot_id },
+      include: {
+        project: true,
+      },
     });
 
     if (!lot) {
@@ -329,6 +333,22 @@ export async function POST(request) {
       };
     });
 
+    const logged = await withLogging(
+      request,
+      "material_selection",
+      result.material_selection.id,
+      "CREATE",
+      `Material selection and version created successfully for lot: ${lot.name} for project: ${lot.project.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: "Failed to log material selection and version creation",
+        },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
@@ -21,7 +22,7 @@ export async function POST(request) {
       );
     }
     const {
-      // contact_id will be auto-generated on the server
+      // id will be auto-generated on the server
       first_name,
       last_name,
       email,
@@ -33,33 +34,11 @@ export async function POST(request) {
       supplier_id,
     } = await request.json();
 
-    // Helper to compute the next contact_id like ct-001, ct-002, ...
-    const getNextContactId = async () => {
-      const last = await prisma.contact.findFirst({
-        select: { contact_id: true },
-        orderBy: { contact_id: "desc" },
-      });
-      const prefix = "ct-";
-      const defaultNumeric = 1;
-      if (!last || !last.contact_id) {
-        return `${prefix}${String(defaultNumeric).padStart(3, "0")}`;
-      }
-      const parts = String(last.contact_id).split("-");
-      const numericPart = parts.length > 1 ? parseInt(parts[1], 10) : NaN;
-      const nextNumber = Number.isNaN(numericPart)
-        ? defaultNumeric
-        : numericPart + 1;
-      // Keep at least 3 digits, but grow as needed (e.g., 999 -> 1000)
-      const width = Math.max(3, String(nextNumber).length);
-      return `${prefix}${String(nextNumber).padStart(width, "0")}`;
-    };
-
     // Attempt create with a short retry loop to mitigate rare race conditions
     let contact = null;
 
     contact = await prisma.contact.create({
       data: {
-        contact_id: await getNextContactId(),
         first_name,
         last_name,
         email,
@@ -71,6 +50,21 @@ export async function POST(request) {
         supplier_id: supplier_id || null,
       },
     });
+
+    const logged = await withLogging(
+      request,
+      "contact",
+      contact.id,
+      "CREATE",
+      `Contact created successfully: ${contact.first_name} ${contact.last_name}`
+    );
+
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log contact creation" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       { status: true, message: "Contact created successfully", data: contact },

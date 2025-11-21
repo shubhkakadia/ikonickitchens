@@ -14,8 +14,22 @@ export default function DeleteConfirmation({
 }) {
   const [confirmationInput, setConfirmationInput] = useState("");
 
+  // Normalize string for comparison - handles whitespace, null/undefined, and edge cases
+  const normalizeString = (str) => {
+    if (!str) return "";
+    return String(str).trim().replace(/\s+/g, " "); // Replace all whitespace sequences with single space
+  };
+
+  // Check if input matches comparing name
+  const isInputMatch = () => {
+    if (!deleteWithInput) return true;
+    const normalizedInput = normalizeString(confirmationInput);
+    const normalizedCompare = normalizeString(comparingName);
+    return normalizedInput === normalizedCompare;
+  };
+
   const handleConfirm = () => {
-    if (deleteWithInput && confirmationInput !== comparingName) {
+    if (deleteWithInput && !isInputMatch()) {
       return; // Don't proceed if input doesn't match
     }
     onConfirm();
@@ -90,10 +104,7 @@ export default function DeleteConfirmation({
             </button>
             <button
               onClick={handleConfirm}
-              disabled={
-                isDeleting ||
-                (deleteWithInput && confirmationInput !== comparingName)
-              }
+              disabled={isDeleting || (deleteWithInput && !isInputMatch())}
               className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Trash2 className="w-4 h-4" />

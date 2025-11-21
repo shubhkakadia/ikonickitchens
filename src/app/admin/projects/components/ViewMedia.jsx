@@ -1,8 +1,12 @@
 import React, { useState } from "react";
 import Image from "next/image";
-import { Document, Page } from "react-pdf";
+import { Document, Page, pdfjs } from "react-pdf";
 import { ZoomOut, ZoomIn, Download, X, File } from "lucide-react";
 import { toast } from "react-toastify";
+import "react-pdf/dist/Page/TextLayer.css";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function ViewMedia({
   selectedFile,

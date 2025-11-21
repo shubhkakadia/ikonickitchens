@@ -37,6 +37,7 @@ import {
 } from "@/components/validators";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
+import Image from "next/image";
 
 export default function EmployeeDetailPage() {
   const { id } = useParams();
@@ -869,10 +870,13 @@ export default function EmployeeDetailPage() {
                             {imagePreview ? (
                               <div className="relative">
                                 <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-primary shadow-lg">
-                                  <img
+                                  <Image
+                                    loading="lazy"
                                     src={imagePreview}
                                     alt="Preview"
                                     className="w-full h-full object-cover"
+                                    width={64}
+                                    height={64}
                                   />
                                 </div>
                                 <button
@@ -924,10 +928,13 @@ export default function EmployeeDetailPage() {
                           onClick={handleViewEmployeeImage}
                           className="cursor-pointer group relative"
                         >
-                          <img
+                          <Image
+                            loading="lazy"
                             src={`/${employee.image.url}`}
                             alt={employee.first_name + " " + employee.last_name}
                             className="w-16 h-16 rounded-full object-cover transition-transform duration-200 group-hover:scale-105 group-hover:shadow-lg"
+                            width={64}
+                            height={64}
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-full transition-colors duration-200 flex items-center justify-center">
                             <Eye className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />

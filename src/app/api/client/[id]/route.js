@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -67,6 +68,19 @@ export async function DELETE(request, { params }) {
     const client = await prisma.client.delete({
       where: { client_id: id },
     });
+    const logged = await withLogging(
+      request,
+      "client",
+      id,
+      "DELETE",
+      `Client deleted successfully: ${client.client_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log client deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Client deleted successfully", data: client },
       { status: 200 }
@@ -133,6 +147,19 @@ export async function PATCH(request, { params }) {
         contacts: true,
       },
     });
+    const logged = await withLogging(
+      request,
+      "client",
+      id,
+      "UPDATE",
+      `Client updated successfully: ${clientWithRelations.client_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log client update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

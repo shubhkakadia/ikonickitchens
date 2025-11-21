@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -22,7 +23,7 @@ export async function GET(request, { params }) {
     }
     const { id } = await params;
     const contact = await prisma.contact.findUnique({
-      where: { contact_id: id },
+      where: { id: id },
     });
     return NextResponse.json(
       { status: true, message: "Contact fetched successfully", data: contact },
@@ -52,9 +53,22 @@ export async function DELETE(request, { params }) {
       );
     }
     const { id } = await params;
-    await prisma.contact.delete({
-      where: { contact_id: id },
+    const contact = await prisma.contact.delete({
+      where: { id: id },
     });
+    const logged = await withLogging(
+      request,
+      "contact",
+      id,
+      "DELETE",
+      `Contact deleted successfully: ${contact.first_name} ${contact.last_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log contact deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Contact deleted successfully" },
       { status: 200 }
@@ -94,8 +108,8 @@ export async function PATCH(request, { params }) {
       client_id,
       supplier_id,
     } = await request.json();
-    await prisma.contact.update({
-      where: { contact_id: id },
+    const contact = await prisma.contact.update({
+      where: { id: id },
       data: {
         first_name,
         last_name,
@@ -108,9 +122,20 @@ export async function PATCH(request, { params }) {
         supplier_id: supplier_id || null,
       },
     });
-    const contact = await prisma.contact.findUnique({
-      where: { contact_id: id },
-    });
+
+    const logged = await withLogging(
+      request,
+      "contact",
+      id,
+      "UPDATE",
+      `Contact updated successfully: ${contact.first_name} ${contact.last_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log contact update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Contact updated successfully", data: contact },
       { status: 200 }

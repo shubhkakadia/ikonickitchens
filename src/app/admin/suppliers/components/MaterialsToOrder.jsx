@@ -648,7 +648,8 @@ export default function MaterialsToOrder({
                                                 <td className="px-3 py-2 whitespace-nowrap">
                                                   <div className="flex items-center">
                                                     {item.item?.image?.url ? (
-                                                      <img
+                                                      <Image
+                                                        loading="lazy"
                                                         src={`/${item.item.image.url}`}
                                                         alt={item.item_id}
                                                         className="w-10 h-10 object-cover rounded border border-slate-200"
@@ -658,17 +659,14 @@ export default function MaterialsToOrder({
                                                           e.target.nextSibling.style.display =
                                                             "flex";
                                                         }}
+                                                        width={40}
+                                                        height={40}
                                                       />
-                                                    ) : null}
-                                                    <div
-                                                      className={`w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                                        item.item?.image?.url
-                                                          ? "hidden"
-                                                          : "flex"
-                                                      }`}
-                                                    >
-                                                      <Package className="w-5 h-5 text-slate-400" />
-                                                    </div>
+                                                    ) : (
+                                                      <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                                        <Package className="w-5 h-5 text-slate-400" />
+                                                      </div>
+                                                    )}
                                                   </div>
                                                 </td>
                                                 <td className="px-3 py-2 whitespace-nowrap">

@@ -4,54 +4,41 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
-import { withLogging } from "../../../../../lib/withLogging";
-export async function POST(request) {
+
+export async function GET(request, { params }) {
   try {
     const admin = await isAdmin(request);
-
     if (!admin) {
       return NextResponse.json(
         { status: false, message: "Unauthorized" },
         { status: 401 }
       );
     }
-
     if (await isSessionExpired(request)) {
       return NextResponse.json(
         { status: false, message: "Session expired" },
         { status: 401 }
       );
     }
-
-    const { lot_id, tab, notes } = await request.json();
-    const lotTab = await prisma.lot_tab.create({
-      data: {
-        lot_id,
-        tab,
-        notes,
+    const statements = await prisma.supplier_statement.findMany({
+      include: {
+        supplier: true,
+        supplier_file: true,
       },
     });
-
-    const logged = await withLogging(
-      request,
-      "lot_tab_notes",
-      lotTab.id,
-      "CREATE",
-      `Lot tab notes saved successfully: ${lotTab.notes}`
-    );
-    if (!logged) {
+    if (!statements) {
       return NextResponse.json(
-        { status: false, message: "Failed to log lot tab notes creation" },
-        { status: 500 }
+        { status: false, message: "Statements not found" },
+        { status: 404 }
       );
     }
     return NextResponse.json(
       {
         status: true,
-        message: "Lot tab notes saved successfully",
-        data: lotTab,
+        message: "Statements fetched successfully",
+        data: statements,
       },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (error) {
     return NextResponse.json(

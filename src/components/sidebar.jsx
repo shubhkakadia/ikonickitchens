@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  FileText,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -72,6 +73,10 @@ export default function sidebar() {
           name: "Purchase Order",
           href: "/admin/suppliers/purchaseorder",
         },
+        {
+          name: "Statements",
+          href: "/admin/suppliers/statements",
+        },
       ],
     },
     {
@@ -90,6 +95,12 @@ export default function sidebar() {
       icon: Trash2,
       label: "Deleted Media",
       href: "/admin/deletefiles",
+      subtabs: [],
+    },
+    {
+      icon: FileText,
+      label: "Logs",
+      href: "/admin/logs",
       subtabs: [],
     },
   ];

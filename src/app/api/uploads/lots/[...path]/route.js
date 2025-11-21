@@ -7,6 +7,7 @@ import {
 import { prisma } from "@/lib/db";
 import { uploadFile, validateMultipartRequest } from "@/lib/fileHandler";
 import fs from "fs";
+import { withLogging } from "../../../../../../lib/withLogging";
 
 function ensureArray(value) {
   if (!value) return [];
@@ -206,6 +207,14 @@ export async function POST(request, { params }) {
     const tabKindEnum = TABKIND_TO_ENUM[tabKind];
     const lot = await prisma.lot.findUnique({
       where: { lot_id: lotId },
+      include: {
+        project: {
+          select: {
+            project_id: true,
+            name: true,
+          },
+        },
+      },
     });
 
     if (!lot) {
@@ -270,6 +279,25 @@ export async function POST(request, { params }) {
       });
     }
 
+    // log all the uploaded file ids
+    const logged = await Promise.all(
+      saved.map((file) =>
+        withLogging(
+          request,
+          "media",
+          file.fileId,
+          "CREATE",
+          `File uploaded successfully: ${file.filename} for lot: ${lot.lot_id} and project: ${lot.project.name}`
+        )
+      )
+    );
+
+    if (logged.some((log) => !log)) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log media upload" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

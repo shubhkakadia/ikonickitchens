@@ -5,6 +5,7 @@ import {
   isSessionExpired,
   processDateTimeField,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -86,9 +87,29 @@ export async function DELETE(request, { params }) {
       );
     }
     const { id } = await params;
+    // Fetch lot with project before deleting
+    const lotToDelete = await prisma.lot.findUnique({
+      where: { lot_id: id },
+      include: {
+        project: true,
+      },
+    });
     const lot = await prisma.lot.delete({
       where: { lot_id: id },
     });
+    const logged = await withLogging(
+      request,
+      "lot",
+      id,
+      "DELETE",
+      `Lot deleted successfully: ${lotToDelete.name} for project: ${lotToDelete.project.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log lot deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Lot deleted successfully", data: lot },
       { status: 200 }
@@ -149,7 +170,23 @@ export async function PATCH(request, { params }) {
     const lot = await prisma.lot.update({
       where: { lot_id: id },
       data: updateData,
+      include: {
+        project: true,
+      },
     });
+    const logged = await withLogging(
+      request,
+      "lot",
+      id,
+      "UPDATE",
+      `Lot updated successfully: ${lot.name} for project: ${lot.project.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log lot update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Lot updated successfully", data: lot },
       { status: 200 }

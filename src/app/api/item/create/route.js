@@ -9,6 +9,7 @@ import {
   validateMultipartRequest,
   getFileFromFormData,
 } from "@/lib/fileHandler";
+import { withLogging } from "../../../../../lib/withLogging";
 
 const CATEGORIES = ["sheet", "handle", "hardware", "accessory", "edging_tape"];
 
@@ -47,6 +48,8 @@ export async function POST(request, { params }) {
     const sub_category = (formData.get("sub_category") || "").toLowerCase();
     const supplier_id = formData.get("supplier_id");
     const measurement_unit = formData.get("measurement_unit");
+    const supplier_reference = formData.get("supplier_reference");
+    const supplier_product_link = formData.get("supplier_product_link");
     // Handle is_sunmica - FormData sends booleans as strings
     const is_sunmicaValue = formData.get("is_sunmica");
     const is_sunmica =
@@ -70,6 +73,8 @@ export async function POST(request, { params }) {
         category: category.toUpperCase(),
         supplier_id: supplier_id || null,
         measurement_unit: measurement_unit || null,
+        supplier_reference: supplier_reference || null,
+        supplier_product_link: supplier_product_link || null,
       },
     });
 
@@ -184,6 +189,19 @@ export async function POST(request, { params }) {
         edging_tape: true,
       },
     });
+    const logged = await withLogging(
+      request,
+      "item",
+      createdItem.item_id,
+      "CREATE",
+      `Item created successfully: ${createdItem.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log item creation" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {

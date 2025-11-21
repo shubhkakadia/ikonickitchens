@@ -9,6 +9,7 @@ import {
   deleteFileByRelativePath,
   getFileFromFormData,
 } from "@/lib/fileHandler";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -145,6 +146,8 @@ export async function PATCH(request, { params }) {
     const sub_category = formData.get("sub_category");
     const supplier_id = formData.get("supplier_id");
     const measurement_unit = formData.get("measurement_unit");
+    const supplier_reference = formData.get("supplier_reference");
+    const supplier_product_link = formData.get("supplier_product_link");
     // Handle is_sunmica - FormData sends booleans as strings
     const is_sunmicaValue = formData.get("is_sunmica");
     const is_sunmica =
@@ -176,6 +179,10 @@ export async function PATCH(request, { params }) {
       updateData.supplier_id = supplier_id;
     if (measurement_unit !== null && measurement_unit !== undefined)
       updateData.measurement_unit = measurement_unit;
+    if (supplier_reference !== null && supplier_reference !== undefined)
+      updateData.supplier_reference = supplier_reference;
+    if (supplier_product_link !== null && supplier_product_link !== undefined)
+      updateData.supplier_product_link = supplier_product_link;
 
     // Update item first (without image_id)
     await prisma.item.update({
@@ -394,6 +401,20 @@ export async function PATCH(request, { params }) {
       stock_transactions,
     };
 
+    const logged = await withLogging(
+      request,
+      "item",
+      id,
+      "UPDATE",
+      `Item updated successfully: ${completeItem.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log item update" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       {
         status: true,
@@ -438,6 +459,13 @@ export async function DELETE(request, { params }) {
     await prisma.item.delete({
       where: { item_id: id },
     });
+    const logged = await withLogging(request, "item", id, "DELETE", `Item deleted successfully: ${item.name}`);
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log item deletion" },
+        { status: 500 }
+      );
+    }
     // delete file from storage
     return NextResponse.json(
       { status: true, message: "Item deleted successfully", data: item },

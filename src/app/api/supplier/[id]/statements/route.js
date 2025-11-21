@@ -10,6 +10,7 @@ import {
   getFileFromFormData,
 } from "@/lib/fileHandler";
 import path from "path";
+import { withLogging } from "../../../../../../lib/withLogging";
 
 export async function POST(request, { params }) {
   try {
@@ -117,6 +118,19 @@ export async function POST(request, { params }) {
       },
     });
 
+    const logged = await withLogging(
+      request,
+      "supplier_statement",
+      statement.id,
+      "CREATE",
+      `Statement uploaded successfully: ${statement.month_year} for supplier: ${supplier.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log statement upload" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

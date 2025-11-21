@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
+import { withLogging } from "../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
@@ -78,6 +79,19 @@ export async function POST(request) {
       },
     });
 
+    const logged = await withLogging(
+      request,
+      "user",
+      newUser.id,
+      "CREATE",
+      `User created successfully: ${newUser.username}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log user creation" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

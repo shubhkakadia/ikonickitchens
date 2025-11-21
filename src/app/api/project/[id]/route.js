@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -80,6 +81,19 @@ export async function DELETE(request, { params }) {
     const project = await prisma.project.delete({
       where: { project_id: id },
     });
+    const logged = await withLogging(
+      request,
+      "project",
+      id,
+      "DELETE",
+      `Project deleted successfully: ${project.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log project deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Project deleted successfully", data: project },
       { status: 200 }
@@ -125,6 +139,19 @@ export async function PATCH(request, { params }) {
       where: { project_id: id },
       data: updateData,
     });
+    const logged = await withLogging(
+      request,
+      "project",
+      id,
+      "UPDATE",
+      `Project updated successfully: ${project.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log project update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Project updated successfully", data: project },
       { status: 200 }

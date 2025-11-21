@@ -649,7 +649,7 @@ export default function DeleteFilesPage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-slate-600 text-sm">
+                    <p className="text-slate-600 text-sm py-2">
                       View and manage deleted media files. You can download or
                       permanently delete them.
                     </p>
@@ -730,7 +730,7 @@ export default function DeleteFilesPage() {
                         <div className="col-span-full mb-2">
                           <button
                             onClick={handleSelectAll}
-                            className="flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900"
+                            className="cursor-pointer flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900"
                           >
                             {selectedFiles.length === filteredMedia.length ? (
                               <CheckSquare className="w-4 h-4 text-primary" />
@@ -759,7 +759,7 @@ export default function DeleteFilesPage() {
                             }`}
                           >
                             {/* Selection Checkbox */}
-                            {selectionMode && (
+                            {/* {selectionMode && (
                               <div className="absolute top-2 left-2 z-10">
                                 <button
                                   onClick={(e) => {
@@ -779,7 +779,7 @@ export default function DeleteFilesPage() {
                                   )}
                                 </button>
                               </div>
-                            )}
+                            )} */}
                             {/* File Preview */}
                             <div
                               onClick={() => {
@@ -833,7 +833,7 @@ export default function DeleteFilesPage() {
                                       e.stopPropagation();
                                       handleDownloadFile(file);
                                     }}
-                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors text-[10px] font-medium"
+                                    className="cursor-pointer flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors text-[10px] font-medium"
                                   >
                                     <Download className="w-3 h-3" />
                                     <span className="hidden sm:inline">
@@ -845,7 +845,7 @@ export default function DeleteFilesPage() {
                                       e.stopPropagation();
                                       handleDeleteClick(file);
                                     }}
-                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors text-[10px] font-medium"
+                                    className="cursor-pointer flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors text-[10px] font-medium"
                                   >
                                     <Trash2 className="w-3 h-3" />
                                     <span className="hidden sm:inline">

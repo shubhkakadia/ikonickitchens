@@ -10,6 +10,7 @@ import {
   deleteFileByRelativePath,
   getFileFromFormData,
 } from "@/lib/fileHandler";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -69,6 +70,20 @@ export async function DELETE(request, { params }) {
     const employee = await prisma.employees.delete({
       where: { employee_id: id },
     });
+
+    const logged = await withLogging(
+      request,
+      "employee",
+      id,
+      "DELETE",
+      `Employee deleted successfully: ${employee.first_name} ${employee.last_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log employee deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,
@@ -288,6 +303,19 @@ export async function PATCH(request, { params }) {
       include: { image: true },
     });
 
+    const logged = await withLogging(
+      request,
+      "employee",
+      id,
+      "UPDATE",
+      `Employee updated successfully: ${employee.first_name} ${employee.last_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log employee update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

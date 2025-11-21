@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 /**
  * Handle USED transaction (from Materials To Order)
@@ -424,6 +425,21 @@ export async function POST(request) {
           message: "type must be either 'ADDED', 'USED', or 'WASTED'",
         },
         { status: 400 }
+      );
+    }
+
+    const logged = await withLogging(
+      request,
+      "stock_transaction",
+      result.data.id,
+      "CREATE",
+      `Stock transaction created successfully: ${type} for item: ${item_id}`
+    );
+
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log stock transaction creation" },
+        { status: 500 }
       );
     }
 

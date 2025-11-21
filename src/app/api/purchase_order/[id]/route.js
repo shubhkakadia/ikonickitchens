@@ -6,6 +6,7 @@ import {
 } from "../../../../../lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -351,6 +352,12 @@ export async function PATCH(request, { params }) {
         where: { id },
         include: {
           supplier: true,
+          mto: {
+            select: {
+              project: { select: { project_id: true, name: true } },
+              status: true,
+            },
+          },
           items: {
             include: {
               item: {
@@ -444,6 +451,12 @@ export async function PATCH(request, { params }) {
       where: { id },
       data: updateData,
       include: {
+        mto: {
+          select: {
+            project: { select: { project_id: true, name: true } },
+            status: true,
+          },
+        },
         supplier: true,
         items: {
           include: {
@@ -468,6 +481,19 @@ export async function PATCH(request, { params }) {
       },
     });
 
+    const logged = await withLogging(
+      request,
+      "purchase_order",
+      id,
+      "UPDATE",
+      `Purchase order updated successfully for project: ${updated.mto?.project?.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log purchase order update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,
@@ -502,7 +528,27 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
     const po = await prisma.purchase_order.delete({
       where: { id },
+      include: {
+        mto: {
+          select: {
+            project: { select: { project_id: true, name: true } },
+          },
+        },
+      },
     });
+    const logged = await withLogging(
+      request,
+      "purchase_order",
+      id,
+      "DELETE",
+      `Purchase order deleted successfully for project: ${po.mto?.project?.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log purchase order deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

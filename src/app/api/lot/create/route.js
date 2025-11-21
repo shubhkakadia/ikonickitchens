@@ -5,6 +5,7 @@ import {
   isSessionExpired,
   processDateTimeField,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
@@ -48,6 +49,19 @@ export async function POST(request) {
         status: "ACTIVE",
       },
     });
+    const logged = await withLogging(
+      request,
+      "lot",
+      lot.lot_id,
+      "CREATE",
+      `Lot created successfully: ${lot.name} for project: ${lot.project.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log lot creation" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Lot created successfully", data: lot },
       { status: 201 }

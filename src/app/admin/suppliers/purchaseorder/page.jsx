@@ -34,6 +34,7 @@ import {
 import { pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
+import Image from "next/image";
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function page() {
@@ -61,6 +62,7 @@ export default function page() {
   const [isPODropdownOpen, setIsPODropdownOpen] = useState(false);
   const poDropdownRef = useRef(null);
   const poInputRef = useRef(null);
+  const sortDropdownRef = useRef(null);
   const [dropdownPosition, setDropdownPosition] = useState({
     top: 0,
     left: 0,
@@ -78,6 +80,10 @@ export default function page() {
   const [invoicePendingDelete, setInvoicePendingDelete] = useState(null);
   const invoiceFileInputRefs = useRef({});
   const [openAccordionId, setOpenAccordionId] = useState(null);
+  // Purchase order delete
+  const [deletingPOId, setDeletingPOId] = useState(null);
+  const [showDeletePOModal, setShowDeletePOModal] = useState(false);
+  const [poPendingDelete, setPoPendingDelete] = useState(null);
 
   const formatMoney = (value) => {
     const num = Number(value || 0);
@@ -290,6 +296,28 @@ export default function page() {
       };
     }
   }, [isPODropdownOpen]);
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        sortDropdownRef.current &&
+        !sortDropdownRef.current.contains(event.target)
+      ) {
+        setShowSortDropdown(false);
+      }
+    };
+
+    if (showSortDropdown) {
+      // Use setTimeout to avoid immediate closure
+      setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+      }, 0);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showSortDropdown]);
 
   const handlePOSelect = (poId) => {
     setSelectedPOId(poId);
@@ -600,6 +628,86 @@ export default function page() {
     setInvoicePendingDelete(null);
   };
 
+  const handlePODelete = (poId) => {
+    const po = pos.find((p) => p.id === poId);
+    if (po) {
+      setPoPendingDelete(po);
+      setShowDeletePOModal(true);
+    }
+  };
+
+  const handlePODeleteConfirm = async () => {
+    if (!poPendingDelete) return;
+
+    setDeletingPOId(poPendingDelete.id);
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      const response = await axios.delete(
+        `/api/purchase_order/${poPendingDelete.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success("Purchase order deleted successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        // Refresh the PO list
+        fetchPOs();
+        setShowDeletePOModal(false);
+        setPoPendingDelete(null);
+        // Close accordion if it was open
+        if (openAccordionId === poPendingDelete.id) {
+          setOpenAccordionId(null);
+        }
+      } else {
+        toast.error(
+          response.data.message || "Failed to delete purchase order",
+          {
+            position: "top-right",
+            autoClose: 3000,
+          }
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message || "Failed to delete purchase order",
+        {
+          position: "top-right",
+          autoClose: 3000,
+        }
+      );
+    } finally {
+      setDeletingPOId(null);
+    }
+  };
+
+  const handlePODeleteCancel = () => {
+    setShowDeletePOModal(false);
+    setPoPendingDelete(null);
+  };
+
+  const handleCloseMaterialsReceivedModal = () => {
+    setShowMaterialsReceivedModal(false);
+    setSelectedPOId("");
+    setSelectedPO(null);
+    setQuantityReceived({});
+    setPoSearchTerm("");
+    setIsPODropdownOpen(false);
+  };
+
   const handleExportToExcel = async () => {
     if (filteredAndSortedPOs.length === 0) {
       toast.warning("No data to export.", {
@@ -823,7 +931,10 @@ export default function page() {
                             </button>
                           )}
 
-                          <div className="relative dropdown-container">
+                          <div
+                            className="relative dropdown-container"
+                            ref={sortDropdownRef}
+                          >
                             <button
                               onClick={() =>
                                 setShowSortDropdown(!showSortDropdown)
@@ -1065,74 +1176,102 @@ export default function page() {
                                           className="mt-2"
                                         >
                                           <div className="mb-2 p-2 bg-slate-50 rounded-lg">
-                                            <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
-                                              <div className="flex items-center gap-1.5">
-                                                <Calendar className="w-4 h-4" />
-                                                <span>
-                                                  <span className="font-medium">
-                                                    Created:
-                                                  </span>{" "}
-                                                  {po.createdAt
-                                                    ? new Date(
-                                                        po.createdAt
-                                                      ).toLocaleString()
-                                                    : "No date"}
-                                                </span>
-                                              </div>
-                                              {po.ordered_at && (
+                                            <div className="flex items-center justify-between mb-2">
+                                              <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
                                                 <div className="flex items-center gap-1.5">
                                                   <Calendar className="w-4 h-4" />
                                                   <span>
                                                     <span className="font-medium">
-                                                      Ordered:
+                                                      Created:
                                                     </span>{" "}
-                                                    {new Date(
-                                                      po.ordered_at
-                                                    ).toLocaleDateString()}
+                                                    {po.createdAt
+                                                      ? new Date(
+                                                          po.createdAt
+                                                        ).toLocaleString()
+                                                      : "No date"}
                                                   </span>
                                                 </div>
-                                              )}
-                                              {po.total_amount && (
-                                                <div className="flex items-center gap-1.5">
-                                                  <FileText className="w-4 h-4" />
-                                                  <span>
-                                                    <span className="font-medium">
-                                                      Total:
-                                                    </span>{" "}
-                                                    <span className="font-semibold">
-                                                      $
-                                                      {formatMoney(
-                                                        po.total_amount
-                                                      )}
+                                                {po.ordered_at && (
+                                                  <div className="flex items-center gap-1.5">
+                                                    <Calendar className="w-4 h-4" />
+                                                    <span>
+                                                      <span className="font-medium">
+                                                        Ordered:
+                                                      </span>{" "}
+                                                      {new Date(
+                                                        po.ordered_at
+                                                      ).toLocaleDateString()}
                                                     </span>
+                                                  </div>
+                                                )}
+                                                {po.total_amount && (
+                                                  <div className="flex items-center gap-1.5">
+                                                    <FileText className="w-4 h-4" />
+                                                    <span>
+                                                      <span className="font-medium">
+                                                        Total:
+                                                      </span>{" "}
+                                                      <span className="font-semibold">
+                                                        $
+                                                        {formatMoney(
+                                                          po.total_amount
+                                                        )}
+                                                      </span>
+                                                    </span>
+                                                  </div>
+                                                )}
+                                                {po.mto?.project && (
+                                                  <span className="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded border border-slate-200">
+                                                    Project:{" "}
+                                                    {po.mto.project.project_id}{" "}
+                                                    - {po.mto.project.name}
                                                   </span>
-                                                </div>
-                                              )}
-                                              {po.mto?.project && (
-                                                <span className="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded border border-slate-200">
-                                                  Project:{" "}
-                                                  {po.mto.project.project_id} -{" "}
-                                                  {po.mto.project.name}
-                                                </span>
-                                              )}
-                                              {po.orderedBy?.employee && (
-                                                <div className="flex items-center gap-1.5">
-                                                  <User className="w-4 h-4" />
-                                                  <span>
-                                                    <span className="font-medium">
-                                                      Ordered by:
-                                                    </span>{" "}
-                                                    {
-                                                      po.orderedBy.employee
-                                                        .first_name
-                                                    }{" "}
-                                                    {
-                                                      po.orderedBy.employee
-                                                        .last_name
-                                                    }
-                                                  </span>
-                                                </div>
-                                              )}
+                                                )}
+                                                {po.orderedBy?.employee && (
+                                                  <div className="flex items-center gap-1.5">
+                                                    <User className="w-4 h-4" />
+                                                    <span>
+                                                      <span className="font-medium">
+                                                        Ordered by:
+                                                      </span>{" "}
+                                                      {
+                                                        po.orderedBy.employee
+                                                          .first_name
+                                                      }{" "}
+                                                      {
+                                                        po.orderedBy.employee
+                                                          .last_name
+                                                      }
+                                                    </span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handlePODelete(po.id);
+                                                }}
+                                                disabled={
+                                                  deletingPOId === po.id
+                                                }
+                                                className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${
+                                                  deletingPOId === po.id
+                                                    ? "opacity-50 cursor-not-allowed"
+                                                    : ""
+                                                }`}
+                                              >
+                                                {deletingPOId === po.id ? (
+                                                  <>
+                                                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
+                                                    <span>Deleting...</span>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <Trash2 className="w-3 h-3" />
+                                                    <span>Delete PO</span>
+                                                  </>
+                                                )}
+                                              </button>
                                             </div>
                                             {po.notes && (
                                               <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
@@ -1358,31 +1497,22 @@ export default function page() {
                                                         <div className="flex items-center">
                                                           {item.item?.image
                                                             ?.url ? (
-                                                            <img
+                                                            <Image
+                                                              loading="lazy"
                                                               src={`/${item.item.image.url}`}
                                                               alt={
                                                                 item.item
                                                                   .item_id
                                                               }
                                                               className="w-10 h-10 object-cover rounded border border-slate-200"
-                                                              onError={(e) => {
-                                                                e.target.style.display =
-                                                                  "none";
-                                                                e.target.nextSibling.style.display =
-                                                                  "flex";
-                                                              }}
+                                                              width={40}
+                                                              height={40}
                                                             />
-                                                          ) : null}
-                                                          <div
-                                                            className={`w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                                              item.item?.image
-                                                                ?.url
-                                                                ? "hidden"
-                                                                : "flex"
-                                                            }`}
-                                                          >
-                                                            <Package className="w-5 h-5 text-slate-400" />
-                                                          </div>
+                                                          ) : (
+                                                            <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                                              <Package className="w-5 h-5 text-slate-400" />
+                                                            </div>
+                                                          )}
                                                         </div>
                                                       </td>
                                                       <td className="px-3 py-2">
@@ -1823,22 +1953,21 @@ export default function page() {
 
       {/* Materials Received Modal */}
       {showMaterialsReceivedModal && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col relative z-50">
+        <div
+          className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50"
+          onClick={handleCloseMaterialsReceivedModal}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col relative z-50"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <Package className="w-5 h-5" />
                 Materials Received
               </h2>
               <button
-                onClick={() => {
-                  setShowMaterialsReceivedModal(false);
-                  setSelectedPOId("");
-                  setSelectedPO(null);
-                  setQuantityReceived({});
-                  setPoSearchTerm("");
-                  setIsPODropdownOpen(false);
-                }}
+                onClick={handleCloseMaterialsReceivedModal}
                 className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-slate-600" />
@@ -1991,17 +2120,19 @@ export default function page() {
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <div className="flex items-center">
                                   {item.item?.image?.url ? (
-                                    <img
+                                    <Image
+                                      loading="lazy"
                                       src={`/${item.item.image.url}`}
                                       alt={item.item.item_id}
                                       className="w-12 h-12 object-cover rounded border border-slate-200"
-                                      onError={(e) => {
-                                        e.target.style.display = "none";
-                                        e.target.nextSibling.style.display =
-                                          "flex";
-                                      }}
+                                      width={48}
+                                      height={48}
                                     />
-                                  ) : null}
+                                  ) : (
+                                    <div className="w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                      <Package className="w-6 h-6 text-slate-400" />
+                                    </div>
+                                  )}
                                   <div
                                     className={`w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
                                       item.item?.image?.url ? "hidden" : "flex"
@@ -2272,14 +2403,7 @@ export default function page() {
 
             <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200">
               <button
-                onClick={() => {
-                  setShowMaterialsReceivedModal(false);
-                  setSelectedPOId("");
-                  setSelectedPO(null);
-                  setQuantityReceived({});
-                  setPoSearchTerm("");
-                  setIsPODropdownOpen(false);
-                }}
+                onClick={handleCloseMaterialsReceivedModal}
                 className="cursor-pointer px-4 py-2 text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-all duration-200 text-sm font-medium"
               >
                 Cancel
@@ -2329,6 +2453,18 @@ export default function page() {
         heading="Invoice"
         message="This will permanently delete the invoice file. This action cannot be undone."
         isDeleting={deletingInvoicePOId !== null}
+      />
+
+      {/* Delete Purchase Order Confirmation Modal */}
+      <DeleteConfirmation
+        isOpen={showDeletePOModal}
+        onClose={handlePODeleteCancel}
+        onConfirm={handlePODeleteConfirm}
+        deleteWithInput={true}
+        heading="Purchase Order"
+        message="This will permanently delete the purchase order and all its associated data. This action cannot be undone."
+        comparingName={poPendingDelete?.order_no || ""}
+        isDeleting={deletingPOId !== null}
       />
     </AdminRoute>
   );

@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -61,6 +62,19 @@ export async function PATCH(request, { params }) {
       where: { id },
       data: { notes },
     });
+    const logged = await withLogging(
+      request,
+      "lot_tab_notes",
+      id,
+      "UPDATE",
+      `Lot tab notes updated successfully: ${lotTab.notes}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log lot tab notes update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

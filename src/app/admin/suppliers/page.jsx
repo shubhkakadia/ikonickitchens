@@ -232,20 +232,45 @@ export default function page() {
       const XLSX = await import("xlsx");
 
       // Prepare data for export
-      const exportData = filteredAndSortedSuppliers.map((supplier) => ({
-        "Supplier Name": supplier.name || "",
-        Email: supplier.email || "",
-        Phone: supplier.phone || "",
-        Address: supplier.address || "",
-        Website: supplier.website || "",
-        Notes: supplier.notes || "",
-        "Created At": supplier.createdAt
-          ? new Date(supplier.createdAt).toLocaleDateString()
-          : "",
-        "Updated At": supplier.updatedAt
-          ? new Date(supplier.updatedAt).toLocaleDateString()
-          : "",
-      }));
+      const exportData = filteredAndSortedSuppliers.map((supplier) => {
+        // Calculate total statement due
+        const totalStatementDue =
+          supplier.statements && Array.isArray(supplier.statements)
+            ? supplier.statements.reduce((sum, statement) => {
+                const amount = parseFloat(statement.amount) || 0;
+                return sum + amount;
+              }, 0)
+            : 0;
+
+        // Calculate active PO count
+        const activePOCount =
+          supplier.purchase_order && Array.isArray(supplier.purchase_order)
+            ? supplier.purchase_order.length
+            : 0;
+
+        return {
+          "Supplier Name": supplier.name || "",
+          Email: supplier.email || "",
+          Phone: supplier.phone || "",
+          Address: supplier.address || "",
+          Website: supplier.website || "",
+          Notes: supplier.notes || "",
+          "Total Statement Due":
+            totalStatementDue > 0
+              ? totalStatementDue.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : "0.00",
+          "Active PO Count": activePOCount || 0,
+          "Created At": supplier.createdAt
+            ? new Date(supplier.createdAt).toLocaleDateString()
+            : "",
+          "Updated At": supplier.updatedAt
+            ? new Date(supplier.updatedAt).toLocaleDateString()
+            : "",
+        };
+      });
 
       // Create a new workbook
       const wb = XLSX.utils.book_new();
@@ -261,6 +286,8 @@ export default function page() {
         { wch: 30 }, // Address
         { wch: 20 }, // Website
         { wch: 30 }, // Notes
+        { wch: 20 }, // Total Statement Due
+        { wch: 15 }, // Active PO Count
         { wch: 12 }, // Created At
         { wch: 12 }, // Updated At
       ];
@@ -442,6 +469,12 @@ export default function page() {
                               <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                 Phone
                               </th>
+                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                Total Statement Due
+                              </th>
+                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                Active PO Count
+                              </th>
                             </tr>
                           </thead>
 
@@ -450,7 +483,7 @@ export default function page() {
                               <tr>
                                 <td
                                   className="px-4 py-4 text-sm text-slate-500 text-center"
-                                  colSpan={3}
+                                  colSpan={5}
                                 >
                                   Loading suppliers...
                                 </td>
@@ -459,7 +492,7 @@ export default function page() {
                               <tr>
                                 <td
                                   className="px-4 py-4 text-sm text-red-600 text-center"
-                                  colSpan={3}
+                                  colSpan={5}
                                 >
                                   {error}
                                 </td>
@@ -468,7 +501,7 @@ export default function page() {
                               <tr>
                                 <td
                                   className="px-4 py-4 text-sm text-slate-500 text-center"
-                                  colSpan={3}
+                                  colSpan={5}
                                 >
                                   {search
                                     ? "No suppliers found matching your search"
@@ -476,34 +509,71 @@ export default function page() {
                                 </td>
                               </tr>
                             ) : (
-                              paginatedSuppliers.map((supplier) => (
-                                <tr
-                                  key={supplier.supplier_id}
-                                  onClick={() => {
-                                    router.push(
-                                      `/admin/suppliers/${supplier.supplier_id}`
-                                    );
-                                    dispatch(
-                                      replaceTab({
-                                        id: uuidv4(),
-                                        title: supplier.name,
-                                        href: `/admin/suppliers/${supplier.supplier_id}`,
-                                      })
-                                    );
-                                  }}
-                                  className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
-                                >
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                    {supplier.name || "-"}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-slate-600">
-                                    {supplier.email || "-"}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                    {supplier.phone || "-"}
-                                  </td>
-                                </tr>
-                              ))
+                              paginatedSuppliers.map((supplier) => {
+                                // Calculate total statement due
+                                const totalStatementDue =
+                                  supplier.statements &&
+                                  Array.isArray(supplier.statements)
+                                    ? supplier.statements.reduce(
+                                        (sum, statement) => {
+                                          const amount =
+                                            parseFloat(statement.amount) || 0;
+                                          return sum + amount;
+                                        },
+                                        0
+                                      )
+                                    : 0;
+
+                                // Calculate active PO count
+                                const activePOCount =
+                                  supplier.purchase_order &&
+                                  Array.isArray(supplier.purchase_order)
+                                    ? supplier.purchase_order.length
+                                    : 0;
+
+                                return (
+                                  <tr
+                                    key={supplier.supplier_id}
+                                    onClick={() => {
+                                      router.push(
+                                        `/admin/suppliers/${supplier.supplier_id}`
+                                      );
+                                      dispatch(
+                                        replaceTab({
+                                          id: uuidv4(),
+                                          title: supplier.name,
+                                          href: `/admin/suppliers/${supplier.supplier_id}`,
+                                        })
+                                      );
+                                    }}
+                                    className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                                  >
+                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
+                                      {supplier.name || "-"}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-600">
+                                      {supplier.email || "-"}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                      {supplier.phone || "-"}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                      {totalStatementDue > 0
+                                        ? `$${totalStatementDue.toLocaleString(
+                                            "en-US",
+                                            {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 2,
+                                            }
+                                          )}`
+                                        : "-"}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                      {activePOCount > 0 ? activePOCount : "-"}
+                                    </td>
+                                  </tr>
+                                );
+                              })
                             )}
                           </tbody>
                         </table>

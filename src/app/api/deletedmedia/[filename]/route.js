@@ -6,6 +6,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function DELETE(request, { params }) {
   try {
@@ -101,6 +102,26 @@ export async function DELETE(request, { params }) {
       await prisma.supplier_file.delete({
         where: { id: deletedMedia.id },
       });
+    }
+    const entityType =
+      tableName === "lot_file"
+        ? "lot_file"
+        : tableName === "media"
+        ? "media"
+        : "supplier_file";
+
+    const logged = await withLogging(
+      request,
+      entityType,
+      deletedMedia.id,
+      "DELETE",
+      `${entityType} deleted successfully: ${deletedMedia.filename}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: `Failed to log ${entityType} deletion` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json(

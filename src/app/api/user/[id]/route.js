@@ -5,6 +5,7 @@ import {
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
 import bcrypt from "bcrypt";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function DELETE(request, { params }) {
   try {
@@ -23,8 +24,29 @@ export async function DELETE(request, { params }) {
     }
     const { id } = await params;
     const user = await prisma.users.delete({
-      where: { employee_id: id },
+      where: { id: id },
+      include: {
+        employee: {
+          select: {
+            first_name: true,
+            last_name: true,
+          },
+        },
+      },
     });
+    const logged = await withLogging(
+      request,
+      "user",
+      id,
+      "DELETE",
+      `User deleted successfully: ${user.employee?.first_name} ${user.employee?.last_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log user deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "User deleted successfully", data: user },
       { status: 200 }
@@ -74,6 +96,19 @@ export async function PATCH(request, { params }) {
         password: hashedPassword,
       },
     });
+    const logged = await withLogging(
+      request,
+      "user",
+      id,
+      "UPDATE",
+      `User updated successfully: ${user.employee?.first_name} ${user.employee?.last_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log user update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "User updated successfully", data: user },
       { status: 200 }

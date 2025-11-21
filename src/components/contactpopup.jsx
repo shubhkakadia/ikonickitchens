@@ -116,7 +116,7 @@ export default function ContactPopup({
       if (!contact || !onSave) return;
       setIsSavingContact(true);
       try {
-        await onSave(contactDraft, contact.contact_id);
+        await onSave(contactDraft, contact.id);
         setIsEditingContact(false);
       } catch (err) {
         console.error("Save contact failed", err);
@@ -169,7 +169,7 @@ export default function ContactPopup({
                     {contact.first_name} {contact.last_name}
                   </div>
                   <div className="text-xs text-slate-500">
-                    {contact.contact_id}
+                    {contact.id}
                   </div>
                 </>
               )}
@@ -267,7 +267,7 @@ export default function ContactPopup({
                   </label>
                   <input
                     type="text"
-                    value={contact.contact_id}
+                    value={contact.id}
                     disabled
                     className="w-full text-sm text-slate-500 px-4 py-3 border border-slate-300 rounded-lg bg-slate-100"
                   />

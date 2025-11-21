@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -164,6 +165,13 @@ export async function PATCH(request, { params }) {
       media: media,
     };
 
+    const logged = await withLogging(request, "materials_to_order", id, "UPDATE", `Materials to order updated successfully for project: ${mto.project.name}`);
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log materials to order update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

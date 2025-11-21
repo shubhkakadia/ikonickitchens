@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Building2,
   Ruler,
+  ExternalLink,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -239,6 +240,8 @@ export default function page() {
         quantity: item.quantity || "",
         supplier_id: item.supplier_id || "",
         measurement_unit: item.measurement_unit || "",
+        supplier_reference: item.supplier_reference || "",
+        supplier_product_link: item.supplier_product_link || "",
       };
 
       // Add category-specific fields based on category
@@ -1237,6 +1240,81 @@ export default function page() {
                                 ) : (
                                   <p className="text-sm text-slate-800">
                                     {formatValue(item.measurement_unit)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Supplier Reference and Product Link */}
+                            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-200">
+                              {/* Supplier Reference Field */}
+                              <div>
+                                <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                                  <Tag className="w-3.5 h-3.5" />
+                                  Supplier Reference
+                                </label>
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={formData.supplier_reference || ""}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        "supplier_reference",
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder={formatValue(
+                                      item.supplier_reference
+                                    )}
+                                    className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                  />
+                                ) : (
+                                  <p className="text-sm text-slate-800">
+                                    {formatValue(item.supplier_reference)}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Supplier Product Link Field */}
+                              <div>
+                                <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  Supplier Product Link
+                                </label>
+                                {isEditing ? (
+                                  <input
+                                    type="url"
+                                    value={formData.supplier_product_link || ""}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        "supplier_product_link",
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder={formatValue(
+                                      item.supplier_product_link
+                                    )}
+                                    className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                  />
+                                ) : (
+                                  <p className="text-sm text-slate-800">
+                                    {item.supplier_product_link ? (
+                                      <a
+                                        href={item.supplier_product_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline"
+                                      >
+                                        {item.supplier_product_link.length > 40
+                                          ? `${item.supplier_product_link.substring(
+                                              0,
+                                              40
+                                            )}...`
+                                          : item.supplier_product_link}
+                                      </a>
+                                    ) : (
+                                      formatValue(item.supplier_product_link)
+                                    )}
                                   </p>
                                 )}
                               </div>

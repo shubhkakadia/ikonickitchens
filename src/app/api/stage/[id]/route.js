@@ -5,6 +5,7 @@ import {
   isSessionExpired,
   processDateTimeField,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function DELETE(request, { params }) {
   try {
@@ -24,7 +25,27 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
     const stage = await prisma.stage.delete({
       where: { stage_id: id },
+      include: {
+        lot: {
+          select: {
+            project: { select: { project_id: true, name: true } },
+          },
+        },
+      },
     });
+    const logged = await withLogging(
+      request,
+      "stage",
+      id,
+      "DELETE",
+      `Stage deleted successfully: ${stage.name} for lot: ${stage.lot_id} and project: ${stage.lot?.project?.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log stage deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       { status: true, message: "Stage deleted successfully", data: stage },
       { status: 200 }
@@ -95,6 +116,11 @@ export async function PATCH(request, { params }) {
     const updatedStage = await prisma.stage.findUnique({
       where: { stage_id: id },
       include: {
+        lot: {
+          select: {
+            project: { select: { project_id: true, name: true } },
+          },
+        },
         assigned_to: {
           include: {
             employee: {
@@ -108,6 +134,19 @@ export async function PATCH(request, { params }) {
       },
     });
 
+    const logged = await withLogging(
+      request,
+      "stage",
+      id,
+      "UPDATE",
+      `Stage updated successfully: ${updatedStage.name} for lot: ${updatedStage.lot_id} and project: ${updatedStage.lot?.project?.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log stage update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

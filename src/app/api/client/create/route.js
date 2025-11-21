@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
@@ -53,6 +54,21 @@ export async function POST(request) {
         client_notes,
       },
     });
+    console.log("client");
+    const logged = await withLogging(
+      request,
+      "client",
+      client.client_id,
+      "CREATE",
+      `Client created successfully: ${client.client_name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log client creation" },
+        { status: 500 }
+      );
+    }
+    console.log("logged");
     return NextResponse.json(
       { status: true, message: "Client created successfully", data: client },
       { status: 201 }

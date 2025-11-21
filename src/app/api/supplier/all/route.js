@@ -20,12 +20,42 @@ export async function GET(request) {
         { status: 401 }
       );
     }
-    const suppliers = await prisma.supplier.findMany();
+    // include total statements amount for each supplier and number of purchase orders
+    const suppliers = await prisma.supplier.findMany({
+      include: {
+        // 1. Only pending statements
+        statements: {
+          where: {
+            payment_status: "PENDING",
+          },
+          select: {
+            amount: true,
+          },
+        },
+    
+        // 2. Only NOT fully_received or cancelled POs
+        purchase_order: {
+          where: {
+            NOT: {
+              status: {
+                in: ["FULLY_RECEIVED", "CANCELLED"],
+              },
+            },
+          },
+          select: {
+            id: true, // any minimal field to avoid loading everything
+          },
+        },
+      },
+    });
+    
+    
     return NextResponse.json(
       {
         status: true,
         message: "Suppliers fetched successfully",
         data: suppliers,
+        
       },
       { status: 200 }
     );

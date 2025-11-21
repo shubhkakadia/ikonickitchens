@@ -16,6 +16,7 @@ import {
   Check,
   X,
 } from "lucide-react";
+import Image from "next/image";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -488,7 +489,8 @@ export default function page() {
                                                     <div className="flex-shrink-0">
                                                       {itemDetails?.image ? (
                                                         <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-300 bg-white flex items-center justify-center relative">
-                                                          <img
+                                                          <Image
+                                                            loading="lazy"
                                                             src={
                                                               itemDetails.image
                                                             }
@@ -497,6 +499,8 @@ export default function page() {
                                                               "Item"
                                                             }
                                                             className="object-cover w-full h-full"
+                                                            width={64}
+                                                            height={64}
                                                             onError={(e) => {
                                                               e.target.style.display =
                                                                 "none";

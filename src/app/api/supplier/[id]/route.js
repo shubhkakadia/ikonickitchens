@@ -4,6 +4,7 @@ import {
   isAdmin,
   isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
+import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -78,6 +79,20 @@ export async function PATCH(request, { params }) {
       where: { supplier_id: id },
       data: { name, email, phone, address, notes, website, abn_number },
     });
+
+    const logged = await withLogging(
+      request,
+      "supplier",
+      id,
+      "UPDATE",
+      `Supplier updated successfully: ${supplier.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log supplier update" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,
@@ -113,6 +128,19 @@ export async function DELETE(request, { params }) {
     const supplier = await prisma.supplier.delete({
       where: { supplier_id: id },
     });
+    const logged = await withLogging(
+      request,
+      "supplier",
+      id,
+      "DELETE",
+      `Supplier deleted successfully: ${supplier.name}`
+    );
+    if (!logged) {
+      return NextResponse.json(
+        { status: false, message: "Failed to log supplier deletion" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(
       {
         status: true,

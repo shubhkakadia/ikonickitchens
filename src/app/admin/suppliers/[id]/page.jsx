@@ -37,6 +37,7 @@ import { CiMenuKebab } from "react-icons/ci";
 import MaterialsToOrder from "../components/MaterialsToOrder";
 import PurchaseOrder from "../components/PurchaseOrder";
 import Statement from "../components/Statement";
+import Image from "next/image";
 
 export default function page() {
   const { id } = useParams();
@@ -279,7 +280,7 @@ export default function page() {
       }
       const updated = response.data.data;
       setContacts((prev) =>
-        prev.map((c) => (c.contact_id === updated.contact_id ? updated : c))
+        prev.map((c) => (c.id === updated.id ? updated : c))
       );
       setSelectedContact(updated);
       toast.success("Contact updated successfully");
@@ -316,7 +317,7 @@ export default function page() {
 
   const handleDeleteContact = (contactId) => {
     // open confirmation modal without input
-    const contact = contacts.find((c) => c.contact_id === contactId);
+    const contact = contacts.find((c) => c.id === contactId);
     setContactPendingDelete(contact || null);
     setShowDeleteContactModal(true);
   };
@@ -335,7 +336,7 @@ export default function page() {
         toast.error("No valid session found. Please login again.");
         return;
       }
-      const contactId = contactPendingDelete.contact_id;
+      const contactId = contactPendingDelete.id;
       const response = await axios.delete(`/api/contact/${contactId}`, {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
@@ -343,7 +344,7 @@ export default function page() {
         toast.error(response?.data?.message || "Failed to delete contact");
         return;
       }
-      setContacts((prev) => prev.filter((c) => c.contact_id !== contactId));
+      setContacts((prev) => prev.filter((c) => c.id !== contactId));
       toast.success("Contact deleted successfully");
       setShowDeleteContactModal(false);
       setContactPendingDelete(null);
@@ -724,7 +725,7 @@ export default function page() {
                           <div className="space-y-1.5">
                             {contacts.map((contact) => (
                               <div
-                                key={contact.contact_id}
+                                key={contact.id}
                                 onClick={() => openContactModal(contact)}
                                 className="cursor-pointer group text-left border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 transition-colors rounded px-2 py-1.5 flex items-center gap-2 justify-between"
                               >
@@ -757,7 +758,7 @@ export default function page() {
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDeleteContact(contact.contact_id);
+                                      handleDeleteContact(contact.id);
                                     }}
                                     className="cursor-pointer p-2 rounded hover:bg-slate-100"
                                     title="Delete"
@@ -1112,7 +1113,8 @@ export default function page() {
                                         <td className="px-4 py-2 whitespace-nowrap">
                                           <div className="flex items-center">
                                             {item.image?.url ? (
-                                              <img
+                                              <Image
+                                                loading="lazy"  
                                                 src={`/${item.image.url}`}
                                                 alt={item.item_id}
                                                 className="w-12 h-12 object-cover rounded border border-slate-200"
@@ -1122,17 +1124,14 @@ export default function page() {
                                                   e.target.nextSibling.style.display =
                                                     "flex";
                                                 }}
+                                                width={48}
+                                                height={48}
                                               />
-                                            ) : null}
-                                            <div
-                                              className={`w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                                item.image?.url
-                                                  ? "hidden"
-                                                  : "flex"
-                                              }`}
-                                            >
-                                              <Package className="w-6 h-6 text-slate-400" />
-                                            </div>
+                                            ) : (
+                                              <div className="w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                                <Package className="w-6 h-6 text-slate-400" />
+                                              </div>
+                                            )}
                                           </div>
                                         </td>
 

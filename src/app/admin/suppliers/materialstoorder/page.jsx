@@ -1033,34 +1033,31 @@ export default function page() {
                                                                       {item.item
                                                                         ?.image
                                                                         ?.url ? (
-                                                                        <img
+                                                                        <Image
+                                                                          loading="lazy"
                                                                           src={`/${item.item.image.url}`}
                                                                           alt={
-                                                                            item.item_id
+                                                                            item
+                                                                              .item
+                                                                              ?.category
+                                                                              ? `${item.item.category} item image`
+                                                                              : item.item_id
+                                                                              ? `Item ${item.item_id} image`
+                                                                              : "Item image"
                                                                           }
                                                                           className="w-10 h-10 object-cover rounded border border-slate-200"
-                                                                          onError={(
-                                                                            e
-                                                                          ) => {
-                                                                            e.target.style.display =
-                                                                              "none";
-                                                                            e.target.nextSibling.style.display =
-                                                                              "flex";
-                                                                          }}
+                                                                          width={
+                                                                            40
+                                                                          }
+                                                                          height={
+                                                                            40
+                                                                          }
                                                                         />
-                                                                      ) : null}
-                                                                      <div
-                                                                        className={`w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center ${
-                                                                          item
-                                                                            .item
-                                                                            ?.image
-                                                                            ?.url
-                                                                            ? "hidden"
-                                                                            : "flex"
-                                                                        }`}
-                                                                      >
-                                                                        <Package className="w-5 h-5 text-slate-400" />
-                                                                      </div>
+                                                                      ) : (
+                                                                        <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                                                          <Package className="w-5 h-5 text-slate-400" />
+                                                                        </div>
+                                                                      )}
                                                                     </div>
                                                                   </td>
                                                                   <td className="px-3 py-2 whitespace-nowrap">
@@ -1641,7 +1638,7 @@ export default function page() {
                                     height={100}
                                     width={100}
                                     src={`/${file.url}`}
-                                    alt={file.filename}
+                                    alt={file.filename || "Media file image"}
                                     className="w-full h-full object-cover rounded-lg"
                                   />
                                 ) : file.mime_type?.includes("video") ||

@@ -49,6 +49,29 @@ export default function page() {
     useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // Define all available columns for export
+  const availableColumns = [
+    "Client ID",
+    "Client Name",
+    "Client Email",
+    "Client Phone",
+    "Client Type",
+    "Number of Projects",
+    "Client Address",
+    "Client Website",
+    "Client Notes",
+    "Contact Name",
+    "Contact Email",
+    "Contact Phone",
+    "Contact Notes",
+    "Client Created At",
+    "Client Updated At",
+  ];
+
+  // Initialize selected columns with all columns
+  const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
 
   // Helper function to count active projects (projects with at least one ACTIVE lot)
   const countActiveProjects = (client) => {
@@ -158,6 +181,7 @@ export default function page() {
         setShowSortDropdown(false);
         setShowItemsPerPageDropdown(false);
         setShowClientTypeFilterDropdown(false);
+        setShowColumnDropdown(false);
       }
     };
 
@@ -256,6 +280,24 @@ export default function page() {
     }
   };
 
+  const handleColumnToggle = (column) => {
+    if (column === "Select All") {
+      if (selectedColumns.length === availableColumns.length) {
+        // If all columns are selected, unselect all
+        setSelectedColumns([]);
+      } else {
+        // If not all columns are selected, select all
+        setSelectedColumns([...availableColumns]);
+      }
+    } else {
+      setSelectedColumns((prev) =>
+        prev.includes(column)
+          ? prev.filter((c) => c !== column)
+          : [...prev, column]
+      );
+    }
+  };
+
   const handleItemsPerPageChange = (value) => {
     setItemsPerPage(value);
     setShowItemsPerPageDropdown(false);
@@ -310,34 +352,76 @@ export default function page() {
       return;
     }
 
+    if (selectedColumns.length === 0) {
+      toast.warning("Please select at least one column to export.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+      return;
+    }
+
     setIsExporting(true);
 
     try {
       // Dynamic import of xlsx to avoid SSR issues
       const XLSX = await import("xlsx");
 
-      // Prepare data for export - use filtered and sorted data with all fields
-      const exportData = filteredAndSortedClients.map((client) => ({
-        "Client ID": client.client_id || "",
-        "Client Name": client.client_name || "",
-        "Client Email": client.client_email || "",
-        "Client Phone": client.client_phone || "",
-        "Client Type": client.client_type || "",
-        "Number of Projects": client.projects ? client.projects.length : 0,
-        "Client Address": client.client_address || "",
-        "Client Website": client.client_website || "",
-        "Client Notes": client.client_notes || "",
-        "Contact Name": client.contacts[0]?.first_name || "",
-        "Contact Email": client.contacts[0]?.email || "",
-        "Contact Phone": client.contacts[0]?.phone || "",
-        "Contact Notes": client.contacts[0]?.notes || "",
-        "Client Created At": client.createdAt
-          ? new Date(client.createdAt).toLocaleDateString()
-          : "",
-        "Client Updated At": client.updatedAt
-          ? new Date(client.updatedAt).toLocaleDateString()
-          : "",
-      }));
+      // Map of column names to their data extraction functions
+      const columnMap = {
+        "Client ID": (client) => client.client_id || "",
+        "Client Name": (client) => client.client_name || "",
+        "Client Email": (client) => client.client_email || "",
+        "Client Phone": (client) => client.client_phone || "",
+        "Client Type": (client) => client.client_type || "",
+        "Number of Projects": (client) =>
+          client.projects ? client.projects.length : 0,
+        "Client Address": (client) => client.client_address || "",
+        "Client Website": (client) => client.client_website || "",
+        "Client Notes": (client) => client.client_notes || "",
+        "Contact Name": (client) => client.contacts[0]?.first_name || "",
+        "Contact Email": (client) => client.contacts[0]?.email || "",
+        "Contact Phone": (client) => client.contacts[0]?.phone || "",
+        "Contact Notes": (client) => client.contacts[0]?.notes || "",
+        "Client Created At": (client) =>
+          client.createdAt
+            ? new Date(client.createdAt).toLocaleDateString()
+            : "",
+        "Client Updated At": (client) =>
+          client.updatedAt
+            ? new Date(client.updatedAt).toLocaleDateString()
+            : "",
+      };
+
+      // Column width map
+      const columnWidthMap = {
+        "Client ID": 12,
+        "Client Name": 15,
+        "Client Email": 15,
+        "Client Phone": 25,
+        "Client Type": 15,
+        "Number of Projects": 15,
+        "Client Address": 30,
+        "Client Website": 20,
+        "Client Notes": 18,
+        "Contact Name": 20,
+        "Contact Email": 18,
+        "Contact Phone": 12,
+        "Contact Notes": 20,
+        "Client Created At": 12,
+        "Client Updated At": 12,
+      };
+
+      // Prepare data for export - only include selected columns
+      const exportData = filteredAndSortedClients.map((client) => {
+        const row = {};
+        selectedColumns.forEach((column) => {
+          if (columnMap[column]) {
+            row[column] = columnMap[column](client);
+          }
+        });
+        return row;
+      });
 
       // Create a new workbook
       const wb = XLSX.utils.book_new();
@@ -345,24 +429,10 @@ export default function page() {
       // Create a worksheet from the data
       const ws = XLSX.utils.json_to_sheet(exportData);
 
-      // Set column widths for better readability
-      const colWidths = [
-        { wch: 12 }, // Client ID
-        { wch: 15 }, // Client Name
-        { wch: 15 }, // Client Email
-        { wch: 25 }, // Client Phone
-        { wch: 15 }, // Client Type
-        { wch: 15 }, // Number of Projects
-        { wch: 30 }, // Client Address
-        { wch: 20 }, // Client Website
-        { wch: 18 }, // Client Notes
-        { wch: 20 }, // Contact Name
-        { wch: 18 }, // Contact Email
-        { wch: 12 }, // Contact Phone
-        { wch: 20 }, // Contact Notes
-        { wch: 12 }, // Created At
-        { wch: 12 }, // Updated At
-      ];
+      // Set column widths for selected columns only
+      const colWidths = selectedColumns.map((column) => ({
+        wch: columnWidthMap[column] || 15,
+      }));
       ws["!cols"] = colWidths;
 
       // Add the worksheet to the workbook
@@ -421,7 +491,7 @@ export default function page() {
                   </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
                   >
                     Try Again
                   </button>
@@ -592,24 +662,89 @@ export default function page() {
                               </div>
                             )}
                           </div>
-                          <button
-                            onClick={handleExportToExcel}
-                            disabled={
-                              isExporting ||
-                              filteredAndSortedClients.length === 0
-                            }
-                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium ${
-                              isExporting ||
-                              filteredAndSortedClients.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                            }`}
-                          >
-                            <Sheet className="h-4 w-4" />
-                            <span>
-                              {isExporting ? "Exporting..." : "Export to Excel"}
-                            </span>
-                          </button>
+                          <div className="relative dropdown-container flex items-center">
+                            <button
+                              onClick={handleExportToExcel}
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedClients.length === 0 ||
+                                selectedColumns.length === 0
+                              }
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredAndSortedClients.length === 0 ||
+                                selectedColumns.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <Sheet className="h-4 w-4" />
+                              <span>
+                                {isExporting
+                                  ? "Exporting..."
+                                  : "Export to Excel"}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                setShowColumnDropdown(!showColumnDropdown)
+                              }
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedClients.length === 0
+                              }
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredAndSortedClients.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <ChevronDown className="h-5 w-5" />
+                            </button>
+                            {showColumnDropdown && (
+                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() =>
+                                      handleColumnToggle("Select All")
+                                    }
+                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
+                                  >
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </button>
+                                  {availableColumns.map((column) => (
+                                    <button
+                                      key={column}
+                                      onClick={() => handleColumnToggle(column)}
+                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                    >
+                                      <span>{column}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedColumns.includes(
+                                          column
+                                        )}
+                                        onChange={() => {}}
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

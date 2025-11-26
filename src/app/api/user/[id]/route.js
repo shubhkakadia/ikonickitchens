@@ -86,15 +86,23 @@ export async function PATCH(request, { params }) {
     const { user_type, is_active, module_access, password } = body;
 
     const { id } = await params;
-    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Build update data object
+    const updateData = {
+      user_type,
+      is_active,
+      module_access,
+    };
+    
+    // Only update password if it's provided and not empty
+    if (password && password.trim() !== "") {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
+    
     const user = await prisma.users.update({
       where: { employee_id: id },
-      data: {
-        user_type,
-        is_active,
-        module_access,
-        password: hashedPassword,
-      },
+      data: updateData,
     });
     const logged = await withLogging(
       request,
@@ -111,6 +119,37 @@ export async function PATCH(request, { params }) {
     }
     return NextResponse.json(
       { status: true, message: "User updated successfully", data: user },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { status: false, message: "Internal Server Error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request, { params }) {
+  try {
+    const admin = await isAdmin(request);
+    if (!admin) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    const { id } = await params;
+    const user = await prisma.users.findUnique({
+      where: { id: id },
+    });
+    if (!user) {
+      return NextResponse.json(
+        { status: false, message: "User not found" },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json(
+      { status: true, message: "User fetched successfully", data: user },
       { status: 200 }
     );
   } catch (error) {

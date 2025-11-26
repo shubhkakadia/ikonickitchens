@@ -122,7 +122,7 @@ export default function EmployeeDetailPage() {
           }
         }
         setEmployee(employeeData);
-        setUser(response.data.user || null);
+        setUser(employeeData.user || null);
       } else {
         setError(response.data.message || "Failed to fetch employee data");
       }
@@ -559,10 +559,32 @@ export default function EmployeeDetailPage() {
 
       if (response.data.status) {
         toast.success("User created successfully");
-        setUser(response.data.data);
+        const newUser = response.data.data;
+        setUser(newUser);
+
+        // Parse module access from the created user
+        let parsedModuleAccess = {};
+        if (newUser.module_access) {
+          try {
+            parsedModuleAccess = JSON.parse(newUser.module_access);
+          } catch (e) {
+            console.error("Error parsing module access:", e);
+          }
+        }
+
+        // Transition to edit mode with the newly created user
+        setUserEditData({
+          password: "",
+          user_type: newUser.user_type || "",
+          is_active: newUser.is_active || false,
+        });
+        setModuleAccess(parsedModuleAccess);
         setIsCreatingUser(false);
-        setShowUserModal(false);
-        // Refresh employee data to get updated user info
+        setIsEditingUser(true);
+        setShowPassword(false);
+        // Keep modal open in edit mode
+
+        // Refresh employee data in the background to update dropdown state
         fetchEmployee();
       } else {
         toast.error(response.data.message || "Failed to create user");

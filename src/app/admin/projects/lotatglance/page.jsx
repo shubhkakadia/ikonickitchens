@@ -8,7 +8,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Search, Funnel, Sheet, RotateCcw } from "lucide-react";
+import {
+  Search,
+  Funnel,
+  Sheet,
+  RotateCcw,
+  AlertTriangle,
+  ChevronDown,
+} from "lucide-react";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -21,6 +28,19 @@ export default function page() {
   const [showFilterDropdowns, setShowFilterDropdowns] = useState({});
   const [dropdownPositions, setDropdownPositions] = useState({});
   const filterButtonRefs = useRef({});
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // Define all available columns for export
+  const availableColumns = useMemo(() => {
+    return ["Project Name", "Lot ID", ...stages];
+  }, []);
+
+  // Initialize selected columns with all columns
+  const [selectedColumns, setSelectedColumns] = useState(() => [
+    "Project Name",
+    "Lot ID",
+    ...stages,
+  ]);
 
   useEffect(() => {
     fetchActiveLots();
@@ -182,6 +202,25 @@ export default function page() {
     setStageFilters({});
   };
 
+  // Handle column toggle
+  const handleColumnToggle = (column) => {
+    if (column === "Select All") {
+      if (selectedColumns.length === availableColumns.length) {
+        // If all columns are selected, unselect all
+        setSelectedColumns([]);
+      } else {
+        // If not all columns are selected, select all
+        setSelectedColumns([...availableColumns]);
+      }
+    } else {
+      setSelectedColumns((prev) =>
+        prev.includes(column)
+          ? prev.filter((c) => c !== column)
+          : [...prev, column]
+      );
+    }
+  };
+
   // Check if any filters are active
   const hasActiveFilters = search || Object.keys(stageFilters).length > 0;
 
@@ -199,25 +238,48 @@ export default function page() {
       return;
     }
 
+    if (selectedColumns.length === 0) {
+      toast.warning("Please select at least one column to export.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+      return;
+    }
+
     setIsExporting(true);
 
     try {
       // Dynamic import of xlsx to avoid SSR issues
       const XLSX = await import("xlsx");
 
-      // Prepare data for export
-      const exportData = filteredLots.map((lot) => {
-        const row = {
-          "Project Name": lot.project?.name || "N/A",
-          "Lot ID": lot.lot_id || "",
-        };
+      // Map of column names to their data extraction functions
+      const columnMap = {
+        "Project Name": (lot) => lot.project?.name || "N/A",
+        "Lot ID": (lot) => lot.lot_id || "",
+      };
 
-        // Add each stage as a column
-        stages.forEach((stage) => {
+      // Add stage columns to the map
+      stages.forEach((stage) => {
+        columnMap[stage] = (lot) => {
           const status = getStageStatus(lot, stage);
-          row[stage] = formatStatus(status);
-        });
+          return formatStatus(status);
+        };
+      });
 
+      // Add stage widths
+      stages.forEach(() => {
+        // We'll set stage widths to 18 in the export
+      });
+
+      // Prepare data for export - only include selected columns
+      const exportData = filteredLots.map((lot) => {
+        const row = {};
+        selectedColumns.forEach((column) => {
+          if (columnMap[column]) {
+            row[column] = columnMap[column](lot);
+          }
+        });
         return row;
       });
 
@@ -227,12 +289,12 @@ export default function page() {
       // Create a worksheet from the data
       const ws = XLSX.utils.json_to_sheet(exportData);
 
-      // Set column widths for better readability
-      const colWidths = [
-        { wch: 25 }, // Project Name
-        { wch: 15 }, // Lot ID
-        ...stages.map(() => ({ wch: 18 })), // Each stage column
-      ];
+      // Set column widths for selected columns only
+      const colWidths = selectedColumns.map((column) => {
+        if (column === "Project Name") return { wch: 25 };
+        if (column === "Lot ID") return { wch: 15 };
+        return { wch: 18 }; // Stage columns
+      });
       ws["!cols"] = colWidths;
 
       // Add the worksheet to the workbook
@@ -272,6 +334,9 @@ export default function page() {
       if (!event.target.closest(".filter-dropdown-container")) {
         setShowFilterDropdowns({});
       }
+      if (!event.target.closest(".dropdown-container")) {
+        setShowColumnDropdown(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -287,257 +352,368 @@ export default function page() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-4 py-2 flex-shrink-0">
-              <div className="flex justify-between items-center">
-                <h1 className="text-xl font-bold text-slate-700">
-                  Lots at a Glance
-                </h1>
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                  <p className="text-sm text-slate-600 font-medium">
+                    Loading lots at a glance details...
+                  </p>
+                </div>
               </div>
-            </div>
-
-            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                {/* Fixed Header Section */}
-                <div className="p-4 flex-shrink-0 border-b border-slate-200">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    {/* Search */}
-                    <div className="flex items-center gap-2 flex-1 max-w-sm relative">
-                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search by project name or lot ID"
-                        className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {/* Reset Button - Always visible when filters are active */}
-                      {hasActiveFilters && (
-                        <button
-                          onClick={handleResetFilters}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                          <span>Reset Filters</span>
-                        </button>
-                      )}
-                      {/* Export to Excel */}
-                      <button
-                        onClick={handleExportToExcel}
-                        disabled={isExporting || filteredLots.length === 0}
-                        className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium ${
-                          isExporting || filteredLots.length === 0
-                            ? "opacity-50 cursor-not-allowed"
-                            : "cursor-pointer hover:bg-slate-100"
-                        }`}
-                      >
-                        <Sheet className="h-4 w-4" />
-                        <span>
-                          {isExporting ? "Exporting..." : "Export to Excel"}
-                        </span>
-                      </button>
-                    </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-sm text-red-600 mb-4 font-medium">
+                    {error}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="px-4 py-2 flex-shrink-0">
+                  <div className="flex justify-between items-center">
+                    <h1 className="text-xl font-bold text-slate-700">
+                      Lots at a Glance
+                    </h1>
                   </div>
                 </div>
 
-                {/* Filter Dropdowns - Positioned fixed over the table */}
-                {stages.map((stage) => {
-                  const filterStatus = stageFilters[stage] || "ALL";
-                  if (!showFilterDropdowns[stage] || !dropdownPositions[stage])
-                    return null;
-
-                  return (
-                    <div
-                      key={`dropdown-${stage}`}
-                      className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 filter-dropdown-container"
-                      style={{
-                        top: `${dropdownPositions[stage].top}px`,
-                        right: `${dropdownPositions[stage].right}px`,
-                      }}
-                    >
-                      <div className="py-1">
-                        <button
-                          onClick={() => handleStageFilterChange(stage, "ALL")}
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                            filterStatus === "ALL"
-                              ? "bg-slate-100 font-medium"
-                              : ""
-                          }`}
-                        >
-                          All Statuses
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleStageFilterChange(stage, "NOT_STARTED")
-                          }
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                            filterStatus === "NOT_STARTED"
-                              ? "bg-slate-100 font-medium"
-                              : ""
-                          }`}
-                        >
-                          Not Started
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleStageFilterChange(stage, "IN_PROGRESS")
-                          }
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                            filterStatus === "IN_PROGRESS"
-                              ? "bg-slate-100 font-medium"
-                              : ""
-                          }`}
-                        >
-                          In Progress
-                        </button>
-                        <button
-                          onClick={() => handleStageFilterChange(stage, "DONE")}
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                            filterStatus === "DONE"
-                              ? "bg-slate-100 font-medium"
-                              : ""
-                          }`}
-                        >
-                          Done
-                        </button>
-                        <button
-                          onClick={() => handleStageFilterChange(stage, "NA")}
-                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                            filterStatus === "NA"
-                              ? "bg-slate-100 font-medium"
-                              : ""
-                          }`}
-                        >
-                          NA
-                        </button>
+                <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                    {/* Fixed Header Section */}
+                    <div className="p-4 flex-shrink-0 border-b border-slate-200">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        {/* Search */}
+                        <div className="flex items-center gap-2 flex-1 max-w-sm relative">
+                          <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Search by project name or lot ID"
+                            className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {/* Reset Button - Always visible when filters are active */}
+                          {hasActiveFilters && (
+                            <button
+                              onClick={handleResetFilters}
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              <span>Reset Filters</span>
+                            </button>
+                          )}
+                          {/* Export to Excel */}
+                          <div className="relative dropdown-container flex items-center">
+                            <button
+                              onClick={handleExportToExcel}
+                              disabled={
+                                isExporting ||
+                                filteredLots.length === 0 ||
+                                selectedColumns.length === 0
+                              }
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredLots.length === 0 ||
+                                selectedColumns.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <Sheet className="h-4 w-4" />
+                              <span>
+                                {isExporting
+                                  ? "Exporting..."
+                                  : "Export to Excel"}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                setShowColumnDropdown(!showColumnDropdown)
+                              }
+                              disabled={
+                                isExporting || filteredLots.length === 0
+                              }
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting || filteredLots.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <ChevronDown className="h-5 w-5" />
+                            </button>
+                            {showColumnDropdown && (
+                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() =>
+                                      handleColumnToggle("Select All")
+                                    }
+                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
+                                  >
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </button>
+                                  {availableColumns.map((column) => (
+                                    <button
+                                      key={column}
+                                      onClick={() => handleColumnToggle(column)}
+                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                    >
+                                      <span>{column}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedColumns.includes(
+                                          column
+                                        )}
+                                        onChange={() => {}}
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
 
-                {/* Scrollable Table Section */}
-                <div className="flex-1 overflow-auto">
-                  {loading ? (
-                    <div className="p-8 text-center text-sm text-slate-500 font-medium">
-                      Loading active lots...
-                    </div>
-                  ) : error ? (
-                    <div className="p-8 text-center text-sm text-red-600 font-medium">
-                      {error}
-                    </div>
-                  ) : activeLots.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-slate-500 font-medium">
-                      No active lots found
-                    </div>
-                  ) : (
-                    <div className="min-w-full">
-                      <table className="min-w-full divide-y divide-slate-200">
-                        <thead className="bg-slate-50 sticky top-0 z-10">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider sticky left-0 bg-slate-50 z-20 border-r border-slate-200">
-                              Project Name - Lot Number
-                            </th>
-                            {stages.map((stage) => {
-                              const filterStatus = stageFilters[stage] || "ALL";
-                              const hasFilter = filterStatus !== "ALL";
+                    {/* Filter Dropdowns - Positioned fixed over the table */}
+                    {stages.map((stage) => {
+                      const filterStatus = stageFilters[stage] || "ALL";
+                      if (
+                        !showFilterDropdowns[stage] ||
+                        !dropdownPositions[stage]
+                      )
+                        return null;
 
-                              return (
-                                <th
-                                  key={stage}
-                                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider min-w-[150px]"
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="truncate">{stage}</span>
-                                    <div className="relative filter-dropdown-container flex-shrink-0">
-                                      <button
-                                        ref={(el) =>
-                                          (filterButtonRefs.current[stage] = el)
-                                        }
-                                        onClick={(e) =>
-                                          handleFilterButtonClick(stage, e)
-                                        }
-                                        className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${
-                                          hasFilter ? "bg-primary/20" : ""
-                                        }`}
-                                        title="Filter by status"
-                                      >
-                                        <Funnel
-                                          className={`h-3 w-3 ${
-                                            hasFilter
-                                              ? "text-primary"
-                                              : "text-slate-400"
-                                          }`}
-                                        />
-                                      </button>
-                                    </div>
-                                  </div>
+                      return (
+                        <div
+                          key={`dropdown-${stage}`}
+                          className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 filter-dropdown-container"
+                          style={{
+                            top: `${dropdownPositions[stage].top}px`,
+                            right: `${dropdownPositions[stage].right}px`,
+                          }}
+                        >
+                          <div className="py-1">
+                            <button
+                              onClick={() =>
+                                handleStageFilterChange(stage, "ALL")
+                              }
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "ALL"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
+                            >
+                              All Statuses
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleStageFilterChange(stage, "NOT_STARTED")
+                              }
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "NOT_STARTED"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
+                            >
+                              Not Started
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleStageFilterChange(stage, "IN_PROGRESS")
+                              }
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "IN_PROGRESS"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
+                            >
+                              In Progress
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleStageFilterChange(stage, "DONE")
+                              }
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "DONE"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
+                            >
+                              Done
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleStageFilterChange(stage, "NA")
+                              }
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "NA"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
+                            >
+                              NA
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Scrollable Table Section */}
+                    <div className="flex-1 overflow-auto">
+                      {loading ? (
+                        <div className="p-8 text-center text-sm text-slate-500 font-medium">
+                          Loading active lots...
+                        </div>
+                      ) : error ? (
+                        <div className="p-8 text-center text-sm text-red-600 font-medium">
+                          {error}
+                        </div>
+                      ) : activeLots.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-slate-500 font-medium">
+                          No active lots found
+                        </div>
+                      ) : (
+                        <div className="min-w-full">
+                          <table className="min-w-full divide-y divide-slate-200">
+                            <thead className="bg-slate-50 sticky top-0 z-10">
+                              <tr>
+                                <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider sticky left-0 bg-slate-50 z-20 border-r border-slate-200">
+                                  Project Name - Lot Number
                                 </th>
-                              );
-                            })}
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-200">
-                          {filteredLots.length === 0 ? (
-                            <tr>
-                              <td
-                                colSpan={stages.length + 1}
-                                className="px-4 py-8 text-center text-sm text-slate-500"
-                              >
-                                <div className="flex flex-col items-center gap-3">
-                                  <p>
-                                    No lots match your filters. Try adjusting
-                                    your search or filters.
-                                  </p>
-                                  {hasActiveFilters && (
-                                    <button
-                                      onClick={handleResetFilters}
-                                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                                    >
-                                      <RotateCcw className="h-4 w-4" />
-                                      Reset Filters
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ) : (
-                            filteredLots.map((lot) => (
-                              <tr
-                                key={lot.lot_id}
-                                className="group hover:bg-slate-50 transition-colors duration-200"
-                              >
-                                <td className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap">
-                                  {lot.project?.name || "N/A"} - {lot.lot_id}
-                                </td>
                                 {stages.map((stage) => {
-                                  const status = getStageStatus(lot, stage);
-                                  const formattedStatus = formatStatus(status);
-                                  const statusColor = getStatusColor(status);
+                                  const filterStatus =
+                                    stageFilters[stage] || "ALL";
+                                  const hasFilter = filterStatus !== "ALL";
 
                                   return (
-                                    <td
+                                    <th
                                       key={stage}
-                                      className="px-4 py-3 text-sm"
+                                      className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider min-w-[150px]"
                                     >
-                                      <span
-                                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border ${statusColor}`}
-                                      >
-                                        {formattedStatus}
-                                      </span>
-                                    </td>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="truncate">
+                                          {stage}
+                                        </span>
+                                        <div className="relative filter-dropdown-container flex-shrink-0">
+                                          <button
+                                            ref={(el) =>
+                                              (filterButtonRefs.current[stage] =
+                                                el)
+                                            }
+                                            onClick={(e) =>
+                                              handleFilterButtonClick(stage, e)
+                                            }
+                                            className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${
+                                              hasFilter ? "bg-primary/20" : ""
+                                            }`}
+                                            title="Filter by status"
+                                          >
+                                            <Funnel
+                                              className={`h-3 w-3 ${
+                                                hasFilter
+                                                  ? "text-primary"
+                                                  : "text-slate-400"
+                                              }`}
+                                            />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </th>
                                   );
                                 })}
                               </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-200">
+                              {filteredLots.length === 0 ? (
+                                <tr>
+                                  <td
+                                    colSpan={stages.length + 1}
+                                    className="px-4 py-8 text-center text-sm text-slate-500"
+                                  >
+                                    <div className="flex flex-col items-center gap-3">
+                                      <p>
+                                        No lots match your filters. Try
+                                        adjusting your search or filters.
+                                      </p>
+                                      {hasActiveFilters && (
+                                        <button
+                                          onClick={handleResetFilters}
+                                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                                        >
+                                          <RotateCcw className="h-4 w-4" />
+                                          Reset Filters
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredLots.map((lot) => (
+                                  <tr
+                                    key={lot.lot_id}
+                                    className="group hover:bg-slate-50 transition-colors duration-200"
+                                  >
+                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap">
+                                      {lot.project?.name || "N/A"} -{" "}
+                                      {lot.lot_id}
+                                    </td>
+                                    {stages.map((stage) => {
+                                      const status = getStageStatus(lot, stage);
+                                      const formattedStatus =
+                                        formatStatus(status);
+                                      const statusColor =
+                                        getStatusColor(status);
+
+                                      return (
+                                        <td
+                                          key={stage}
+                                          className="px-4 py-3 text-sm"
+                                        >
+                                          <span
+                                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border ${statusColor}`}
+                                          >
+                                            {formattedStatus}
+                                          </span>
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>

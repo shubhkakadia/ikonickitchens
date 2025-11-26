@@ -30,6 +30,7 @@ import {
   Check,
   Upload,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -52,6 +53,41 @@ export default function page() {
   const [showItemsPerPageDropdown, setShowItemsPerPageDropdown] =
     useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // Define all available columns for export
+  const availableColumns = [
+    "Order No",
+    "Supplier",
+    "Status",
+    "Created At",
+    "Ordered At",
+    "Ordered By",
+    "Project ID",
+    "Project Name",
+    "Notes",
+    "Image URL",
+    "Sheet Color",
+    "Sheet Finish",
+    "Sheet Face",
+    "Sheet Dimensions",
+    "Handle Color",
+    "Handle Type",
+    "Handle Dimensions",
+    "Handle Material",
+    "Hardware Name",
+    "Hardware Type",
+    "Hardware Dimensions",
+    "Hardware Sub Category",
+    "Accessory Name",
+    "Category",
+    "Quantity",
+    "Unit Price",
+    "Total",
+  ];
+
+  // Initialize selected columns with all columns
+  const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
   const [showMaterialsReceivedModal, setShowMaterialsReceivedModal] =
     useState(false);
   const [selectedPOId, setSelectedPOId] = useState("");
@@ -237,6 +273,24 @@ export default function page() {
     setCurrentPage(1);
   };
 
+  const handleColumnToggle = (column) => {
+    if (column === "Select All") {
+      if (selectedColumns.length === availableColumns.length) {
+        // If all columns are selected, unselect all
+        setSelectedColumns([]);
+      } else {
+        // If not all columns are selected, select all
+        setSelectedColumns([...availableColumns]);
+      }
+    } else {
+      setSelectedColumns((prev) =>
+        prev.includes(column)
+          ? prev.filter((c) => c !== column)
+          : [...prev, column]
+      );
+    }
+  };
+
   const activePOs = useMemo(() => {
     return (pos || []).filter(
       (po) =>
@@ -306,6 +360,10 @@ export default function page() {
       ) {
         setShowSortDropdown(false);
       }
+      if (!event.target.closest(".dropdown-container")) {
+        setShowItemsPerPageDropdown(false);
+        setShowColumnDropdown(false);
+      }
     };
 
     if (showSortDropdown) {
@@ -313,6 +371,11 @@ export default function page() {
       setTimeout(() => {
         document.addEventListener("mousedown", handleClickOutside);
       }, 0);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    } else {
+      document.addEventListener("mousedown", handleClickOutside);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
@@ -721,6 +784,38 @@ export default function page() {
       const XLSX = await import("xlsx");
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
+
+      // Column width map
+      const columnWidthMap = {
+        "Order No": 16,
+        Supplier: 24,
+        Status: 12,
+        "Created At": 20,
+        "Ordered At": 14,
+        "Ordered By": 22,
+        "Project ID": 12,
+        "Project Name": 20,
+        Notes: 30,
+        "Image URL": 28,
+        "Sheet Color": 12,
+        "Sheet Finish": 12,
+        "Sheet Face": 10,
+        "Sheet Dimensions": 18,
+        "Handle Color": 12,
+        "Handle Type": 12,
+        "Handle Dimensions": 18,
+        "Handle Material": 16,
+        "Hardware Name": 16,
+        "Hardware Type": 12,
+        "Hardware Dimensions": 18,
+        "Hardware Sub Category": 18,
+        "Accessory Name": 16,
+        Category: 12,
+        Quantity: 10,
+        "Unit Price": 12,
+        Total: 12,
+      };
+
       const exportData = filteredAndSortedPOs.flatMap((po) => {
         const orderNo = po.order_no || "";
         const supplierName = po.supplier?.name || "";
@@ -756,7 +851,9 @@ export default function page() {
           const hwDimensions = item.hardware?.dimensions || "";
           const hwSubCategory = item.hardware?.sub_category || "";
           const accName = item.accessory?.name || "";
-          return {
+
+          // Build full row with all columns
+          const fullRow = {
             "Order No": orderNo,
             Supplier: supplierName,
             Status: status,
@@ -787,10 +884,20 @@ export default function page() {
               parseFloat(it.quantity || 0) * parseFloat(it.unit_price || 0)
             ).toFixed(2),
           };
+
+          // Filter to only selected columns
+          const filteredRow = {};
+          selectedColumns.forEach((column) => {
+            if (fullRow.hasOwnProperty(column)) {
+              filteredRow[column] = fullRow[column];
+            }
+          });
+
+          return filteredRow;
         });
 
         if (rows.length === 0) {
-          rows.push({
+          const fullRow = {
             "Order No": orderNo,
             Supplier: supplierName,
             Status: status,
@@ -818,39 +925,29 @@ export default function page() {
             Quantity: "",
             "Unit Price": "",
             Total: "",
+          };
+
+          // Filter to only selected columns
+          const filteredRow = {};
+          selectedColumns.forEach((column) => {
+            if (fullRow.hasOwnProperty(column)) {
+              filteredRow[column] = fullRow[column];
+            }
           });
+
+          rows.push(filteredRow);
         }
         return rows;
       });
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(exportData);
-      ws["!cols"] = [
-        { wch: 16 }, // Order No
-        { wch: 24 }, // Supplier
-        { wch: 12 }, // Status
-        { wch: 20 }, // Created At
-        { wch: 14 }, // Ordered At
-        { wch: 22 }, // Ordered By
-        { wch: 30 }, // Notes
-        { wch: 28 }, // Image URL
-        { wch: 12 }, // Sheet Color
-        { wch: 12 }, // Sheet Finish
-        { wch: 10 }, // Sheet Face
-        { wch: 18 }, // Sheet Dimensions
-        { wch: 12 }, // Handle Color
-        { wch: 12 }, // Handle Type
-        { wch: 18 }, // Handle Dimensions
-        { wch: 16 }, // Handle Material
-        { wch: 16 }, // Hardware Name
-        { wch: 12 }, // Hardware Type
-        { wch: 18 }, // Hardware Dimensions
-        { wch: 18 }, // Hardware Sub Category
-        { wch: 16 }, // Accessory Name
-        { wch: 12 }, // Category
-        { wch: 10 }, // Quantity
-        { wch: 12 }, // Unit Price
-        { wch: 12 }, // Total
-      ];
+
+      // Set column widths for selected columns only
+      const colWidths = selectedColumns.map((column) => ({
+        wch: columnWidthMap[column] || 15,
+      }));
+      ws["!cols"] = colWidths;
+
       XLSX.utils.book_append_sheet(wb, ws, "PurchaseOrders");
       const currentDate = new Date().toISOString().split("T")[0];
       const filename = `purchase_orders_${currentDate}.xlsx`;
@@ -874,17 +971,21 @@ export default function page() {
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-slate-600">Loading purchase orders...</p>
+                  <p className="text-sm text-slate-600 font-medium">
+                    Loading purchase orders details...
+                  </p>
                 </div>
               </div>
             ) : error ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="h-12 w-12 text-red-500 mx-auto mb-4">⚠️</div>
-                  <p className="text-red-600 mb-4">{error}</p>
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-sm text-red-600 mb-4 font-medium">
+                    {error}
+                  </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="cursor-pointer px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-xs font-medium"
+                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
                   >
                     Try Again
                   </button>
@@ -906,7 +1007,7 @@ export default function page() {
                     <div className="p-3 flex-shrink-0">
                       <div className="flex items-center justify-between">
                         {/* Search */}
-                        <div className="flex items-center gap-2 w-[500px] relative">
+                        <div className="flex items-center gap-2 flex-1 max-w-sm relative">
                           <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                           <input
                             type="text"
@@ -939,7 +1040,7 @@ export default function page() {
                               onClick={() =>
                                 setShowSortDropdown(!showSortDropdown)
                               }
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                              className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                             >
                               <ArrowUpDown className="h-4 w-4" />
                               <span>Sort by</span>
@@ -970,28 +1071,93 @@ export default function page() {
 
                           <button
                             onClick={() => setShowMaterialsReceivedModal(true)}
-                            className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                            className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                           >
                             <Package className="h-4 w-4" />
                             <span>Materials Received</span>
                           </button>
 
-                          <button
-                            onClick={handleExportToExcel}
-                            disabled={
-                              isExporting || filteredAndSortedPOs.length === 0
-                            }
-                            className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium ${
-                              isExporting || filteredAndSortedPOs.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                            }`}
-                          >
-                            <Sheet className="h-4 w-4" />
-                            <span>
-                              {isExporting ? "Exporting..." : "Export to Excel"}
-                            </span>
-                          </button>
+                          <div className="relative dropdown-container flex items-center">
+                            <button
+                              onClick={handleExportToExcel}
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedPOs.length === 0 ||
+                                selectedColumns.length === 0
+                              }
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredAndSortedPOs.length === 0 ||
+                                selectedColumns.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <Sheet className="h-4 w-4" />
+                              <span>
+                                {isExporting
+                                  ? "Exporting..."
+                                  : "Export to Excel"}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                setShowColumnDropdown(!showColumnDropdown)
+                              }
+                              disabled={
+                                isExporting || filteredAndSortedPOs.length === 0
+                              }
+                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${
+                                isExporting || filteredAndSortedPOs.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <ChevronDown className="h-5 w-5" />
+                            </button>
+                            {showColumnDropdown && (
+                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() =>
+                                      handleColumnToggle("Select All")
+                                    }
+                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
+                                  >
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </button>
+                                  {availableColumns.map((column) => (
+                                    <button
+                                      key={column}
+                                      onClick={() => handleColumnToggle(column)}
+                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                    >
+                                      <span>{column}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedColumns.includes(
+                                          column
+                                        )}
+                                        onChange={() => {}}
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

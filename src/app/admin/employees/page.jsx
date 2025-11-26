@@ -17,7 +17,7 @@ import {
   ArrowDown,
   ChevronDown,
   RotateCcw,
-  ImageIcon,
+  AlertTriangle,
 } from "lucide-react";
 import Image from "next/image";
 import TabsController from "@/components/tabscontroller";
@@ -49,7 +49,37 @@ export default function page() {
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [hasInitializedRoles, setHasInitializedRoles] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const { getToken } = useAuth();
+
+  // Define all available columns for export
+  const availableColumns = [
+    "Employee ID",
+    "First Name",
+    "Last Name",
+    "Email",
+    "Phone",
+    "Role",
+    "Date of Birth",
+    "Join Date",
+    "Address",
+    "Emergency Contact Name",
+    "Emergency Contact Phone",
+    "Bank Account Name",
+    "Bank Account Number",
+    "Bank Account BSB",
+    "Super Account Name",
+    "Super Account Number",
+    "TFN Number",
+    "Education",
+    "Availability",
+    "Notes",
+    "Created At",
+    "Updated At",
+  ];
+
+  // Initialize selected columns with all columns
+  const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -58,6 +88,7 @@ export default function page() {
         setShowSortDropdown(false);
         setShowItemsPerPageDropdown(false);
         setShowRoleFilterDropdown(false);
+        setShowColumnDropdown(false);
       }
     };
 
@@ -80,47 +111,97 @@ export default function page() {
       return;
     }
 
+    if (selectedColumns.length === 0) {
+      toast.warning("Please select at least one column to export.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+      return;
+    }
+
     setIsExporting(true);
 
     try {
       // Dynamic import of xlsx to avoid SSR issues
       const XLSX = await import("xlsx");
 
-      // Prepare data for export - use filtered and sorted data with all fields
-      const exportData = filteredAndSortedEmployees.map((employee) => ({
-        "Employee ID": employee.employee_id || "",
-        "First Name": employee.first_name || "",
-        "Last Name": employee.last_name || "",
-        Email: employee.email || "",
-        Phone: employee.phone || "",
-        Role: employee.role || "",
-        "Date of Birth": employee.dob
-          ? new Date(employee.dob).toLocaleDateString()
-          : "",
-        "Join Date": employee.join_date
-          ? new Date(employee.join_date).toLocaleDateString()
-          : "",
-        Address: employee.address || "",
-        "Emergency Contact Name": employee.emergency_contact_name || "",
-        "Emergency Contact Phone": employee.emergency_contact_phone || "",
-        "Bank Account Name": employee.bank_account_name || "",
-        "Bank Account Number": employee.bank_account_number || "",
-        "Bank Account BSB": employee.bank_account_bsb || "",
-        "Super Account Name": employee.supper_account_name || "",
-        "Super Account Number": employee.supper_account_number || "",
-        "TFN Number": employee.tfn_number || "",
-        Education: employee.education || "",
-        Availability: employee.availability
-          ? JSON.stringify(employee.availability)
-          : "",
-        Notes: employee.notes || "",
-        "Created At": employee.createdAt
-          ? new Date(employee.createdAt).toLocaleDateString()
-          : "",
-        "Updated At": employee.updatedAt
-          ? new Date(employee.updatedAt).toLocaleDateString()
-          : "",
-      }));
+      // Map of column names to their data extraction functions
+      const columnMap = {
+        "Employee ID": (employee) => employee.employee_id || "",
+        "First Name": (employee) => employee.first_name || "",
+        "Last Name": (employee) => employee.last_name || "",
+        Email: (employee) => employee.email || "",
+        Phone: (employee) => employee.phone || "",
+        Role: (employee) => employee.role || "",
+        "Date of Birth": (employee) =>
+          employee.dob ? new Date(employee.dob).toLocaleDateString() : "",
+        "Join Date": (employee) =>
+          employee.join_date
+            ? new Date(employee.join_date).toLocaleDateString()
+            : "",
+        Address: (employee) => employee.address || "",
+        "Emergency Contact Name": (employee) =>
+          employee.emergency_contact_name || "",
+        "Emergency Contact Phone": (employee) =>
+          employee.emergency_contact_phone || "",
+        "Bank Account Name": (employee) => employee.bank_account_name || "",
+        "Bank Account Number": (employee) => employee.bank_account_number || "",
+        "Bank Account BSB": (employee) => employee.bank_account_bsb || "",
+        "Super Account Name": (employee) => employee.supper_account_name || "",
+        "Super Account Number": (employee) =>
+          employee.supper_account_number || "",
+        "TFN Number": (employee) => employee.tfn_number || "",
+        Education: (employee) => employee.education || "",
+        Availability: (employee) =>
+          employee.availability ? JSON.stringify(employee.availability) : "",
+        Notes: (employee) => employee.notes || "",
+        "Created At": (employee) =>
+          employee.createdAt
+            ? new Date(employee.createdAt).toLocaleDateString()
+            : "",
+        "Updated At": (employee) =>
+          employee.updatedAt
+            ? new Date(employee.updatedAt).toLocaleDateString()
+            : "",
+      };
+
+      // Column width map
+      const columnWidthMap = {
+        "Employee ID": 12,
+        "First Name": 15,
+        "Last Name": 15,
+        Email: 25,
+        Phone: 15,
+        Role: 15,
+        "Date of Birth": 12,
+        "Join Date": 12,
+        Address: 30,
+        "Emergency Contact Name": 20,
+        "Emergency Contact Phone": 18,
+        "Bank Account Name": 20,
+        "Bank Account Number": 18,
+        "Bank Account BSB": 12,
+        "Super Account Name": 20,
+        "Super Account Number": 18,
+        "TFN Number": 12,
+        Education: 25,
+        Availability: 40,
+        Notes: 30,
+        "Created At": 12,
+        "Updated At": 12,
+      };
+
+      // Prepare data for export - only include selected columns
+      const exportData = filteredAndSortedEmployees.map((employee) => {
+        const row = {};
+        selectedColumns.forEach((column) => {
+          if (columnMap[column]) {
+            row[column] = columnMap[column](employee);
+          }
+        });
+        return row;
+      });
 
       // Create a new workbook
       const wb = XLSX.utils.book_new();
@@ -128,31 +209,10 @@ export default function page() {
       // Create a worksheet from the data
       const ws = XLSX.utils.json_to_sheet(exportData);
 
-      // Set column widths for better readability
-      const colWidths = [
-        { wch: 12 }, // Employee ID
-        { wch: 15 }, // First Name
-        { wch: 15 }, // Last Name
-        { wch: 25 }, // Email
-        { wch: 15 }, // Phone
-        { wch: 15 }, // Role
-        { wch: 12 }, // Date of Birth
-        { wch: 12 }, // Join Date
-        { wch: 30 }, // Address
-        { wch: 20 }, // Emergency Contact Name
-        { wch: 18 }, // Emergency Contact Phone
-        { wch: 20 }, // Bank Account Name
-        { wch: 18 }, // Bank Account Number
-        { wch: 12 }, // Bank Account BSB
-        { wch: 20 }, // Super Account Name
-        { wch: 18 }, // Super Account Number
-        { wch: 12 }, // TFN Number
-        { wch: 25 }, // Education
-        { wch: 40 }, // Availability
-        { wch: 30 }, // Notes
-        { wch: 12 }, // Created At
-        { wch: 12 }, // Updated At
-      ];
+      // Set column widths for selected columns only
+      const colWidths = selectedColumns.map((column) => ({
+        wch: columnWidthMap[column] || 15,
+      }));
       ws["!cols"] = colWidths;
 
       // Add the worksheet to the workbook
@@ -321,6 +381,24 @@ export default function page() {
     }
   };
 
+  const handleColumnToggle = (column) => {
+    if (column === "Select All") {
+      if (selectedColumns.length === availableColumns.length) {
+        // If all columns are selected, unselect all
+        setSelectedColumns([]);
+      } else {
+        // If not all columns are selected, select all
+        setSelectedColumns([...availableColumns]);
+      }
+    } else {
+      setSelectedColumns((prev) =>
+        prev.includes(column)
+          ? prev.filter((c) => c !== column)
+          : [...prev, column]
+      );
+    }
+  };
+
   const handleReset = () => {
     setSearch("");
     setSortField("employee_id");
@@ -408,430 +486,540 @@ export default function page() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-4 py-2 flex-shrink-0">
-              <div className="flex justify-between items-center">
-                <h1 className="text-xl font-bold text-slate-700">Employees</h1>
-                <TabsController
-                  href="/admin/employees/addemployee"
-                  title="Add Employee"
-                >
-                  <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
-                    <Plus className="h-4 w-4" />
-                    Add Employee
-                  </div>
-                </TabsController>
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                  <p className="text-sm text-slate-600 font-medium">
+                    Loading employees details...
+                  </p>
+                </div>
               </div>
-            </div>
-
-            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                {/* Fixed Header Section */}
-                <div className="p-4 flex-shrink-0 border-b border-slate-200">
-                  <div className="flex items-center justify-between gap-3">
-                    {/* search bar */}
-                    <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search Employee with name, email, phone, role, employee id"
-                        className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
-                    {/* reset, sort by, filter by, export to excel */}
-                    <div className="flex items-center gap-2">
-                      {isAnyFilterActive() && (
-                        <button
-                          onClick={handleReset}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                          <span>Reset</span>
-                        </button>
-                      )}
-
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() =>
-                            setShowRoleFilterDropdown(!showRoleFilterDropdown)
-                          }
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <Funnel className="h-4 w-4" />
-                          <span>Filter by Role</span>
-                          {distinctRoles.length - selectedRoles.length > 0 && (
-                            <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                              {distinctRoles.length - selectedRoles.length}
-                            </span>
-                          )}
-                        </button>
-                        {showRoleFilterDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                            <div className="py-1">
-                              <button
-                                onClick={() => handleRoleToggle("Select All")}
-                                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                <span>Select All</span>
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    selectedRoles.length ===
-                                    distinctRoles.length
-                                  }
-                                  onChange={() => {}}
-                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                />
-                              </button>
-                              {distinctRoles.map((role) => (
-                                <button
-                                  key={role}
-                                  onClick={() => handleRoleToggle(role)}
-                                  className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  <span>{role}</span>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedRoles.includes(role)}
-                                    onChange={() => {}}
-                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+            ) : error ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-sm text-red-600 mb-4 font-medium">
+                    {error}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="px-4 py-2 flex-shrink-0">
+                  <div className="flex justify-between items-center">
+                    <h1 className="text-xl font-bold text-slate-700">
+                      Employees
+                    </h1>
+                    <TabsController
+                      href="/admin/employees/addemployee"
+                      title="Add Employee"
+                    >
+                      <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
+                        <Plus className="h-4 w-4" />
+                        Add Employee
                       </div>
-
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() => setShowSortDropdown(!showSortDropdown)}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <ArrowUpDown className="h-4 w-4" />
-                          <span>Sort by</span>
-                        </button>
-                        {showSortDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                            <div className="py-1">
-                              <button
-                                onClick={() => handleSort("employee_id")}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Employee ID {getSortIcon("employee_id")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("first_name")}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                First Name {getSortIcon("first_name")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("last_name")}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Last Name {getSortIcon("last_name")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("role")}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Role {getSortIcon("role")}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={handleExportToExcel}
-                        disabled={
-                          isExporting || filteredAndSortedEmployees.length === 0
-                        }
-                        className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium ${
-                          isExporting || filteredAndSortedEmployees.length === 0
-                            ? "opacity-50 cursor-not-allowed"
-                            : "cursor-pointer hover:bg-slate-100"
-                        }`}
-                      >
-                        <Sheet className="h-4 w-4" />
-                        <span>
-                          {isExporting ? "Exporting..." : "Export to Excel"}
-                        </span>
-                      </button>
-                    </div>
+                    </TabsController>
                   </div>
                 </div>
 
-                {/* Scrollable Table Section */}
-                <div className="flex-1 overflow-auto">
-                  <div className="min-w-full">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                            Image
-                          </th>
-                          <th
-                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                            onClick={() => handleSort("employee_id")}
-                          >
-                            <div className="flex items-center gap-2">
-                              Employee ID
-                              {getSortIcon("employee_id")}
-                            </div>
-                          </th>
-                          <th
-                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                            onClick={() => handleSort("first_name")}
-                          >
-                            <div className="flex items-center gap-2">
-                              First Name
-                              {getSortIcon("first_name")}
-                            </div>
-                          </th>
-                          <th
-                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                            onClick={() => handleSort("last_name")}
-                          >
-                            <div className="flex items-center gap-2">
-                              Last Name
-                              {getSortIcon("last_name")}
-                            </div>
-                          </th>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                            Email
-                          </th>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                            Phone
-                          </th>
-                          <th
-                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                            onClick={() => handleSort("role")}
-                          >
-                            <div className="flex items-center gap-2">
-                              Role
-                              {getSortIcon("role")}
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {loading ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-slate-500 text-center"
-                              colSpan={7}
-                            >
-                              Loading employees...
-                            </td>
-                          </tr>
-                        ) : error ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-red-600 text-center"
-                              colSpan={7}
-                            >
-                              {error}
-                            </td>
-                          </tr>
-                        ) : paginatedEmployees.length === 0 ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-slate-500 text-center"
-                              colSpan={7}
-                            >
-                              {search
-                                ? "No employees found matching your search"
-                                : selectedRoles.length === 0
-                                ? "No employees found - please select at least one role to view employees"
-                                : "No employees found"}
-                            </td>
-                          </tr>
-                        ) : (
-                          paginatedEmployees.map((e) => (
-                            <tr
-                              key={e.id}
-                              onClick={() => {
-                                router.push(
-                                  `/admin/employees/${e.employee_id}`
-                                );
-                                dispatch(
-                                  replaceTab({
-                                    id: uuidv4(),
-                                    title: e.first_name + " " + e.last_name,
-                                    href: `/admin/employees/${e.employee_id}`,
-                                  })
-                                );
-                              }}
-                              className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
-                            >
-                              <td className="px-4 py-3">
-                                <div className="w-10 h-10">
-                                  {e.image ? (
-                                    <Image
-                                      src={`/${e.image.url}`}
-                                      alt={e.first_name + " " + e.last_name}
-                                      width={40}
-                                      height={40}
-                                      className="w-full h-full object-cover rounded"
-                                    />
-                                  ) : (
-                                    <div className="w-10 h-10 bg-gradient-to-br from-secondary to-primary rounded text-white text-center flex items-center justify-center font-bold text-sm">
-                                      {e.first_name?.[0] || ""}
-                                      {e.last_name?.[0] || ""}
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                {e.employee_id || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                {e.first_name || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                {e.last_name || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-600">
-                                {e.email || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                {e.phone || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm">
-                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 border border-slate-200">
-                                  {e.role || "-"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Fixed Pagination Footer */}
-                {!loading && !error && paginatedEmployees.length > 0 && (
-                  <div className="px-4 py-3 flex-shrink-0 border-t border-slate-200 bg-slate-50">
-                    <div className="flex items-center justify-between">
-                      {/* Items per page dropdown and showing indicator */}
-                      <div className="flex items-center gap-2">
+                <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                    {/* Fixed Header Section */}
+                    <div className="p-4 flex-shrink-0 border-b border-slate-200">
+                      <div className="flex items-center justify-between gap-3">
+                        {/* search bar */}
+                        <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
+                          <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Search Employee with name, email, phone, role, employee id"
+                            className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                          />
+                        </div>
+                        {/* reset, sort by, filter by, export to excel */}
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-slate-600 font-medium">
-                            Showing
-                          </span>
+                          {isAnyFilterActive() && (
+                            <button
+                              onClick={handleReset}
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              <span>Reset</span>
+                            </button>
+                          )}
+
                           <div className="relative dropdown-container">
                             <button
                               onClick={() =>
-                                setShowItemsPerPageDropdown(
-                                  !showItemsPerPageDropdown
+                                setShowRoleFilterDropdown(
+                                  !showRoleFilterDropdown
                                 )
                               }
-                              className="cursor-pointer flex items-center gap-2 px-2 py-1 text-sm border border-slate-300 rounded-lg hover:bg-white transition-colors duration-200 bg-white font-medium"
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                             >
-                              <span>
-                                {itemsPerPage === 0 ? "All" : itemsPerPage}
-                              </span>
-                              <ChevronDown className="h-4 w-4" />
+                              <Funnel className="h-4 w-4" />
+                              <span>Filter by Role</span>
+                              {distinctRoles.length - selectedRoles.length >
+                                0 && (
+                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                  {distinctRoles.length - selectedRoles.length}
+                                </span>
+                              )}
                             </button>
-                            {showItemsPerPageDropdown && (
-                              <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                            {showRoleFilterDropdown && (
+                              <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
                                 <div className="py-1">
-                                  {[25, 50, 100, 0].map((value) => (
-                                    <button
-                                      key={value}
-                                      onClick={() =>
-                                        handleItemsPerPageChange(value)
+                                  <button
+                                    onClick={() =>
+                                      handleRoleToggle("Select All")
+                                    }
+                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    <span>Select All</span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedRoles.length ===
+                                        distinctRoles.length
                                       }
-                                      className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </button>
+                                  {distinctRoles.map((role) => (
+                                    <button
+                                      key={role}
+                                      onClick={() => handleRoleToggle(role)}
+                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                                     >
-                                      {value === 0 ? "All" : value}
+                                      <span>{role}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedRoles.includes(role)}
+                                        onChange={() => {}}
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
                                     </button>
                                   ))}
                                 </div>
                               </div>
                             )}
                           </div>
-                          <span className="text-sm text-slate-600 font-medium">
-                            of {totalItems} results
-                          </span>
-                        </div>
-                      </div>
 
-                      {/* Pagination buttons - only show when not showing all items */}
-                      {itemsPerPage > 0 && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handlePageChange(1)}
-                            disabled={currentPage === 1}
-                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                          >
-                            <ChevronsLeft className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </button>
-
-                          {/* Page numbers */}
-                          <div className="flex items-center gap-1">
-                            {Array.from(
-                              { length: Math.min(5, totalPages) },
-                              (_, i) => {
-                                let pageNum;
-                                if (totalPages <= 5) {
-                                  pageNum = i + 1;
-                                } else if (currentPage <= 3) {
-                                  pageNum = i + 1;
-                                } else if (currentPage >= totalPages - 2) {
-                                  pageNum = totalPages - 4 + i;
-                                } else {
-                                  pageNum = currentPage - 2 + i;
-                                }
-
-                                return (
-                                  <button
-                                    key={pageNum}
-                                    onClick={() => handlePageChange(pageNum)}
-                                    className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${
-                                      currentPage === pageNum
-                                        ? "bg-primary text-white shadow-sm"
-                                        : "text-slate-600 hover:bg-white"
-                                    }`}
-                                  >
-                                    {pageNum}
-                                  </button>
-                                );
+                          <div className="relative dropdown-container">
+                            <button
+                              onClick={() =>
+                                setShowSortDropdown(!showSortDropdown)
                               }
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                            >
+                              <ArrowUpDown className="h-4 w-4" />
+                              <span>Sort by</span>
+                            </button>
+                            {showSortDropdown && (
+                              <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() => handleSort("employee_id")}
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Employee ID {getSortIcon("employee_id")}
+                                  </button>
+                                  <button
+                                    onClick={() => handleSort("first_name")}
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    First Name {getSortIcon("first_name")}
+                                  </button>
+                                  <button
+                                    onClick={() => handleSort("last_name")}
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Last Name {getSortIcon("last_name")}
+                                  </button>
+                                  <button
+                                    onClick={() => handleSort("role")}
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Role {getSortIcon("role")}
+                                  </button>
+                                </div>
+                              </div>
                             )}
                           </div>
-
-                          <button
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handlePageChange(totalPages)}
-                            disabled={currentPage === totalPages}
-                            className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                          >
-                            <ChevronsRight className="h-4 w-4" />
-                          </button>
+                          <div className="relative dropdown-container flex items-center">
+                            <button
+                              onClick={handleExportToExcel}
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedEmployees.length === 0 ||
+                                selectedColumns.length === 0
+                              }
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredAndSortedEmployees.length === 0 ||
+                                selectedColumns.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <Sheet className="h-4 w-4" />
+                              <span>
+                                {isExporting
+                                  ? "Exporting..."
+                                  : "Export to Excel"}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                setShowColumnDropdown(!showColumnDropdown)
+                              }
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedEmployees.length === 0
+                              }
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredAndSortedEmployees.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <ChevronDown className="h-5 w-5" />
+                            </button>
+                            {showColumnDropdown && (
+                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() =>
+                                      handleColumnToggle("Select All")
+                                    }
+                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
+                                  >
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </button>
+                                  {availableColumns.map((column) => (
+                                    <button
+                                      key={column}
+                                      onClick={() => handleColumnToggle(column)}
+                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                    >
+                                      <span>{column}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedColumns.includes(
+                                          column
+                                        )}
+                                        onChange={() => {}}
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
+                      </div>
                     </div>
+
+                    {/* Scrollable Table Section */}
+                    <div className="flex-1 overflow-auto">
+                      <div className="min-w-full">
+                        <table className="min-w-full divide-y divide-slate-200">
+                          <thead className="bg-slate-50 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                Image
+                              </th>
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("employee_id")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Employee ID
+                                  {getSortIcon("employee_id")}
+                                </div>
+                              </th>
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("first_name")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  First Name
+                                  {getSortIcon("first_name")}
+                                </div>
+                              </th>
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("last_name")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Last Name
+                                  {getSortIcon("last_name")}
+                                </div>
+                              </th>
+                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                Email
+                              </th>
+                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                Phone
+                              </th>
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("role")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Role
+                                  {getSortIcon("role")}
+                                </div>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-slate-200">
+                            {loading ? (
+                              <tr>
+                                <td
+                                  className="px-4 py-4 text-sm text-slate-500 text-center"
+                                  colSpan={7}
+                                >
+                                  Loading employees...
+                                </td>
+                              </tr>
+                            ) : error ? (
+                              <tr>
+                                <td
+                                  className="px-4 py-4 text-sm text-red-600 text-center"
+                                  colSpan={7}
+                                >
+                                  {error}
+                                </td>
+                              </tr>
+                            ) : paginatedEmployees.length === 0 ? (
+                              <tr>
+                                <td
+                                  className="px-4 py-4 text-sm text-slate-500 text-center"
+                                  colSpan={7}
+                                >
+                                  {search
+                                    ? "No employees found matching your search"
+                                    : selectedRoles.length === 0
+                                    ? "No employees found - please select at least one role to view employees"
+                                    : "No employees found"}
+                                </td>
+                              </tr>
+                            ) : (
+                              paginatedEmployees.map((e) => (
+                                <tr
+                                  key={e.id}
+                                  onClick={() => {
+                                    router.push(
+                                      `/admin/employees/${e.employee_id}`
+                                    );
+                                    dispatch(
+                                      replaceTab({
+                                        id: uuidv4(),
+                                        title: e.first_name + " " + e.last_name,
+                                        href: `/admin/employees/${e.employee_id}`,
+                                      })
+                                    );
+                                  }}
+                                  className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                                >
+                                  <td className="px-4 py-3">
+                                    <div className="w-10 h-10">
+                                      {e.image ? (
+                                        <Image
+                                          src={`/${e.image.url}`}
+                                          alt={e.first_name + " " + e.last_name}
+                                          width={40}
+                                          height={40}
+                                          className="w-full h-full object-cover rounded"
+                                        />
+                                      ) : (
+                                        <div className="w-10 h-10 bg-gradient-to-br from-secondary to-primary rounded text-white text-center flex items-center justify-center font-bold text-sm">
+                                          {e.first_name?.[0] || ""}
+                                          {e.last_name?.[0] || ""}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
+                                    {e.employee_id || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                    {e.first_name || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                    {e.last_name || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {e.email || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                    {e.phone || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm">
+                                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 border border-slate-200">
+                                      {e.role || "-"}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Fixed Pagination Footer */}
+                    {!loading && !error && paginatedEmployees.length > 0 && (
+                      <div className="px-4 py-3 flex-shrink-0 border-t border-slate-200 bg-slate-50">
+                        <div className="flex items-center justify-between">
+                          {/* Items per page dropdown and showing indicator */}
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-slate-600 font-medium">
+                                Showing
+                              </span>
+                              <div className="relative dropdown-container">
+                                <button
+                                  onClick={() =>
+                                    setShowItemsPerPageDropdown(
+                                      !showItemsPerPageDropdown
+                                    )
+                                  }
+                                  className="cursor-pointer flex items-center gap-2 px-2 py-1 text-sm border border-slate-300 rounded-lg hover:bg-white transition-colors duration-200 bg-white font-medium"
+                                >
+                                  <span>
+                                    {itemsPerPage === 0 ? "All" : itemsPerPage}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4" />
+                                </button>
+                                {showItemsPerPageDropdown && (
+                                  <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                                    <div className="py-1">
+                                      {[25, 50, 100, 0].map((value) => (
+                                        <button
+                                          key={value}
+                                          onClick={() =>
+                                            handleItemsPerPageChange(value)
+                                          }
+                                          className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                        >
+                                          {value === 0 ? "All" : value}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-sm text-slate-600 font-medium">
+                                of {totalItems} results
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Pagination buttons - only show when not showing all items */}
+                          {itemsPerPage > 0 && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handlePageChange(1)}
+                                disabled={currentPage === 1}
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                              >
+                                <ChevronsLeft className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handlePageChange(currentPage - 1)
+                                }
+                                disabled={currentPage === 1}
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </button>
+
+                              {/* Page numbers */}
+                              <div className="flex items-center gap-1">
+                                {Array.from(
+                                  { length: Math.min(5, totalPages) },
+                                  (_, i) => {
+                                    let pageNum;
+                                    if (totalPages <= 5) {
+                                      pageNum = i + 1;
+                                    } else if (currentPage <= 3) {
+                                      pageNum = i + 1;
+                                    } else if (currentPage >= totalPages - 2) {
+                                      pageNum = totalPages - 4 + i;
+                                    } else {
+                                      pageNum = currentPage - 2 + i;
+                                    }
+
+                                    return (
+                                      <button
+                                        key={pageNum}
+                                        onClick={() =>
+                                          handlePageChange(pageNum)
+                                        }
+                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${
+                                          currentPage === pageNum
+                                            ? "bg-primary text-white shadow-sm"
+                                            : "text-slate-600 hover:bg-white"
+                                        }`}
+                                      >
+                                        {pageNum}
+                                      </button>
+                                    );
+                                  }
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() =>
+                                  handlePageChange(currentPage + 1)
+                                }
+                                disabled={currentPage === totalPages}
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handlePageChange(totalPages)}
+                                disabled={currentPage === totalPages}
+                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                              >
+                                <ChevronsRight className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

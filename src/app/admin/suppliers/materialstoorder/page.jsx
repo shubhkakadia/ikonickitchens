@@ -28,6 +28,7 @@ import {
   Trash,
   X,
   File,
+  AlertTriangle,
 } from "lucide-react";
 import Image from "next/image";
 import PurchaseOrder from "../components/PurchaseOrderForm";
@@ -53,6 +54,40 @@ export default function page() {
   const [showItemsPerPageDropdown, setShowItemsPerPageDropdown] =
     useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // Define all available columns for export
+  const availableColumns = [
+    "Project",
+    "Lot",
+    "Items",
+    "Items Remaining",
+    "Status",
+    "Supplier Name",
+    "Image URL",
+    "Category",
+    "Sheet Color",
+    "Sheet Finish",
+    "Sheet Face",
+    "Sheet Dimensions",
+    "Handle Color",
+    "Handle Type",
+    "Handle Dimensions",
+    "Handle Material",
+    "Hardware Name",
+    "Hardware Type",
+    "Hardware Dimensions",
+    "Hardware Sub Category",
+    "Accessory Name",
+    "Quantity",
+    "Quantity Ordered",
+    "Created At",
+    "Created By",
+    "Notes",
+  ];
+
+  // Initialize selected columns with all columns
+  const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
   const [openAccordionId, setOpenAccordionId] = useState(null);
   // Media popup state
   const [showMediaModal, setShowMediaModal] = useState(false);
@@ -75,6 +110,21 @@ export default function page() {
 
   useEffect(() => {
     fetchMTOs();
+  }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".dropdown-container")) {
+        setShowItemsPerPageDropdown(false);
+        setShowColumnDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const fetchMTOs = async () => {
@@ -243,6 +293,24 @@ export default function page() {
     setCurrentPage(1);
   };
 
+  const handleColumnToggle = (column) => {
+    if (column === "Select All") {
+      if (selectedColumns.length === availableColumns.length) {
+        // If all columns are selected, unselect all
+        setSelectedColumns([]);
+      } else {
+        // If not all columns are selected, select all
+        setSelectedColumns([...availableColumns]);
+      }
+    } else {
+      setSelectedColumns((prev) =>
+        prev.includes(column)
+          ? prev.filter((c) => c !== column)
+          : [...prev, column]
+      );
+    }
+  };
+
   const handleExportToExcel = async () => {
     if (filteredAndSortedMTOs.length === 0) {
       toast.warning("No data to export.", {
@@ -256,6 +324,37 @@ export default function page() {
       const XLSX = await import("xlsx");
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
+
+      // Column width map
+      const columnWidthMap = {
+        Project: 22,
+        Lot: 24,
+        Items: 8,
+        "Items Remaining": 12,
+        Status: 14,
+        "Supplier Name": 22,
+        "Image URL": 28,
+        Category: 12,
+        "Sheet Color": 14,
+        "Sheet Finish": 14,
+        "Sheet Face": 12,
+        "Sheet Dimensions": 18,
+        "Handle Color": 14,
+        "Handle Type": 14,
+        "Handle Dimensions": 18,
+        "Handle Material": 16,
+        "Hardware Name": 18,
+        "Hardware Type": 16,
+        "Hardware Dimensions": 18,
+        "Hardware Sub Category": 20,
+        "Accessory Name": 18,
+        Quantity: 10,
+        "Quantity Ordered": 16,
+        "Created At": 20,
+        "Created By": 22,
+        Notes: 30,
+      };
+
       // Flatten to one row per item with detailed columns
       const exportData = filteredAndSortedMTOs.flatMap((mto) => {
         const projectName = mto.project?.name || "";
@@ -300,7 +399,8 @@ export default function page() {
           // Accessory details
           const accName = item.accessory?.name || "";
 
-          return {
+          // Build full row with all columns
+          const fullRow = {
             Project: projectName,
             Lot: lotsJoined,
             Items: itemsCount,
@@ -309,7 +409,6 @@ export default function page() {
             "Supplier Name": supplierName,
             "Image URL": imageUrl,
             Category: category,
-            // Details in separate columns
             "Sheet Color": sheetColor,
             "Sheet Finish": sheetFinish,
             "Sheet Face": sheetFace,
@@ -329,11 +428,21 @@ export default function page() {
             "Created By": createdByName,
             Notes: notes,
           };
+
+          // Filter to only selected columns
+          const filteredRow = {};
+          selectedColumns.forEach((column) => {
+            if (fullRow.hasOwnProperty(column)) {
+              filteredRow[column] = fullRow[column];
+            }
+          });
+
+          return filteredRow;
         });
 
         // If no items, still output one row for the MTO with blanks for item columns
         if (rows.length === 0) {
-          rows.push({
+          const fullRow = {
             Project: projectName,
             Lot: lotsJoined,
             Items: itemsCount,
@@ -360,40 +469,30 @@ export default function page() {
             "Created At": createdAtStr,
             "Created By": createdByName,
             Notes: notes,
+          };
+
+          // Filter to only selected columns
+          const filteredRow = {};
+          selectedColumns.forEach((column) => {
+            if (fullRow.hasOwnProperty(column)) {
+              filteredRow[column] = fullRow[column];
+            }
           });
+
+          rows.push(filteredRow);
         }
         return rows;
       });
+
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(exportData);
-      ws["!cols"] = [
-        { wch: 22 }, // Project
-        { wch: 24 }, // Lot
-        { wch: 8 }, // Items
-        { wch: 12 }, // Items Remaining
-        { wch: 14 }, // Status
-        { wch: 22 }, // Supplier Name
-        { wch: 28 }, // Image URL
-        { wch: 12 }, // Category
-        { wch: 14 }, // Sheet Color
-        { wch: 14 }, // Sheet Finish
-        { wch: 12 }, // Sheet Face
-        { wch: 18 }, // Sheet Dimensions
-        { wch: 14 }, // Handle Color
-        { wch: 14 }, // Handle Type
-        { wch: 18 }, // Handle Dimensions
-        { wch: 16 }, // Handle Material
-        { wch: 18 }, // Hardware Name
-        { wch: 16 }, // Hardware Type
-        { wch: 18 }, // Hardware Dimensions
-        { wch: 20 }, // Hardware Sub Category
-        { wch: 18 }, // Accessory Name
-        { wch: 10 }, // Quantity
-        { wch: 16 }, // Quantity Ordered
-        { wch: 20 }, // Created At
-        { wch: 22 }, // Created By
-        { wch: 30 }, // Notes
-      ];
+
+      // Set column widths for selected columns only
+      const colWidths = selectedColumns.map((column) => ({
+        wch: columnWidthMap[column] || 15,
+      }));
+      ws["!cols"] = colWidths;
+
       XLSX.utils.book_append_sheet(wb, ws, "MaterialsToOrder");
       const currentDate = new Date().toISOString().split("T")[0];
       const filename = `materials_to_order_${currentDate}.xlsx`;
@@ -593,20 +692,20 @@ export default function page() {
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
                   <p className="text-sm text-slate-600 font-medium">
-                    Loading materials to order...
+                    Loading materials to order details...
                   </p>
                 </div>
               </div>
             ) : error ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="h-12 w-12 text-red-500 mx-auto mb-4">⚠️</div>
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
                   <p className="text-sm text-red-600 mb-4 font-medium">
                     {error}
                   </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
                   >
                     Try Again
                   </button>
@@ -685,22 +784,87 @@ export default function page() {
                             </DropdownMenu.Content>
                           </DropdownMenu.Root>
 
-                          <button
-                            onClick={handleExportToExcel}
-                            disabled={
-                              isExporting || filteredAndSortedMTOs.length === 0
-                            }
-                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium ${
-                              isExporting || filteredAndSortedMTOs.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                            }`}
-                          >
-                            <Sheet className="h-4 w-4" />
-                            <span>
-                              {isExporting ? "Exporting..." : "Export to Excel"}
-                            </span>
-                          </button>
+                          <div className="relative dropdown-container flex items-center">
+                            <button
+                              onClick={handleExportToExcel}
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedMTOs.length === 0 ||
+                                selectedColumns.length === 0
+                              }
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredAndSortedMTOs.length === 0 ||
+                                selectedColumns.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <Sheet className="h-4 w-4" />
+                              <span>
+                                {isExporting
+                                  ? "Exporting..."
+                                  : "Export to Excel"}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                setShowColumnDropdown(!showColumnDropdown)
+                              }
+                              disabled={
+                                isExporting || filteredAndSortedMTOs.length === 0
+                              }
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting || filteredAndSortedMTOs.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <ChevronDown className="h-5 w-5" />
+                            </button>
+                            {showColumnDropdown && (
+                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() =>
+                                      handleColumnToggle("Select All")
+                                    }
+                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
+                                  >
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </button>
+                                  {availableColumns.map((column) => (
+                                    <button
+                                      key={column}
+                                      onClick={() => handleColumnToggle(column)}
+                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                    >
+                                      <span>{column}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedColumns.includes(
+                                          column
+                                        )}
+                                        onChange={() => {}}
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

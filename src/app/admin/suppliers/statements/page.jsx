@@ -21,6 +21,7 @@ import {
   ChevronsRight,
   RotateCcw,
   Sheet,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -28,7 +29,6 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
-import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
@@ -37,7 +37,7 @@ export default function StatementsPage() {
   const dispatch = useDispatch();
   const { getToken } = useAuth();
   const [statements, setStatements] = useState([]);
-  const [loadingStatements, setLoadingStatements] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showUploadStatementModal, setShowUploadStatementModal] =
     useState(false);
@@ -72,6 +72,25 @@ export default function StatementsPage() {
     useState(false);
   const [activeTab, setActiveTab] = useState("pending");
   const [isExporting, setIsExporting] = useState(false);
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // Define all available columns for export
+  const availableColumns = [
+    "Supplier",
+    "Supplier Email",
+    "Month/Year",
+    "Due Date",
+    "Amount",
+    "Payment Status",
+    "File Name",
+    "File URL",
+    "Notes",
+    "Created At",
+    "Updated At",
+  ];
+
+  // Initialize selected columns with all columns
+  const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
 
   useEffect(() => {
     fetchStatements();
@@ -89,6 +108,7 @@ export default function StatementsPage() {
       if (!event.target.closest(".dropdown-container")) {
         setShowSortDropdown(false);
         setShowItemsPerPageDropdown(false);
+        setShowColumnDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -113,7 +133,7 @@ export default function StatementsPage() {
 
   const fetchStatements = async () => {
     try {
-      setLoadingStatements(true);
+      setLoading(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
@@ -141,7 +161,7 @@ export default function StatementsPage() {
         hideProgressBar: false,
       });
     } finally {
-      setLoadingStatements(false);
+      setLoading(false);
     }
   };
 
@@ -251,6 +271,24 @@ export default function StatementsPage() {
     setCurrentPage(1);
   };
 
+  const handleColumnToggle = (column) => {
+    if (column === "Select All") {
+      if (selectedColumns.length === availableColumns.length) {
+        // If all columns are selected, unselect all
+        setSelectedColumns([]);
+      } else {
+        // If not all columns are selected, select all
+        setSelectedColumns([...availableColumns]);
+      }
+    } else {
+      setSelectedColumns((prev) =>
+        prev.includes(column)
+          ? prev.filter((c) => c !== column)
+          : [...prev, column]
+      );
+    }
+  };
+
   const handleExportToExcel = async () => {
     if (filteredAndSortedStatements.length === 0) {
       toast.warning("No data to export.", {
@@ -264,59 +302,70 @@ export default function StatementsPage() {
       const XLSX = await import("xlsx");
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
-      const exportData = filteredAndSortedStatements.map((statement) => {
-        const supplierName = statement.supplier?.name || "";
-        const supplierEmail = statement.supplier?.email || "";
-        const monthYear = statement.month_year || "";
-        const dueDate = statement.due_date
-          ? new Date(statement.due_date).toLocaleDateString()
-          : "";
-        const amount = statement.amount
-          ? parseFloat(statement.amount).toFixed(2)
-          : "";
-        const paymentStatus = statement.payment_status || "";
-        const notes = statement.notes || "";
-        const fileName = statement.supplier_file?.filename || "";
-        const fileUrl = statement.supplier_file?.url
-          ? `${origin}/${statement.supplier_file.url}`
-          : "";
-        const createdAt = statement.createdAt
-          ? new Date(statement.createdAt).toLocaleString()
-          : "";
-        const updatedAt = statement.updatedAt
-          ? new Date(statement.updatedAt).toLocaleString()
-          : "";
 
-        return {
-          Supplier: supplierName,
-          "Supplier Email": supplierEmail,
-          "Month/Year": monthYear,
-          "Due Date": dueDate,
-          Amount: amount,
-          "Payment Status": paymentStatus,
-          "File Name": fileName,
-          "File URL": fileUrl,
-          Notes: notes,
-          "Created At": createdAt,
-          "Updated At": updatedAt,
-        };
+      // Map of column names to their data extraction functions
+      const columnMap = {
+        Supplier: (statement) => statement.supplier?.name || "",
+        "Supplier Email": (statement) => statement.supplier?.email || "",
+        "Month/Year": (statement) => statement.month_year || "",
+        "Due Date": (statement) =>
+          statement.due_date
+            ? new Date(statement.due_date).toLocaleDateString()
+            : "",
+        Amount: (statement) =>
+          statement.amount ? parseFloat(statement.amount).toFixed(2) : "",
+        "Payment Status": (statement) => statement.payment_status || "",
+        "File Name": (statement) => statement.supplier_file?.filename || "",
+        "File URL": (statement) =>
+          statement.supplier_file?.url
+            ? `${origin}/${statement.supplier_file.url}`
+            : "",
+        Notes: (statement) => statement.notes || "",
+        "Created At": (statement) =>
+          statement.createdAt
+            ? new Date(statement.createdAt).toLocaleString()
+            : "",
+        "Updated At": (statement) =>
+          statement.updatedAt
+            ? new Date(statement.updatedAt).toLocaleString()
+            : "",
+      };
+
+      // Column width map
+      const columnWidthMap = {
+        Supplier: 24,
+        "Supplier Email": 28,
+        "Month/Year": 12,
+        "Due Date": 14,
+        Amount: 12,
+        "Payment Status": 14,
+        "File Name": 30,
+        "File URL": 40,
+        Notes: 40,
+        "Created At": 20,
+        "Updated At": 20,
+      };
+
+      // Prepare data for export - only include selected columns
+      const exportData = filteredAndSortedStatements.map((statement) => {
+        const row = {};
+        selectedColumns.forEach((column) => {
+          if (columnMap[column]) {
+            row[column] = columnMap[column](statement);
+          }
+        });
+        return row;
       });
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(exportData);
-      ws["!cols"] = [
-        { wch: 24 }, // Supplier
-        { wch: 28 }, // Supplier Email
-        { wch: 12 }, // Month/Year
-        { wch: 14 }, // Due Date
-        { wch: 12 }, // Amount
-        { wch: 14 }, // Payment Status
-        { wch: 30 }, // File Name
-        { wch: 40 }, // File URL
-        { wch: 40 }, // Notes
-        { wch: 20 }, // Created At
-        { wch: 20 }, // Updated At
-      ];
+
+      // Set column widths for selected columns only
+      const colWidths = selectedColumns.map((column) => ({
+        wch: columnWidthMap[column] || 15,
+      }));
+      ws["!cols"] = colWidths;
+
       XLSX.utils.book_append_sheet(wb, ws, "SupplierStatements");
       const currentDate = new Date().toISOString().split("T")[0];
       const filename = `supplier_statements_${currentDate}.xlsx`;
@@ -643,21 +692,25 @@ export default function StatementsPage() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
-            {loadingStatements ? (
+            {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-slate-600">Loading statements...</p>
+                  <p className="text-sm text-slate-600 font-medium">
+                    Loading statements details...
+                  </p>
                 </div>
               </div>
             ) : error ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="h-12 w-12 text-red-500 mx-auto mb-4">⚠️</div>
-                  <p className="text-red-600 mb-4">{error}</p>
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-sm text-red-600 mb-4 font-medium">
+                    {error}
+                  </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="cursor-pointer px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-xs font-medium"
+                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
                   >
                     Try Again
                   </button>
@@ -686,7 +739,7 @@ export default function StatementsPage() {
                     <div className="p-3 flex-shrink-0 border-b border-slate-200">
                       <div className="flex items-center justify-between">
                         {/* Search */}
-                        <div className="flex items-center gap-2 w-[500px] relative">
+                        <div className="flex items-center gap-2 flex-1 max-w-sm relative">
                           <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                           <input
                             type="text"
@@ -719,7 +772,7 @@ export default function StatementsPage() {
                               onClick={() =>
                                 setShowSortDropdown(!showSortDropdown)
                               }
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                              className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                             >
                               <ArrowUpDown className="h-4 w-4" />
                               <span>Sort by</span>
@@ -751,24 +804,89 @@ export default function StatementsPage() {
                             )}
                           </div>
 
-                          <button
-                            onClick={handleExportToExcel}
-                            disabled={
-                              isExporting ||
-                              filteredAndSortedStatements.length === 0
-                            }
-                            className={`flex items-center gap-2 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium ${
-                              isExporting ||
-                              filteredAndSortedStatements.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                            }`}
-                          >
-                            <Sheet className="h-4 w-4" />
-                            <span>
-                              {isExporting ? "Exporting..." : "Export to Excel"}
-                            </span>
-                          </button>
+                          <div className="relative dropdown-container flex items-center">
+                            <button
+                              onClick={handleExportToExcel}
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedStatements.length === 0 ||
+                                selectedColumns.length === 0
+                              }
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredAndSortedStatements.length === 0 ||
+                                selectedColumns.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <Sheet className="h-4 w-4" />
+                              <span>
+                                {isExporting
+                                  ? "Exporting..."
+                                  : "Export to Excel"}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                setShowColumnDropdown(!showColumnDropdown)
+                              }
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedStatements.length === 0
+                              }
+                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${
+                                isExporting ||
+                                filteredAndSortedStatements.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <ChevronDown className="h-5 w-5" />
+                            </button>
+                            {showColumnDropdown && (
+                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() =>
+                                      handleColumnToggle("Select All")
+                                    }
+                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
+                                  >
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </button>
+                                  {availableColumns.map((column) => (
+                                    <button
+                                      key={column}
+                                      onClick={() => handleColumnToggle(column)}
+                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                    >
+                                      <span>{column}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedColumns.includes(
+                                          column
+                                        )}
+                                        onChange={() => {}}
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

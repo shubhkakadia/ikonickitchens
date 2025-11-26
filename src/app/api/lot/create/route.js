@@ -49,12 +49,18 @@ export async function POST(request) {
         status: "ACTIVE",
       },
     });
+    const data = await prisma.lot.findUnique({
+      where: { lot_id: lot.lot_id },
+      include: {
+        project: true,
+      },
+    });
     const logged = await withLogging(
       request,
       "lot",
-      lot.lot_id,
+      data.lot_id,
       "CREATE",
-      `Lot created successfully: ${lot.name} for project: ${lot.project.name}`
+      `Lot created successfully: ${data.name} for project: ${data.project.name}`
     );
     if (!logged) {
       return NextResponse.json(

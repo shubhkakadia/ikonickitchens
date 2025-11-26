@@ -4,10 +4,12 @@ import storage from "redux-persist/lib/storage";
 import loggedInUser from "../reducer/loggedInUser";
 import { combineReducers } from "redux";
 import tabs from "../reducer/tabs";
+import xero from "../reducer/xeroCredentials";
 
 const rootReducer = combineReducers({
   loggedInUser: loggedInUser,
   tabs: tabs,
+  xero: xero,
 });
 
 const persistConfig = {

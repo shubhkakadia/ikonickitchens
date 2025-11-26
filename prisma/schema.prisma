@@ -18,12 +18,12 @@ model users {
   module_access       String?              @db.LongText
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+  logs                logs[]
   material_selection  material_selection[]
   materials_to_orders materials_to_order[] @relation("MaterialsToBeOrderedCreatedBy")
   purchase_order      purchase_order[]     @relation("PurchaseOrderOrderedBy")
   sessions            sessions[]
-  employee            employees?           @relation(fields: [employee_id], references: [employee_id], onDelete: Restrict)
-  logs                logs[]
+  employee            employees?           @relation(fields: [employee_id], references: [employee_id])
 
   @@index([employee_id])
 }
@@ -240,7 +240,7 @@ model lot_file {
   updatedAt  DateTime          @updatedAt
   tab        lot_tab           @relation(fields: [tab_id], references: [id], onDelete: Cascade)
 
-  @@index([createdAt(sort: Desc)])
+  @@index([createdAt])
   @@index([tab_id])
   @@index([file_kind])
   @@index([site_group])
@@ -299,7 +299,7 @@ model material_selection_versions {
   quote                 quote?                            @relation(fields: [quote_id], references: [quote_id], onDelete: Cascade)
 
   @@unique([material_selection_id, version_number])
-  @@index([createdAt(sort: Desc)])
+  @@index([createdAt])
   @@index([material_selection_id])
   @@index([quote_id])
 }
@@ -341,13 +341,13 @@ model item {
   description              String?
   price                    Decimal?                  @db.Decimal(10, 2)
   quantity                 Int?                      @default(0)
-  supplier_reference       String?
-  supplier_product_link    String?                   @db.LongText
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   measurement_unit         String?
   supplier_id              String?
   image_id                 String?                   @unique
+  supplier_product_link    String?                   @db.LongText
+  supplier_reference       String?
   accessory                accessory?
   edging_tape              edging_tape?
   handle                   handle?
@@ -553,7 +553,7 @@ model purchase_order_item {
   mto_item          materials_to_order_item? @relation(fields: [mto_item_id], references: [id])
   order             purchase_order           @relation(fields: [order_id], references: [id], onDelete: Cascade)
 
-  @@index([createdAt(sort: Desc)])
+  @@index([createdAt])
   @@index([item_id], map: "purchase_order_item_item_id_fkey")
   @@index([mto_item_id], map: "purchase_order_item_mto_item_id_fkey")
   @@index([order_id], map: "purchase_order_item_order_id_fkey")
@@ -573,7 +573,7 @@ model stock_transaction {
   materials_to_order    materials_to_order?  @relation(fields: [materials_to_order_id], references: [id])
   purchase_order        purchase_order?      @relation(fields: [purchase_order_id], references: [id])
 
-  @@index([createdAt(sort: Desc)])
+  @@index([createdAt])
   @@index([item_id])
   @@index([purchase_order_id])
   @@index([materials_to_order_id])
@@ -586,10 +586,10 @@ model logs {
   entity_id   String
   action      LogAction
   description String?
-  user        users?    @relation(fields: [user_id], references: [id])
   createdAt   DateTime  @default(now())
+  user        users?    @relation(fields: [user_id], references: [id])
 
-  @@index([createdAt(sort: Desc)])
+  @@index([createdAt])
   @@index([user_id])
   @@index([entity_type])
   @@index([entity_id])

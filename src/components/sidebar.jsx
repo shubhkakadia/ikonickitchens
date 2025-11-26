@@ -90,7 +90,7 @@ export default function sidebar() {
         },
       ],
     },
-    { icon: Landmark, label: "Finance", href: "/admin/finance", subtabs: [] },
+    // { icon: Landmark, label: "Finance", href: "/admin/finance", subtabs: [] },
     {
       icon: Trash2,
       label: "Deleted Media",

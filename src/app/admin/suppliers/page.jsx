@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -43,6 +44,24 @@ export default function page() {
     useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // Define all available columns for export
+  const availableColumns = [
+    "Supplier Name",
+    "Email",
+    "Phone",
+    "Address",
+    "Website",
+    "Notes",
+    "Total Statement Due",
+    "Active PO Count",
+    "Created At",
+    "Updated At",
+  ];
+
+  // Initialize selected columns with all columns
+  const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
 
   // Filter and sort suppliers
   const filteredAndSortedSuppliers = useMemo(() => {
@@ -97,6 +116,7 @@ export default function page() {
       if (!event.target.closest(".dropdown-container")) {
         setShowSortDropdown(false);
         setShowItemsPerPageDropdown(false);
+        setShowColumnDropdown(false);
       }
     };
 
@@ -202,6 +222,24 @@ export default function page() {
     setSortOrder("asc");
   };
 
+  const handleColumnToggle = (column) => {
+    if (column === "Select All") {
+      if (selectedColumns.length === availableColumns.length) {
+        // If all columns are selected, unselect all
+        setSelectedColumns([]);
+      } else {
+        // If not all columns are selected, select all
+        setSelectedColumns([...availableColumns]);
+      }
+    } else {
+      setSelectedColumns((prev) =>
+        prev.includes(column)
+          ? prev.filter((c) => c !== column)
+          : [...prev, column]
+      );
+    }
+  };
+
   const getSortIcon = (field) => {
     if (sortField !== field)
       return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
@@ -231,45 +269,69 @@ export default function page() {
       // Dynamic import of xlsx to avoid SSR issues
       const XLSX = await import("xlsx");
 
-      // Prepare data for export
-      const exportData = filteredAndSortedSuppliers.map((supplier) => {
-        // Calculate total statement due
-        const totalStatementDue =
-          supplier.statements && Array.isArray(supplier.statements)
-            ? supplier.statements.reduce((sum, statement) => {
-                const amount = parseFloat(statement.amount) || 0;
-                return sum + amount;
-              }, 0)
-            : 0;
-
-        // Calculate active PO count
-        const activePOCount =
-          supplier.purchase_order && Array.isArray(supplier.purchase_order)
-            ? supplier.purchase_order.length
-            : 0;
-
-        return {
-          "Supplier Name": supplier.name || "",
-          Email: supplier.email || "",
-          Phone: supplier.phone || "",
-          Address: supplier.address || "",
-          Website: supplier.website || "",
-          Notes: supplier.notes || "",
-          "Total Statement Due":
-            totalStatementDue > 0
-              ? totalStatementDue.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })
-              : "0.00",
-          "Active PO Count": activePOCount || 0,
-          "Created At": supplier.createdAt
+      // Map of column names to their data extraction functions
+      const columnMap = {
+        "Supplier Name": (supplier) => supplier.name || "",
+        Email: (supplier) => supplier.email || "",
+        Phone: (supplier) => supplier.phone || "",
+        Address: (supplier) => supplier.address || "",
+        Website: (supplier) => supplier.website || "",
+        Notes: (supplier) => supplier.notes || "",
+        "Total Statement Due": (supplier) => {
+          const totalStatementDue =
+            supplier.statements && Array.isArray(supplier.statements)
+              ? supplier.statements.reduce((sum, statement) => {
+                  const amount = parseFloat(statement.amount) || 0;
+                  return sum + amount;
+                }, 0)
+              : 0;
+          return totalStatementDue > 0
+            ? totalStatementDue.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })
+            : "0.00";
+        },
+        "Active PO Count": (supplier) => {
+          const activePOCount =
+            supplier.purchase_order && Array.isArray(supplier.purchase_order)
+              ? supplier.purchase_order.length
+              : 0;
+          return activePOCount || 0;
+        },
+        "Created At": (supplier) =>
+          supplier.createdAt
             ? new Date(supplier.createdAt).toLocaleDateString()
             : "",
-          "Updated At": supplier.updatedAt
+        "Updated At": (supplier) =>
+          supplier.updatedAt
             ? new Date(supplier.updatedAt).toLocaleDateString()
             : "",
-        };
+      };
+
+      // Column width map
+      const columnWidthMap = {
+        "Supplier Name": 20,
+        Email: 25,
+        Phone: 15,
+        Address: 30,
+        Website: 20,
+        Notes: 30,
+        "Total Statement Due": 20,
+        "Active PO Count": 15,
+        "Created At": 12,
+        "Updated At": 12,
+      };
+
+      // Prepare data for export - only include selected columns
+      const exportData = filteredAndSortedSuppliers.map((supplier) => {
+        const row = {};
+        selectedColumns.forEach((column) => {
+          if (columnMap[column]) {
+            row[column] = columnMap[column](supplier);
+          }
+        });
+        return row;
       });
 
       // Create a new workbook
@@ -278,19 +340,10 @@ export default function page() {
       // Create a worksheet from the data
       const ws = XLSX.utils.json_to_sheet(exportData);
 
-      // Set column widths for better readability
-      const colWidths = [
-        { wch: 20 }, // Supplier Name
-        { wch: 25 }, // Email
-        { wch: 15 }, // Phone
-        { wch: 30 }, // Address
-        { wch: 20 }, // Website
-        { wch: 30 }, // Notes
-        { wch: 20 }, // Total Statement Due
-        { wch: 15 }, // Active PO Count
-        { wch: 12 }, // Created At
-        { wch: 12 }, // Updated At
-      ];
+      // Set column widths for selected columns only
+      const colWidths = selectedColumns.map((column) => ({
+        wch: columnWidthMap[column] || 15,
+      }));
       ws["!cols"] = colWidths;
 
       // Add the worksheet to the workbook
@@ -343,13 +396,13 @@ export default function page() {
             ) : error ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="h-12 w-12 text-red-500 mx-auto mb-4">⚠️</div>
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
                   <p className="text-sm text-red-600 mb-4 font-medium">
                     {error}
                   </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
                   >
                     Try Again
                   </button>
@@ -426,24 +479,89 @@ export default function page() {
                               </div>
                             )}
                           </div>
-                          <button
-                            onClick={handleExportToExcel}
-                            disabled={
-                              isExporting ||
-                              filteredAndSortedSuppliers.length === 0
-                            }
-                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium ${
-                              isExporting ||
-                              filteredAndSortedSuppliers.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                            }`}
-                          >
-                            <Sheet className="h-4 w-4" />
-                            <span>
-                              {isExporting ? "Exporting..." : "Export to Excel"}
-                            </span>
-                          </button>
+                          <div className="relative dropdown-container flex items-center">
+                            <button
+                              onClick={handleExportToExcel}
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedSuppliers.length === 0 ||
+                                selectedColumns.length === 0
+                              }
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredAndSortedSuppliers.length === 0 ||
+                                selectedColumns.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <Sheet className="h-4 w-4" />
+                              <span>
+                                {isExporting
+                                  ? "Exporting..."
+                                  : "Export to Excel"}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                setShowColumnDropdown(!showColumnDropdown)
+                              }
+                              disabled={
+                                isExporting ||
+                                filteredAndSortedSuppliers.length === 0
+                              }
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting ||
+                                filteredAndSortedSuppliers.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
+                            >
+                              <ChevronDown className="h-5 w-5" />
+                            </button>
+                            {showColumnDropdown && (
+                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() =>
+                                      handleColumnToggle("Select All")
+                                    }
+                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
+                                  >
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </button>
+                                  {availableColumns.map((column) => (
+                                    <button
+                                      key={column}
+                                      onClick={() => handleColumnToggle(column)}
+                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                    >
+                                      <span>{column}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedColumns.includes(
+                                          column
+                                        )}
+                                        onChange={() => {}}
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

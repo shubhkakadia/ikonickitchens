@@ -129,7 +129,7 @@ export default function EmployeeDetailPage() {
         { key: "all_items", label: "All Item" },
         { key: "add_items", label: "Add Item" },
         { key: "item_details", label: "Item Detail" },
-        { key: "used_material", label: "Used Material" },
+        { key: "usedmaterial", label: "Used Material" },
       ],
     },
     {

@@ -15,7 +15,7 @@ model users {
   user_type           String
   is_active           Boolean              @default(true)
   employee_id         String?              @unique
-  module_access       String?              @db.LongText
+  // module_access       String?              @db.LongText
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   logs                logs[]
@@ -24,8 +24,42 @@ model users {
   purchase_order      purchase_order[]     @relation("PurchaseOrderOrderedBy")
   sessions            sessions[]
   employee            employees?           @relation(fields: [employee_id], references: [employee_id])
+  module_access       module_access?
 
   @@index([employee_id])
+}
+
+model module_access {
+  id               String   @id @default(uuid())
+  user_id          String   @unique
+  all_clients      Boolean  @default(false)
+  add_clients      Boolean  @default(false)
+  client_details   Boolean  @default(false)
+  dashboard        Boolean  @default(false)
+  delete_media     Boolean  @default(false)
+  all_employees    Boolean  @default(false)
+  add_employees    Boolean  @default(false)
+  employee_details Boolean  @default(false)
+  all_projects     Boolean  @default(false)
+  add_projects     Boolean  @default(false)
+  project_details  Boolean  @default(false)
+  all_suppliers    Boolean  @default(false)
+  add_suppliers    Boolean  @default(false)
+  supplier_details Boolean  @default(false)
+  all_items        Boolean  @default(false)
+  add_items        Boolean  @default(false)
+  item_details     Boolean  @default(false)
+  usedmaterial     Boolean  @default(false)
+  logs             Boolean  @default(false)
+  lotatglance      Boolean  @default(false)
+  materialstoorder Boolean  @default(false)
+  purchaseorder    Boolean  @default(false)
+  statements       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
 }
 
 model sessions {

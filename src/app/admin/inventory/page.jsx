@@ -30,9 +30,11 @@ import {
   ImageIcon,
   X,
   AlertTriangle,
+  ClipboardList,
 } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import MultiSelectDropdown from "./components/MultiSelectDropdown.jsx";
+import StockTally from "@/components/StockTally.jsx";
 
 export default function page() {
   const router = useRouter();
@@ -64,6 +66,9 @@ export default function page() {
   const [isExporting, setIsExporting] = useState(false);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // Stock Tally states
+  const [showStockTallyModal, setShowStockTallyModal] = useState(false);
 
   // Define available columns for export based on active tab
   const getAvailableColumns = () => {
@@ -311,17 +316,24 @@ export default function page() {
         const matchesSearch =
           (item.description &&
             item.description.toLowerCase().includes(searchLower)) ||
-          (item.quantity && item.quantity.toString().includes(searchLower)) ||
           (item.supplier_reference &&
             item.supplier_reference.toLowerCase().includes(searchLower)) ||
           (item.sheet?.brand &&
             item.sheet.brand.toLowerCase().includes(searchLower)) ||
           (item.sheet?.color &&
             item.sheet.color.toLowerCase().includes(searchLower)) ||
+          (item.sheet?.description &&
+            item.sheet.description.toLowerCase().includes(searchLower)) ||
           (item.handle?.brand &&
             item.handle.brand.toLowerCase().includes(searchLower)) ||
           (item.handle?.color &&
-            item.handle.color.toLowerCase().includes(searchLower));
+            item.handle.color.toLowerCase().includes(searchLower)) ||
+          (item.edging_tape?.brand &&
+            item.edging_tape.brand.toLowerCase().includes(searchLower)) ||
+          (item.edging_tape?.color &&
+            item.edging_tape.color.toLowerCase().includes(searchLower)) ||
+          (item.edging_tape?.description &&
+            item.edging_tape.description.toLowerCase().includes(searchLower));
         if (!matchesSearch) return false;
       }
 
@@ -643,7 +655,6 @@ export default function page() {
     setSortOrder("asc");
     setSelectedCategories([activeTab]); // Reset to current active tab
     setCurrentPage(1);
-    setItemsPerPage(10);
     // Reset all filters
     setFilters({
       quantity_min: "",
@@ -923,6 +934,10 @@ export default function page() {
     }
   };
 
+  // Stock Tally Functions
+  const handleOpenStockTally = () => {
+    setShowStockTallyModal(true);
+  };
   // Compute dynamic column count for table states
   const columnCount = useMemo(() => {
     // Base: Image, Quantity
@@ -1165,6 +1180,19 @@ export default function page() {
                                 {getActiveFilterCount()}
                               </span>
                             )}
+                          </button>
+
+                          <button
+                            onClick={handleOpenStockTally}
+                            disabled={filteredAndSortedData.length === 0}
+                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium relative ${
+                              filteredAndSortedData.length === 0
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                            }`}
+                          >
+                            <ClipboardList className="h-4 w-4" />
+                            <span>Stock Tally</span>
                           </button>
 
                           <div className="relative dropdown-container flex items-center">
@@ -1954,6 +1982,15 @@ export default function page() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Stock Tally Modal */}
+        {showStockTallyModal && (
+          <StockTally
+            activeTab={activeTab}
+            setShowStockTallyModal={setShowStockTallyModal}
+            filteredAndSortedData={filteredAndSortedData}
+          />
         )}
 
         <ToastContainer />

@@ -639,7 +639,7 @@ export default function page() {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Bank Account Name
+                            Bank Account Holder Name
                           </label>
                           <input
                             type="text"
@@ -647,7 +647,7 @@ export default function page() {
                             value={formData.bank_account_name}
                             onChange={handleInputChange}
                             className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. Commonwealth Bank"
+                            placeholder="Eg. John Doe"
                           />
                         </div>
 
@@ -695,7 +695,7 @@ export default function page() {
 
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Super Account Number
+                            Super Account Member ID
                           </label>
                           <input
                             type="text"
@@ -703,7 +703,7 @@ export default function page() {
                             value={formData.supper_account_number}
                             onChange={handleInputChange}
                             className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. 987654321"
+                            placeholder="Eg. 1234567890"
                           />
                         </div>
 

@@ -4,6 +4,8 @@ import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
 import {
   ChevronLeft,
+  ChevronDown,
+  ChevronRight,
   User,
   Mail,
   Phone,
@@ -55,6 +57,7 @@ export default function EmployeeDetailPage() {
   const [userEditData, setUserEditData] = useState({});
   const [moduleAccess, setModuleAccess] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [expandedModules, setExpandedModules] = useState({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeleteEmployeeModal, setShowDeleteEmployeeModal] = useState(false);
   const [isDeletingEmployee, setIsDeletingEmployee] = useState(false);
@@ -66,6 +69,80 @@ export default function EmployeeDetailPage() {
   const [imageFile, setImageFile] = useState(null);
   const [removeImage, setRemoveImage] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Module structure definition
+  const moduleStructure = [
+    {
+      key: "dashboard",
+      label: "Dashboard",
+      isParent: false,
+    },
+    {
+      key: "employees",
+      label: "Employees",
+      isParent: true,
+      children: [
+        { key: "all_employees", label: "All Employee" },
+        { key: "add_employees", label: "Add Employee" },
+        { key: "employee_details", label: "Employee Detail" },
+      ],
+    },
+    {
+      key: "clients",
+      label: "Client",
+      isParent: true,
+      children: [
+        { key: "all_clients", label: "All Client" },
+        { key: "add_clients", label: "Add Client" },
+        { key: "client_details", label: "Client Detail" },
+      ],
+    },
+    {
+      key: "projects",
+      label: "Project",
+      isParent: true,
+      children: [
+        { key: "all_projects", label: "All Project" },
+        { key: "add_projects", label: "Add Project" },
+        { key: "project_details", label: "Project Detail" },
+        { key: "lotatglance", label: "Lot at Glance" },
+      ],
+    },
+    {
+      key: "suppliers",
+      label: "Supplier",
+      isParent: true,
+      children: [
+        { key: "all_suppliers", label: "All Supplier" },
+        { key: "add_suppliers", label: "Add Supplier" },
+        { key: "supplier_details", label: "Supplier Detail" },
+        { key: "materialstoorder", label: "Materials to Order" },
+        { key: "purchaseorder", label: "Purchase Order" },
+        { key: "statements", label: "Statement" },
+      ],
+    },
+    {
+      key: "inventory",
+      label: "Inventory",
+      isParent: true,
+      children: [
+        { key: "all_items", label: "All Item" },
+        { key: "add_items", label: "Add Item" },
+        { key: "item_details", label: "Item Detail" },
+        { key: "used_material", label: "Used Material" },
+      ],
+    },
+    {
+      key: "delete_media",
+      label: "Deleted Media",
+      isParent: false,
+    },
+    {
+      key: "logs",
+      label: "Logs",
+      isParent: false,
+    },
+  ];
 
   useEffect(() => {
     if (id) {
@@ -424,16 +501,15 @@ export default function EmployeeDetailPage() {
         is_active: user.is_active || false,
       });
 
-      // Parse module access
-      let parsedModuleAccess = {};
-      if (user.module_access) {
-        try {
-          parsedModuleAccess = JSON.parse(user.module_access);
-        } catch (e) {
-          console.error("Error parsing module access:", e);
+      setModuleAccess(user.module_access || {});
+      // Initialize expanded modules - expand all parent modules by default
+      const initialExpanded = {};
+      moduleStructure.forEach((module) => {
+        if (module.isParent) {
+          initialExpanded[module.key] = true;
         }
-      }
-      setModuleAccess(parsedModuleAccess);
+      });
+      setExpandedModules(initialExpanded);
       setShowPassword(false);
       setShowUserModal(true);
     }
@@ -448,15 +524,15 @@ export default function EmployeeDetailPage() {
         toast.error("No valid session found. Please login again.");
         return;
       }
-
       const updateData = {
+        id: user.id,
         user_type: userEditData.user_type,
         is_active: userEditData.is_active,
-        module_access: JSON.stringify(moduleAccess),
+        module_access: moduleAccess,
         password: userEditData.password,
       };
 
-      const response = await axios.patch(`/api/user/${id}`, updateData, {
+      const response = await axios.patch(`/api/user/${user.id}`, updateData, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -495,10 +571,17 @@ export default function EmployeeDetailPage() {
     }));
   };
 
-  const handleModuleAccessChange = (module, checked) => {
+  const handleModuleAccessChange = (moduleKey, checked) => {
     setModuleAccess((prev) => ({
       ...prev,
-      [module]: checked.toString(),
+      [moduleKey]: checked,
+    }));
+  };
+
+  const toggleModuleExpansion = (module) => {
+    setExpandedModules((prev) => ({
+      ...prev,
+      [module]: !prev[module],
     }));
   };
 
@@ -515,6 +598,14 @@ export default function EmployeeDetailPage() {
 
       // Initialize module access as empty
       setModuleAccess({});
+      // Initialize expanded modules - expand all parent modules by default
+      const initialExpanded = {};
+      moduleStructure.forEach((module) => {
+        if (module.isParent) {
+          initialExpanded[module.key] = true;
+        }
+      });
+      setExpandedModules(initialExpanded);
       setShowPassword(false);
       setIsCreatingUser(true);
       setShowUserModal(true);
@@ -547,8 +638,10 @@ export default function EmployeeDetailPage() {
         user_type: userEditData.user_type,
         is_active: userEditData.is_active,
         employee_id: userEditData.employee_id,
-        module_access: JSON.stringify(moduleAccess),
+        module_access: moduleAccess,
       };
+
+      console.log(createData);
 
       const response = await axios.post(`/api/signup`, createData, {
         headers: {
@@ -559,14 +652,14 @@ export default function EmployeeDetailPage() {
 
       if (response.data.status) {
         toast.success("User created successfully");
-        const newUser = response.data.data;
+        const newUser = response.data.data.user;
         setUser(newUser);
 
         // Parse module access from the created user
         let parsedModuleAccess = {};
-        if (newUser.module_access) {
+        if (response.data.data.module_access) {
           try {
-            parsedModuleAccess = JSON.parse(newUser.module_access);
+            parsedModuleAccess = JSON.parse(response.data.data.module_access);
           } catch (e) {
             console.error("Error parsing module access:", e);
           }
@@ -579,6 +672,14 @@ export default function EmployeeDetailPage() {
           is_active: newUser.is_active || false,
         });
         setModuleAccess(parsedModuleAccess);
+        // Initialize expanded modules - expand all parent modules by default
+        const initialExpanded = {};
+        moduleStructure.forEach((module) => {
+          if (module.isParent) {
+            initialExpanded[module.key] = true;
+          }
+        });
+        setExpandedModules(initialExpanded);
         setIsCreatingUser(false);
         setIsEditingUser(true);
         setShowPassword(false);
@@ -1383,7 +1484,7 @@ export default function EmployeeDetailPage() {
                     <div className="space-y-3">
                       <div>
                         <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                          Bank Name
+                          Bank Account Holder Name
                         </label>
                         {isEditing ? (
                           <input
@@ -1408,7 +1509,7 @@ export default function EmployeeDetailPage() {
                       </div>
                       <div>
                         <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                          Account Number
+                          Bank Account Number
                         </label>
                         {isEditing ? (
                           <input
@@ -1433,7 +1534,7 @@ export default function EmployeeDetailPage() {
                       </div>
                       <div>
                         <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                          BSB
+                          Bank Account BSB
                         </label>
                         {isEditing ? (
                           <input
@@ -1491,7 +1592,7 @@ export default function EmployeeDetailPage() {
                       </div>
                       <div>
                         <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                          Account Number
+                          Member ID
                         </label>
                         {isEditing ? (
                           <input
@@ -1654,7 +1755,6 @@ export default function EmployeeDetailPage() {
 
                 {/* Password - Full width */}
                 <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 mt-0.5" />
                   <div className="w-full">
                     <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                       Password <span className="text-red-500">*</span>
@@ -1693,7 +1793,6 @@ export default function EmployeeDetailPage() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 mt-0.5" />
                   <div className="w-full">
                     <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                       Active Status
@@ -1728,38 +1827,126 @@ export default function EmployeeDetailPage() {
 
               {/* Module Access */}
               <div className="flex items-start gap-3">
-                <div className="w-5 h-5 mt-0.5" />
                 <div className="w-full">
                   <div className="text-xs uppercase tracking-wide text-slate-500 mb-3">
                     Module Access
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      "dashboard",
-                      "employees",
-                      "clients",
-                      "projects",
-                      "suppliers",
-                      "inventory",
-                      "finance",
-                    ].map((module) => (
-                      <div key={module} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={module}
-                          checked={moduleAccess[module] === "true"}
-                          onChange={(e) =>
-                            handleModuleAccessChange(module, e.target.checked)
-                          }
-                          disabled={!(isEditingUser || isCreatingUser)}
-                          className="cursor-pointer w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
-                        />
-                        <label
-                          htmlFor={module}
-                          className="ml-2 text-sm font-medium text-slate-600 capitalize"
-                        >
-                          {module}
-                        </label>
+                  <div className="space-y-2 border border-slate-200 rounded-lg p-3 bg-slate-50">
+                    {moduleStructure.map((module) => (
+                      <div key={module.key}>
+                        {module.isParent ? (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center flex-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toggleModuleExpansion(module.key)
+                                  }
+                                  disabled={!(isEditingUser || isCreatingUser)}
+                                  className="cursor-pointer p-1 hover:bg-slate-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {expandedModules[module.key] ? (
+                                    <ChevronDown className="w-4 h-4 text-slate-600" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4 text-slate-600" />
+                                  )}
+                                </button>
+                                <label
+                                  htmlFor={module.key}
+                                  className="ml-2 text-sm font-semibold text-slate-700 cursor-pointer flex-1"
+                                >
+                                  {module.label}
+                                </label>
+                              </div>
+                              <input
+                                type="checkbox"
+                                id={module.key}
+                                checked={
+                                  module.children?.every(
+                                    (child) => moduleAccess[child.key] === true
+                                  ) || false
+                                }
+                                ref={(el) => {
+                                  if (el && module.children) {
+                                    const checkedCount = module.children.filter(
+                                      (child) =>
+                                        moduleAccess[child.key] === true
+                                    ).length;
+                                    el.indeterminate =
+                                      checkedCount > 0 &&
+                                      checkedCount < module.children.length;
+                                  }
+                                }}
+                                onChange={(e) => {
+                                  // Toggle all children when parent is clicked
+                                  module.children?.forEach((child) => {
+                                    handleModuleAccessChange(
+                                      child.key,
+                                      e.target.checked
+                                    );
+                                  });
+                                }}
+                                disabled={!(isEditingUser || isCreatingUser)}
+                                className="cursor-pointer w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
+                              />
+                            </div>
+                            {expandedModules[module.key] && (
+                              <div className="ml-6 mt-2 space-y-2">
+                                {module.children?.map((child) => (
+                                  <div
+                                    key={child.key}
+                                    className="flex items-center justify-between"
+                                  >
+                                    <label
+                                      htmlFor={child.key}
+                                      className="text-sm text-slate-600 cursor-pointer flex-1"
+                                    >
+                                      {child.label}
+                                    </label>
+                                    <input
+                                      type="checkbox"
+                                      id={child.key}
+                                      checked={moduleAccess[child.key] === true}
+                                      onChange={(e) =>
+                                        handleModuleAccessChange(
+                                          child.key,
+                                          e.target.checked
+                                        )
+                                      }
+                                      disabled={
+                                        !(isEditingUser || isCreatingUser)
+                                      }
+                                      className="cursor-pointer w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <label
+                              htmlFor={module.key}
+                              className="text-sm font-semibold text-slate-700 cursor-pointer flex-1"
+                            >
+                              {module.label}
+                            </label>
+                            <input
+                              type="checkbox"
+                              id={module.key}
+                              checked={moduleAccess[module.key] === true}
+                              onChange={(e) =>
+                                handleModuleAccessChange(
+                                  module.key,
+                                  e.target.checked
+                                )
+                              }
+                              disabled={!(isEditingUser || isCreatingUser)}
+                              className="cursor-pointer w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

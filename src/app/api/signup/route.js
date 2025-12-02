@@ -65,19 +65,69 @@ export async function POST(request) {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user
-    const newUser = await prisma.users.create({
-      data: {
-        username,
-        password: hashedPassword,
-        user_type,
-        is_active,
-        employee_id:
-          employee_id && employee_id.trim() !== "" ? employee_id : null,
-        module_access,
-      },
-    });
+    let newUser;
+    let moduleAccess;
+    try {
+      // Create new user
+      newUser = await prisma.users.create({
+        data: {
+          username,
+          password: hashedPassword,
+          user_type,
+          is_active,
+          employee_id:
+            employee_id && employee_id.trim() !== "" ? employee_id : null,
+        },
+      });
+    } catch (error) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: "Internal server error while creating user",
+          error: error.message,
+        },
+        { status: 500 }
+      );
+    }
+    try {
+      moduleAccess = await prisma.module_access.create({
+        data: {
+          user_id: newUser.id,
+          all_clients: module_access.all_clients,
+          add_clients: module_access.add_clients,
+          client_details: module_access.client_details,
+          dashboard: module_access.dashboard,
+          delete_media: module_access.delete_media,
+          all_employees: module_access.all_employees,
+          add_employees: module_access.add_employees,
+          employee_details: module_access.employee_details,
+          all_projects: module_access.all_projects,
+          add_projects: module_access.add_projects,
+          project_details: module_access.project_details,
+          all_suppliers: module_access.all_suppliers,
+          add_suppliers: module_access.add_suppliers,
+          supplier_details: module_access.supplier_details,
+          all_items: module_access.all_items,
+          add_items: module_access.add_items,
+          item_details: module_access.item_details,
+          used_material: module_access.used_material,
+          logs: module_access.logs,
+          lotatglance: module_access.lotatglance,
+          materialstoorder: module_access.materialstoorder,
+          purchaseorder: module_access.purchaseorder,
+          statements: module_access.statements,
+        },
+      });
+    } catch (error) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: "Internal server error while creating module access",
+          error: error.message,
+        },
+        { status: 500 }
+      );
+    }
 
     const logged = await withLogging(
       request,
@@ -96,7 +146,7 @@ export async function POST(request) {
       {
         status: true,
         message: "User created successfully",
-        data: newUser,
+        data: { user: newUser, module_access: moduleAccess },
       },
       { status: 201 }
     );

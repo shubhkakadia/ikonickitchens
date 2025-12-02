@@ -812,10 +812,12 @@ export default function page() {
                                 setShowColumnDropdown(!showColumnDropdown)
                               }
                               disabled={
-                                isExporting || filteredAndSortedMTOs.length === 0
+                                isExporting ||
+                                filteredAndSortedMTOs.length === 0
                               }
                               className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                                isExporting || filteredAndSortedMTOs.length === 0
+                                isExporting ||
+                                filteredAndSortedMTOs.length === 0
                                   ? "opacity-50 cursor-not-allowed"
                                   : "cursor-pointer hover:bg-slate-100"
                               }`}
@@ -1162,6 +1164,7 @@ export default function page() {
                                                             <col className="w-40" />
                                                             <col className="w-60" />
                                                             <col className="w-80" />
+                                                            <col className="w-32" />
                                                             <col className="w-40" />
                                                             <col className="w-40" />
                                                           </colgroup>
@@ -1177,6 +1180,9 @@ export default function page() {
                                                                 Details
                                                               </th>
                                                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                In Stock
+                                                              </th>
+                                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                 Quantity
                                                               </th>
                                                               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1187,359 +1193,396 @@ export default function page() {
                                                           <tbody className="bg-white divide-y divide-slate-200">
                                                             {groups
                                                               .get(name)
-                                                              .map((item) => (
-                                                                <tr
-                                                                  key={item.id}
-                                                                  className="hover:bg-slate-50"
-                                                                >
-                                                                  <td className="px-3 py-2 whitespace-nowrap">
-                                                                    <div className="flex items-center">
-                                                                      {item.item
-                                                                        ?.image
-                                                                        ?.url ? (
-                                                                        <Image
-                                                                          loading="lazy"
-                                                                          src={`/${item.item.image.url}`}
-                                                                          alt={
-                                                                            item
-                                                                              .item
-                                                                              ?.category
-                                                                              ? `${item.item.category} item image`
-                                                                              : item.item_id
-                                                                              ? `Item ${item.item_id} image`
-                                                                              : "Item image"
-                                                                          }
-                                                                          className="w-10 h-10 object-cover rounded border border-slate-200"
-                                                                          width={
-                                                                            40
-                                                                          }
-                                                                          height={
-                                                                            40
-                                                                          }
-                                                                        />
-                                                                      ) : (
-                                                                        <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                                                                          <Package className="w-5 h-5 text-slate-400" />
-                                                                        </div>
-                                                                      )}
-                                                                    </div>
-                                                                  </td>
-                                                                  <td className="px-3 py-2 whitespace-nowrap">
-                                                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                                                      {
-                                                                        item
+                                                              .map((item) => {
+                                                                const stockOnHand =
+                                                                  Number(
+                                                                    item.item
+                                                                      ?.quantity ??
+                                                                      0
+                                                                  );
+                                                                const measurementUnit =
+                                                                  item.item
+                                                                    ?.measurement_unit ||
+                                                                  "";
+
+                                                                return (
+                                                                  <tr
+                                                                    key={
+                                                                      item.id
+                                                                    }
+                                                                    className="hover:bg-slate-50"
+                                                                  >
+                                                                    <td className="px-3 py-2 whitespace-nowrap">
+                                                                      <div className="flex items-center">
+                                                                        {item
                                                                           .item
-                                                                          ?.category
-                                                                      }
-                                                                    </span>
-                                                                  </td>
-                                                                  <td className="px-3 py-2">
-                                                                    <div className="text-xs text-gray-600 space-y-1">
-                                                                      {item.item
-                                                                        ?.sheet && (
-                                                                        <>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Brand:
-                                                                            </span>{" "}
-                                                                            {item
-                                                                              .item
-                                                                              .sheet
-                                                                              .brand ||
-                                                                              "-"}
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Color:
-                                                                            </span>{" "}
-                                                                            {
+                                                                          ?.image
+                                                                          ?.url ? (
+                                                                          <Image
+                                                                            loading="lazy"
+                                                                            src={`/${item.item.image.url}`}
+                                                                            alt={
                                                                               item
+                                                                                .item
+                                                                                ?.category
+                                                                                ? `${item.item.category} item image`
+                                                                                : item.item_id
+                                                                                ? `Item ${item.item_id} image`
+                                                                                : "Item image"
+                                                                            }
+                                                                            className="w-10 h-10 object-cover rounded border border-slate-200"
+                                                                            width={
+                                                                              40
+                                                                            }
+                                                                            height={
+                                                                              40
+                                                                            }
+                                                                          />
+                                                                        ) : (
+                                                                          <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                                                            <Package className="w-5 h-5 text-slate-400" />
+                                                                          </div>
+                                                                        )}
+                                                                      </div>
+                                                                    </td>
+                                                                    <td className="px-3 py-2 whitespace-nowrap">
+                                                                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                                                        {
+                                                                          item
+                                                                            .item
+                                                                            ?.category
+                                                                        }
+                                                                      </span>
+                                                                    </td>
+                                                                    <td className="px-3 py-2">
+                                                                      <div className="text-xs text-gray-600 space-y-1">
+                                                                        {item
+                                                                          .item
+                                                                          ?.sheet && (
+                                                                          <>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Brand:
+                                                                              </span>{" "}
+                                                                              {item
                                                                                 .item
                                                                                 .sheet
-                                                                                .color
-                                                                            }
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Finish:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
+                                                                                .brand ||
+                                                                                "-"}
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Color:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .sheet
+                                                                                  .color
+                                                                              }
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Finish:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .sheet
+                                                                                  .finish
+                                                                              }
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Face:
+                                                                              </span>{" "}
+                                                                              {item
                                                                                 .item
                                                                                 .sheet
-                                                                                .finish
-                                                                            }
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Face:
-                                                                            </span>{" "}
-                                                                            {item
-                                                                              .item
-                                                                              .sheet
-                                                                              .face ||
-                                                                              "-"}
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Dimensions:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
-                                                                                .item
-                                                                                .sheet
-                                                                                .dimensions
-                                                                            }
-                                                                          </div>
-                                                                        </>
-                                                                      )}
-                                                                      {item.item
-                                                                        ?.handle && (
-                                                                        <>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Brand:
-                                                                            </span>{" "}
-                                                                            {item
-                                                                              .item
-                                                                              .handle
-                                                                              .brand ||
-                                                                              "-"}
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Color:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
+                                                                                .face ||
+                                                                                "-"}
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Dimensions:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .sheet
+                                                                                  .dimensions
+                                                                              }
+                                                                            </div>
+                                                                          </>
+                                                                        )}
+                                                                        {item
+                                                                          .item
+                                                                          ?.handle && (
+                                                                          <>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Brand:
+                                                                              </span>{" "}
+                                                                              {item
                                                                                 .item
                                                                                 .handle
-                                                                                .color
-                                                                            }
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Type:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
+                                                                                .brand ||
+                                                                                "-"}
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Color:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .handle
+                                                                                  .color
+                                                                              }
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Type:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .handle
+                                                                                  .type
+                                                                              }
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Dimensions:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .handle
+                                                                                  .dimensions
+                                                                              }
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Material:
+                                                                              </span>{" "}
+                                                                              {item
                                                                                 .item
                                                                                 .handle
-                                                                                .type
-                                                                            }
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Dimensions:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
-                                                                                .item
-                                                                                .handle
-                                                                                .dimensions
-                                                                            }
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Material:
-                                                                            </span>{" "}
-                                                                            {item
-                                                                              .item
-                                                                              .handle
-                                                                              .material ||
-                                                                              "-"}
-                                                                          </div>
-                                                                        </>
-                                                                      )}
-                                                                      {item.item
-                                                                        ?.hardware && (
-                                                                        <>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Brand:
-                                                                            </span>{" "}
-                                                                            {item
-                                                                              .item
-                                                                              .hardware
-                                                                              .brand ||
-                                                                              "-"}
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Name:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
+                                                                                .material ||
+                                                                                "-"}
+                                                                            </div>
+                                                                          </>
+                                                                        )}
+                                                                        {item
+                                                                          .item
+                                                                          ?.hardware && (
+                                                                          <>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Brand:
+                                                                              </span>{" "}
+                                                                              {item
                                                                                 .item
                                                                                 .hardware
-                                                                                .name
-                                                                            }
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Type:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
+                                                                                .brand ||
+                                                                                "-"}
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Name:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .hardware
+                                                                                  .name
+                                                                              }
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Type:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .hardware
+                                                                                  .type
+                                                                              }
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Dimensions:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .hardware
+                                                                                  .dimensions
+                                                                              }
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Sub
+                                                                                Category:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .hardware
+                                                                                  .sub_category
+                                                                              }
+                                                                            </div>
+                                                                          </>
+                                                                        )}
+                                                                        {item
+                                                                          .item
+                                                                          ?.accessory && (
+                                                                          <>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Name:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  .accessory
+                                                                                  .name
+                                                                              }
+                                                                            </div>
+                                                                          </>
+                                                                        )}
+                                                                        {item
+                                                                          .item
+                                                                          ?.edging_tape && (
+                                                                          <>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Brand:
+                                                                              </span>{" "}
+                                                                              {item
                                                                                 .item
-                                                                                .hardware
-                                                                                .type
-                                                                            }
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Dimensions:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
+                                                                                .edging_tape
+                                                                                .brand ||
+                                                                                "-"}
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Color:
+                                                                              </span>{" "}
+                                                                              {item
                                                                                 .item
-                                                                                .hardware
-                                                                                .dimensions
-                                                                            }
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Sub
-                                                                              Category:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
+                                                                                .edging_tape
+                                                                                .color ||
+                                                                                "-"}
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Finish:
+                                                                              </span>{" "}
+                                                                              {item
                                                                                 .item
-                                                                                .hardware
-                                                                                .sub_category
-                                                                            }
-                                                                          </div>
-                                                                        </>
-                                                                      )}
-                                                                      {item.item
-                                                                        ?.accessory && (
-                                                                        <>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Name:
-                                                                            </span>{" "}
-                                                                            {
-                                                                              item
+                                                                                .edging_tape
+                                                                                .finish ||
+                                                                                "-"}
+                                                                            </div>
+                                                                            <div>
+                                                                              <span className="font-medium">
+                                                                                Dimensions:
+                                                                              </span>{" "}
+                                                                              {item
                                                                                 .item
-                                                                                .accessory
-                                                                                .name
-                                                                            }
-                                                                          </div>
-                                                                        </>
-                                                                      )}
-                                                                      {item.item
-                                                                        ?.edging_tape && (
-                                                                        <>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Brand:
-                                                                            </span>{" "}
-                                                                            {item
-                                                                              .item
-                                                                              .edging_tape
-                                                                              .brand ||
-                                                                              "-"}
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Color:
-                                                                            </span>{" "}
-                                                                            {item
-                                                                              .item
-                                                                              .edging_tape
-                                                                              .color ||
-                                                                              "-"}
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Finish:
-                                                                            </span>{" "}
-                                                                            {item
-                                                                              .item
-                                                                              .edging_tape
-                                                                              .finish ||
-                                                                              "-"}
-                                                                          </div>
-                                                                          <div>
-                                                                            <span className="font-medium">
-                                                                              Dimensions:
-                                                                            </span>{" "}
-                                                                            {item
-                                                                              .item
-                                                                              .edging_tape
-                                                                              .dimensions ||
-                                                                              "-"}
-                                                                          </div>
-                                                                        </>
-                                                                      )}
-                                                                    </div>
-                                                                  </td>
-                                                                  <td className="px-3 py-2 whitespace-nowrap">
-                                                                    <div className="text-xs text-gray-600">
-                                                                      <div className="flex items-center gap-1.5 mb-1">
-                                                                        <Package className="w-4 h-4 text-gray-500" />
-                                                                        <span>
-                                                                          <span className="font-medium">
-                                                                            Qty:
-                                                                          </span>{" "}
+                                                                                .edging_tape
+                                                                                .dimensions ||
+                                                                                "-"}
+                                                                            </div>
+                                                                          </>
+                                                                        )}
+                                                                      </div>
+                                                                    </td>
+                                                                    <td className="px-3 py-2 whitespace-nowrap">
+                                                                      <div className="text-xs">
+                                                                        <div className="font-semibold text-green-600">
                                                                           {
-                                                                            item.quantity
+                                                                            stockOnHand
                                                                           }{" "}
                                                                           {
-                                                                            item
-                                                                              .item
-                                                                              ?.measurement_unit
+                                                                            measurementUnit
                                                                           }
-                                                                        </span>
+                                                                        </div>
+                                                                        <div className="text-[11px] text-slate-500">
+                                                                          in
+                                                                          stock
+                                                                        </div>
                                                                       </div>
-                                                                      {item.quantity_ordered >
-                                                                        0 && (
-                                                                        <div className="flex items-center gap-1.5 text-blue-600 text-xs">
+                                                                    </td>
+                                                                    <td className="px-3 py-2 whitespace-nowrap">
+                                                                      <div className="text-xs text-gray-600">
+                                                                        <div className="flex items-center gap-1.5 mb-1">
+                                                                          <Package className="w-4 h-4 text-gray-500" />
                                                                           <span>
-                                                                            Ordered:{" "}
+                                                                            <span className="font-medium">
+                                                                              Qty:
+                                                                            </span>{" "}
                                                                             {
-                                                                              item.quantity_ordered
+                                                                              item.quantity
+                                                                            }{" "}
+                                                                            {
+                                                                              item
+                                                                                .item
+                                                                                ?.measurement_unit
                                                                             }
                                                                           </span>
                                                                         </div>
+                                                                        {item.quantity_ordered >
+                                                                          0 && (
+                                                                          <div className="flex items-center gap-1.5 text-blue-600 text-xs">
+                                                                            <span>
+                                                                              Ordered:{" "}
+                                                                              {
+                                                                                item.quantity_ordered
+                                                                              }
+                                                                            </span>
+                                                                          </div>
+                                                                        )}
+                                                                        {item.quantity_received >
+                                                                          0 && (
+                                                                          <div className="flex items-center gap-1.5 text-green-600 text-xs">
+                                                                            <span>
+                                                                              Received:{" "}
+                                                                              {
+                                                                                item.quantity_received
+                                                                              }
+                                                                            </span>
+                                                                          </div>
+                                                                        )}
+                                                                      </div>
+                                                                    </td>
+                                                                    <td className="px-3 py-2 whitespace-nowrap">
+                                                                      {item.quantity_ordered >
+                                                                        0 && (
+                                                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                                                          Ordered
+                                                                        </span>
                                                                       )}
                                                                       {item.quantity_received >
                                                                         0 && (
-                                                                        <div className="flex items-center gap-1.5 text-green-600 text-xs">
-                                                                          <span>
-                                                                            Received:{" "}
-                                                                            {
-                                                                              item.quantity_received
-                                                                            }
-                                                                          </span>
-                                                                        </div>
-                                                                      )}
-                                                                    </div>
-                                                                  </td>
-                                                                  <td className="px-3 py-2 whitespace-nowrap">
-                                                                    {item.quantity_ordered >
-                                                                      0 && (
-                                                                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                                                        Ordered
-                                                                      </span>
-                                                                    )}
-                                                                    {item.quantity_received >
-                                                                      0 && (
-                                                                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-                                                                        Received
-                                                                      </span>
-                                                                    )}
-                                                                    {item.quantity_ordered ===
-                                                                      0 &&
-                                                                      item.quantity_received ===
-                                                                        0 && (
-                                                                        <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                                                          Pending
+                                                                        <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                                                                          Received
                                                                         </span>
                                                                       )}
-                                                                  </td>
-                                                                </tr>
-                                                              ))}
+                                                                      {item.quantity_ordered ===
+                                                                        0 &&
+                                                                        item.quantity_received ===
+                                                                          0 && (
+                                                                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                                                                            Pending
+                                                                          </span>
+                                                                        )}
+                                                                    </td>
+                                                                  </tr>
+                                                                );
+                                                              })}
                                                           </tbody>
                                                         </table>
                                                       </div>

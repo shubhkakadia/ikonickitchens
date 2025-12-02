@@ -358,7 +358,6 @@ export default function page() {
     setSelectedEntityTypes([...distinctEntityTypes]);
     setSelectedActions([...distinctActions]);
     setCurrentPage(1);
-    setItemsPerPage(25);
     setHasInitializedFilters(true);
   };
 

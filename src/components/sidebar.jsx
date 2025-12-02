@@ -18,15 +18,17 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDispatch, useSelector } from "react-redux";
 import { addTab, replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import versions from "@/config/versions.json";
+import axios from "axios";
 
 export default function sidebar() {
+
   const dispatch = useDispatch();
   const pathname = usePathname();
   const { logout } = useAuth();
@@ -40,19 +42,22 @@ export default function sidebar() {
       icon: LayoutDashboard,
       label: "Dashboard",
       href: "/admin/dashboard",
+      access: false,
       subtabs: [],
     },
     {
       icon: IdCardLanyard,
       label: "Employees",
       href: "/admin/employees",
+      access: false,
       subtabs: [],
     },
-    { icon: User, label: "Clients", href: "/admin/clients", subtabs: [] },
+    { icon: User, label: "Clients", href: "/admin/clients", access: false, subtabs: [] },
     {
       icon: PanelsTopLeft,
       label: "Projects",
       href: "/admin/projects",
+      access: false,
       subtabs: [
         {
           name: "Lots at a Glance",
@@ -64,18 +69,22 @@ export default function sidebar() {
       icon: InspectionPanel,
       label: "Suppliers",
       href: "/admin/suppliers",
+      access: false,
       subtabs: [
         {
           name: "Materials to Order",
           href: "/admin/suppliers/materialstoorder",
+          access: false,
         },
         {
           name: "Purchase Order",
           href: "/admin/suppliers/purchaseorder",
+          access: false,
         },
         {
           name: "Statements",
           href: "/admin/suppliers/statements",
+          access: false,
         },
       ],
     },
@@ -83,10 +92,12 @@ export default function sidebar() {
       icon: Warehouse,
       label: "Inventory",
       href: "/admin/inventory",
+      access: false,
       subtabs: [
         {
           name: "Used Material",
           href: "/admin/inventory/usedmaterial",
+          access: false,
         },
       ],
     },
@@ -96,15 +107,92 @@ export default function sidebar() {
       label: "Deleted Media",
       href: "/admin/deletefiles",
       subtabs: [],
+      access: false,
     },
     {
       icon: FileText,
       label: "Logs",
       href: "/admin/logs",
       subtabs: [],
+      access: false,
     },
   ];
 
+  // const { getUserData, getToken } = useAuth();
+  // const [moduleAccess, setModuleAccess] = useState(null);
+  // const [visibleNavdata, setVisibleNavdata] = useState(navdata);
+  // const [loading, setLoading] = useState(true);
+
+  // const siteMap = {
+  //   "/admin/dashboard": "dashboard",
+  //   "/admin/clients": "all_clients",
+  //   "/admin/clients/addclient": "add_clients",
+  //   "/admin/clients/[id]": "client_details",
+  //   "/admin/employees": "all_employees",
+  //   "/admin/employees/addemployee": "add_employees",
+  //   "/admin/employees/[id]": "employee_details",
+  //   "/admin/projects": "all_projects",
+  //   "/admin/projects/addproject": "add_projects",
+  //   "/admin/projects/[id]": "project_details",
+  //   "/admin/projects/lotatglance": "lotatglance",
+  //   "/admin/suppliers": "all_suppliers",
+  //   "/admin/suppliers/addsupplier": "add_suppliers",
+  //   "/admin/suppliers/[id]": "supplier_details",
+  //   "/admin/suppliers/materialstoorder": "materialstoorder",
+  //   "/admin/suppliers/purchaseorder": "purchaseorder",
+  //   "/admin/suppliers/statements": "statements",
+  //   "/admin/inventory/usedmaterial": "usedmaterial",
+  //   "/admin/logs": "logs",
+  //   "/admin/deletefiles": "deletedmedia",
+  //   "/admin/inventory": "all_items",
+  //   "/admin/inventory/additem": "add_items",
+  //   "/admin/inventory/[id]": "item_details",
+  // };
+
+  // useEffect(() => {
+  //   const fetchModuleAccess = async () => {
+  //     const user = getUserData();
+  //     const userId = user.user.id;
+  //     console.log('user', userId);
+  //     try {
+  //       const response = await axios.get(`/api/module_access/${userId}`, {
+  //         headers: {
+  //           Authorization: `Bearer ${getToken()}`,
+  //         },
+  //       });
+  //       if (response.data.status) {
+  //         setModuleAccess(response.data.data);
+  //         const allowed = [];
+
+  //         for (const item of navdata) {
+  //           if (response.data.data[siteMap[item.href]]) {
+  //             allowed.push({ ...item, access: response.data.data[siteMap[item.href]] });
+
+  //             for (const sub of item.subtabs ?? []) {
+  //               if (response.data.data[siteMap[sub.href]]) {
+  //                 allowed.push({ ...sub, access: response.data.data[siteMap[sub.href]] });
+  //               }
+  //             }
+  //           }
+  //         }
+  //         setModuleAccess(response.data.data);
+  //         setVisibleNavdata(allowed);
+  //         setLoading(false);
+
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching module access:', error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   fetchModuleAccess();
+  // }, []);
+
+  // const key = siteMap[pathname];
+  // const access = moduleAccess?.[key];
+  // console.log('key', key);
+  // console.log('visibleNavdata', visibleNavdata);
   return (
     <div className="bg-slate-900 w-60 h-screen border-r border-slate-800">
       <div className="flex flex-col h-full px-4 py-4 gap-4">
@@ -131,10 +219,10 @@ export default function sidebar() {
                   item.label === "Projects"
                     ? projectDropdownOpen
                     : item.label === "Suppliers"
-                    ? suppliersDropdownOpen
-                    : item.label === "Inventory"
-                    ? inventoryDropdownOpen
-                    : false;
+                      ? suppliersDropdownOpen
+                      : item.label === "Inventory"
+                        ? inventoryDropdownOpen
+                        : false;
 
                 const toggleDropdown = () => {
                   if (item.label === "Projects")
@@ -148,11 +236,10 @@ export default function sidebar() {
                 return (
                   <div key={item.href} className="space-y-1">
                     <div
-                      className={`w-full rounded-lg border transition-all duration-200 flex items-center gap-2 px-3 py-2 ${
-                        isParentActive
+                      className={`w-full rounded-lg border transition-all duration-200 flex items-center gap-2 px-3 py-2 ${isParentActive
                           ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                           : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
-                      }`}
+                        }`}
                     >
                       <button
                         onClick={() => {
@@ -168,18 +255,16 @@ export default function sidebar() {
                         className="flex items-center gap-2 flex-1 cursor-pointer text-sm"
                       >
                         <item.icon
-                          className={`w-4 h-4 ${
-                            isParentActive
+                          className={`w-4 h-4 ${isParentActive
                               ? "text-white"
                               : "text-slate-400 group-hover:text-white"
-                          }`}
+                            }`}
                         />
                         <h1
-                          className={`text-sm font-medium ${
-                            isParentActive
+                          className={`text-sm font-medium ${isParentActive
                               ? "text-white"
                               : "text-slate-300 group-hover:text-white"
-                          }`}
+                            }`}
                         >
                           {item.label}
                         </h1>
@@ -252,11 +337,10 @@ export default function sidebar() {
                                   })
                                 );
                               }}
-                              className={`w-full text-left cursor-pointer px-3 py-2 rounded-lg border transition-all duration-200 flex items-center gap-2 ${
-                                isActiveSub
+                              className={`w-full text-left cursor-pointer px-3 py-2 rounded-lg border transition-all duration-200 flex items-center gap-2 ${isActiveSub
                                   ? "bg-slate-800 text-white border-slate-700"
                                   : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
-                              }`}
+                                }`}
                             >
                               <span className="text-sm font-medium">
                                 {link.name}
@@ -300,25 +384,22 @@ export default function sidebar() {
                     );
                   }}
                   key={item.href}
-                  className={`cursor-pointer rounded-lg px-3 py-2.5 transition-all duration-200 flex items-center gap-2 border ${
-                    isActive
+                  className={`cursor-pointer rounded-lg px-3 py-2.5 transition-all duration-200 flex items-center gap-2 border ${isActive
                       ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                       : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
-                  }`}
+                    }`}
                 >
                   <item.icon
-                    className={`w-4 h-4 ${
-                      isActive
+                    className={`w-4 h-4 ${isActive
                         ? "text-white"
                         : "text-slate-400 group-hover:text-white"
-                    }`}
+                      }`}
                   />
                   <h1
-                    className={`text-sm font-medium flex-1 text-left ${
-                      isActive
+                    className={`text-sm font-medium flex-1 text-left ${isActive
                         ? "text-white"
                         : "text-slate-300 group-hover:text-white"
-                    }`}
+                      }`}
                   >
                     {item.label}
                   </h1>
@@ -370,25 +451,22 @@ export default function sidebar() {
                   })
                 );
               }}
-              className={`cursor-pointer rounded-lg px-3 py-2.5 border transition-all duration-200 flex items-center gap-2 ${
-                activeTab.href === "/admin/settings"
+              className={`cursor-pointer rounded-lg px-3 py-2.5 border transition-all duration-200 flex items-center gap-2 ${activeTab.href === "/admin/settings"
                   ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                   : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
-              }`}
+                }`}
             >
               <Settings
-                className={`w-4 h-4 ${
-                  activeTab.href === "/admin/settings"
+                className={`w-4 h-4 ${activeTab.href === "/admin/settings"
                     ? "text-white"
                     : "text-slate-400 group-hover:text-white"
-                }`}
+                  }`}
               />
               <h1
-                className={`text-sm font-medium ${
-                  activeTab.href === "/admin/settings"
+                className={`text-sm font-medium ${activeTab.href === "/admin/settings"
                     ? "text-white"
                     : "text-slate-300 group-hover:text-white"
-                }`}
+                  }`}
               >
                 Settings
               </h1>
@@ -427,25 +505,22 @@ export default function sidebar() {
 
             <button onClick={() => logout()}>
               <div
-                className={`cursor-pointer rounded-lg px-3 py-2.5 transition-all duration-200 flex items-center gap-2 border ${
-                  pathname === "/admin/logout"
+                className={`cursor-pointer rounded-lg px-3 py-2.5 transition-all duration-200 flex items-center gap-2 border ${pathname === "/admin/logout"
                     ? "border-red-200/60 bg-red-50 text-red-700 shadow-sm"
                     : "border-transparent text-slate-300 hover:border-red-200 hover:bg-red-50/30 hover:text-red-500"
-                }`}
+                  }`}
               >
                 <LogOut
-                  className={`w-4 h-4 ${
-                    pathname === "/admin/logout"
+                  className={`w-4 h-4 ${pathname === "/admin/logout"
                       ? "text-red-700"
                       : "text-red-400"
-                  }`}
+                    }`}
                 />
                 <h1
-                  className={`text-sm font-medium ${
-                    pathname === "/admin/logout"
+                  className={`text-sm font-medium ${pathname === "/admin/logout"
                       ? "text-red-700"
                       : "text-red-400"
-                  }`}
+                    }`}
                 >
                   Logout
                 </h1>

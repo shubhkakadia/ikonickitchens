@@ -562,6 +562,28 @@ export default function PurchaseOrderForm({
                                   </div>
                                 </>
                               )}
+                              {item.item.edging_tape && (
+                                <>
+                                  <div>
+                                    <span className="font-medium">Brand:</span>{" "}
+                                    {item.item.edging_tape.brand || "-"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Color:</span>{" "}
+                                    {item.item.edging_tape.color || "-"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Finish:</span>{" "}
+                                    {item.item.edging_tape.finish || "-"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">
+                                      Dimensions:
+                                    </span>{" "}
+                                    {item.item.edging_tape.dimensions || "-"}
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </td>
 

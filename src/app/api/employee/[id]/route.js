@@ -32,7 +32,11 @@ export async function GET(request, { params }) {
       where: { employee_id: id },
       include: {
         image: true,
-        user: true,
+        user: {
+          include: {
+            module_access: true,
+          },
+        },
       },
     });
     return NextResponse.json(

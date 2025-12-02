@@ -405,7 +405,6 @@ export default function page() {
     setSortOrder("asc");
     setSelectedRoles([...distinctRoles]); // Reset to all roles selected
     setCurrentPage(1);
-    setItemsPerPage(10);
     setHasInitializedRoles(true); // Keep initialized state
   };
 

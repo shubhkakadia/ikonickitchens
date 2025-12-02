@@ -110,7 +110,7 @@ export async function POST(request) {
           all_items: module_access.all_items,
           add_items: module_access.add_items,
           item_details: module_access.item_details,
-          used_material: module_access.used_material,
+          usedmaterial: module_access.usedmaterial,
           logs: module_access.logs,
           lotatglance: module_access.lotatglance,
           materialstoorder: module_access.materialstoorder,

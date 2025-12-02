@@ -256,12 +256,10 @@ export function AdminRoute({
 
   useEffect(() => {
     // set timeout for 10 seconds
-    if (loading) {
     setTimeout(() => {
-        setLoading(false);
-      }, 10000);
-    }
-  }, [loading]);
+      setLoading(false);
+    }, 10000);
+  }, []);
 
   // Show loading state
   if (loading) {

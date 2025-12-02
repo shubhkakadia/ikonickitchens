@@ -49,7 +49,7 @@ model module_access {
   all_items        Boolean  @default(false)
   add_items        Boolean  @default(false)
   item_details     Boolean  @default(false)
-  used_material    Boolean  @default(false)
+  usedmaterial     Boolean  @default(false)
   logs             Boolean  @default(false)
   lotatglance      Boolean  @default(false)
   materialstoorder Boolean  @default(false)

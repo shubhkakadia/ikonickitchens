@@ -80,7 +80,7 @@ export async function PATCH(request, { params }) {
           all_items: data.all_items,
           add_items: data.add_items,
           item_details: data.item_details,
-          used_material: data.used_material,
+          usedmaterial: data.usedmaterial,
           logs: data.logs,
           lotatglance: data.lotatglance,
           materialstoorder: data.materialstoorder,

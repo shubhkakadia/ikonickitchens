@@ -49,7 +49,7 @@ export default function page() {
         });
         return;
       }
-      const data = JSON.stringify({
+      const data = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -57,7 +57,7 @@ export default function page() {
         notes: formData.notes,
         website: formData.website,
         abn_number: formData.abn_number,
-      });
+      };
 
       const config = {
         method: "post",
@@ -196,9 +196,8 @@ export default function page() {
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
-                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
-                            errors.name ? "border-red-500" : "border-slate-300"
-                          }`}
+                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${errors.name ? "border-red-500" : "border-slate-300"
+                            }`}
                           placeholder="Eg. Polytec Australia"
                           required
                         />
@@ -217,9 +216,8 @@ export default function page() {
                           name="email"
                           value={formData.email}
                           onChange={handleInputChange}
-                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
-                            errors.email ? "border-red-500" : "border-slate-300"
-                          }`}
+                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${errors.email ? "border-red-500" : "border-slate-300"
+                            }`}
                           placeholder="Eg. contact@polytec.com.au"
                         />
                         {errors.email && (
@@ -320,11 +318,10 @@ export default function page() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-                        isLoading
-                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                          : "bg-primary/80 hover:bg-primary text-white"
-                      }`}
+                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${isLoading
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        : "bg-primary/80 hover:bg-primary text-white"
+                        }`}
                     >
                       {isLoading ? "Creating Supplier..." : "Create Supplier"}
                     </button>

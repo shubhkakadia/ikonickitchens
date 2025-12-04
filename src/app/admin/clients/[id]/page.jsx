@@ -16,7 +16,6 @@ import {
   MapPin,
   Trash2,
   Plus,
-  Eye,
   AlertTriangle,
   Calendar,
   Building,
@@ -26,15 +25,15 @@ import {
   ArrowDown,
   RotateCcw,
   ChevronRight,
-  Copy,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
-import ContactPopup from "@/components/contactpopup";
+import ContactSection from "@/components/ContactSection";
 import { CiMenuKebab } from "react-icons/ci";
+import { AdminRoute } from "@/components/ProtectedRoute";
 
 export default function page() {
   const { id } = useParams();
@@ -46,14 +45,9 @@ export default function page() {
   const [editData, setEditData] = useState({});
   const [showDeleteClientModal, setShowDeleteClientModal] = useState(false);
   const [isDeletingClient, setIsDeletingClient] = useState(false);
-  const [showDeleteContactModal, setShowDeleteContactModal] = useState(false);
-  const [contactPendingDelete, setContactPendingDelete] = useState(null);
-  const [isDeletingContact, setIsDeletingContact] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [selectedContact, setSelectedContact] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
@@ -71,7 +65,7 @@ export default function page() {
   const [activeTab, setActiveTab] = useState("ACTIVE");
 
   useEffect(() => {
-    fetchClient();
+    fetchClient(id);
   }, [id]);
 
   // Close dropdown when clicking outside
@@ -91,7 +85,7 @@ export default function page() {
     };
   }, [showDropdown, showSortDropdown]);
 
-  const fetchClient = async () => {
+  const fetchClient = async (id) => {
     try {
       setLoading(true);
       const sessionToken = getToken();
@@ -122,7 +116,7 @@ export default function page() {
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-          "An error occurred while fetching client data"
+        "An error occurred while fetching client data"
       );
     } finally {
       setLoading(false);
@@ -187,7 +181,7 @@ export default function page() {
       console.error("Error updating client:", error);
       toast.error(
         error.response?.data?.message ||
-          "Failed to update client. Please try again.",
+        "Failed to update client. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
@@ -214,47 +208,6 @@ export default function page() {
     }));
   };
 
-  const openContactModal = (contact) => {
-    setSelectedContact(contact);
-    setIsContactModalOpen(true);
-  };
-
-  const closeContactModal = () => {
-    setIsContactModalOpen(false);
-    setSelectedContact(null);
-  };
-
-  const saveEditContact = async (contactData, contactId) => {
-    try {
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-      const payload = {
-        ...contactData,
-        client_id: selectedContact?.client_id || client?.client_id || "",
-      };
-      const response = await axios.patch(`/api/contact/${contactId}`, payload, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-      if (!response?.data?.status) {
-        toast.error(response?.data?.message || "Failed to update contact");
-        return;
-      }
-      const updated = response.data.data;
-      setContacts((prev) =>
-        prev.map((c) => (c.id === updated.id ? updated : c))
-      );
-      setSelectedContact(updated);
-      toast.success("Contact updated successfully");
-    } catch (err) {
-      console.error("Update contact failed", err);
-      toast.error(err?.response?.data?.message || "An error occurred");
-      throw err;
-    }
-  };
-
   const formatValue = (value) => {
     if (
       value === null ||
@@ -274,9 +227,8 @@ export default function page() {
     if (!name) return "?";
     const parts = name.trim().split(" ");
     if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
-    return `${parts[0][0] || ""}${
-      parts[parts.length - 1][0] || ""
-    }`.toUpperCase();
+    return `${parts[0][0] || ""}${parts[parts.length - 1][0] || ""
+      }`.toUpperCase();
   };
 
   const formatDate = (dateString) => {
@@ -479,47 +431,6 @@ export default function page() {
     });
   };
 
-  const handleDeleteContact = (contactId) => {
-    // open confirmation modal without input
-    const contact = contacts.find((c) => c.id === contactId);
-    setContactPendingDelete(contact || null);
-    setShowDeleteContactModal(true);
-  };
-
-  const handleDeleteContactCancel = () => {
-    setShowDeleteContactModal(false);
-    setContactPendingDelete(null);
-  };
-
-  const handleDeleteContactConfirm = async () => {
-    if (!contactPendingDelete) return;
-    try {
-      setIsDeletingContact(true);
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-      const contactId = contactPendingDelete.id;
-      const response = await axios.delete(`/api/contact/${contactId}`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-      if (!response?.data?.status) {
-        toast.error(response?.data?.message || "Failed to delete contact");
-        return;
-      }
-      setContacts((prev) => prev.filter((c) => c.id !== contactId));
-      toast.success("Contact deleted successfully");
-      setShowDeleteContactModal(false);
-      setContactPendingDelete(null);
-    } catch (err) {
-      console.error("Delete contact failed", err);
-      toast.error(err?.response?.data?.message || "An error occurred");
-    } finally {
-      setIsDeletingContact(false);
-    }
-  };
-
   const handleDeleteClientConfirm = async () => {
     try {
       setIsDeletingClient(true);
@@ -538,52 +449,13 @@ export default function page() {
       toast.success("Client deleted successfully");
       setShowDeleteClientModal(false);
       // Navigate back to clients list
-      window.location.href = "/admin/clients";
+      router.push("/admin/clients");
     } catch (err) {
       console.error("Delete client failed", err);
       toast.error(err?.response?.data?.message || "An error occurred");
     } finally {
       setIsDeletingClient(false);
     }
-  };
-
-  const handleCreateContact = async (contactData) => {
-    try {
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-
-      const payload = {
-        ...contactData,
-        client_id: client?.client_id || "",
-      };
-
-      const response = await axios.post("/api/contact/create", payload, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-
-      if (!response?.data?.status) {
-        toast.error(response?.data?.message || "Failed to create contact");
-        throw new Error(response?.data?.message || "Failed to create contact");
-      }
-
-      const created = response.data.data;
-      setContacts((prev) => [created, ...prev]);
-      toast.success("Contact created successfully");
-      setIsContactModalOpen(false);
-      setSelectedContact(null);
-    } catch (err) {
-      console.error("Create contact failed", err);
-      toast.error(err?.response?.data?.message || "An error occurred");
-      throw err;
-    }
-  };
-
-  const openAddContactModal = () => {
-    setSelectedContact(null);
-    setIsContactModalOpen(true);
   };
 
   const handleCreateProject = async () => {
@@ -613,15 +485,14 @@ export default function page() {
           ? client.client_id.trim()
           : null;
 
-      const data = JSON.stringify({
+      const data = {
         name: newProject.name,
         project_id: newProject.project_id,
         client_id: clientIdToSend,
-      });
+      };
 
       const response = await axios.post("/api/project/create", data, {
         headers: {
-          "Content-Type": "text/plain",
           Authorization: `Bearer ${sessionToken}`,
         },
       });
@@ -649,12 +520,12 @@ export default function page() {
       setShowAddProjectModal(false);
 
       // Refresh client data to show the new project
-      await fetchClient();
+      await fetchClient(id);
     } catch (err) {
       console.error("Create project failed", err);
       toast.error(
         err?.response?.data?.message ||
-          "An error occurred while creating the project",
+        "An error occurred while creating the project",
         {
           position: "top-right",
           autoClose: 5000,
@@ -667,117 +538,112 @@ export default function page() {
   };
 
   return (
-    <div className="flex h-screen bg-tertiary">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CRMLayout />
-        <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                <p className="text-slate-600">Loading client details...</p>
-              </div>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <p className="text-red-600 mb-4">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
-                >
-                  Try Again
-                </button>
-              </div>
-            </div>
-          ) : !client ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <User className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-600">Client not found</p>
-              </div>
-            </div>
-          ) : (
-            <div className="p-3">
-              {/* Header */}
-              <div className="flex items-center gap-3 mb-4">
-                <TabsController href="/admin/clients" title="Clients">
-                  <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                    <ChevronLeft className="w-6 h-6 text-slate-600" />
-                  </div>
-                </TabsController>
-                <div className="flex-1">
-                  <h1 className="text-2xl font-bold text-slate-600">
-                    {client.client_name}
-                  </h1>
+    <AdminRoute>
+      <div className="flex h-screen bg-tertiary">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <CRMLayout />
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                  <p className="text-slate-600">Loading client details...</p>
                 </div>
-                <div className="flex gap-2">
-                  {!isEditing ? (
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => setShowDropdown(!showDropdown)}
-                        className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-                      >
-                        <CiMenuKebab className="w-4 h-4 text-slate-600" />
-                        <span className="text-slate-600">More Actions</span>
-                      </button>
-
-                      {showDropdown && (
-                        <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                          <div className="py-1">
-                            <button
-                              onClick={() => {
-                                handleEdit();
-                                setShowDropdown(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                            >
-                              <Edit className="w-4 h-4" />
-                              Edit Client Details
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowDeleteClientModal(true);
-                                setShowDropdown(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete Client
-                            </button>
-                          </div>
-                        </div>
-                      )}
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            ) : !client ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <User className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                  <p className="text-slate-600">Client not found</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <TabsController href="/admin/clients" title="Clients">
+                    <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
+                      <ChevronLeft className="w-6 h-6 text-slate-600" />
                     </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleSave}
-                        disabled={isUpdating}
-                        className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Edit className="w-4 h-4" />
-                        {isUpdating ? "Saving..." : "Save"}
-                      </button>
-                      <button
-                        onClick={handleCancel}
-                        className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+                  </TabsController>
+                  <div className="flex-1">
+                    <h1 className="text-2xl font-bold text-slate-600">
+                      {client.client_name}
+                    </h1>
+                  </div>
+                  <div className="flex gap-2">
+                    {!isEditing ? (
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() => setShowDropdown(!showDropdown)}
+                          className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                        >
+                          <CiMenuKebab className="w-4 h-4 text-slate-600" />
+                          <span className="text-slate-600">More Actions</span>
+                        </button>
 
-              {/* Content */}
-              {loading && (
-                <div className="text-slate-600">Loading client...</div>
-              )}
-              {!loading && error && <div className="text-red-600">{error}</div>}
-              {!loading && !error && client && (
+                        {showDropdown && (
+                          <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <div className="py-1">
+                              <button
+                                onClick={() => {
+                                  handleEdit();
+                                  setShowDropdown(false);
+                                }}
+                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Edit Client Details
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowDeleteClientModal(true);
+                                  setShowDropdown(false);
+                                }}
+                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete Client
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={handleSave}
+                          disabled={isUpdating}
+                          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Edit className="w-4 h-4" />
+                          {isUpdating ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   {/* Basic Information and Contacts Section */}
                   <div className="grid grid-cols-10 gap-4">
@@ -971,83 +837,13 @@ export default function page() {
                     </div>
 
                     {/* Contacts - 30% width */}
-                    <div className="col-span-3">
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 h-full">
-                        <div className="flex items-center justify-between p-3 border-b border-slate-100">
-                          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                            <User className="w-4 h-4" />
-                            Contacts
-                          </h3>
-                          <span className="text-xs text-slate-500">
-                            {contacts?.length || 0}
-                          </span>
-                        </div>
-
-                        <div className="p-3">
-                          {!contacts || contacts.length === 0 ? (
-                            <div className="text-center py-6 text-slate-500">
-                              <User className="w-6 h-6 mx-auto mb-2 text-slate-400" />
-                              <p className="text-sm">No contacts</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {contacts.map((contact) => (
-                                <div
-                                  key={contact.id}
-                                  onClick={() => openContactModal(contact)}
-                                  className="cursor-pointer group text-left border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 transition-colors rounded px-2 py-1.5 flex items-center gap-2 justify-between"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <div className="shrink-0 w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-200">
-                                      <User className="w-2.5 h-2.5" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="font-medium text-slate-700 truncate text-xs">
-                                        {contact.first_name} {contact.last_name}
-                                      </div>
-                                      <div className="text-xs text-slate-500 truncate">
-                                        {contact.email}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-0.5 shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openContactModal(contact);
-                                      }}
-                                      className="cursor-pointer p-2 rounded hover:bg-slate-100"
-                                      title="View"
-                                    >
-                                      <Eye className="w-3 h-3 text-slate-600" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteContact(contact.id);
-                                      }}
-                                      className="cursor-pointer p-2 rounded hover:bg-slate-100"
-                                      title="Delete"
-                                    >
-                                      <Trash2 className="w-3 h-3 text-red-600" />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <button
-                            onClick={openAddContactModal}
-                            className="cursor-pointer flex items-center text-sm hover:text-secondary mt-4 text-left"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add Contact
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <ContactSection
+                      contacts={contacts}
+                      onContactsUpdate={setContacts}
+                      parentId={client?.client_id || ""}
+                      parentType="client"
+                      parentName={client?.client_name || ""}
+                    />
                   </div>
 
                   {/* Projects Table - Full Width */}
@@ -1080,11 +876,10 @@ export default function page() {
                             setActiveTab("ACTIVE");
                             setCurrentPage(1);
                           }}
-                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "ACTIVE"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "ACTIVE"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
                         >
                           <div className="flex items-center gap-2">
                             Active
@@ -1100,11 +895,10 @@ export default function page() {
                             setActiveTab("COMPLETED");
                             setCurrentPage(1);
                           }}
-                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "COMPLETED"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "COMPLETED"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
                         >
                           <div className="flex items-center gap-2">
                             Completed
@@ -1190,8 +984,8 @@ export default function page() {
                     </div>
 
                     {!client?.projects ||
-                    client.projects.length === 0 ||
-                    filteredAndSortedProjects.length === 0 ? (
+                      client.projects.length === 0 ||
+                      filteredAndSortedProjects.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
                         <Building className="w-8 h-8 mx-auto mb-2 text-slate-400" />
                         <p>
@@ -1437,11 +1231,10 @@ export default function page() {
                                   <button
                                     key={page}
                                     onClick={() => handlePageChange(page)}
-                                    className={`px-2 py-1 text-xs font-medium rounded ${
-                                      currentPage === page
-                                        ? "bg-primary text-white"
-                                        : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
-                                    }`}
+                                    className={`px-2 py-1 text-xs font-medium rounded ${currentPage === page
+                                      ? "bg-primary text-white"
+                                      : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
+                                      }`}
                                   >
                                     {page}
                                   </button>
@@ -1463,143 +1256,118 @@ export default function page() {
                     )}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Contact Detail Modal */}
-      <ContactPopup
-        isOpen={isContactModalOpen}
-        contact={selectedContact}
-        onClose={closeContactModal}
-        onSave={saveEditContact}
-        onCreate={handleCreateContact}
-        parentId={client?.client_id || ""}
-        parentType="client"
-        parentName={client?.client_name || ""}
-      />
-
-      {/* Delete Client Confirmation Modal */}
-      <DeleteConfirmation
-        isOpen={showDeleteClientModal}
-        onClose={() => setShowDeleteClientModal(false)}
-        onConfirm={handleDeleteClientConfirm}
-        deleteWithInput={true}
-        heading="Client"
-        message="This will remove the client and all associated contacts. This action cannot be undone."
-        comparingName={client?.client_name || ""}
-        isDeleting={isDeletingClient}
-      />
-
-      {/* Delete Contact Confirmation Modal */}
-      <DeleteConfirmation
-        isOpen={showDeleteContactModal}
-        onClose={handleDeleteContactCancel}
-        onConfirm={handleDeleteContactConfirm}
-        deleteWithInput={false}
-        heading="Contact"
-        message={`${contactPendingDelete?.first_name || ""} ${
-          contactPendingDelete?.last_name || ""
-        } will be removed from this client.`}
-        isDeleting={isDeletingContact}
-      />
-
-      {/* Add Project Modal */}
-      {showAddProjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
-          <div
-            className="absolute inset-0 bg-slate-900/40"
-            onClick={() => setShowAddProjectModal(false)}
-          />
-          <div className="relative bg-white w-full max-w-lg mx-4 rounded-xl shadow-xl border border-slate-200">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Building className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-lg font-semibold text-slate-700">
-                    Add New Project
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Client: {client?.client_name || ""}
-                  </div>
-                </div>
               </div>
-              <button
-                onClick={() => setShowAddProjectModal(false)}
-                className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Project Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newProject.name}
-                  onChange={(e) =>
-                    setNewProject({
-                      ...newProject,
-                      name: e.target.value,
-                    })
-                  }
-                  placeholder="Eg. 5 Dundee Ave, Holden Hill SA 5088"
-                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Project ID <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newProject.project_id}
-                  onChange={(e) =>
-                    setNewProject({
-                      ...newProject,
-                      project_id: e.target.value,
-                    })
-                  }
-                  placeholder="Eg. IK001"
-                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowAddProjectModal(false);
-                  setNewProject({
-                    name: "",
-                    project_id: "",
-                  });
-                }}
-                disabled={isCreatingProject}
-                className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateProject}
-                disabled={isCreatingProject}
-                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCreatingProject ? "Creating..." : "Create Project"}
-              </button>
-            </div>
+            )}
           </div>
         </div>
-      )}
 
-      <ToastContainer />
-    </div>
+        {/* Delete Client Confirmation Modal */}
+        <DeleteConfirmation
+          isOpen={showDeleteClientModal}
+          onClose={() => setShowDeleteClientModal(false)}
+          onConfirm={handleDeleteClientConfirm}
+          deleteWithInput={true}
+          heading="Client"
+          message="This will remove the client and all associated contacts. This action cannot be undone."
+          comparingName={client?.client_name || ""}
+          isDeleting={isDeletingClient}
+        />
+
+        {/* Add Project Modal */}
+        {showAddProjectModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
+            <div
+              className="absolute inset-0 bg-slate-900/40"
+              onClick={() => setShowAddProjectModal(false)}
+            />
+            <div className="relative bg-white w-full max-w-lg mx-4 rounded-xl shadow-xl border border-slate-200">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <Building className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-slate-700">
+                      Add New Project
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      Client: {client?.client_name || ""}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAddProjectModal(false)}
+                  className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5 text-slate-600" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Project Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newProject.name}
+                    onChange={(e) =>
+                      setNewProject({
+                        ...newProject,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder="Eg. 5 Dundee Ave, Holden Hill SA 5088"
+                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Project ID <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newProject.project_id}
+                    onChange={(e) =>
+                      setNewProject({
+                        ...newProject,
+                        project_id: e.target.value,
+                      })
+                    }
+                    placeholder="Eg. IK001"
+                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setShowAddProjectModal(false);
+                    setNewProject({
+                      name: "",
+                      project_id: "",
+                    });
+                  }}
+                  disabled={isCreatingProject}
+                  className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateProject}
+                  disabled={isCreatingProject}
+                  className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreatingProject ? "Creating..." : "Create Project"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <ToastContainer />
+      </div>
+    </AdminRoute>
   );
 }

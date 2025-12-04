@@ -764,6 +764,26 @@ export default function MaterialsToOrder({ project, selectedLot }) {
       return stringValue;
     };
 
+    // Define CSV header columns
+    const csvHeaderColumns = [
+      "Category",
+      "Brand",
+      "Color",
+      "Type",
+      "Material",
+      "Finish",
+      "Name",
+      "Sub Category",
+      "Dimensions",
+      "Unit",
+      "Quantity",
+    ];
+
+    // Calculate the number of fields needed after "Category" (before Unit and Quantity)
+    // Category is index 0, Unit is second-to-last, Quantity is last
+    // So we need: header.length - 3 (Category, Unit, Quantity) = fields between Category and Unit
+    const fieldsAfterCategory = csvHeaderColumns.length - 3; // 8 fields: Brand through Dimensions
+
     // Create workbook data
     const categories = [
       "sheet",
@@ -780,8 +800,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
       edging_tape: "Edging Tape",
     };
 
-    let csvContent =
-      "Category,Brand,Color,Type,Material,Finish,Name,Sub Category,Dimensions,Unit,Quantity\n";
+    let csvContent = csvHeaderColumns.join(",") + "\n";
 
     categories.forEach((category) => {
       const items = categoryItems[category];
@@ -839,8 +858,11 @@ export default function MaterialsToOrder({ project, selectedLot }) {
             fields.push(""); // Sub Category (empty for edging_tape)
             fields.push(escapeCSV(item.edging_tape.dimensions || ""));
           } else {
-            // Unknown category, add empty fields
-            for (let i = 0; i < 8; i++) fields.push("");
+            // Unknown category, add empty fields based on calculated count
+            // This ensures alignment with CSV header structure
+            for (let i = 0; i < fieldsAfterCategory; i++) {
+              fields.push("");
+            }
           }
 
           fields.push(escapeCSV(item.measurement_unit || ""));

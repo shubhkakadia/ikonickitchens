@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
-import { ShieldX, Lock, ArrowLeft, Mail, LogOut, RefreshCw } from 'lucide-react';
+import { ShieldX, Lock, Mail, LogOut, RefreshCw } from 'lucide-react';
 
 export default function ProtectedRoute({
   children,
@@ -194,32 +194,39 @@ export function AdminRoute({
   const [moduleAccess, setModuleAccess] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
+  const { id } = useParams();
+
+  console.log(id);
 
   const siteMap = {
     "/admin/dashboard": "dashboard",
     "/admin/clients": "all_clients",
     "/admin/clients/addclient": "add_clients",
-    "/admin/clients/[id]": "client_details",
+    [`/admin/clients/${id}`]: "client_details",
     "/admin/employees": "all_employees",
     "/admin/employees/addemployee": "add_employees",
-    "/admin/employees/[id]": "employee_details",
+    [`/admin/employees/${id}`]: "employee_details",
     "/admin/projects": "all_projects",
     "/admin/projects/addproject": "add_projects",
-    "/admin/projects/[id]": "project_details",
+    [`/admin/projects/${id}`]: "project_details",
     "/admin/projects/lotatglance": "lotatglance",
     "/admin/suppliers": "all_suppliers",
     "/admin/suppliers/addsupplier": "add_suppliers",
-    "/admin/suppliers/[id]": "supplier_details",
+    [`/admin/suppliers/${id}`]: "supplier_details",
     "/admin/suppliers/materialstoorder": "materialstoorder",
     "/admin/suppliers/purchaseorder": "purchaseorder",
     "/admin/suppliers/statements": "statements",
     "/admin/inventory/usedmaterial": "usedmaterial",
     "/admin/logs": "logs",
-    "/admin/deletefiles": "deletedmedia",
+    "/admin/deletefiles": "delete_media",
     "/admin/inventory": "all_items",
     "/admin/inventory/additem": "add_items",
-    "/admin/inventory/[id]": "item_details",
+    [`/admin/inventory/${id}`]: "item_details",
   };
+
+  console.log([`/admin/employees/${id}`]);
+  console.log(siteMap[`/admin/employees/${id}`]);
 
   useEffect(() => {
     const fetchModuleAccess = async () => {
@@ -243,7 +250,6 @@ export function AdminRoute({
     fetchModuleAccess();
   }, []);
 
-  const pathname = window.location.pathname;
   const key = siteMap[pathname];
   const access = moduleAccess?.[key];
 
@@ -252,6 +258,17 @@ export function AdminRoute({
   }
   else if (pathname === '/admin' && getUserData() === null) {
     router.push('/admin/login');
+  }
+
+  if (pathname === '/admin/settings') {
+    return (<ProtectedRoute
+      requiredUserType={["admin", "master-admin", "manager"]}
+      redirectTo={redirectTo}
+      fallback={fallback}
+    >
+      {children}
+    </ProtectedRoute>
+    );
   }
 
   useEffect(() => {
@@ -274,7 +291,7 @@ export function AdminRoute({
   // User has access - render protected content
   return (
     <ProtectedRoute
-      requiredUserType={["admin", "master-admin"]}
+      requiredUserType={["admin", "master-admin", "manager"]}
       redirectTo={redirectTo}
       fallback={fallback}
     >

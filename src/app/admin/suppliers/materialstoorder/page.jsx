@@ -5,7 +5,7 @@ import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
@@ -55,7 +55,6 @@ export default function page() {
     useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
-
   // Define all available columns for export
   const availableColumns = [
     "Project",
@@ -85,7 +84,6 @@ export default function page() {
     "Created By",
     "Notes",
   ];
-
   // Initialize selected columns with all columns
   const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
   const [openAccordionId, setOpenAccordionId] = useState(null);
@@ -370,8 +368,7 @@ export default function page() {
           ? new Date(mto.createdAt).toLocaleString()
           : "";
         const createdByName = mto.createdBy?.employee
-          ? `${mto.createdBy.employee.first_name || ""} ${
-              mto.createdBy.employee.last_name || ""
+          ? `${mto.createdBy.employee.first_name || ""} ${mto.createdBy.employee.last_name || ""
             }`.trim()
           : "";
         const notes = mto.notes || "";
@@ -743,14 +740,14 @@ export default function page() {
                           {(search !== "" ||
                             sortField !== "project" ||
                             sortOrder !== "asc") && (
-                            <button
-                              onClick={handleReset}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                              <span>Reset</span>
-                            </button>
-                          )}
+                              <button
+                                onClick={handleReset}
+                                className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                                <span>Reset</span>
+                              </button>
+                            )}
 
                           <DropdownMenu.Root>
                             <DropdownMenu.Trigger asChild>
@@ -792,13 +789,12 @@ export default function page() {
                                 filteredAndSortedMTOs.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
                                 filteredAndSortedMTOs.length === 0 ||
                                 selectedColumns.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -815,53 +811,39 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedMTOs.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
                                 filteredAndSortedMTOs.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
                             {showColumnDropdown && (
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleColumnToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
-                                  >
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedColumns.length ===
-                                        availableColumns.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedColumns.length === availableColumns.length}
+                                      onChange={() => handleColumnToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {availableColumns.map((column) => (
-                                    <button
+                                    <label
                                       key={column}
-                                      onClick={() => handleColumnToggle(column)}
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(
-                                          column
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedColumns.includes(column)}
+                                        onChange={() => handleColumnToggle(column)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -876,21 +858,19 @@ export default function page() {
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("active")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "active"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "active"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
                         >
                           Active
                         </button>
                         <button
                           onClick={() => setActiveTab("completed")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "completed"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "completed"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
                         >
                           Completed
                         </button>
@@ -999,26 +979,24 @@ export default function page() {
                                     </td>
                                     <td className="px-4 py-3">
                                       <span
-                                        className={`px-2 py-1 text-xs font-medium rounded ${
-                                          mto.status === "DRAFT"
-                                            ? "bg-yellow-100 text-yellow-800"
-                                            : mto.status === "PARTIALLY_ORDERED"
+                                        className={`px-2 py-1 text-xs font-medium rounded ${mto.status === "DRAFT"
+                                          ? "bg-yellow-100 text-yellow-800"
+                                          : mto.status === "PARTIALLY_ORDERED"
                                             ? "bg-blue-100 text-blue-800"
                                             : mto.status === "FULLY_ORDERED"
-                                            ? "bg-green-100 text-green-800"
-                                            : "bg-gray-100 text-gray-800"
-                                        }`}
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-gray-100 text-gray-800"
+                                          }`}
                                       >
                                         {mto.status}
                                       </span>
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                       <ChevronDown
-                                        className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${
-                                          openAccordionId === mto.id
-                                            ? "rotate-180"
-                                            : ""
-                                        }`}
+                                        className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${openAccordionId === mto.id
+                                          ? "rotate-180"
+                                          : ""
+                                          }`}
                                       />
                                     </td>
                                   </tr>
@@ -1044,8 +1022,8 @@ export default function page() {
                                                   </span>{" "}
                                                   {mto.createdAt
                                                     ? new Date(
-                                                        mto.createdAt
-                                                      ).toLocaleString()
+                                                      mto.createdAt
+                                                    ).toLocaleString()
                                                     : "No date"}
                                                 </span>
                                               </div>
@@ -1082,516 +1060,516 @@ export default function page() {
                                           {!!(
                                             mto.items && mto.items.length
                                           ) && (
-                                            <div className="space-y-2">
-                                              {(() => {
-                                                // Group items by supplier name (Unassigned last)
-                                                const groups = new Map();
-                                                mto.items.forEach((it) => {
-                                                  const supplierName =
-                                                    it.item?.supplier?.name ||
-                                                    "Unassigned";
-                                                  if (!groups.has(supplierName))
-                                                    groups.set(
-                                                      supplierName,
-                                                      []
-                                                    );
-                                                  groups
-                                                    .get(supplierName)
-                                                    .push(it);
-                                                });
-                                                const orderedGroupNames =
-                                                  Array.from(
-                                                    groups.keys()
-                                                  ).sort((a, b) => {
-                                                    if (
-                                                      a === "Unassigned" &&
-                                                      b !== "Unassigned"
-                                                    )
-                                                      return 1;
-                                                    if (
-                                                      b === "Unassigned" &&
-                                                      a !== "Unassigned"
-                                                    )
-                                                      return -1;
-                                                    return a.localeCompare(b);
+                                              <div className="space-y-2">
+                                                {(() => {
+                                                  // Group items by supplier name (Unassigned last)
+                                                  const groups = new Map();
+                                                  mto.items.forEach((it) => {
+                                                    const supplierName =
+                                                      it.item?.supplier?.name ||
+                                                      "Unassigned";
+                                                    if (!groups.has(supplierName))
+                                                      groups.set(
+                                                        supplierName,
+                                                        []
+                                                      );
+                                                    groups
+                                                      .get(supplierName)
+                                                      .push(it);
                                                   });
-                                                return orderedGroupNames.map(
-                                                  (name) => (
-                                                    <div key={name}>
-                                                      <div className="flex items-center justify-between mb-2">
-                                                        <div className="text-xs font-semibold text-slate-700">
-                                                          {name}
-                                                        </div>
-                                                        {activeTab ===
-                                                          "active" &&
-                                                          name !==
+                                                  const orderedGroupNames =
+                                                    Array.from(
+                                                      groups.keys()
+                                                    ).sort((a, b) => {
+                                                      if (
+                                                        a === "Unassigned" &&
+                                                        b !== "Unassigned"
+                                                      )
+                                                        return 1;
+                                                      if (
+                                                        b === "Unassigned" &&
+                                                        a !== "Unassigned"
+                                                      )
+                                                        return -1;
+                                                      return a.localeCompare(b);
+                                                    });
+                                                  return orderedGroupNames.map(
+                                                    (name) => (
+                                                      <div key={name}>
+                                                        <div className="flex items-center justify-between mb-2">
+                                                          <div className="text-xs font-semibold text-slate-700">
+                                                            {name}
+                                                          </div>
+                                                          {activeTab ===
+                                                            "active" &&
+                                                            name !==
                                                             "Unassigned" && (
-                                                            <button
-                                                              type="button"
-                                                              onClick={() => {
-                                                                const firstItem =
-                                                                  groups.get(
-                                                                    name
-                                                                  )?.[0];
-                                                                const supplierId =
-                                                                  firstItem
-                                                                    ?.item
-                                                                    ?.supplier
-                                                                    ?.supplier_id ||
-                                                                  firstItem
-                                                                    ?.item
-                                                                    ?.supplier_id ||
-                                                                  null;
-                                                                if (!supplierId)
-                                                                  return;
-                                                                openCreatePOForSupplier(
-                                                                  name,
-                                                                  supplierId,
-                                                                  mto.id
-                                                                );
-                                                              }}
-                                                              className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
-                                                            >
-                                                              <Plus className="inline w-3 h-3 mr-1" />{" "}
-                                                              Create Purchase
-                                                              Order
-                                                            </button>
-                                                          )}
-                                                      </div>
-                                                      <div className="overflow-x-auto">
-                                                        <table className="w-full border border-slate-200 rounded-lg table-fixed">
-                                                          <colgroup>
-                                                            <col className="w-40" />
-                                                            <col className="w-60" />
-                                                            <col className="w-80" />
-                                                            <col className="w-32" />
-                                                            <col className="w-40" />
-                                                            <col className="w-40" />
-                                                          </colgroup>
-                                                          <thead className="bg-slate-50">
-                                                            <tr>
-                                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                Image
-                                                              </th>
-                                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                Category
-                                                              </th>
-                                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                Details
-                                                              </th>
-                                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                In Stock
-                                                              </th>
-                                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                Quantity
-                                                              </th>
-                                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                Status
-                                                              </th>
-                                                            </tr>
-                                                          </thead>
-                                                          <tbody className="bg-white divide-y divide-slate-200">
-                                                            {groups
-                                                              .get(name)
-                                                              .map((item) => {
-                                                                const stockOnHand =
-                                                                  Number(
-                                                                    item.item
-                                                                      ?.quantity ??
-                                                                      0
+                                                              <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                  const firstItem =
+                                                                    groups.get(
+                                                                      name
+                                                                    )?.[0];
+                                                                  const supplierId =
+                                                                    firstItem
+                                                                      ?.item
+                                                                      ?.supplier
+                                                                      ?.supplier_id ||
+                                                                    firstItem
+                                                                      ?.item
+                                                                      ?.supplier_id ||
+                                                                    null;
+                                                                  if (!supplierId)
+                                                                    return;
+                                                                  openCreatePOForSupplier(
+                                                                    name,
+                                                                    supplierId,
+                                                                    mto.id
                                                                   );
-                                                                const measurementUnit =
-                                                                  item.item
-                                                                    ?.measurement_unit ||
-                                                                  "";
+                                                                }}
+                                                                className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
+                                                              >
+                                                                <Plus className="inline w-3 h-3 mr-1" />{" "}
+                                                                Create Purchase
+                                                                Order
+                                                              </button>
+                                                            )}
+                                                        </div>
+                                                        <div className="overflow-x-auto">
+                                                          <table className="w-full border border-slate-200 rounded-lg table-fixed">
+                                                            <colgroup>
+                                                              <col className="w-40" />
+                                                              <col className="w-60" />
+                                                              <col className="w-80" />
+                                                              <col className="w-32" />
+                                                              <col className="w-40" />
+                                                              <col className="w-40" />
+                                                            </colgroup>
+                                                            <thead className="bg-slate-50">
+                                                              <tr>
+                                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                  Image
+                                                                </th>
+                                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                  Category
+                                                                </th>
+                                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                  Details
+                                                                </th>
+                                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                  In Stock
+                                                                </th>
+                                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                  Quantity
+                                                                </th>
+                                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                  Status
+                                                                </th>
+                                                              </tr>
+                                                            </thead>
+                                                            <tbody className="bg-white divide-y divide-slate-200">
+                                                              {groups
+                                                                .get(name)
+                                                                .map((item) => {
+                                                                  const stockOnHand =
+                                                                    Number(
+                                                                      item.item
+                                                                        ?.quantity ??
+                                                                      0
+                                                                    );
+                                                                  const measurementUnit =
+                                                                    item.item
+                                                                      ?.measurement_unit ||
+                                                                    "";
 
-                                                                return (
-                                                                  <tr
-                                                                    key={
-                                                                      item.id
-                                                                    }
-                                                                    className="hover:bg-slate-50"
-                                                                  >
-                                                                    <td className="px-3 py-2 whitespace-nowrap">
-                                                                      <div className="flex items-center">
-                                                                        {item
-                                                                          .item
-                                                                          ?.image
-                                                                          ?.url ? (
-                                                                          <Image
-                                                                            loading="lazy"
-                                                                            src={`/${item.item.image.url}`}
-                                                                            alt={
-                                                                              item
-                                                                                .item
-                                                                                ?.category
-                                                                                ? `${item.item.category} item image`
-                                                                                : item.item_id
-                                                                                ? `Item ${item.item_id} image`
-                                                                                : "Item image"
-                                                                            }
-                                                                            className="w-10 h-10 object-cover rounded border border-slate-200"
-                                                                            width={
-                                                                              40
-                                                                            }
-                                                                            height={
-                                                                              40
-                                                                            }
-                                                                          />
-                                                                        ) : (
-                                                                          <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                                                                            <Package className="w-5 h-5 text-slate-400" />
-                                                                          </div>
-                                                                        )}
-                                                                      </div>
-                                                                    </td>
-                                                                    <td className="px-3 py-2 whitespace-nowrap">
-                                                                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                                                        {
-                                                                          item
+                                                                  return (
+                                                                    <tr
+                                                                      key={
+                                                                        item.id
+                                                                      }
+                                                                      className="hover:bg-slate-50"
+                                                                    >
+                                                                      <td className="px-3 py-2 whitespace-nowrap">
+                                                                        <div className="flex items-center">
+                                                                          {item
                                                                             .item
-                                                                            ?.category
-                                                                        }
-                                                                      </span>
-                                                                    </td>
-                                                                    <td className="px-3 py-2">
-                                                                      <div className="text-xs text-gray-600 space-y-1">
-                                                                        {item
-                                                                          .item
-                                                                          ?.sheet && (
-                                                                          <>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Brand:
-                                                                              </span>{" "}
-                                                                              {item
-                                                                                .item
-                                                                                .sheet
-                                                                                .brand ||
-                                                                                "-"}
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Color:
-                                                                              </span>{" "}
-                                                                              {
+                                                                            ?.image
+                                                                            ?.url ? (
+                                                                            <Image
+                                                                              loading="lazy"
+                                                                              src={`/${item.item.image.url}`}
+                                                                              alt={
                                                                                 item
                                                                                   .item
-                                                                                  .sheet
-                                                                                  .color
+                                                                                  ?.category
+                                                                                  ? `${item.item.category} item image`
+                                                                                  : item.item_id
+                                                                                    ? `Item ${item.item_id} image`
+                                                                                    : "Item image"
                                                                               }
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Finish:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .sheet
-                                                                                  .finish
+                                                                              className="w-10 h-10 object-cover rounded border border-slate-200"
+                                                                              width={
+                                                                                40
                                                                               }
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Face:
-                                                                              </span>{" "}
-                                                                              {item
-                                                                                .item
-                                                                                .sheet
-                                                                                .face ||
-                                                                                "-"}
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Dimensions:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .sheet
-                                                                                  .dimensions
+                                                                              height={
+                                                                                40
                                                                               }
+                                                                            />
+                                                                          ) : (
+                                                                            <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                                                              <Package className="w-5 h-5 text-slate-400" />
                                                                             </div>
-                                                                          </>
-                                                                        )}
-                                                                        {item
-                                                                          .item
-                                                                          ?.handle && (
-                                                                          <>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Brand:
-                                                                              </span>{" "}
-                                                                              {item
-                                                                                .item
-                                                                                .handle
-                                                                                .brand ||
-                                                                                "-"}
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Color:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .handle
-                                                                                  .color
-                                                                              }
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Type:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .handle
-                                                                                  .type
-                                                                              }
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Dimensions:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .handle
-                                                                                  .dimensions
-                                                                              }
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Material:
-                                                                              </span>{" "}
-                                                                              {item
-                                                                                .item
-                                                                                .handle
-                                                                                .material ||
-                                                                                "-"}
-                                                                            </div>
-                                                                          </>
-                                                                        )}
-                                                                        {item
-                                                                          .item
-                                                                          ?.hardware && (
-                                                                          <>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Brand:
-                                                                              </span>{" "}
-                                                                              {item
-                                                                                .item
-                                                                                .hardware
-                                                                                .brand ||
-                                                                                "-"}
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Name:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .hardware
-                                                                                  .name
-                                                                              }
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Type:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .hardware
-                                                                                  .type
-                                                                              }
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Dimensions:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .hardware
-                                                                                  .dimensions
-                                                                              }
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Sub
-                                                                                Category:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .hardware
-                                                                                  .sub_category
-                                                                              }
-                                                                            </div>
-                                                                          </>
-                                                                        )}
-                                                                        {item
-                                                                          .item
-                                                                          ?.accessory && (
-                                                                          <>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Name:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  .accessory
-                                                                                  .name
-                                                                              }
-                                                                            </div>
-                                                                          </>
-                                                                        )}
-                                                                        {item
-                                                                          .item
-                                                                          ?.edging_tape && (
-                                                                          <>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Brand:
-                                                                              </span>{" "}
-                                                                              {item
-                                                                                .item
-                                                                                .edging_tape
-                                                                                .brand ||
-                                                                                "-"}
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Color:
-                                                                              </span>{" "}
-                                                                              {item
-                                                                                .item
-                                                                                .edging_tape
-                                                                                .color ||
-                                                                                "-"}
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Finish:
-                                                                              </span>{" "}
-                                                                              {item
-                                                                                .item
-                                                                                .edging_tape
-                                                                                .finish ||
-                                                                                "-"}
-                                                                            </div>
-                                                                            <div>
-                                                                              <span className="font-medium">
-                                                                                Dimensions:
-                                                                              </span>{" "}
-                                                                              {item
-                                                                                .item
-                                                                                .edging_tape
-                                                                                .dimensions ||
-                                                                                "-"}
-                                                                            </div>
-                                                                          </>
-                                                                        )}
-                                                                      </div>
-                                                                    </td>
-                                                                    <td className="px-3 py-2 whitespace-nowrap">
-                                                                      <div className="text-xs">
-                                                                        <div className="font-semibold text-green-600">
+                                                                          )}
+                                                                        </div>
+                                                                      </td>
+                                                                      <td className="px-3 py-2 whitespace-nowrap">
+                                                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
                                                                           {
-                                                                            stockOnHand
-                                                                          }{" "}
-                                                                          {
-                                                                            measurementUnit
+                                                                            item
+                                                                              .item
+                                                                              ?.category
                                                                           }
+                                                                        </span>
+                                                                      </td>
+                                                                      <td className="px-3 py-2">
+                                                                        <div className="text-xs text-gray-600 space-y-1">
+                                                                          {item
+                                                                            .item
+                                                                            ?.sheet && (
+                                                                              <>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Brand:
+                                                                                  </span>{" "}
+                                                                                  {item
+                                                                                    .item
+                                                                                    .sheet
+                                                                                    .brand ||
+                                                                                    "-"}
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Color:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .sheet
+                                                                                      .color
+                                                                                  }
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Finish:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .sheet
+                                                                                      .finish
+                                                                                  }
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Face:
+                                                                                  </span>{" "}
+                                                                                  {item
+                                                                                    .item
+                                                                                    .sheet
+                                                                                    .face ||
+                                                                                    "-"}
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Dimensions:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .sheet
+                                                                                      .dimensions
+                                                                                  }
+                                                                                </div>
+                                                                              </>
+                                                                            )}
+                                                                          {item
+                                                                            .item
+                                                                            ?.handle && (
+                                                                              <>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Brand:
+                                                                                  </span>{" "}
+                                                                                  {item
+                                                                                    .item
+                                                                                    .handle
+                                                                                    .brand ||
+                                                                                    "-"}
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Color:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .handle
+                                                                                      .color
+                                                                                  }
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Type:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .handle
+                                                                                      .type
+                                                                                  }
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Dimensions:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .handle
+                                                                                      .dimensions
+                                                                                  }
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Material:
+                                                                                  </span>{" "}
+                                                                                  {item
+                                                                                    .item
+                                                                                    .handle
+                                                                                    .material ||
+                                                                                    "-"}
+                                                                                </div>
+                                                                              </>
+                                                                            )}
+                                                                          {item
+                                                                            .item
+                                                                            ?.hardware && (
+                                                                              <>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Brand:
+                                                                                  </span>{" "}
+                                                                                  {item
+                                                                                    .item
+                                                                                    .hardware
+                                                                                    .brand ||
+                                                                                    "-"}
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Name:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .hardware
+                                                                                      .name
+                                                                                  }
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Type:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .hardware
+                                                                                      .type
+                                                                                  }
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Dimensions:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .hardware
+                                                                                      .dimensions
+                                                                                  }
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Sub
+                                                                                    Category:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .hardware
+                                                                                      .sub_category
+                                                                                  }
+                                                                                </div>
+                                                                              </>
+                                                                            )}
+                                                                          {item
+                                                                            .item
+                                                                            ?.accessory && (
+                                                                              <>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Name:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .accessory
+                                                                                      .name
+                                                                                  }
+                                                                                </div>
+                                                                              </>
+                                                                            )}
+                                                                          {item
+                                                                            .item
+                                                                            ?.edging_tape && (
+                                                                              <>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Brand:
+                                                                                  </span>{" "}
+                                                                                  {item
+                                                                                    .item
+                                                                                    .edging_tape
+                                                                                    .brand ||
+                                                                                    "-"}
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Color:
+                                                                                  </span>{" "}
+                                                                                  {item
+                                                                                    .item
+                                                                                    .edging_tape
+                                                                                    .color ||
+                                                                                    "-"}
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Finish:
+                                                                                  </span>{" "}
+                                                                                  {item
+                                                                                    .item
+                                                                                    .edging_tape
+                                                                                    .finish ||
+                                                                                    "-"}
+                                                                                </div>
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Dimensions:
+                                                                                  </span>{" "}
+                                                                                  {item
+                                                                                    .item
+                                                                                    .edging_tape
+                                                                                    .dimensions ||
+                                                                                    "-"}
+                                                                                </div>
+                                                                              </>
+                                                                            )}
                                                                         </div>
-                                                                        <div className="text-[11px] text-slate-500">
-                                                                          in
-                                                                          stock
-                                                                        </div>
-                                                                      </div>
-                                                                    </td>
-                                                                    <td className="px-3 py-2 whitespace-nowrap">
-                                                                      <div className="text-xs text-gray-600">
-                                                                        <div className="flex items-center gap-1.5 mb-1">
-                                                                          <Package className="w-4 h-4 text-gray-500" />
-                                                                          <span>
-                                                                            <span className="font-medium">
-                                                                              Qty:
-                                                                            </span>{" "}
+                                                                      </td>
+                                                                      <td className="px-3 py-2 whitespace-nowrap">
+                                                                        <div className="text-xs">
+                                                                          <div className="font-semibold text-green-600">
                                                                             {
-                                                                              item.quantity
+                                                                              stockOnHand
                                                                             }{" "}
                                                                             {
-                                                                              item
-                                                                                .item
-                                                                                ?.measurement_unit
+                                                                              measurementUnit
                                                                             }
-                                                                          </span>
+                                                                          </div>
+                                                                          <div className="text-[11px] text-slate-500">
+                                                                            in
+                                                                            stock
+                                                                          </div>
                                                                         </div>
+                                                                      </td>
+                                                                      <td className="px-3 py-2 whitespace-nowrap">
+                                                                        <div className="text-xs text-gray-600">
+                                                                          <div className="flex items-center gap-1.5 mb-1">
+                                                                            <Package className="w-4 h-4 text-gray-500" />
+                                                                            <span>
+                                                                              <span className="font-medium">
+                                                                                Qty:
+                                                                              </span>{" "}
+                                                                              {
+                                                                                item.quantity
+                                                                              }{" "}
+                                                                              {
+                                                                                item
+                                                                                  .item
+                                                                                  ?.measurement_unit
+                                                                              }
+                                                                            </span>
+                                                                          </div>
+                                                                          {item.quantity_ordered >
+                                                                            0 && (
+                                                                              <div className="flex items-center gap-1.5 text-blue-600 text-xs">
+                                                                                <span>
+                                                                                  Ordered:{" "}
+                                                                                  {
+                                                                                    item.quantity_ordered
+                                                                                  }
+                                                                                </span>
+                                                                              </div>
+                                                                            )}
+                                                                          {item.quantity_received >
+                                                                            0 && (
+                                                                              <div className="flex items-center gap-1.5 text-green-600 text-xs">
+                                                                                <span>
+                                                                                  Received:{" "}
+                                                                                  {
+                                                                                    item.quantity_received
+                                                                                  }
+                                                                                </span>
+                                                                              </div>
+                                                                            )}
+                                                                        </div>
+                                                                      </td>
+                                                                      <td className="px-3 py-2 whitespace-nowrap">
                                                                         {item.quantity_ordered >
                                                                           0 && (
-                                                                          <div className="flex items-center gap-1.5 text-blue-600 text-xs">
-                                                                            <span>
-                                                                              Ordered:{" "}
-                                                                              {
-                                                                                item.quantity_ordered
-                                                                              }
+                                                                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                                                              Ordered
                                                                             </span>
-                                                                          </div>
-                                                                        )}
+                                                                          )}
                                                                         {item.quantity_received >
                                                                           0 && (
-                                                                          <div className="flex items-center gap-1.5 text-green-600 text-xs">
-                                                                            <span>
-                                                                              Received:{" "}
-                                                                              {
-                                                                                item.quantity_received
-                                                                              }
+                                                                            <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                                                                              Received
                                                                             </span>
-                                                                          </div>
-                                                                        )}
-                                                                      </div>
-                                                                    </td>
-                                                                    <td className="px-3 py-2 whitespace-nowrap">
-                                                                      {item.quantity_ordered >
-                                                                        0 && (
-                                                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                                                          Ordered
-                                                                        </span>
-                                                                      )}
-                                                                      {item.quantity_received >
-                                                                        0 && (
-                                                                        <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-                                                                          Received
-                                                                        </span>
-                                                                      )}
-                                                                      {item.quantity_ordered ===
-                                                                        0 &&
-                                                                        item.quantity_received ===
+                                                                          )}
+                                                                        {item.quantity_ordered ===
+                                                                          0 &&
+                                                                          item.quantity_received ===
                                                                           0 && (
-                                                                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                                                            Pending
-                                                                          </span>
-                                                                        )}
-                                                                    </td>
-                                                                  </tr>
-                                                                );
-                                                              })}
-                                                          </tbody>
-                                                        </table>
+                                                                            <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                                                                              Pending
+                                                                            </span>
+                                                                          )}
+                                                                      </td>
+                                                                    </tr>
+                                                                  );
+                                                                })}
+                                                            </tbody>
+                                                          </table>
+                                                        </div>
                                                       </div>
-                                                    </div>
-                                                  )
-                                                );
-                                              })()}
-                                            </div>
-                                          )}
+                                                    )
+                                                  );
+                                                })()}
+                                              </div>
+                                            )}
                                         </div>
                                       </td>
                                     </tr>
@@ -1685,11 +1663,10 @@ export default function page() {
                                       <button
                                         key={pageNum}
                                         onClick={() => setCurrentPage(pageNum)}
-                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${
-                                          currentPage === pageNum
-                                            ? "bg-primary text-white shadow-sm"
-                                            : "text-slate-600 hover:bg-white"
-                                        }`}
+                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${currentPage === pageNum
+                                          ? "bg-primary text-white shadow-sm"
+                                          : "text-slate-600 hover:bg-white"
+                                          }`}
                                       >
                                         {pageNum}
                                       </button>
@@ -1813,9 +1790,8 @@ export default function page() {
                           {title} ({files.length})
                         </span>
                         <div
-                          className={`transform transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
+                          className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                            }`}
                         >
                           <ChevronDown className="w-4 h-4" />
                         </div>
@@ -1829,18 +1805,16 @@ export default function page() {
                               key={file.id}
                               onClick={() => handleViewExistingFile(file)}
                               title="Click to view file"
-                              className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
-                                isSmall ? "w-32" : "w-40"
-                              }`}
+                              className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
+                                }`}
                             >
                               {/* File Preview */}
                               <div
-                                className={`w-full ${
-                                  isSmall ? "aspect-[4/3]" : "aspect-square"
-                                } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                                className={`w-full ${isSmall ? "aspect-[4/3]" : "aspect-square"
+                                  } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
                               >
                                 {file.mime_type?.includes("image") ||
-                                file.file_type === "image" ? (
+                                  file.file_type === "image" ? (
                                   <Image
                                     height={100}
                                     width={100}
@@ -1858,27 +1832,24 @@ export default function page() {
                                   />
                                 ) : (
                                   <div
-                                    className={`w-full h-full flex items-center justify-center rounded-lg ${
-                                      file.mime_type?.includes("pdf") ||
+                                    className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type?.includes("pdf") ||
                                       file.file_type === "pdf" ||
                                       file.extension === "pdf"
-                                        ? "bg-red-50"
-                                        : "bg-green-50"
-                                    }`}
+                                      ? "bg-red-50"
+                                      : "bg-green-50"
+                                      }`}
                                   >
                                     {file.mime_type?.includes("pdf") ||
-                                    file.file_type === "pdf" ||
-                                    file.extension === "pdf" ? (
+                                      file.file_type === "pdf" ||
+                                      file.extension === "pdf" ? (
                                       <FileText
-                                        className={`${
-                                          isSmall ? "w-6 h-6" : "w-8 h-8"
-                                        } text-red-600`}
+                                        className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                                          } text-red-600`}
                                       />
                                     ) : (
                                       <File
-                                        className={`${
-                                          isSmall ? "w-6 h-6" : "w-8 h-8"
-                                        } text-green-600`}
+                                        className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                                          } text-green-600`}
                                       />
                                     )}
                                   </div>
@@ -1986,9 +1957,8 @@ export default function page() {
                     Select Files {uploadingMedia && "(Uploading...)"}
                   </label>
                   <div
-                    className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
-                      uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                    className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                   >
                     <input
                       ref={fileInputRef}
@@ -2048,6 +2018,18 @@ export default function page() {
         heading="Media File"
         message="This will permanently delete the media file. This action cannot be undone."
         isDeleting={deletingMediaId !== null}
+      />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
       />
     </AdminRoute>
   );

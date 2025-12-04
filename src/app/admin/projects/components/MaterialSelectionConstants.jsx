@@ -1,4 +1,4 @@
-export const fromData = {
+export const formData = {
   Kitchen: [
     "Overhead Cabinets",
     "LED Provision under overhead cabinets",

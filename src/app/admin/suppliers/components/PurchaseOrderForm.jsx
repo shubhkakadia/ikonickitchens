@@ -1,11 +1,10 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import { toast, ToastContainer } from "react-toastify";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
-import { X, FileText, Eye, Trash2, Package } from "lucide-react";
-import { Document, Page, pdfjs } from "react-pdf";
+import { X, FileText, Eye, Trash2, Package, ChevronDown, SquareArrowOutUpRight } from "lucide-react";
+import { pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import Image from "next/image";
@@ -30,7 +29,10 @@ export default function PurchaseOrderForm({
   const [poOrderNo, setPoOrderNo] = useState("");
   const [poTotal, setPoTotal] = useState(0);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [selectedInvoiceFile, setSelectedInvoiceFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+
   const handleMTOSelection = (mtoId) => {
     if (!mtoId) {
       setSelectedMTO(null);
@@ -64,7 +66,7 @@ export default function PurchaseOrderForm({
 
           return {
             id: item.id,
-            item_id: item.item?.item_id, // Fallback to item.item.item_id if item_id is not directly on the MTO item
+            item_id: item.item_id || item.item?.item_id, // Check both locations for item_id
             item: item.item,
             // Use remaining for partially ordered lists to continue ordering the balance
             quantity:
@@ -85,9 +87,9 @@ export default function PurchaseOrderForm({
 
   // Preselect MTO when provided by parent
   useEffect(() => {
-    if (!selectedMtoId) return;
+    if (!selectedMtoId || !materialsToOrder.length) return;
     handleMTOSelection(selectedMtoId);
-  }, [selectedMtoId]);
+  }, [selectedMtoId, materialsToOrder]);
 
   const handleQuantityChange = (itemId, newQuantity) => {
     setPoItems((prev) =>
@@ -113,23 +115,13 @@ export default function PurchaseOrderForm({
     setPoItems((prev) => prev.filter((item) => item.id !== itemId));
   };
 
-  const handleInvoiceFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const allowedTypes = [
-      "application/pdf",
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-    ];
+  const validateAndSetFile = (file) => {
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
     if (!allowedTypes.includes(file.type)) {
       toast.error("Only PDF and image files are allowed");
       return;
     }
 
-    // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
       toast.error("File size must be less than 10MB");
       return;
@@ -137,16 +129,42 @@ export default function PurchaseOrderForm({
 
     setPoInvoiceFile(file);
 
-    // Create preview URL for images
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPoInvoicePreview(reader.result);
-      };
+      reader.onloadend = () => setPoInvoicePreview(reader.result);
       reader.readAsDataURL(file);
     } else {
       setPoInvoicePreview(null);
     }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      validateAndSetFile(file);
+    }
+  };
+
+  const handleInvoiceFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    validateAndSetFile(file);
   };
 
   const handleRemoveInvoiceFile = () => {
@@ -156,6 +174,15 @@ export default function PurchaseOrderForm({
 
   const handleViewInvoice = () => {
     if (poInvoiceFile) {
+      // Create formatted object for ViewMedia component
+      setSelectedInvoiceFile({
+        name: poInvoiceFile.name,
+        type: poInvoiceFile.type,
+        size: poInvoiceFile.size,
+        isExisting: false,
+        // Pass the File object itself for URL.createObjectURL
+        ...poInvoiceFile,
+      });
       setShowInvoicePreview(true);
     }
   };
@@ -169,6 +196,7 @@ export default function PurchaseOrderForm({
     setPoOrderNo("");
     setPoTotal(0);
     setShowInvoicePreview(false);
+    setSelectedInvoiceFile(null);
     setPageNumber(1);
   };
 
@@ -197,8 +225,28 @@ export default function PurchaseOrderForm({
         return;
       }
 
-      // Calculate total from items
-      const calculatedTotal = poItems.reduce(
+      // Filter out items without item_id and validate
+      const validItems = poItems.filter((item) => {
+        if (!item.item_id) {
+          console.warn("Item missing item_id:", item);
+          return false;
+        }
+        return true;
+      });
+
+      if (validItems.length === 0) {
+        toast.error("No valid items found. All items are missing required information.");
+        return;
+      }
+
+      if (validItems.length < poItems.length) {
+        toast.warning(
+          `${poItems.length - validItems.length} item(s) were removed due to missing information.`
+        );
+      }
+
+      // Calculate total from valid items
+      const calculatedTotal = validItems.reduce(
         (sum, item) =>
           sum +
           (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0),
@@ -217,7 +265,7 @@ export default function PurchaseOrderForm({
       formData.append("notes", poNotes);
 
       // Add items as comma-separated JSON objects (not an array)
-      const itemsString = poItems
+      const itemsString = validItems
         .map((item) =>
           JSON.stringify({
             item_id: item.item_id,
@@ -256,7 +304,7 @@ export default function PurchaseOrderForm({
       console.error("Create purchase order failed", err);
       toast.error(
         err?.response?.data?.message ||
-          "An error occurred while creating purchase order"
+        "An error occurred while creating purchase order"
       );
     } finally {
       setIsCreatingPO(false);
@@ -286,23 +334,19 @@ export default function PurchaseOrderForm({
           <div className="p-6 space-y-6">
             {/* Supplier Information */}
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-              <h3 className="text-xs font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                Supplier Information
-              </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
-                    Supplier Name
-                  </label>
-                  <p className="text-sm text-slate-800">
-                    {supplier?.name || "-"}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
-                    Supplier ID
-                  </label>
-                  <p className="text-sm text-slate-800">
+                  <div className="flex items-center gap-2">
+                    <p className="text-md font-medium text-slate-800">
+                      {supplier?.name || "-"}
+                    </p>
+                    {/* open in new tab */}
+                    <button onClick={() => window.open(`/admin/suppliers/${supplier?.supplier_id}`, "_blank")} className="cursor-pointer hover:bg-slate-100 rounded p-1.5 transition-colors">
+                      <SquareArrowOutUpRight className="w-4 h-4 text-slate-400" />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-400">
                     {supplier?.supplier_id || "-"}
                   </p>
                 </div>
@@ -320,7 +364,7 @@ export default function PurchaseOrderForm({
                   value={poOrderNo}
                   onChange={(e) => setPoOrderNo(e.target.value)}
                   placeholder="e.g., PO-2025-001"
-                  className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                 />
               </div>
               <div>
@@ -328,7 +372,7 @@ export default function PurchaseOrderForm({
                   Total Amount (Optional)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600 text-sm">
+                  <span className="absolute left-3 top-3 text-slate-600 text-sm">
                     $
                   </span>
                   <input
@@ -340,7 +384,7 @@ export default function PurchaseOrderForm({
                       setPoTotal(parseFloat(e.target.value) || 0)
                     }
                     placeholder="Auto-calculated"
-                    className="w-full text-sm text-slate-800 pl-7 pr-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                    className="w-full text-sm text-slate-800 px-4 py-3 pl-7 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
@@ -355,44 +399,49 @@ export default function PurchaseOrderForm({
                 Select Materials to Order{" "}
                 <span className="text-red-500">*</span>
               </label>
-              <select
-                value={selectedMTO?.id || ""}
-                onChange={(e) => handleMTOSelection(e.target.value)}
-                className="cursor-pointer w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                required
-              >
-                <option value="">-- Select MTO --</option>
-                {materialsToOrder
-                  // Show only MTOs that are open for ordering and have at least one remaining item
-                  .filter((mto) => {
-                    if (mto.status === "DRAFT") return true;
-                    if (mto.status === "PARTIALLY_ORDERED") {
-                      const hasRemaining = Array.isArray(mto.items)
-                        ? mto.items.some((it) => {
+              <div className="relative">
+                <select
+                  value={selectedMTO?.id || ""}
+                  onChange={(e) => handleMTOSelection(e.target.value)}
+                  className="cursor-pointer w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none appearance-none"
+                  required
+                >
+                  <option value="">-- Select MTO --</option>
+                  {materialsToOrder
+                    // Show only MTOs that are open for ordering and have at least one remaining item
+                    .filter((mto) => {
+                      if (mto.status === "DRAFT") return true;
+                      if (mto.status === "PARTIALLY_ORDERED") {
+                        const hasRemaining = Array.isArray(mto.items)
+                          ? mto.items.some((it) => {
                             const qty = parseFloat(it.quantity) || 0;
                             const ordered =
                               parseFloat(it.quantity_ordered) || 0;
                             return ordered < qty; // remaining to order
                           })
-                        : false;
-                      return hasRemaining;
-                    }
-                    return false;
-                  })
-                  .map((mto) => (
-                    <option key={mto.id} value={mto.id}>
-                      {mto.project?.name || `MTO-${mto.id}`} -{" "}
-                      {Array.isArray(mto.items)
-                        ? mto.items.filter(
+                          : false;
+                        return hasRemaining;
+                      }
+                      return false;
+                    })
+                    .map((mto) => (
+                      <option key={mto.id} value={mto.id}>
+                        {mto.project?.name || `MTO-${mto.id}`} -{" "}
+                        {Array.isArray(mto.items)
+                          ? mto.items.filter(
                             (it) =>
                               (parseFloat(it.quantity_ordered) || 0) <
                               (parseFloat(it.quantity) || 0)
                           ).length
-                        : 0}{" "}
-                      remaining item(s)
-                    </option>
-                  ))}
-              </select>
+                          : 0}{" "}
+                        remaining item(s)
+                      </option>
+                    ))}
+                </select>
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-500">
+                  <ChevronDown className="w-5 h-5" />
+                </div>
+              </div>
             </div>
 
             {/* Items Table */}
@@ -461,7 +510,7 @@ export default function PurchaseOrderForm({
                                 <Image
                                   loading="lazy"
                                   src={`/${item.item.image.url}`}
-                                  alt={item.item_id}
+                                  alt={item.item_id || item.item?.category || "Item image"}
                                   className="w-12 h-12 object-cover rounded border border-slate-200"
                                   width={48}
                                   height={48}
@@ -591,13 +640,12 @@ export default function PurchaseOrderForm({
                           <td className="px-4 py-2 whitespace-nowrap">
                             <div className="text-xs">
                               <div
-                                className={`font-medium ${
-                                  item.stock_on_hand <= 0
-                                    ? "text-red-600"
-                                    : item.stock_on_hand < 10
+                                className={`font-medium ${item.stock_on_hand <= 0
+                                  ? "text-red-600"
+                                  : item.stock_on_hand < 10
                                     ? "text-yellow-600"
                                     : "text-green-600"
-                                }`}
+                                  }`}
                               >
                                 {item.stock_on_hand} {item.measurement_unit}
                               </div>
@@ -624,7 +672,7 @@ export default function PurchaseOrderForm({
                           {/* Unit Price Column */}
                           <td className="px-4 py-2 whitespace-nowrap">
                             <div className="flex items-center gap-1">
-                              <span className="text-sm text-slate-600">$</span>
+                              <span className="text-sm text-slate-500">$</span>
                               <input
                                 type="number"
                                 min="0"
@@ -680,7 +728,7 @@ export default function PurchaseOrderForm({
                                 (sum, item) =>
                                   sum +
                                   (parseFloat(item.quantity) || 0) *
-                                    (parseFloat(item.unit_price) || 0),
+                                  (parseFloat(item.unit_price) || 0),
                                 0
                               )
                               .toFixed(2)}
@@ -694,93 +742,78 @@ export default function PurchaseOrderForm({
               )}
             </div>
 
-            {/* Invoice Upload */}
-            <div>
-              <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
-                Invoice/Receipt (Optional)
-              </label>
-              {!poInvoiceFile ? (
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 hover:border-primary transition-colors">
-                  <input
-                    type="file"
-                    id="invoice-upload"
-                    accept="application/pdf,image/jpeg,image/jpg,image/png"
-                    onChange={handleInvoiceFileChange}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="invoice-upload"
-                    className="cursor-pointer flex flex-col items-center"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Invoice Upload */}
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                  Invoice / Receipt
+                </label>
+                {!poInvoiceFile ? (
+                  <div
+                    className={`border-2 border-dashed rounded-lg py-8 transition-all ${isDragging
+                      ? "border-primary bg-blue-50"
+                      : "border-slate-300 hover:border-primary hover:bg-slate-50"
+                      }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
                   >
-                    <FileText className="w-8 h-8 text-slate-400 mb-2" />
-                    <p className="text-xs text-slate-600 mb-1">
-                      Click to upload invoice
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      PDF or Image (Max 10MB)
-                    </p>
-                  </label>
-                </div>
-              ) : (
-                <div className="border border-slate-300 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <input
+                      type="file"
+                      id="invoice-upload"
+                      accept="application/pdf,image/jpeg,image/jpg,image/png"
+                      onChange={handleInvoiceFileChange}
+                      className="hidden"
+                    />
+                    <label htmlFor="invoice-upload" className="cursor-pointer flex flex-col items-center text-center w-full h-full">
+                      <FileText className={`w-8 h-8 mb-2 ${isDragging ? "text-primary" : "text-slate-400"}`} />
+                      <p className={`text-sm font-medium ${isDragging ? "text-primary" : "text-slate-700"}`}>
+                        {isDragging ? "Drop file here" : "Click to upload or drag and drop"}
+                      </p>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="border border-slate-200 rounded-lg p-3 flex items-center justify-between bg-slate-50">
+                    <div className="flex items-center gap-3 overflow-hidden">
                       {poInvoicePreview ? (
-                        <Image
-                          loading="lazy"
-                          src={poInvoicePreview}
-                          alt="Invoice preview"
-                          className="w-16 h-16 object-cover rounded border border-slate-200"
-                          width={64}
-                          height={64}
-                        />
+                        <Image src={poInvoicePreview} alt="Preview" width={40} height={40} className="w-10 h-10 rounded object-cover border border-slate-200" />
                       ) : (
-                        <div className="w-16 h-16 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                          <FileText className="w-6 h-6 text-slate-400" />
+                        <div className="w-10 h-10 bg-white rounded border border-slate-200 flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-slate-400" />
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-slate-900 truncate">
-                          {poInvoiceFile.name}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {(poInvoiceFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{poInvoiceFile.name}</p>
+                        <p className="text-xs text-slate-500">{(poInvoiceFile.size / 1024 / 1024).toFixed(2)} MB</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleViewInvoice}
-                        className="cursor-pointer px-3 py-1.5 border border-slate-300 rounded-md hover:bg-slate-50 transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5 text-slate-600" />
+                      <button onClick={handleViewInvoice}
+                        className="cursor-pointer p-1.5 hover:bg-white rounded border border-transparent hover:border-slate-200 transition-colors">
+                        <Eye className="w-4 h-4 text-slate-600" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleRemoveInvoiceFile}
-                        className="cursor-pointer px-3 py-1.5 border border-red-300 rounded-md hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                      <button onClick={handleRemoveInvoiceFile}
+                        className="cursor-pointer p-1.5 hover:bg-red-50 rounded border border-transparent hover:border-red-100 transition-colors">
+                        <Trash2 className="w-4 h-4 text-red-500" />
                       </button>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* Notes */}
-            <div>
-              <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
-                Notes
-              </label>
-              <textarea
-                rows={4}
-                value={poNotes}
-                onChange={(e) => setPoNotes(e.target.value)}
-                className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none resize-none"
-                placeholder="Add any additional notes about this purchase order..."
-              />
+              {/* Notes */}
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                  Notes
+                </label>
+                <textarea
+                  rows={5}
+                  value={poNotes}
+                  onChange={(e) => setPoNotes(e.target.value)}
+                  className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none"
+                  placeholder="Add any additional notes..."
+                />
+              </div>
             </div>
           </div>
 
@@ -808,10 +841,10 @@ export default function PurchaseOrderForm({
         </div>
       </div>
       {/* Invoice Preview Modal */}
-      {showInvoicePreview && poInvoiceFile && (
+      {showInvoicePreview && selectedInvoiceFile && (
         <ViewMedia
-          selectedFile={poInvoiceFile}
-          setSelectedFile={() => {}} // Don't clear the file on close, just close the modal
+          selectedFile={selectedInvoiceFile}
+          setSelectedFile={() => { }}
           setViewFileModal={setShowInvoicePreview}
           setPageNumber={setPageNumber}
         />

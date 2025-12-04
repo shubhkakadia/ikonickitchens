@@ -1,7 +1,5 @@
 import React from "react";
 import { useState } from "react";
-import { useEffect } from "react";
-import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { ChevronDown, FileText, FileUp, Check, X, Trash } from "lucide-react";
@@ -62,145 +60,94 @@ export default function SiteMeasurementsSection({
     e.target.value = "";
   };
 
-  // Remove file from site photos upload queue
-  const handleRemoveSitePhotosFile = (indexToRemove) => {
-    setSitePhotosFiles((prev) =>
-      prev.filter((_, index) => index !== indexToRemove)
-    );
-  };
+  // Unified upload handler for site measurement files
+  const uploadFiles = async ({
+    filesToUpload,
+    siteGroup,
+    groupName,
+    setIsUploading,
+    setFiles,
+    fallbackFiles,
+  }) => {
+    const files = filesToUpload || fallbackFiles;
 
-  // Remove file from measurement photos upload queue
-  const handleRemoveMeasurementPhotosFile = (indexToRemove) => {
-    setMeasurementPhotosFiles((prev) =>
-      prev.filter((_, index) => index !== indexToRemove)
-    );
+    try {
+      setIsUploading(true);
+      const sessionToken = getToken();
+
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      if (!selectedLotData?.lot_id || !id) {
+        toast.error("Project or lot information missing");
+        return;
+      }
+
+      if (!files || files.length === 0) {
+        toast.error("No files selected");
+        return;
+      }
+
+      const formData = new FormData();
+
+      files.forEach((file) => {
+        formData.append("file", file);
+      });
+
+      formData.append("site_group", siteGroup);
+
+      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
+        selectedLotData.lot_id
+      }/site_measurements`;
+
+      const response = await axios.post(apiUrl, formData, {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.status) {
+        toast.success(`${groupName} uploaded successfully`);
+        setFiles([]);
+        fetchLotData(true);
+      } else {
+        toast.error(
+          response.data.message || `Failed to upload ${groupName.toLowerCase()}`
+        );
+      }
+    } catch (error) {
+      console.error(`Error uploading ${groupName.toLowerCase()}:`, error);
+      toast.error(`Failed to upload ${groupName.toLowerCase()}. Please try again.`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   // Upload site photos
   const handleUploadSitePhotos = async (filesToUpload = null) => {
-    const files = filesToUpload || sitePhotosFiles;
-
-    try {
-      setIsUploadingSitePhotos(true);
-      const sessionToken = getToken();
-
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-
-      if (!selectedLotData?.lot_id || !id) {
-        toast.error("Project or lot information missing");
-        return;
-      }
-
-      if (!files || files.length === 0) {
-        toast.error("No files selected");
-        return;
-      }
-
-      const formData = new FormData();
-
-      files.forEach((file) => {
-        formData.append("file", file);
-      });
-
-      formData.append("site_group", "SITE_PHOTOS");
-
-      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
-        selectedLotData.lot_id
-      }/site_measurements`;
-
-      const response = await axios.post(apiUrl, formData, {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.data.status) {
-        toast.success(`Site photos uploaded successfully`);
-        setSitePhotosFiles([]);
-        fetchLotData(true);
-      } else {
-        toast.error(response.data.message || `Failed to upload site photos`);
-      }
-    } catch (error) {
-      console.error("Error uploading site photos:", error);
-      toast.error("Failed to upload site photos. Please try again.");
-    } finally {
-      setIsUploadingSitePhotos(false);
-    }
+    await uploadFiles({
+      filesToUpload,
+      siteGroup: "SITE_PHOTOS",
+      groupName: "Site photos",
+      setIsUploading: setIsUploadingSitePhotos,
+      setFiles: setSitePhotosFiles,
+      fallbackFiles: sitePhotosFiles,
+    });
   };
 
   // Upload measurement photos
   const handleUploadMeasurementPhotos = async (filesToUpload = null) => {
-    const files = filesToUpload || measurementPhotosFiles;
-
-    try {
-      setIsUploadingMeasurementPhotos(true);
-      const sessionToken = getToken();
-
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-
-      if (!selectedLotData?.lot_id || !id) {
-        toast.error("Project or lot information missing");
-        return;
-      }
-
-      if (!files || files.length === 0) {
-        toast.error("No files selected");
-        return;
-      }
-
-      const formData = new FormData();
-
-      files.forEach((file) => {
-        formData.append("file", file);
-      });
-
-      formData.append("site_group", "MEASUREMENT_PHOTOS");
-
-      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
-        selectedLotData.lot_id
-      }/site_measurements`;
-
-      const response = await axios.post(apiUrl, formData, {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.data.status) {
-        toast.success(`Measurement photos uploaded successfully`);
-        setMeasurementPhotosFiles([]);
-        fetchLotData(true);
-      } else {
-        toast.error(
-          response.data.message || `Failed to upload measurement photos`
-        );
-      }
-    } catch (error) {
-      console.error("Error uploading measurement photos:", error);
-      toast.error("Failed to upload measurement photos. Please try again.");
-    } finally {
-      setIsUploadingMeasurementPhotos(false);
-    }
-  };
-
-  // Cancel uploads
-  const handleCancelSitePhotosUpload = () => {
-    setSitePhotosFiles([]);
-    toast.info("Site photos upload cancelled");
-  };
-
-  const handleCancelMeasurementPhotosUpload = () => {
-    setMeasurementPhotosFiles([]);
-    toast.info("Measurement photos upload cancelled");
+    await uploadFiles({
+      filesToUpload,
+      siteGroup: "MEASUREMENT_PHOTOS",
+      groupName: "Measurement photos",
+      setIsUploading: setIsUploadingMeasurementPhotos,
+      setFiles: setMeasurementPhotosFiles,
+      fallbackFiles: measurementPhotosFiles,
+    });
   };
 
   // File Category Section Component for Site Measurements (matching existingFiles UI)

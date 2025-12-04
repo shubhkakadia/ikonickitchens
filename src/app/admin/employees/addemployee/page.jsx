@@ -73,6 +73,16 @@ export default function page() {
     "CNC Operator",
   ];
 
+  const daysOfWeek = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
+
   // Role dropdown state
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [roleSearchTerm, setRoleSearchTerm] = useState("");
@@ -86,6 +96,15 @@ export default function page() {
   const filteredRoleOptions = roleOptions.filter((role) =>
     role.toLowerCase().includes(roleSearchTerm.toLowerCase())
   );
+
+  // Add this inside the component
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -274,7 +293,7 @@ export default function page() {
       console.error("Error adding employee:", error);
       toast.error(
         error.response?.data?.message ||
-          "Failed to add employee. Please try again.",
+        "Failed to add employee. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
@@ -470,9 +489,8 @@ export default function page() {
                               className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               <ChevronDown
-                                className={`w-5 h-5 transition-transform ${
-                                  isRoleDropdownOpen ? "rotate-180" : ""
-                                }`}
+                                className={`w-5 h-5 transition-transform ${isRoleDropdownOpen ? "rotate-180" : ""
+                                  }`}
                               />
                             </button>
                           </div>
@@ -769,8 +787,9 @@ export default function page() {
                             </div>
                           </label>
                           <div className="space-y-4">
-                            {Object.entries(availability).map(
-                              ([day, times]) => (
+                            {daysOfWeek.map((day) => {
+                              const times = availability[day];
+                              return (
                                 <div
                                   key={day}
                                   className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg"
@@ -815,8 +834,8 @@ export default function page() {
                                     />
                                   </div>
                                 </div>
-                              )
-                            )}
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -848,11 +867,10 @@ export default function page() {
                       <button
                         type="submit"
                         disabled={!isFormValid || isSubmitting}
-                        className={`cursor-pointer flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
-                          isFormValid && !isSubmitting
+                        className={`cursor-pointer flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${isFormValid && !isSubmitting
                             ? "bg-primary/80 hover:bg-primary text-white"
                             : "bg-slate-300 text-slate-500 cursor-not-allowed"
-                        }`}
+                          }`}
                       >
                         <Save className="w-5 h-5" />
                         {isSubmitting ? "Adding Employee..." : "Add Employee"}

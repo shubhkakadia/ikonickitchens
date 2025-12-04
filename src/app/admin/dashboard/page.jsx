@@ -5,6 +5,8 @@ import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   AlertTriangle,
   FolderKanban,
@@ -140,6 +142,9 @@ const getActionColor = (action) => {
 const getDaysLeft = (endDate) => {
   if (!endDate) return null;
   const end = new Date(endDate);
+  // Check if date is invalid
+  if (isNaN(end.getTime())) return null;
+
   const now = new Date();
   end.setHours(0, 0, 0, 0);
   now.setHours(0, 0, 0, 0);
@@ -188,7 +193,7 @@ const getStatusColor = (status) => {
   return colors[status] || "bg-slate-100 text-slate-600";
 };
 
-export default function DashboardPage() {
+export default function page() {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -198,67 +203,67 @@ export default function DashboardPage() {
   const [selectedYear, setSelectedYear] = useState("all");
   const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
 
-  const fetchDashboard = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const sessionToken = getToken();
-
-      if (!sessionToken) {
-        setError("No valid session found. Please login again.");
-        return;
-      }
-
-      const response = await axios.get("/api/dashboard", {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-        },
-      });
-
-      if (response.data.status) {
-        setDashboardData(response.data.data);
-      } else {
-        setError(response.data.message || "Failed to fetch dashboard data");
-      }
-    } catch (err) {
-      console.error("Dashboard API Error:", err);
-      setError(
-        err.response?.data?.message ||
-          "An error occurred while fetching dashboard data"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchLogs = async () => {
-    try {
-      setLogsLoading(true);
-      const sessionToken = getToken();
-
-      if (!sessionToken) return;
-
-      const response = await axios.get("/api/logs", {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-        },
-      });
-
-      if (response.data.status) {
-        const sortedLogs = (response.data.data || [])
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          .slice(0, 10);
-        setLogsData(sortedLogs);
-      }
-    } catch (err) {
-      console.error("Logs API Error:", err);
-    } finally {
-      setLogsLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const sessionToken = getToken();
+
+        if (!sessionToken) {
+          setError("No valid session found. Please login again.");
+          return;
+        }
+
+        const response = await axios.get("/api/dashboard", {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+
+        if (response.data.status) {
+          setDashboardData(response.data.data);
+        } else {
+          setError(response.data.message || "Failed to fetch dashboard data");
+        }
+      } catch (err) {
+        console.error("Dashboard API Error:", err);
+        setError(
+          err.response?.data?.message ||
+          "An error occurred while fetching dashboard data"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchLogs = async () => {
+      try {
+        setLogsLoading(true);
+        const sessionToken = getToken();
+
+        if (!sessionToken) return;
+
+        const response = await axios.get("/api/logs", {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+
+        if (response.data.status) {
+          const sortedLogs = (response.data.data || [])
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 10);
+          setLogsData(sortedLogs);
+        }
+      } catch (err) {
+        console.error("Logs API Error:", err);
+      } finally {
+        setLogsLoading(false);
+      }
+    };
+
     fetchDashboard();
     fetchLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -305,8 +310,8 @@ export default function DashboardPage() {
       selectedYear === "all"
         ? dashboardData.totalSpent
         : dashboardData.totalSpent.filter((item) =>
-            item.month_year.startsWith(selectedYear)
-          );
+          item.month_year.startsWith(selectedYear)
+        );
 
     if (filteredData.length === 0) return null;
 
@@ -433,10 +438,11 @@ export default function DashboardPage() {
   // Calculate total spent
   const getTotalSpent = () => {
     if (!dashboardData?.totalSpent) return 0;
-    return dashboardData.totalSpent.reduce(
-      (sum, item) => sum + parseFloat(item.amount || 0),
-      0
-    );
+    const currentYear = new Date().getFullYear().toString();
+
+    return dashboardData.totalSpent
+      .filter(item => item.month_year.startsWith(currentYear)) // Filter for current year
+      .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
   };
 
   // Get sorted stages due (by least days left first)
@@ -481,9 +487,8 @@ export default function DashboardPage() {
         cornerRadius: 8,
         callbacks: {
           label: (context) => {
-            return `${
-              context.dataset.label
-            }: $${context.parsed.y.toLocaleString()}`;
+            return `${context.dataset.label
+              }: $${context.parsed.y.toLocaleString()}`;
           },
         },
       },
@@ -695,14 +700,14 @@ export default function DashboardPage() {
                                 </td>
                                 <td className="py-3 px-3 text-sm text-slate-600">
                                   {stage.endDate &&
-                                  new Date(stage.endDate).getFullYear() > 2000
+                                    new Date(stage.endDate).getFullYear() > 2000
                                     ? new Date(
-                                        stage.endDate
-                                      ).toLocaleDateString("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                      })
+                                      stage.endDate
+                                    ).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })
                                     : "-"}
                                 </td>
                                 <td className="py-3 px-3 text-right">
@@ -799,11 +804,10 @@ export default function DashboardPage() {
                               setSelectedYear("all");
                               setYearDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
-                              selectedYear === "all"
-                                ? "text-secondary font-medium"
-                                : "text-slate-600"
-                            }`}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${selectedYear === "all"
+                              ? "text-secondary font-medium"
+                              : "text-slate-600"
+                              }`}
                           >
                             All Years
                           </button>
@@ -814,11 +818,10 @@ export default function DashboardPage() {
                                 setSelectedYear(year);
                                 setYearDropdownOpen(false);
                               }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
-                                selectedYear === year
-                                  ? "text-secondary font-medium"
-                                  : "text-slate-600"
-                              }`}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${selectedYear === year
+                                ? "text-secondary font-medium"
+                                : "text-slate-600"
+                                }`}
                             >
                               {year}
                             </button>
@@ -991,6 +994,18 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </AdminRoute>
   );
 }

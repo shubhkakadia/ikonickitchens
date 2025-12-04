@@ -168,7 +168,7 @@ export async function PATCH(request, { params }) {
           all_items: updateData.module_access.all_items,
           add_items: updateData.module_access.add_items,
           item_details: updateData.module_access.item_details,
-          used_material: updateData.module_access.used_material,
+          usedmaterial: updateData.module_access.usedmaterial,
           logs: updateData.module_access.logs,
           lotatglance: updateData.module_access.lotatglance,
           materialstoorder: updateData.module_access.materialstoorder,

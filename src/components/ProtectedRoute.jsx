@@ -197,6 +197,7 @@ export function AdminRoute({
   const pathname = usePathname();
   const { id } = useParams();
 
+  console.log(id);
 
   const siteMap = {
     "/admin/dashboard": "dashboard",

@@ -5,7 +5,7 @@ import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
@@ -2018,6 +2018,18 @@ export default function page() {
         heading="Media File"
         message="This will permanently delete the media file. This action cannot be undone."
         isDeleting={deletingMediaId !== null}
+      />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
       />
     </AdminRoute>
   );

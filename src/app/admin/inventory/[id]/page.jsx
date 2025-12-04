@@ -32,6 +32,7 @@ import Image from "next/image";
 import { CiMenuKebab } from "react-icons/ci";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import { hardwareSubCategories } from "@/components/constants";
+import { AdminRoute } from "@/components/ProtectedRoute";
 
 // InfoField component - defined outside to prevent recreation and focus loss
 const InfoField = ({
@@ -837,740 +838,742 @@ export default function page() {
   };
 
   return (
-    <div className="flex h-screen bg-tertiary">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CRMLayout />
-        <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                <p className="text-slate-600">Loading item details...</p>
-              </div>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <p className="text-red-600 mb-4">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
-                >
-                  Try Again
-                </button>
-              </div>
-            </div>
-          ) : !item ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <Package className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-600">Item not found</p>
-              </div>
-            </div>
-          ) : (
-            <div className="p-3">
-              {/* Header */}
-              <div className="flex items-center gap-3 mb-4">
-                <TabsController href="/admin/inventory" title="Inventory">
-                  <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                    <ChevronLeft className="w-6 h-6 text-slate-600" />
-                  </div>
-                </TabsController>
-                <div className="flex-1">
-                  <h1 className="text-2xl font-bold text-slate-600">
-                    {getItemTitle()}
-                  </h1>
+    <AdminRoute>
+      <div className="flex h-screen bg-tertiary">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <CRMLayout />
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                  <p className="text-slate-600">Loading item details...</p>
                 </div>
-                <div className="flex gap-2">
-                  {!isEditing ? (
-                    <div className="relative dropdown-container">
-                      <button
-                        onClick={() => setShowDropdown(!showDropdown)}
-                        className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-                      >
-                        <CiMenuKebab className="w-4 h-4 text-slate-600" />
-                        <span className="text-slate-600">More Actions</span>
-                      </button>
-
-                      {showDropdown && (
-                        <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                          <div className="py-1">
-                            <button
-                              onClick={() => {
-                                handleEdit();
-                                setShowDropdown(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                            >
-                              <Edit className="w-4 h-4" />
-                              Edit Item Details
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowDeleteModal(true);
-                                setShowDropdown(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete Item
-                            </button>
-                          </div>
-                        </div>
-                      )}
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            ) : !item ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <Package className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                  <p className="text-slate-600">Item not found</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <TabsController href="/admin/inventory" title="Inventory">
+                    <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
+                      <ChevronLeft className="w-6 h-6 text-slate-600" />
                     </div>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleSave}
-                        disabled={isUpdating}
-                        className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Edit className="w-4 h-4" />
-                        {isUpdating ? "Saving..." : "Save"}
-                      </button>
-                      <button
-                        onClick={handleCancel}
-                        className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+                  </TabsController>
+                  <div className="flex-1">
+                    <h1 className="text-2xl font-bold text-slate-600">
+                      {getItemTitle()}
+                    </h1>
+                  </div>
+                  <div className="flex gap-2">
+                    {!isEditing ? (
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() => setShowDropdown(!showDropdown)}
+                          className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                        >
+                          <CiMenuKebab className="w-4 h-4 text-slate-600" />
+                          <span className="text-slate-600">More Actions</span>
+                        </button>
 
-              {/* Content */}
-              <div className="space-y-4">
-                {/* Main Info and Details Section */}
-                <div className="grid grid-cols-10 gap-4">
-                  {/* Main Information - 70% width */}
-                  <div className="col-span-7">
-                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="relative w-16 h-16 overflow-hidden rounded-lg group">
-                          {isEditing && !deleteImage && (
-                            <button
-                              onClick={handleDeleteImage}
-                              className="cursor-pointer absolute top-1 right-1 z-10 p-1 bg-red-500 hover:bg-red-600 text-white rounded transition-all duration-200"
-                              title="Delete Image"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                          {deleteImage && !imagePreview ? (
-                            <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
-                              <div className="text-center">
-                                <Trash2 className="w-4 h-4 text-slate-400 mx-auto mb-1" />
-                                <p className="text-xs text-slate-500">
-                                  Image will be deleted
-                                </p>
-                              </div>
+                        {showDropdown && (
+                          <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <div className="py-1">
+                              <button
+                                onClick={() => {
+                                  handleEdit();
+                                  setShowDropdown(false);
+                                }}
+                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Edit Item Details
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowDeleteModal(true);
+                                  setShowDropdown(false);
+                                }}
+                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete Item
+                              </button>
                             </div>
-                          ) : item.image?.url || imagePreview ? (
-                            <button
-                              onClick={() =>
-                                (item.image?.url || imagePreview) &&
-                                setSelectedFile(true)
-                              }
-                            >
-                              <Image
-                                src={imagePreview || `/${item.image.url}`}
-                                alt={item.item_id}
-                                fill
-                                className="cursor-pointer object-cover rounded-lg border border-slate-200 transition-all duration-300 group-hover:scale-110"
-                              />
-                            </button>
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
-                              <Package className="w-6 h-6 text-slate-400" />
-                            </div>
-                          )}
-                          {isEditing && (
-                            <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-1">
-                              <label className="cursor-pointer px-2 py-1 bg-primary/90 hover:bg-primary text-white text-xs font-medium rounded transition-all duration-200">
-                                Change
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleImageChange}
-                                  className="hidden"
-                                />
-                              </label>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h2 className="text-lg font-bold text-slate-800">
-                              {getItemTitle()}
-                            </h2>
-                            <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
-                              {item.category
-                                .toLowerCase()
-                                .charAt(0)
-                                .toUpperCase() +
-                                item.category.toLowerCase().slice(1)}
-                            </span>
-                            {item.category.toLowerCase() === "sheet" &&
-                              item.sheet?.is_sunmica && (
-                                <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
-                                  Sunmica
-                                </span>
-                              )}
                           </div>
-                          <p className="text-xs text-slate-500 mb-3">
-                            ID: {item.item_id}
-                          </p>
-                          <div className="space-y-3">
-                            <div>
-                              <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                                Description
-                              </label>
-                              {isEditing ? (
-                                <textarea
-                                  value={formData.description || ""}
-                                  onChange={(e) =>
-                                    handleInputChange(
-                                      "description",
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder={formatValue(item.description)}
-                                  rows={3}
-                                  className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                />
-                              ) : (
-                                <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
-                                  {formatValue(item.description)}
-                                </p>
-                              )}
-                            </div>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={handleSave}
+                          disabled={isUpdating}
+                          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Edit className="w-4 h-4" />
+                          {isUpdating ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-                            {/* Pricing & Stock Information */}
-                            <div className="grid grid-cols-3 gap-4 pt-3 border-t border-slate-200">
+                {/* Content */}
+                <div className="space-y-4">
+                  {/* Main Info and Details Section */}
+                  <div className="grid grid-cols-10 gap-4">
+                    {/* Main Information - 70% width */}
+                    <div className="col-span-7">
+                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                        <div className="flex items-start gap-4">
+                          <div className="relative w-16 h-16 overflow-hidden rounded-lg group">
+                            {isEditing && !deleteImage && (
+                              <button
+                                onClick={handleDeleteImage}
+                                className="cursor-pointer absolute top-1 right-1 z-10 p-1 bg-red-500 hover:bg-red-600 text-white rounded transition-all duration-200"
+                                title="Delete Image"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                            {deleteImage && !imagePreview ? (
+                              <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
+                                <div className="text-center">
+                                  <Trash2 className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                                  <p className="text-xs text-slate-500">
+                                    Image will be deleted
+                                  </p>
+                                </div>
+                              </div>
+                            ) : item.image?.url || imagePreview ? (
+                              <button
+                                onClick={() =>
+                                  (item.image?.url || imagePreview) &&
+                                  setSelectedFile(true)
+                                }
+                              >
+                                <Image
+                                  src={imagePreview || `/${item.image.url}`}
+                                  alt={item.item_id}
+                                  fill
+                                  className="cursor-pointer object-cover rounded-lg border border-slate-200 transition-all duration-300 group-hover:scale-110"
+                                />
+                              </button>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
+                                <Package className="w-6 h-6 text-slate-400" />
+                              </div>
+                            )}
+                            {isEditing && (
+                              <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-1">
+                                <label className="cursor-pointer px-2 py-1 bg-primary/90 hover:bg-primary text-white text-xs font-medium rounded transition-all duration-200">
+                                  Change
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h2 className="text-lg font-bold text-slate-800">
+                                {getItemTitle()}
+                              </h2>
+                              <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
+                                {item.category
+                                  .toLowerCase()
+                                  .charAt(0)
+                                  .toUpperCase() +
+                                  item.category.toLowerCase().slice(1)}
+                              </span>
+                              {item.category.toLowerCase() === "sheet" &&
+                                item.sheet?.is_sunmica && (
+                                  <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
+                                    Sunmica
+                                  </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-500 mb-3">
+                              ID: {item.item_id}
+                            </p>
+                            <div className="space-y-3">
                               <div>
                                 <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                                  Quantity in Stock
+                                  Description
                                 </label>
                                 {isEditing ? (
-                                  <input
-                                    type="number"
-                                    value={formData.quantity || ""}
+                                  <textarea
+                                    value={formData.description || ""}
                                     onChange={(e) =>
                                       handleInputChange(
-                                        "quantity",
+                                        "description",
                                         e.target.value
                                       )
                                     }
-                                    placeholder={formatValue(item.quantity)}
+                                    placeholder={formatValue(item.description)}
+                                    rows={3}
                                     className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                                   />
                                 ) : (
-                                  <p className="text-sm font-bold text-slate-800">
-                                    {formatValue(item.quantity)}
-                                    {item.measurement_unit && (
-                                      <span className="ml-1 text-slate-600 text-xs font-normal">
-                                        {item.measurement_unit}
-                                      </span>
-                                    )}
+                                  <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
+                                    {formatValue(item.description)}
                                   </p>
                                 )}
                               </div>
-                              <div>
-                                <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                                  Price per Unit
-                                </label>
-                                {isEditing ? (
-                                  <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-slate-600 text-sm">
-                                      $
-                                    </span>
+
+                              {/* Pricing & Stock Information */}
+                              <div className="grid grid-cols-3 gap-4 pt-3 border-t border-slate-200">
+                                <div>
+                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                                    Quantity in Stock
+                                  </label>
+                                  {isEditing ? (
                                     <input
                                       type="number"
-                                      step="0.01"
-                                      value={formData.price || ""}
+                                      value={formData.quantity || ""}
                                       onChange={(e) =>
                                         handleInputChange(
-                                          "price",
+                                          "quantity",
                                           e.target.value
                                         )
                                       }
-                                      placeholder={formatValue(item.price)}
-                                      className="w-full text-sm text-slate-800 pl-7 pr-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                      placeholder={formatValue(item.quantity)}
+                                      className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                                     />
-                                  </div>
-                                ) : (
-                                  <p className="text-sm font-bold text-emerald-600">
-                                    ${formatValue(item.price)}
-                                  </p>
-                                )}
-                              </div>
-                              {!isEditing && (
+                                  ) : (
+                                    <p className="text-sm font-bold text-slate-800">
+                                      {formatValue(item.quantity)}
+                                      {item.measurement_unit && (
+                                        <span className="ml-1 text-slate-600 text-xs font-normal">
+                                          {item.measurement_unit}
+                                        </span>
+                                      )}
+                                    </p>
+                                  )}
+                                </div>
                                 <div>
                                   <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                                    Total Value
+                                    Price per Unit
                                   </label>
-                                  <p className="text-sm font-bold text-slate-800">
-                                    $
-                                    {(
-                                      parseFloat(item.price || 0) *
-                                      parseInt(item.quantity || 0)
-                                    ).toFixed(2)}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Supplier and Measurement Unit */}
-                            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-200">
-                              {/* Supplier Field */}
-                              <div>
-                                <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                                  <Building2 className="w-3.5 h-3.5" />
-                                  Supplier
-                                </label>
-                                {isEditing ? (
-                                  <div
-                                    className="relative"
-                                    ref={supplierDropdownRef}
-                                  >
-                                    <input
-                                      type="text"
-                                      value={supplierSearchTerm}
-                                      onChange={handleSupplierSearchChange}
-                                      onFocus={() =>
-                                        setIsSupplierDropdownOpen(true)
-                                      }
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          e.preventDefault();
-                                          setIsSupplierDropdownOpen(false);
-                                        }
-                                      }}
-                                      placeholder="Search supplier..."
-                                      className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setIsSupplierDropdownOpen(
-                                          !isSupplierDropdownOpen
-                                        )
-                                      }
-                                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                    >
-                                      <ChevronDown
-                                        className={`w-3.5 h-3.5 transition-transform duration-200 ${isSupplierDropdownOpen
-                                          ? "rotate-180"
-                                          : ""
-                                          }`}
-                                      />
-                                    </button>
-
-                                    {isSupplierDropdownOpen && (
-                                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                        {filteredSuppliers.length > 0 ? (
-                                          filteredSuppliers.map((supplier) => (
-                                            <button
-                                              key={supplier.supplier_id}
-                                              type="button"
-                                              onClick={() =>
-                                                handleSupplierSelect(supplier)
-                                              }
-                                              className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                            >
-                                              <div className="font-medium">
-                                                {supplier.name}
-                                              </div>
-                                              <div className="text-xs text-slate-500">
-                                                {supplier.supplier_id}
-                                              </div>
-                                            </button>
-                                          ))
-                                        ) : (
-                                          <div className="px-3 py-2 text-xs text-slate-500 text-center">
-                                            No suppliers found
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div>
-                                    {item.supplier ? (
-                                      <p
-                                        className="text-sm text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors"
-                                        onClick={() =>
-                                          router.push(
-                                            `/admin/suppliers/${item.supplier.supplier_id}`
+                                  {isEditing ? (
+                                    <div className="relative">
+                                      <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-slate-600 text-sm">
+                                        $
+                                      </span>
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.price || ""}
+                                        onChange={(e) =>
+                                          handleInputChange(
+                                            "price",
+                                            e.target.value
                                           )
                                         }
-                                      >
-                                        {item.supplier.name}
-                                      </p>
-                                    ) : (
-                                      <p className="text-sm text-slate-800">
-                                        -
-                                      </p>
-                                    )}
+                                        placeholder={formatValue(item.price)}
+                                        className="w-full text-sm text-slate-800 pl-7 pr-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm font-bold text-emerald-600">
+                                      ${formatValue(item.price)}
+                                    </p>
+                                  )}
+                                </div>
+                                {!isEditing && (
+                                  <div>
+                                    <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                                      Total Value
+                                    </label>
+                                    <p className="text-sm font-bold text-slate-800">
+                                      $
+                                      {(
+                                        parseFloat(item.price || 0) *
+                                        parseInt(item.quantity || 0)
+                                      ).toFixed(2)}
+                                    </p>
                                   </div>
                                 )}
                               </div>
 
-                              {/* Measurement Unit Field */}
-                              <div>
-                                <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                                  <Ruler className="w-3.5 h-3.5" />
-                                  Measurement Unit
-                                </label>
-                                {isEditing ? (
-                                  <input
-                                    type="text"
-                                    value={formData.measurement_unit || ""}
-                                    onChange={(e) =>
-                                      handleInputChange(
-                                        "measurement_unit",
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder={formatValue(
-                                      item.measurement_unit
-                                    )}
-                                    className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                  />
-                                ) : (
-                                  <p className="text-sm text-slate-800">
-                                    {formatValue(item.measurement_unit)}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Supplier Reference and Product Link */}
-                            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-200">
-                              {/* Supplier Reference Field */}
-                              <div>
-                                <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                                  <Tag className="w-3.5 h-3.5" />
-                                  Supplier Reference
-                                </label>
-                                {isEditing ? (
-                                  <input
-                                    type="text"
-                                    value={formData.supplier_reference || ""}
-                                    onChange={(e) =>
-                                      handleInputChange(
-                                        "supplier_reference",
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder={formatValue(
-                                      item.supplier_reference
-                                    )}
-                                    className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                  />
-                                ) : (
-                                  <p className="text-sm text-slate-800">
-                                    {formatValue(item.supplier_reference)}
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Supplier Product Link Field */}
-                              <div>
-                                <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                  Supplier Product Link
-                                </label>
-                                {isEditing ? (
-                                  <input
-                                    type="url"
-                                    value={formData.supplier_product_link || ""}
-                                    onChange={(e) =>
-                                      handleInputChange(
-                                        "supplier_product_link",
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder={formatValue(
-                                      item.supplier_product_link
-                                    )}
-                                    className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                  />
-                                ) : (
-                                  <p className="text-sm text-slate-800">
-                                    {item.supplier_product_link ? (
-                                      <a
-                                        href={item.supplier_product_link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-primary hover:underline"
+                              {/* Supplier and Measurement Unit */}
+                              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-200">
+                                {/* Supplier Field */}
+                                <div>
+                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                                    <Building2 className="w-3.5 h-3.5" />
+                                    Supplier
+                                  </label>
+                                  {isEditing ? (
+                                    <div
+                                      className="relative"
+                                      ref={supplierDropdownRef}
+                                    >
+                                      <input
+                                        type="text"
+                                        value={supplierSearchTerm}
+                                        onChange={handleSupplierSearchChange}
+                                        onFocus={() =>
+                                          setIsSupplierDropdownOpen(true)
+                                        }
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            setIsSupplierDropdownOpen(false);
+                                          }
+                                        }}
+                                        placeholder="Search supplier..."
+                                        className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setIsSupplierDropdownOpen(
+                                            !isSupplierDropdownOpen
+                                          )
+                                        }
+                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                       >
-                                        {item.supplier_product_link.length > 40
-                                          ? `${item.supplier_product_link.substring(
-                                            0,
-                                            40
-                                          )}...`
-                                          : item.supplier_product_link}
-                                      </a>
-                                    ) : (
-                                      formatValue(item.supplier_product_link)
-                                    )}
-                                  </p>
-                                )}
+                                        <ChevronDown
+                                          className={`w-3.5 h-3.5 transition-transform duration-200 ${isSupplierDropdownOpen
+                                            ? "rotate-180"
+                                            : ""
+                                            }`}
+                                        />
+                                      </button>
+
+                                      {isSupplierDropdownOpen && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                          {filteredSuppliers.length > 0 ? (
+                                            filteredSuppliers.map((supplier) => (
+                                              <button
+                                                key={supplier.supplier_id}
+                                                type="button"
+                                                onClick={() =>
+                                                  handleSupplierSelect(supplier)
+                                                }
+                                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                              >
+                                                <div className="font-medium">
+                                                  {supplier.name}
+                                                </div>
+                                                <div className="text-xs text-slate-500">
+                                                  {supplier.supplier_id}
+                                                </div>
+                                              </button>
+                                            ))
+                                          ) : (
+                                            <div className="px-3 py-2 text-xs text-slate-500 text-center">
+                                              No suppliers found
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      {item.supplier ? (
+                                        <p
+                                          className="text-sm text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors"
+                                          onClick={() =>
+                                            router.push(
+                                              `/admin/suppliers/${item.supplier.supplier_id}`
+                                            )
+                                          }
+                                        >
+                                          {item.supplier.name}
+                                        </p>
+                                      ) : (
+                                        <p className="text-sm text-slate-800">
+                                          -
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Measurement Unit Field */}
+                                <div>
+                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                                    <Ruler className="w-3.5 h-3.5" />
+                                    Measurement Unit
+                                  </label>
+                                  {isEditing ? (
+                                    <input
+                                      type="text"
+                                      value={formData.measurement_unit || ""}
+                                      onChange={(e) =>
+                                        handleInputChange(
+                                          "measurement_unit",
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder={formatValue(
+                                        item.measurement_unit
+                                      )}
+                                      className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                    />
+                                  ) : (
+                                    <p className="text-sm text-slate-800">
+                                      {formatValue(item.measurement_unit)}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Supplier Reference and Product Link */}
+                              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-200">
+                                {/* Supplier Reference Field */}
+                                <div>
+                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                                    <Tag className="w-3.5 h-3.5" />
+                                    Supplier Reference
+                                  </label>
+                                  {isEditing ? (
+                                    <input
+                                      type="text"
+                                      value={formData.supplier_reference || ""}
+                                      onChange={(e) =>
+                                        handleInputChange(
+                                          "supplier_reference",
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder={formatValue(
+                                        item.supplier_reference
+                                      )}
+                                      className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                    />
+                                  ) : (
+                                    <p className="text-sm text-slate-800">
+                                      {formatValue(item.supplier_reference)}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Supplier Product Link Field */}
+                                <div>
+                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    Supplier Product Link
+                                  </label>
+                                  {isEditing ? (
+                                    <input
+                                      type="url"
+                                      value={formData.supplier_product_link || ""}
+                                      onChange={(e) =>
+                                        handleInputChange(
+                                          "supplier_product_link",
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder={formatValue(
+                                        item.supplier_product_link
+                                      )}
+                                      className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                    />
+                                  ) : (
+                                    <p className="text-sm text-slate-800">
+                                      {item.supplier_product_link ? (
+                                        <a
+                                          href={item.supplier_product_link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-primary hover:underline"
+                                        >
+                                          {item.supplier_product_link.length > 40
+                                            ? `${item.supplier_product_link.substring(
+                                              0,
+                                              40
+                                            )}...`
+                                            : item.supplier_product_link}
+                                        </a>
+                                      ) : (
+                                        formatValue(item.supplier_product_link)
+                                      )}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
+
+                      {/* Stock Transactions Section */}
+                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
+                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                          <Package className="w-4 h-4" />
+                          Stock Transactions
+                        </h3>
+                        {item.stock_transactions &&
+                          item.stock_transactions.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-slate-200">
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Date
+                                  </th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Type
+                                  </th>
+                                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Quantity
+                                  </th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Purchase Order
+                                  </th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Project Name
+                                  </th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Lot ID
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.stock_transactions
+                                  .sort(
+                                    (a, b) =>
+                                      new Date(b.createdAt) -
+                                      new Date(a.createdAt)
+                                  )
+                                  .map((transaction) => (
+                                    <tr
+                                      key={transaction.id}
+                                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <td className="py-2 px-3 text-slate-700">
+                                        {new Date(
+                                          transaction.createdAt
+                                        ).toLocaleString("en-US", {
+                                          year: "numeric",
+                                          month: "short",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </td>
+                                      <td className="py-2 px-3">
+                                        <span
+                                          className={`px-2 py-1 text-xs font-medium rounded-full ${transaction.type === "ADDED"
+                                            ? "bg-emerald-100 text-emerald-800"
+                                            : transaction.type === "USED"
+                                              ? "bg-blue-100 text-blue-800"
+                                              : "bg-red-100 text-red-800"
+                                            }`}
+                                        >
+                                          {transaction.type}
+                                        </span>
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-medium text-slate-800">
+                                        {transaction.type === "ADDED" ? "+" : "-"}
+                                        {transaction.quantity}
+                                        {item.measurement_unit && (
+                                          <span className="ml-1 text-xs text-slate-500 font-normal">
+                                            {item.measurement_unit}
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="py-2 px-3 text-slate-600">
+                                        {transaction.type === "ADDED" &&
+                                          transaction.purchase_order?.order_no ? (
+                                          <span className="text-xs font-medium text-primary">
+                                            {transaction.purchase_order.order_no}
+                                          </span>
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </td>
+                                      <td className="py-2 px-3 text-slate-600">
+                                        {transaction.type === "USED" &&
+                                          transaction.materials_to_order?.project
+                                            ?.name ? (
+                                          <span className="text-xs font-medium text-slate-800">
+                                            {
+                                              transaction.materials_to_order
+                                                .project.name
+                                            }
+                                          </span>
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </td>
+                                      <td className="py-2 px-3 text-slate-600">
+                                        {transaction.type === "USED" &&
+                                          transaction.materials_to_order?.lots &&
+                                          transaction.materials_to_order.lots
+                                            .length > 0 ? (
+                                          <span className="text-xs font-medium text-slate-800">
+                                            {transaction.materials_to_order.lots
+                                              .map((lot) => lot.lot_id)
+                                              .join(", ")}
+                                          </span>
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-slate-500">
+                            <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                            <p className="text-sm">No stock transactions found</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Stock Transactions Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
-                      <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                        <Package className="w-4 h-4" />
-                        Stock Transactions
-                      </h3>
-                      {item.stock_transactions &&
-                        item.stock_transactions.length > 0 ? (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-slate-200">
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                  Date
-                                </th>
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                  Type
-                                </th>
-                                <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                  Quantity
-                                </th>
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                  Purchase Order
-                                </th>
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                  Project Name
-                                </th>
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                  Lot ID
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {item.stock_transactions
-                                .sort(
-                                  (a, b) =>
-                                    new Date(b.createdAt) -
-                                    new Date(a.createdAt)
-                                )
-                                .map((transaction) => (
-                                  <tr
-                                    key={transaction.id}
-                                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                                  >
-                                    <td className="py-2 px-3 text-slate-700">
-                                      {new Date(
-                                        transaction.createdAt
-                                      ).toLocaleString("en-US", {
-                                        year: "numeric",
-                                        month: "short",
-                                        day: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </td>
-                                    <td className="py-2 px-3">
-                                      <span
-                                        className={`px-2 py-1 text-xs font-medium rounded-full ${transaction.type === "ADDED"
-                                          ? "bg-emerald-100 text-emerald-800"
-                                          : transaction.type === "USED"
-                                            ? "bg-blue-100 text-blue-800"
-                                            : "bg-red-100 text-red-800"
-                                          }`}
-                                      >
-                                        {transaction.type}
-                                      </span>
-                                    </td>
-                                    <td className="py-2 px-3 text-right font-medium text-slate-800">
-                                      {transaction.type === "ADDED" ? "+" : "-"}
-                                      {transaction.quantity}
-                                      {item.measurement_unit && (
-                                        <span className="ml-1 text-xs text-slate-500 font-normal">
-                                          {item.measurement_unit}
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-600">
-                                      {transaction.type === "ADDED" &&
-                                        transaction.purchase_order?.order_no ? (
-                                        <span className="text-xs font-medium text-primary">
-                                          {transaction.purchase_order.order_no}
-                                        </span>
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-600">
-                                      {transaction.type === "USED" &&
-                                        transaction.materials_to_order?.project
-                                          ?.name ? (
-                                        <span className="text-xs font-medium text-slate-800">
-                                          {
-                                            transaction.materials_to_order
-                                              .project.name
-                                          }
-                                        </span>
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-600">
-                                      {transaction.type === "USED" &&
-                                        transaction.materials_to_order?.lots &&
-                                        transaction.materials_to_order.lots
-                                          .length > 0 ? (
-                                        <span className="text-xs font-medium text-slate-800">
-                                          {transaction.materials_to_order.lots
-                                            .map((lot) => lot.lot_id)
-                                            .join(", ")}
-                                        </span>
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
+                    {/* Category-Specific Information - 30% width */}
+                    <div className="col-span-3">
+                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 h-full">
+                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                          <Package className="w-4 h-4" />
+                          Details
+                        </h3>
+                        <div className="grid grid-cols-1 gap-4">
+                          {renderCategorySpecificFields()}
                         </div>
-                      ) : (
-                        <div className="text-center py-8 text-slate-500">
-                          <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                          <p className="text-sm">No stock transactions found</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Category-Specific Information - 30% width */}
-                  <div className="col-span-3">
-                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 h-full">
-                      <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                        <Package className="w-4 h-4" />
-                        Details
-                      </h3>
-                      <div className="grid grid-cols-1 gap-4">
-                        {renderCategorySpecificFields()}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
-      {selectedFile === true && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
-          <div
-            className="absolute inset-0 bg-slate-900/40"
-            onClick={() => setSelectedFile(false)}
-          />
-          <div className="relative bg-white w-full max-w-5xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-slate-800 truncate">
-                  {getItemTitle()}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {imagePreview ? "New image" : item.image?.url || "-"}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedFile(false);
-                }}
-                className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="relative flex-1 overflow-auto p-6 bg-slate-50">
-              <div className="flex items-center justify-center h-full">
-                {imagePreview ? (
-                  <Image
-                    loading="lazy"
-                    src={imagePreview}
-                    alt={item.item_id}
-                    width={1000}
-                    height={1000}
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                  />
-                ) : item.image?.url ? (
-                  <Image
-                    loading="lazy"
-                    src={`/${item.image.url}`}
-                    alt={item.item_id}
-                    width={1000}
-                    height={1000}
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-slate-500">
-                    No image available
-                  </div>
-                )}
-              </div>
-
-              {/* Floating Info and Download Button */}
-              <div className="sticky bottom-4 left-4 right-4 flex items-center justify-between gap-4 z-50 pointer-events-auto">
+        {selectedFile === true && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
+            <div
+              className="absolute inset-0 bg-slate-900/40"
+              onClick={() => setSelectedFile(false)}
+            />
+            <div className="relative bg-white w-full max-w-5xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
+              {/* Modal Header */}
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-slate-800 truncate">
+                    {getItemTitle()}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {imagePreview ? "New image" : item.image?.url || "-"}
+                  </p>
+                </div>
                 <button
                   onClick={() => {
-                    // Check if image URL exists
-                    if (item.image?.url) {
-                      // For existing files (URL string like /upload/item/item.jpeg)
-                      const a = document.createElement("a");
-                      a.href = `/${item.image.url}`;
-                      a.download =
-                        item.image.filename || item.item_id || "download";
-                      a.target = "_blank";
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                    }
+                    setSelectedFile(false);
                   }}
-                  className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium pointer-events-auto"
+                  className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
                 >
-                  <Download className="w-4 h-4" />
-                  Download
+                  <X className="w-5 h-5 text-slate-600" />
                 </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="relative flex-1 overflow-auto p-6 bg-slate-50">
+                <div className="flex items-center justify-center h-full">
+                  {imagePreview ? (
+                    <Image
+                      loading="lazy"
+                      src={imagePreview}
+                      alt={item.item_id}
+                      width={1000}
+                      height={1000}
+                      className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                    />
+                  ) : item.image?.url ? (
+                    <Image
+                      loading="lazy"
+                      src={`/${item.image.url}`}
+                      alt={item.item_id}
+                      width={1000}
+                      height={1000}
+                      className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-slate-500">
+                      No image available
+                    </div>
+                  )}
+                </div>
+
+                {/* Floating Info and Download Button */}
+                <div className="sticky bottom-4 left-4 right-4 flex items-center justify-between gap-4 z-50 pointer-events-auto">
+                  <button
+                    onClick={() => {
+                      // Check if image URL exists
+                      if (item.image?.url) {
+                        // For existing files (URL string like /upload/item/item.jpeg)
+                        const a = document.createElement("a");
+                        a.href = `/${item.image.url}`;
+                        a.download =
+                          item.image.filename || item.item_id || "download";
+                        a.target = "_blank";
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                      }
+                    }}
+                    className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium pointer-events-auto"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmation
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={handleDeleteConfirm}
-        deleteWithInput={true}
-        heading="Item"
-        message="This will permanently delete this item from inventory. This action cannot be undone."
-        comparingName={item ? item.item_id : ""}
-        isDeleting={isDeleting}
-      />
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmation
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteConfirm}
+          deleteWithInput={true}
+          heading="Item"
+          message="This will permanently delete this item from inventory. This action cannot be undone."
+          comparingName={item ? item.item_id : ""}
+          isDeleting={isDeleting}
+        />
 
-      <ToastContainer />
-    </div>
+        <ToastContainer />
+      </div>
+    </AdminRoute>
   );
 }

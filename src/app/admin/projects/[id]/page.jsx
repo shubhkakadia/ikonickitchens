@@ -129,12 +129,34 @@ export default function page() {
       });
 
       if (response.data.status) {
-        setProject(response.data.data);
-        setSelectedLot(
-          response.data.data?.lots && response.data.data.lots.length > 0
-            ? response.data.data.lots[0]
-            : {}
-        );
+        const projectData = response.data.data;
+        setProject(projectData);
+
+        // CHECK: If we already have a selected lot, try to keep it selected
+        if (selectedLot?.id || selectedLot?.lot_id) {
+          const stillExists = projectData.lots?.find(
+            (l) =>
+              l.id === selectedLot.id ||
+              l.lot_id === selectedLot.lot_id
+          );
+          if (stillExists) {
+            setSelectedLot(stillExists);
+          } else {
+            // Fallback if the current lot was deleted or doesn't exist
+            setSelectedLot(
+              projectData.lots && projectData.lots.length > 0
+                ? projectData.lots[0]
+                : {}
+            );
+          }
+        } else {
+          // Initial load
+          setSelectedLot(
+            projectData.lots && projectData.lots.length > 0
+              ? projectData.lots[0]
+              : {}
+          );
+        }
       } else {
         setError(response.data.message || "Failed to fetch project data");
       }
@@ -142,7 +164,7 @@ export default function page() {
       console.error("API Error:", err);
       setError(
         err.response?.data?.message ||
-          "An error occurred while fetching project data"
+        "An error occurred while fetching project data"
       );
     } finally {
       setLoading(false);
@@ -187,7 +209,7 @@ export default function page() {
       console.error("API Error:", err);
       setError(
         err.response?.data?.message ||
-          "An error occurred while fetching lot data"
+        "An error occurred while fetching lot data"
       );
     } finally {
       setLoading(false);
@@ -366,7 +388,8 @@ export default function page() {
           notes: "",
         });
         // Reload the page to refresh project data
-        window.location.reload();
+        router.refresh();
+        fetchProject();
       } else {
         toast.error(response.data.message || "Failed to create lot");
       }
@@ -738,9 +761,8 @@ export default function page() {
         formData.append("notes", uploadNotes);
       }
 
-      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
-        selectedLotData.lot_id
-      }/${categorySlug}`;
+      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${selectedLotData.lot_id
+        }/${categorySlug}`;
 
       const response = await axios.post(apiUrl, formData, {
         headers: {
@@ -814,8 +836,7 @@ export default function page() {
       const tabEnum = getTabEnum(activeTab);
 
       const response = await axios.delete(
-        `/api/uploads/lots/${id.toUpperCase()}/${
-          selectedLotData.lot_id
+        `/api/uploads/lots/${id.toUpperCase()}/${selectedLotData.lot_id
         }/${getCategorySlug(tabEnum)}/${fileToDelete.filename}`,
         {
           headers: {
@@ -906,9 +927,8 @@ export default function page() {
               {title} ({files.length})
             </span>
             <div
-              className={`transform transition-transform duration-200 ${
-                isExpanded ? "rotate-180" : ""
-              }`}
+              className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                }`}
             >
               <ChevronDown className="w-4 h-4" />
             </div>
@@ -922,15 +942,13 @@ export default function page() {
                   key={file.id}
                   onClick={() => handleViewExistingFile(file)}
                   title="Click to view file"
-                  className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
-                    isSmall ? "w-32" : "w-40"
-                  }`}
+                  className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
+                    }`}
                 >
                   {/* File Preview */}
                   <div
-                    className={`w-full ${
-                      isSmall ? "aspect-[4/3]" : "aspect-square"
-                    } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                    className={`w-full ${isSmall ? "aspect-[4/3]" : "aspect-square"
+                      } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
                   >
                     {file.mime_type.includes("image") ? (
                       <Image
@@ -949,23 +967,20 @@ export default function page() {
                       />
                     ) : (
                       <div
-                        className={`w-full h-full flex items-center justify-center rounded-lg ${
-                          file.mime_type.includes("pdf")
+                        className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type.includes("pdf")
                             ? "bg-red-50"
                             : "bg-green-50"
-                        }`}
+                          }`}
                       >
                         {file.mime_type.includes("pdf") ? (
                           <FileText
-                            className={`${
-                              isSmall ? "w-6 h-6" : "w-8 h-8"
-                            } text-red-600`}
+                            className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                              } text-red-600`}
                           />
                         ) : (
                           <File
-                            className={`${
-                              isSmall ? "w-6 h-6" : "w-8 h-8"
-                            } text-green-600`}
+                            className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                              } text-green-600`}
                           />
                         )}
                       </div>
@@ -1079,9 +1094,8 @@ export default function page() {
             Select Files {isSavingUpload && "(Uploading...)"}
           </label>
           <div
-            className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
-              isSavingUpload ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${isSavingUpload ? "opacity-50 cursor-not-allowed" : ""
+              }`}
           >
             <input
               type="file"
@@ -1162,7 +1176,7 @@ export default function page() {
               : null,
           installationDueDate:
             selectedLotData.installationDueDate &&
-            selectedLotData.installationDueDate.trim() !== ""
+              selectedLotData.installationDueDate.trim() !== ""
               ? selectedLotData.installationDueDate
               : null,
           notes: notes,
@@ -1498,11 +1512,10 @@ export default function page() {
                           <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`cursor-pointer py-2 border-b-2 font-medium text-sm transition-colors ${
-                              activeTab === tab.id
+                            className={`cursor-pointer py-2 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
                                 ? "border-secondary text-secondary"
                                 : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                            }`}
+                              }`}
                           >
                             {tab.label}
                           </button>
@@ -1517,403 +1530,398 @@ export default function page() {
                   {(activeTab === "overview" ||
                     !project.lots ||
                     project.lots.length === 0) && (
-                    <div>
-                      <h2 className="text-xl font-semibold text-slate-700 mb-4">
-                        Project Overview
-                      </h2>
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                          Project Overview
+                        </h2>
 
-                      {project.lots && project.lots.length > 0 ? (
-                        selectedLot && selectedLotData ? (
-                          <>
-                            {/* Top Section - 3 Grid Items */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                              {/* Lot Information */}
-                              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                                <h3 className="text-lg font-bold text-slate-800 mb-3">
-                                  Lot Information
-                                </h3>
-                                <div className="space-y-2">
-                                  <div>
-                                    <label className="text-xs font-medium text-slate-600">
-                                      Name
-                                    </label>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      {isEditing ? (
-                                        <input
-                                          type="text"
-                                          value={
-                                            editData.name ||
-                                            selectedLotData.name ||
-                                            ""
-                                          }
-                                          onChange={(e) =>
-                                            setEditData({
-                                              ...editData,
-                                              name: e.target.value,
-                                            })
-                                          }
-                                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
-                                          placeholder="Enter lot name"
-                                        />
-                                      ) : (
-                                        <p className="flex-1 text-sm text-slate-900">
-                                          {selectedLotData.name ||
-                                            "Not specified"}
-                                        </p>
-                                      )}
-                                      {!isEditing && (
-                                        <div
-                                          className="relative"
-                                          ref={statusDropdownRef}
-                                        >
-                                          <button
-                                            onClick={() =>
-                                              setShowStatusDropdown(
-                                                !showStatusDropdown
-                                              )
-                                            }
-                                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-                                              selectedLotData.status ===
-                                              "COMPLETED"
-                                                ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
-                                                : "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200"
-                                            }`}
-                                          >
-                                            <span>
-                                              {selectedLotData.status ===
-                                              "COMPLETED"
-                                                ? "Completed"
-                                                : "Active"}
-                                            </span>
-                                            <ChevronDown
-                                              className={`w-3 h-3 transition-transform ${
-                                                showStatusDropdown
-                                                  ? "rotate-180"
-                                                  : ""
-                                              }`}
-                                            />
-                                          </button>
-                                          {showStatusDropdown && (
-                                            <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[120px]">
-                                              <button
-                                                onClick={() =>
-                                                  handleStatusUpdate("ACTIVE")
-                                                }
-                                                className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${
-                                                  selectedLotData.status ===
-                                                  "ACTIVE"
-                                                    ? "bg-blue-50 text-blue-800"
-                                                    : "text-slate-700"
-                                                }`}
-                                              >
-                                                Active
-                                              </button>
-                                              <button
-                                                onClick={() =>
-                                                  handleStatusUpdate(
-                                                    "COMPLETED"
-                                                  )
-                                                }
-                                                className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${
-                                                  selectedLotData.status ===
-                                                  "COMPLETED"
-                                                    ? "bg-green-50 text-green-800"
-                                                    : "text-slate-700"
-                                                }`}
-                                              >
-                                                Completed
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                      {isEditing && (
-                                        <span
-                                          className={`px-2.5 py-1.5 rounded-full text-xs font-medium border ${
-                                            selectedLotData.status ===
-                                            "COMPLETED"
-                                              ? "bg-green-100 text-green-800 border-green-200"
-                                              : "bg-blue-100 text-blue-800 border-blue-200"
-                                          }`}
-                                        >
-                                          {selectedLotData.status ===
-                                          "COMPLETED"
-                                            ? "Completed"
-                                            : "Active"}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                      <label className="text-xs font-medium text-slate-600">
-                                        Start Date
-                                      </label>
-                                      {isEditing ? (
-                                        <input
-                                          type="date"
-                                          value={
-                                            editData.startDate ||
-                                            selectedLotData.startDate ||
-                                            ""
-                                          }
-                                          onChange={(e) =>
-                                            setEditData({
-                                              ...editData,
-                                              startDate: e.target.value,
-                                            })
-                                          }
-                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent mt-1"
-                                        />
-                                      ) : (
-                                        <p className="text-sm text-slate-900 mt-1">
-                                          {selectedLotData.startDate
-                                            ? new Date(
-                                                selectedLotData.startDate
-                                              ).toLocaleDateString("en-AU", {
-                                                year: "numeric",
-                                                month: "long",
-                                                day: "numeric",
-                                              })
-                                            : "Not set"}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <label className="text-xs font-medium text-slate-600">
-                                        Installation Due Date
-                                      </label>
-                                      {isEditing ? (
-                                        <input
-                                          type="date"
-                                          value={
-                                            editData.installationDueDate ||
-                                            selectedLotData.installationDueDate ||
-                                            ""
-                                          }
-                                          onChange={(e) =>
-                                            setEditData({
-                                              ...editData,
-                                              installationDueDate:
-                                                e.target.value,
-                                            })
-                                          }
-                                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent mt-1"
-                                        />
-                                      ) : (
-                                        <p className="text-sm text-slate-900 mt-1">
-                                          {selectedLotData.installationDueDate
-                                            ? new Date(
-                                                selectedLotData.installationDueDate
-                                              ).toLocaleDateString("en-AU", {
-                                                year: "numeric",
-                                                month: "long",
-                                                day: "numeric",
-                                              })
-                                            : "Not set"}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Client Information */}
-                              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                                <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-                                  <User className="w-4 h-4" />
-                                  Client Information
-                                </h3>
-
-                                {project.client ? (
+                        {project.lots && project.lots.length > 0 ? (
+                          selectedLot && selectedLotData ? (
+                            <>
+                              {/* Top Section - 3 Grid Items */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                {/* Lot Information */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                                  <h3 className="text-lg font-bold text-slate-800 mb-3">
+                                    Lot Information
+                                  </h3>
                                   <div className="space-y-2">
                                     <div>
                                       <label className="text-xs font-medium text-slate-600">
                                         Name
                                       </label>
                                       <div className="flex items-center gap-2 mt-1">
-                                        <div className="flex-1">
-                                          <button
-                                            onClick={() => {
-                                              const clientHref = `/admin/clients/${project.client.client_id}`;
-                                              router.push(clientHref);
-                                              dispatch(
-                                                replaceTab({
-                                                  id: uuidv4(),
-                                                  title:
-                                                    project.client.client_name,
-                                                  href: clientHref,
-                                                })
-                                              );
-                                            }}
-                                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
-                                          >
-                                            {project.client.client_name}
-                                          </button>
-                                          <p className="text-xs text-slate-500 mt-0.5">
-                                            ID: {project.client.client_id}
+                                        {isEditing ? (
+                                          <input
+                                            type="text"
+                                            value={
+                                              editData.name ||
+                                              selectedLotData.name ||
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              setEditData({
+                                                ...editData,
+                                                name: e.target.value,
+                                              })
+                                            }
+                                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
+                                            placeholder="Enter lot name"
+                                          />
+                                        ) : (
+                                          <p className="flex-1 text-sm text-slate-900">
+                                            {selectedLotData.name ||
+                                              "Not specified"}
                                           </p>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              const clientHref = `/admin/clients/${project.client.client_id}`;
-                                              dispatch(
-                                                addTab({
-                                                  id: uuidv4(),
-                                                  title:
-                                                    project.client.client_name,
-                                                  href: clientHref,
-                                                })
-                                              );
-                                            }}
-                                            className="p-1.5 rounded hover:bg-slate-100 transition-colors duration-200 cursor-pointer"
-                                            title="Open client in new tab"
+                                        )}
+                                        {!isEditing && (
+                                          <div
+                                            className="relative"
+                                            ref={statusDropdownRef}
                                           >
-                                            <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 hover:text-slate-600" />
-                                          </button>
-                                          {!isEditing && (
-                                            <>
-                                              <button
-                                                onClick={() => {
-                                                  fetchClients();
-                                                  setShowClientDropdown(true);
-                                                  setClientSearchTerm("");
-                                                }}
-                                                className="p-1.5 rounded hover:bg-blue-100 transition-colors duration-200 cursor-pointer"
-                                                title="Change Client"
-                                              >
-                                                <Edit className="w-4 h-4 text-blue-600" />
-                                              </button>
-                                              <button
-                                                onClick={handleRemoveClient}
-                                                disabled={isAssigningClient}
-                                                className="p-1.5 rounded hover:bg-red-100 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                title="Remove Client"
-                                              >
-                                                <X className="w-4 h-4 text-red-600" />
-                                              </button>
-                                            </>
-                                          )}
-                                        </div>
+                                            <button
+                                              onClick={() =>
+                                                setShowStatusDropdown(
+                                                  !showStatusDropdown
+                                                )
+                                              }
+                                              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${selectedLotData.status ===
+                                                  "COMPLETED"
+                                                  ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
+                                                  : "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200"
+                                                }`}
+                                            >
+                                              <span>
+                                                {selectedLotData.status ===
+                                                  "COMPLETED"
+                                                  ? "Completed"
+                                                  : "Active"}
+                                              </span>
+                                              <ChevronDown
+                                                className={`w-3 h-3 transition-transform ${showStatusDropdown
+                                                    ? "rotate-180"
+                                                    : ""
+                                                  }`}
+                                              />
+                                            </button>
+                                            {showStatusDropdown && (
+                                              <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[120px]">
+                                                <button
+                                                  onClick={() =>
+                                                    handleStatusUpdate("ACTIVE")
+                                                  }
+                                                  className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status ===
+                                                      "ACTIVE"
+                                                      ? "bg-blue-50 text-blue-800"
+                                                      : "text-slate-700"
+                                                    }`}
+                                                >
+                                                  Active
+                                                </button>
+                                                <button
+                                                  onClick={() =>
+                                                    handleStatusUpdate(
+                                                      "COMPLETED"
+                                                    )
+                                                  }
+                                                  className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status ===
+                                                      "COMPLETED"
+                                                      ? "bg-green-50 text-green-800"
+                                                      : "text-slate-700"
+                                                    }`}
+                                                >
+                                                  Completed
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                        {isEditing && (
+                                          <span
+                                            className={`px-2.5 py-1.5 rounded-full text-xs font-medium border ${selectedLotData.status ===
+                                                "COMPLETED"
+                                                ? "bg-green-100 text-green-800 border-green-200"
+                                                : "bg-blue-100 text-blue-800 border-blue-200"
+                                              }`}
+                                          >
+                                            {selectedLotData.status ===
+                                              "COMPLETED"
+                                              ? "Completed"
+                                              : "Active"}
+                                          </span>
+                                        )}
                                       </div>
-                                    </div>
-                                    <div>
-                                      <label className="text-xs font-medium text-slate-600">
-                                        Email
-                                      </label>
-                                      <p className="text-sm text-slate-900 mt-1">
-                                        {project.client.client_email ||
-                                          "No email"}
-                                      </p>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                       <div>
                                         <label className="text-xs font-medium text-slate-600">
-                                          Phone
+                                          Start Date
                                         </label>
-                                        <p className="text-sm text-slate-900 mt-1">
-                                          {project.client.client_phone ||
-                                            "No phone"}
-                                        </p>
+                                        {isEditing ? (
+                                          <input
+                                            type="date"
+                                            value={
+                                              editData.startDate ||
+                                              selectedLotData.startDate ||
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              setEditData({
+                                                ...editData,
+                                                startDate: e.target.value,
+                                              })
+                                            }
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent mt-1"
+                                          />
+                                        ) : (
+                                          <p className="text-sm text-slate-900 mt-1">
+                                            {selectedLotData.startDate
+                                              ? new Date(
+                                                selectedLotData.startDate
+                                              ).toLocaleDateString("en-AU", {
+                                                year: "numeric",
+                                                month: "long",
+                                                day: "numeric",
+                                              })
+                                              : "Not set"}
+                                          </p>
+                                        )}
                                       </div>
                                       <div>
                                         <label className="text-xs font-medium text-slate-600">
-                                          Type
+                                          Installation Due Date
                                         </label>
-                                        <p className="text-sm text-slate-900 mt-1 capitalize">
-                                          {project.client.client_type}
-                                        </p>
+                                        {isEditing ? (
+                                          <input
+                                            type="date"
+                                            value={
+                                              editData.installationDueDate ||
+                                              selectedLotData.installationDueDate ||
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              setEditData({
+                                                ...editData,
+                                                installationDueDate:
+                                                  e.target.value,
+                                              })
+                                            }
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent mt-1"
+                                          />
+                                        ) : (
+                                          <p className="text-sm text-slate-900 mt-1">
+                                            {selectedLotData.installationDueDate
+                                              ? new Date(
+                                                selectedLotData.installationDueDate
+                                              ).toLocaleDateString("en-AU", {
+                                                year: "numeric",
+                                                month: "long",
+                                                day: "numeric",
+                                              })
+                                              : "Not set"}
+                                          </p>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
-                                ) : (
-                                  <div className="text-center py-6 text-slate-500">
-                                    <User className="w-6 h-6 mx-auto mb-2 text-slate-400" />
-                                    <p className="text-sm mb-3">
-                                      No client assigned
-                                    </p>
-                                    <button
-                                      onClick={() => {
-                                        fetchClients();
-                                        setShowClientDropdown(true);
-                                        setClientSearchTerm("");
-                                      }}
-                                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
-                                    >
-                                      <Plus className="w-4 h-4" />
-                                      Assign Client
-                                    </button>
-                                  </div>
-                                )}
+                                </div>
+
+                                {/* Client Information */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                                  <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <User className="w-4 h-4" />
+                                    Client Information
+                                  </h3>
+
+                                  {project.client ? (
+                                    <div className="space-y-2">
+                                      <div>
+                                        <label className="text-xs font-medium text-slate-600">
+                                          Name
+                                        </label>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <div className="flex-1">
+                                            <button
+                                              onClick={() => {
+                                                const clientHref = `/admin/clients/${project.client.client_id}`;
+                                                router.push(clientHref);
+                                                dispatch(
+                                                  replaceTab({
+                                                    id: uuidv4(),
+                                                    title:
+                                                      project.client.client_name,
+                                                    href: clientHref,
+                                                  })
+                                                );
+                                              }}
+                                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                                            >
+                                              {project.client.client_name}
+                                            </button>
+                                            <p className="text-xs text-slate-500 mt-0.5">
+                                              ID: {project.client.client_id}
+                                            </p>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                const clientHref = `/admin/clients/${project.client.client_id}`;
+                                                dispatch(
+                                                  addTab({
+                                                    id: uuidv4(),
+                                                    title:
+                                                      project.client.client_name,
+                                                    href: clientHref,
+                                                  })
+                                                );
+                                              }}
+                                              className="p-1.5 rounded hover:bg-slate-100 transition-colors duration-200 cursor-pointer"
+                                              title="Open client in new tab"
+                                            >
+                                              <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                                            </button>
+                                            {!isEditing && (
+                                              <>
+                                                <button
+                                                  onClick={() => {
+                                                    fetchClients();
+                                                    setShowClientDropdown(true);
+                                                    setClientSearchTerm("");
+                                                  }}
+                                                  className="p-1.5 rounded hover:bg-blue-100 transition-colors duration-200 cursor-pointer"
+                                                  title="Change Client"
+                                                >
+                                                  <Edit className="w-4 h-4 text-blue-600" />
+                                                </button>
+                                                <button
+                                                  onClick={handleRemoveClient}
+                                                  disabled={isAssigningClient}
+                                                  className="p-1.5 rounded hover:bg-red-100 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                  title="Remove Client"
+                                                >
+                                                  <X className="w-4 h-4 text-red-600" />
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <label className="text-xs font-medium text-slate-600">
+                                          Email
+                                        </label>
+                                        <p className="text-sm text-slate-900 mt-1">
+                                          {project.client.client_email ||
+                                            "No email"}
+                                        </p>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                          <label className="text-xs font-medium text-slate-600">
+                                            Phone
+                                          </label>
+                                          <p className="text-sm text-slate-900 mt-1">
+                                            {project.client.client_phone ||
+                                              "No phone"}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <label className="text-xs font-medium text-slate-600">
+                                            Type
+                                          </label>
+                                          <p className="text-sm text-slate-900 mt-1 capitalize">
+                                            {project.client.client_type}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-center py-6 text-slate-500">
+                                      <User className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+                                      <p className="text-sm mb-3">
+                                        No client assigned
+                                      </p>
+                                      <button
+                                        onClick={() => {
+                                          fetchClients();
+                                          setShowClientDropdown(true);
+                                          setClientSearchTerm("");
+                                        }}
+                                        className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                        Assign Client
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Notes Section */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                                  <h3 className="text-lg font-bold text-slate-800 mb-3">
+                                    Notes
+                                  </h3>
+
+                                  <textarea
+                                    value={selectedLotData.notes || ""}
+                                    onChange={(e) =>
+                                      handleLotNotesChange(e.target.value)
+                                    }
+                                    className="w-full px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent resize-none"
+                                    rows="5"
+                                    placeholder="Add notes"
+                                  />
+                                  {notesSavedIndicators && (
+                                    <span className="text-xs text-green-600 font-medium block mt-1">
+                                      Saved!
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
-                              {/* Notes Section */}
-                              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                                <h3 className="text-lg font-bold text-slate-800 mb-3">
-                                  Notes
-                                </h3>
-
-                                <textarea
-                                  value={selectedLotData.notes || ""}
-                                  onChange={(e) =>
-                                    handleLotNotesChange(e.target.value)
-                                  }
-                                  className="w-full px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent resize-none"
-                                  rows="5"
-                                  placeholder="Add notes"
-                                />
-                                {notesSavedIndicators && (
-                                  <span className="text-xs text-green-600 font-medium block mt-1">
-                                    Saved!
-                                  </span>
-                                )}
-                              </div>
+                              {/* Stages Section - Full Width */}
+                              <StageTable
+                                selectedLotData={selectedLotData}
+                                getToken={getToken}
+                                fetchLotData={fetchLotData}
+                                validateDateInput={validateDateInput}
+                                updateLotData={setSelectedLotData}
+                              />
+                            </>
+                          ) : (
+                            <div className="text-center py-8">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary mx-auto mb-4"></div>
+                              <p className="text-slate-600">
+                                Loading lot details...
+                              </p>
                             </div>
-
-                            {/* Stages Section - Full Width */}
-                            <StageTable
-                              selectedLotData={selectedLotData}
-                              getToken={getToken}
-                              fetchLotData={fetchLotData}
-                              validateDateInput={validateDateInput}
-                              updateLotData={setSelectedLotData}
-                            />
-                          </>
+                          )
                         ) : (
-                          <div className="text-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary mx-auto mb-4"></div>
-                            <p className="text-slate-600">
-                              Loading lot details...
-                            </p>
-                          </div>
-                        )
-                      ) : (
-                        <div className="text-center py-12">
-                          <div className="mb-6">
-                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <Plus className="w-8 h-8 text-slate-400" />
+                          <div className="text-center py-12">
+                            <div className="mb-6">
+                              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Plus className="w-8 h-8 text-slate-400" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-slate-700 mb-2">
+                                No Lots Added
+                              </h3>
+                              <p className="text-slate-600 mb-6">
+                                This project doesn't have any lots yet. Add a lot
+                                to get started with project management.
+                              </p>
                             </div>
-                            <h3 className="text-lg font-semibold text-slate-700 mb-2">
-                              No Lots Added
-                            </h3>
-                            <p className="text-slate-600 mb-6">
-                              This project doesn't have any lots yet. Add a lot
-                              to get started with project management.
-                            </p>
+                            <button
+                              onClick={() => setShowAddLotForm(true)}
+                              className="cursor-pointer flex items-center gap-2 px-6 py-3 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-base font-medium mx-auto"
+                            >
+                              <Plus className="w-5 h-5" />
+                              Add First Lot
+                            </button>
                           </div>
-                          <button
-                            onClick={() => setShowAddLotForm(true)}
-                            className="cursor-pointer flex items-center gap-2 px-6 py-3 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-base font-medium mx-auto"
-                          >
-                            <Plus className="w-5 h-5" />
-                            Add First Lot
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    )}
 
                   {project.lots &&
                     project.lots.length > 0 &&

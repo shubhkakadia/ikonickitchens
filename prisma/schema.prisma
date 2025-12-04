@@ -90,7 +90,7 @@ model employees {
   phone                   String
   dob                     DateTime?
   join_date               DateTime?
-  address                 String?
+  address                 String?          @db.LongText
   emergency_contact_name  String?
   emergency_contact_phone String?
   bank_account_name       String?
@@ -158,7 +158,7 @@ model client {
   updatedAt      DateTime  @updatedAt
   client_type    String
   client_name    String    @unique
-  client_address String?
+  client_address String?   @db.LongText
   client_phone   String?
   client_email   String?
   client_website String?
@@ -457,7 +457,7 @@ model edging_tape {
 model supplier {
   supplier_id    String               @id @default(uuid())
   name           String               @unique
-  address        String?
+  address        String?              @db.LongText
   phone          String?
   email          String?
   website        String?

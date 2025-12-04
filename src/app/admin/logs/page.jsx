@@ -17,6 +17,7 @@ import {
   ChevronDown,
   RotateCcw,
   AlertTriangle,
+  Calendar,
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,6 +40,9 @@ export default function page() {
     useState(false);
   const [showActionFilterDropdown, setShowActionFilterDropdown] =
     useState(false);
+  const [showDateFilterDropdown, setShowDateFilterDropdown] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [selectedEntityTypes, setSelectedEntityTypes] = useState([]);
   const [selectedActions, setSelectedActions] = useState([]);
   const [hasInitializedFilters, setHasInitializedFilters] = useState(false);
@@ -68,6 +72,7 @@ export default function page() {
         setShowItemsPerPageDropdown(false);
         setShowEntityTypeFilterDropdown(false);
         setShowActionFilterDropdown(false);
+        setShowDateFilterDropdown(false);
         setShowColumnDropdown(false);
       }
     };
@@ -100,7 +105,7 @@ export default function page() {
       // Map of column names to their data extraction functions
       const columnMap = {
         "Date/Time": (log) =>
-          log.createdAt ? new Date(log.createdAt).toLocaleString() : "",
+          log.createdAt ? formatDateTime(log.createdAt) : "",
         "Entity Type": (log) => log.entity_type || "",
         Action: (log) => log.action || "",
         Description: (log) => log.description || "",
@@ -222,14 +227,41 @@ export default function page() {
         if (!matchesSearch) return false;
       }
 
+      // Date filter
+      if (startDate || endDate) {
+        if (!log.createdAt) return false;
+        const logDate = new Date(log.createdAt);
+        logDate.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (logDate < start) return false;
+        }
+
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999); // Set to end of day
+          if (logDate > end) return false;
+        }
+      }
+
       // Entity type filter
-      if (selectedEntityTypes.length > 0) {
-        if (!selectedEntityTypes.includes(log.entity_type)) return false;
+      if (selectedEntityTypes.length === 0) {
+        return false;
+      }
+
+      if (!selectedEntityTypes.includes(log.entity_type)) {
+        return false;
       }
 
       // Action filter
-      if (selectedActions.length > 0) {
-        if (!selectedActions.includes(log.action)) return false;
+      if (selectedActions.length === 0) {
+        return false;
+      }
+
+      if (!selectedActions.includes(log.action)) {
+        return false;
       }
 
       return true;
@@ -280,6 +312,8 @@ export default function page() {
     sortOrder,
     selectedEntityTypes,
     selectedActions,
+    startDate,
+    endDate,
   ]);
 
   // Pagination logic
@@ -290,10 +324,10 @@ export default function page() {
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedLogs = filteredAndSortedLogs.slice(startIndex, endIndex);
 
-  // Reset to first page when search or items per page changes
+  // Reset to first page when search, items per page, or date filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, itemsPerPage]);
+  }, [search, itemsPerPage, startDate, endDate]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -355,6 +389,8 @@ export default function page() {
     setSearch("");
     setSortField("createdAt");
     setSortOrder("desc");
+    setStartDate("");
+    setEndDate("");
     setSelectedEntityTypes([...distinctEntityTypes]);
     setSelectedActions([...distinctActions]);
     setCurrentPage(1);
@@ -383,6 +419,8 @@ export default function page() {
   const isAnyFilterActive = () => {
     return (
       search !== "" ||
+      startDate !== "" ||
+      endDate !== "" ||
       selectedEntityTypes.length !== distinctEntityTypes.length ||
       selectedActions.length !== distinctActions.length ||
       sortField !== "createdAt" ||
@@ -401,51 +439,74 @@ export default function page() {
   };
 
   useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const sessionToken = getToken();
+
+        if (!sessionToken) {
+          toast.error("No valid session found. Please login again.", {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          });
+          return;
+        }
+        let config = {
+          method: "get",
+          maxBodyLength: Infinity,
+          url: "/api/logs",
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            ...{},
+          },
+          data: {},
+        };
+
+        axios
+          .request(config)
+          .then((response) => {
+            setLoading(false);
+            if (response.data.status) {
+              setLogs(response.data.data);
+            } else {
+              setError(response.data.message);
+            }
+          })
+          .catch((error) => {
+            setLoading(false);
+            console.log(error);
+            setError(error.response?.data?.message || "Failed to fetch logs");
+          });
+      } catch (error) {
+        console.log(error);
+        setLoading(false);
+      }
+    };
+
     fetchLogs();
   }, []);
 
-  const fetchLogs = async () => {
-    try {
-      const sessionToken = getToken();
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
 
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
-        return;
-      }
-      let config = {
-        method: "get",
-        maxBodyLength: Infinity,
-        url: "/api/logs",
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          ...{},
-        },
-        data: {},
-      };
+    // Get day, month, year
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
 
-      axios
-        .request(config)
-        .then((response) => {
-          setLoading(false);
-          if (response.data.status) {
-            setLogs(response.data.data);
-          } else {
-            setError(response.data.message);
-          }
-        })
-        .catch((error) => {
-          setLoading(false);
-          console.log(error);
-          setError(error.response?.data?.message || "Failed to fetch logs");
-        });
-    } catch (error) {
-      console.log(error);
-      setLoading(false);
-    }
+    // Get hours, minutes, seconds
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+
+    // Convert to 12-hour format
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    const formattedHours = String(hours).padStart(2, "0");
+
+    return `${day}/${month}/${year}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
   };
 
   const getActionColor = (action) => {
@@ -531,6 +592,64 @@ export default function page() {
                           <div className="relative dropdown-container">
                             <button
                               onClick={() =>
+                                setShowDateFilterDropdown(!showDateFilterDropdown)
+                              }
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                            >
+                              <Calendar className="h-4 w-4" />
+                              <span>Filter by Dates</span>
+                              {(startDate || endDate) && (
+                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                  Active
+                                </span>
+                              )}
+                            </button>
+                            {showDateFilterDropdown && (
+                              <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-4">
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                      Start Date
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={startDate}
+                                      onChange={(e) => setStartDate(e.target.value)}
+                                      max={endDate || undefined}
+                                      className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                      End Date
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={endDate}
+                                      onChange={(e) => setEndDate(e.target.value)}
+                                      min={startDate || undefined}
+                                      className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                                    />
+                                  </div>
+                                  {(startDate || endDate) && (
+                                    <button
+                                      onClick={() => {
+                                        setStartDate("");
+                                        setEndDate("");
+                                      }}
+                                      className="w-full text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors duration-200"
+                                    >
+                                      Clear Dates
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="relative dropdown-container">
+                            <button
+                              onClick={() =>
                                 setShowEntityTypeFilterDropdown(
                                   !showEntityTypeFilterDropdown
                                 )
@@ -542,50 +661,37 @@ export default function page() {
                               {distinctEntityTypes.length -
                                 selectedEntityTypes.length >
                                 0 && (
-                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                  {distinctEntityTypes.length -
-                                    selectedEntityTypes.length}
-                                </span>
-                              )}
+                                  <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                    {distinctEntityTypes.length -
+                                      selectedEntityTypes.length}
+                                  </span>
+                                )}
                             </button>
                             {showEntityTypeFilterDropdown && (
-                              <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleEntityTypeToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                  >
-                                    <span>Select All</span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedEntityTypes.length ===
-                                        distinctEntityTypes.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedEntityTypes.length === distinctEntityTypes.length}
+                                      onChange={() => handleEntityTypeToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {distinctEntityTypes.map((type) => (
-                                    <button
+                                    <label
                                       key={type}
-                                      onClick={() =>
-                                        handleEntityTypeToggle(type)
-                                      }
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{type}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedEntityTypes.includes(
-                                          type
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedEntityTypes.includes(type)}
+                                        onChange={() => handleEntityTypeToggle(type)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -605,48 +711,37 @@ export default function page() {
                               <span>Action</span>
                               {distinctActions.length - selectedActions.length >
                                 0 && (
-                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                  {distinctActions.length -
-                                    selectedActions.length}
-                                </span>
-                              )}
+                                  <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                    {distinctActions.length -
+                                      selectedActions.length}
+                                  </span>
+                                )}
                             </button>
                             {showActionFilterDropdown && (
-                              <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleActionToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                  >
-                                    <span>Select All</span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedActions.length ===
-                                        distinctActions.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedActions.length === distinctActions.length}
+                                      onChange={() => handleActionToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {distinctActions.map((action) => (
-                                    <button
+                                    <label
                                       key={action}
-                                      onClick={() => handleActionToggle(action)}
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{action}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedActions.includes(
-                                          action
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedActions.includes(action)}
+                                        onChange={() => handleActionToggle(action)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -696,13 +791,12 @@ export default function page() {
                                 filteredAndSortedLogs.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
                                 filteredAndSortedLogs.length === 0 ||
                                 selectedColumns.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -719,53 +813,39 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedLogs.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
                                 filteredAndSortedLogs.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
                             {showColumnDropdown && (
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleColumnToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
-                                  >
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedColumns.length ===
-                                        availableColumns.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedColumns.length === availableColumns.length}
+                                      onChange={() => handleColumnToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {availableColumns.map((column) => (
-                                    <button
+                                    <label
                                       key={column}
-                                      onClick={() => handleColumnToggle(column)}
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(
-                                          column
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedColumns.includes(column)}
+                                        onChange={() => handleColumnToggle(column)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -846,9 +926,6 @@ export default function page() {
                                 >
                                   {search
                                     ? "No logs found matching your search"
-                                    : selectedEntityTypes.length === 0 ||
-                                      selectedActions.length === 0
-                                    ? "No logs found - please select at least one entity type and action to view logs"
                                     : "No logs found"}
                                 </td>
                               </tr>
@@ -860,7 +937,7 @@ export default function page() {
                                 >
                                   <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
                                     {log.createdAt
-                                      ? new Date(log.createdAt).toLocaleString()
+                                      ? formatDateTime(log.createdAt)
                                       : "-"}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
@@ -989,11 +1066,10 @@ export default function page() {
                                         onClick={() =>
                                           handlePageChange(pageNum)
                                         }
-                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${
-                                          currentPage === pageNum
-                                            ? "bg-primary text-white shadow-sm"
-                                            : "text-slate-600 hover:bg-white"
-                                        }`}
+                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${currentPage === pageNum
+                                          ? "bg-primary text-white shadow-sm"
+                                          : "text-slate-600 hover:bg-white"
+                                          }`}
                                       >
                                         {pageNum}
                                       </button>

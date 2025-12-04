@@ -314,31 +314,18 @@ export default function page() {
       if (search) {
         const searchLower = search.toLowerCase();
         const matchesSearch =
-          (item.description &&
-            item.description.toLowerCase().includes(searchLower)) ||
-          (item.supplier_reference &&
-            item.supplier_reference.toLowerCase().includes(searchLower)) ||
-          (item.sheet?.brand &&
-            item.sheet.brand.toLowerCase().includes(searchLower)) ||
-          (item.sheet?.color &&
-            item.sheet.color.toLowerCase().includes(searchLower)) ||
-          (item.sheet?.description &&
-            item.sheet.description.toLowerCase().includes(searchLower)) ||
-          (item.handle?.brand &&
-            item.handle.brand.toLowerCase().includes(searchLower)) ||
-          (item.handle?.color &&
-            item.handle.color.toLowerCase().includes(searchLower)) ||
-          (item.edging_tape?.brand &&
-            item.edging_tape.brand.toLowerCase().includes(searchLower)) ||
-          (item.edging_tape?.color &&
-            item.edging_tape.color.toLowerCase().includes(searchLower)) ||
-          (item.edging_tape?.description &&
-            item.edging_tape.description.toLowerCase().includes(searchLower));
+          (item.description || "").toLowerCase().includes(searchLower) ||
+          (item.supplier_reference || "").toLowerCase().includes(searchLower) ||
+          (item.sheet?.brand || "").toLowerCase().includes(searchLower) ||
+          (item.sheet?.color || "").toLowerCase().includes(searchLower) ||
+          (item.sheet?.description || "").toLowerCase().includes(searchLower) ||
+          (item.handle?.brand || "").toLowerCase().includes(searchLower) ||
+          (item.handle?.color || "").toLowerCase().includes(searchLower) ||
+          (item.edging_tape?.brand || "").toLowerCase().includes(searchLower) ||
+          (item.edging_tape?.color || "").toLowerCase().includes(searchLower) ||
+          (item.edging_tape?.description || "").toLowerCase().includes(searchLower);
         if (!matchesSearch) return false;
       }
-
-      // Category filter (only show current active tab's data)
-      if (!selectedCategories.includes(activeTab)) return false;
 
       // Quantity range filter
       if (
@@ -1037,11 +1024,10 @@ export default function page() {
                           <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                              activeTab === tab.id
-                                ? "border-secondary text-secondary"
-                                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                            }`}
+                            className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                              ? "border-secondary text-secondary"
+                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                              }`}
                           >
                             {tab.label}
                           </button>
@@ -1057,11 +1043,10 @@ export default function page() {
                           <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                           <input
                             type="text"
-                            placeholder={`Search ${
-                              activeTab === "edging_tape"
-                                ? "edging tape"
-                                : activeTab
-                            } items by description, supplier reference, brand, color`}
+                            placeholder={`Search ${activeTab === "edging_tape"
+                              ? "edging tape"
+                              : activeTab
+                              } items by description, supplier reference, brand, color`}
                             className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -1119,13 +1104,13 @@ export default function page() {
                                   )}
                                   {(activeTab === "sheet" ||
                                     activeTab === "sunmica") && (
-                                    <button
-                                      onClick={() => handleSort("finish")}
-                                      className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                    >
-                                      Finish {getSortIcon("finish")}
-                                    </button>
-                                  )}
+                                      <button
+                                        onClick={() => handleSort("finish")}
+                                        className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      >
+                                        Finish {getSortIcon("finish")}
+                                      </button>
+                                    )}
                                   {activeTab === "handle" && (
                                     <button
                                       onClick={() => handleSort("type")}
@@ -1185,11 +1170,10 @@ export default function page() {
                           <button
                             onClick={handleOpenStockTally}
                             disabled={filteredAndSortedData.length === 0}
-                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium relative ${
-                              filteredAndSortedData.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                            }`}
+                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium relative ${filteredAndSortedData.length === 0
+                              ? "opacity-50 cursor-not-allowed"
+                              : "cursor-pointer hover:bg-slate-100"
+                              }`}
                           >
                             <ClipboardList className="h-4 w-4" />
                             <span>Stock Tally</span>
@@ -1203,13 +1187,12 @@ export default function page() {
                                 filteredAndSortedData.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
                                 filteredAndSortedData.length === 0 ||
                                 selectedColumns.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -1226,53 +1209,39 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedData.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
                                 filteredAndSortedData.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
                             {showColumnDropdown && (
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleColumnToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
-                                  >
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedColumns.length ===
-                                        availableColumns.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedColumns.length === availableColumns.length}
+                                      onChange={() => handleColumnToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {availableColumns.map((column) => (
-                                    <button
+                                    <label
                                       key={column}
-                                      onClick={() => handleColumnToggle(column)}
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(
-                                          column
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedColumns.includes(column)}
+                                        onChange={() => handleColumnToggle(column)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -1295,48 +1264,48 @@ export default function page() {
                                 activeTab === "handle" ||
                                 activeTab === "hardware" ||
                                 activeTab === "edging_tape") && (
-                                <th
-                                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                  onClick={() => handleSort("brand")}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    Brand
-                                    {getSortIcon("brand")}
-                                  </div>
-                                </th>
-                              )}
+                                  <th
+                                    className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                    onClick={() => handleSort("brand")}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      Brand
+                                      {getSortIcon("brand")}
+                                    </div>
+                                  </th>
+                                )}
                               {(activeTab === "sheet" ||
                                 activeTab === "sunmica" ||
                                 activeTab === "handle" ||
                                 activeTab === "edging_tape") && (
-                                <th
-                                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                  onClick={() => handleSort("color")}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    Color
-                                    {getSortIcon("color")}
-                                  </div>
-                                </th>
-                              )}
+                                  <th
+                                    className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                    onClick={() => handleSort("color")}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      Color
+                                      {getSortIcon("color")}
+                                    </div>
+                                  </th>
+                                )}
                               {(activeTab === "sheet" ||
                                 activeTab === "sunmica" ||
                                 activeTab === "edging_tape") && (
-                                <>
-                                  <th
-                                    className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                    onClick={() => handleSort("finish")}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      Finish
-                                      {getSortIcon("finish")}
-                                    </div>
-                                  </th>
-                                  <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                    Dimensions
-                                  </th>
-                                </>
-                              )}
+                                  <>
+                                    <th
+                                      className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                      onClick={() => handleSort("finish")}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        Finish
+                                        {getSortIcon("finish")}
+                                      </div>
+                                    </th>
+                                    <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                      Dimensions
+                                    </th>
+                                  </>
+                                )}
                               {activeTab === "handle" && (
                                 <>
                                   <th
@@ -1481,41 +1450,41 @@ export default function page() {
                                     activeTab === "handle" ||
                                     activeTab === "hardware" ||
                                     activeTab === "edging_tape") && (
-                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                      {item.sheet?.brand ||
-                                        item.handle?.brand ||
-                                        item.hardware?.brand ||
-                                        item.edging_tape?.brand ||
-                                        "N/A"}
-                                    </td>
-                                  )}
+                                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
+                                        {item.sheet?.brand ||
+                                          item.handle?.brand ||
+                                          item.hardware?.brand ||
+                                          item.edging_tape?.brand ||
+                                          "N/A"}
+                                      </td>
+                                    )}
                                   {(activeTab === "sheet" ||
                                     activeTab === "sunmica" ||
                                     activeTab === "handle" ||
                                     activeTab === "edging_tape") && (
-                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                      {item.sheet?.color ||
-                                        item.handle?.color ||
-                                        item.edging_tape?.color ||
-                                        "N/A"}
-                                    </td>
-                                  )}
+                                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                        {item.sheet?.color ||
+                                          item.handle?.color ||
+                                          item.edging_tape?.color ||
+                                          "N/A"}
+                                      </td>
+                                    )}
                                   {(activeTab === "sheet" ||
                                     activeTab === "sunmica" ||
                                     activeTab === "edging_tape") && (
-                                    <>
-                                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                        {item.sheet?.finish ||
-                                          item.edging_tape?.finish ||
-                                          "N/A"}
-                                      </td>
-                                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                        {item.sheet?.dimensions ||
-                                          item.edging_tape?.dimensions ||
-                                          "N/A"}
-                                      </td>
-                                    </>
-                                  )}
+                                      <>
+                                        <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                          {item.sheet?.finish ||
+                                            item.edging_tape?.finish ||
+                                            "N/A"}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                          {item.sheet?.dimensions ||
+                                            item.edging_tape?.dimensions ||
+                                            "N/A"}
+                                        </td>
+                                      </>
+                                    )}
                                   {activeTab === "handle" && (
                                     <>
                                       <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
@@ -1655,11 +1624,10 @@ export default function page() {
                                         onClick={() =>
                                           handlePageChange(pageNum)
                                         }
-                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${
-                                          currentPage === pageNum
-                                            ? "bg-primary text-white shadow-sm"
-                                            : "text-slate-600 hover:bg-white"
-                                        }`}
+                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${currentPage === pageNum
+                                          ? "bg-primary text-white shadow-sm"
+                                          : "text-slate-600 hover:bg-white"
+                                          }`}
                                       >
                                         {pageNum}
                                       </button>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
@@ -46,6 +46,11 @@ export default function page() {
   const [error, setError] = useState(null);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
+  // Refs for dropdown containers
+  const sortDropdownRef = useRef(null);
+  const itemsPerPageDropdownRef = useRef(null);
+  const columnDropdownRef = useRef(null);
+
   // Define all available columns for export
   const availableColumns = [
     "Supplier Name",
@@ -62,6 +67,33 @@ export default function page() {
 
   // Initialize selected columns with all columns
   const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
+
+  // Helper function to calculate total statement due
+  const calculateTotalStatementDue = (supplier) => {
+    const totalStatementDue =
+      supplier.statements &&
+        Array.isArray(supplier.statements)
+        ? supplier.statements.reduce(
+          (sum, statement) => {
+            const amount =
+              parseFloat(statement.amount) || 0;
+            return sum + amount;
+          },
+          0
+        )
+        : 0;
+    return totalStatementDue;
+  };
+
+  // Helper function to calculate active PO count
+  const calculateActivePOCount = (supplier) => {
+    const activePOCount =
+      supplier.purchase_order &&
+        Array.isArray(supplier.purchase_order)
+        ? supplier.purchase_order.length
+        : 0;
+    return activePOCount;
+  };
 
   // Filter and sort suppliers
   const filteredAndSortedSuppliers = useMemo(() => {
@@ -82,10 +114,30 @@ export default function page() {
 
     // Sort suppliers
     filtered.sort((a, b) => {
-      let aValue = a[sortField] || "";
-      let bValue = b[sortField] || "";
+      let aValue, bValue;
 
-      // Convert to string for comparison
+      // Handle computed fields
+      if (sortField === "total_statement_due") {
+        aValue = calculateTotalStatementDue(a);
+        bValue = calculateTotalStatementDue(b);
+      } else if (sortField === "active_po_count") {
+        aValue = calculateActivePOCount(a);
+        bValue = calculateActivePOCount(b);
+      } else {
+        aValue = a[sortField] || "";
+        bValue = b[sortField] || "";
+      }
+
+      // Handle numeric comparisons
+      if (sortField === "total_statement_due" || sortField === "active_po_count") {
+        if (sortOrder === "asc") {
+          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        } else {
+          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        }
+      }
+
+      // Handle string comparisons
       aValue = aValue.toString().toLowerCase();
       bValue = bValue.toString().toLowerCase();
 
@@ -113,13 +165,26 @@ export default function page() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest(".dropdown-container")) {
+      // Check if click is outside all dropdown containers
+      if (
+        sortDropdownRef.current &&
+        !sortDropdownRef.current.contains(event.target)
+      ) {
         setShowSortDropdown(false);
+      }
+      if (
+        itemsPerPageDropdownRef.current &&
+        !itemsPerPageDropdownRef.current.contains(event.target)
+      ) {
         setShowItemsPerPageDropdown(false);
+      }
+      if (
+        columnDropdownRef.current &&
+        !columnDropdownRef.current.contains(event.target)
+      ) {
         setShowColumnDropdown(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -142,40 +207,29 @@ export default function page() {
           autoClose: 3000,
           hideProgressBar: false,
         });
+        setLoading(false);
         return;
       }
-      let config = {
-        method: "get",
-        maxBodyLength: Infinity,
-        url: "/api/supplier/all",
+
+      const response = await axios.get("/api/supplier/all", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
-          ...{},
         },
-        data: {},
-      };
+      });
 
-      axios
-        .request(config)
-        .then((response) => {
-          setLoading(false);
-          if (response.data.status) {
-            setSuppliers(response.data.data);
-          } else {
-            setError(response.data.message);
-          }
-        })
-        .catch((error) => {
-          setLoading(false);
-          console.log(error);
-          setError(
-            error.response?.data?.message || "Failed to fetch suppliers"
-          );
-        });
-    } catch (error) {
-      console.log(error);
       setLoading(false);
-      setError("An unexpected error occurred");
+      if (response.data.status) {
+        setSuppliers(response.data.data);
+        setError(null);
+      } else {
+        setError(response.data.message || "Failed to fetch suppliers");
+      }
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
+      setLoading(false);
+      setError(
+        error.response?.data?.message || "Failed to fetch suppliers"
+      );
     }
   };
 
@@ -281,15 +335,15 @@ export default function page() {
           const totalStatementDue =
             supplier.statements && Array.isArray(supplier.statements)
               ? supplier.statements.reduce((sum, statement) => {
-                  const amount = parseFloat(statement.amount) || 0;
-                  return sum + amount;
-                }, 0)
+                const amount = parseFloat(statement.amount) || 0;
+                return sum + amount;
+              }, 0)
               : 0;
           return totalStatementDue > 0
             ? totalStatementDue.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
             : "0.00";
         },
         "Active PO Count": (supplier) => {
@@ -456,7 +510,7 @@ export default function page() {
                             </button>
                           )}
 
-                          <div className="relative dropdown-container">
+                          <div className="relative" ref={sortDropdownRef}>
                             <button
                               onClick={() =>
                                 setShowSortDropdown(!showSortDropdown)
@@ -479,7 +533,7 @@ export default function page() {
                               </div>
                             )}
                           </div>
-                          <div className="relative dropdown-container flex items-center">
+                          <div className="relative flex items-center" ref={columnDropdownRef}>
                             <button
                               onClick={handleExportToExcel}
                               disabled={
@@ -487,13 +541,12 @@ export default function page() {
                                 filteredAndSortedSuppliers.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
                                 filteredAndSortedSuppliers.length === 0 ||
                                 selectedColumns.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -510,53 +563,39 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedSuppliers.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
                                 filteredAndSortedSuppliers.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
                             {showColumnDropdown && (
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleColumnToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
-                                  >
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedColumns.length ===
-                                        availableColumns.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedColumns.length === availableColumns.length}
+                                      onChange={() => handleColumnToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {availableColumns.map((column) => (
-                                    <button
+                                    <label
                                       key={column}
-                                      onClick={() => handleColumnToggle(column)}
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(
-                                          column
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedColumns.includes(column)}
+                                        onChange={() => handleColumnToggle(column)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -587,11 +626,23 @@ export default function page() {
                               <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                 Phone
                               </th>
-                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                Total Statement Due
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("total_statement_due")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Total Statement Due
+                                  {getSortIcon("total_statement_due")}
+                                </div>
                               </th>
-                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                Active PO Count
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("active_po_count")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Active PO Count
+                                  {getSortIcon("active_po_count")}
+                                </div>
                               </th>
                             </tr>
                           </thead>
@@ -629,25 +680,10 @@ export default function page() {
                             ) : (
                               paginatedSuppliers.map((supplier) => {
                                 // Calculate total statement due
-                                const totalStatementDue =
-                                  supplier.statements &&
-                                  Array.isArray(supplier.statements)
-                                    ? supplier.statements.reduce(
-                                        (sum, statement) => {
-                                          const amount =
-                                            parseFloat(statement.amount) || 0;
-                                          return sum + amount;
-                                        },
-                                        0
-                                      )
-                                    : 0;
+                                const totalStatementDue = calculateTotalStatementDue(supplier);
 
                                 // Calculate active PO count
-                                const activePOCount =
-                                  supplier.purchase_order &&
-                                  Array.isArray(supplier.purchase_order)
-                                    ? supplier.purchase_order.length
-                                    : 0;
+                                const activePOCount = calculateActivePOCount(supplier);
 
                                 return (
                                   <tr
@@ -678,12 +714,12 @@ export default function page() {
                                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
                                       {totalStatementDue > 0
                                         ? `$${totalStatementDue.toLocaleString(
-                                            "en-US",
-                                            {
-                                              minimumFractionDigits: 2,
-                                              maximumFractionDigits: 2,
-                                            }
-                                          )}`
+                                          "en-US",
+                                          {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                          }
+                                        )}`
                                         : "-"}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
@@ -708,7 +744,7 @@ export default function page() {
                               <span className="text-sm text-slate-600 font-medium">
                                 Showing
                               </span>
-                              <div className="relative dropdown-container">
+                              <div className="relative" ref={itemsPerPageDropdownRef}>
                                 <button
                                   onClick={() =>
                                     setShowItemsPerPageDropdown(
@@ -788,11 +824,10 @@ export default function page() {
                                         onClick={() =>
                                           handlePageChange(pageNum)
                                         }
-                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${
-                                          currentPage === pageNum
-                                            ? "bg-primary text-white shadow-sm"
-                                            : "text-slate-600 hover:bg-white"
-                                        }`}
+                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${currentPage === pageNum
+                                          ? "bg-primary text-white shadow-sm"
+                                          : "text-slate-600 hover:bg-white"
+                                          }`}
                                       >
                                         {pageNum}
                                       </button>

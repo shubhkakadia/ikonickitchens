@@ -1,3 +1,4 @@
+"use client";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -21,8 +22,263 @@ import PurchaseOrderForm from "./PurchaseOrderForm";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 
+const GroupedItemsTable = (({ items, mtoId, activeTab, onOpenPO }) => {
+  const groupedItems = useMemo(() => {
+    if (!items || items.length === 0) return null;
+
+    // Group items by supplier name (Unassigned last)
+    const groups = new Map();
+    items.forEach((it) => {
+      const supplierName = it.item?.supplier?.name || "Unassigned";
+      if (!groups.has(supplierName)) groups.set(supplierName, []);
+      groups.get(supplierName).push(it);
+    });
+
+    // Sort group names (Unassigned last)
+    const orderedGroupNames = Array.from(groups.keys()).sort((a, b) => {
+      if (a === "Unassigned" && b !== "Unassigned") return 1;
+      if (b === "Unassigned" && a !== "Unassigned") return -1;
+      return a.localeCompare(b);
+    });
+
+    return { groups, orderedGroupNames };
+  }, [items]);
+
+  if (!groupedItems) return null;
+
+  const { groups, orderedGroupNames } = groupedItems;
+
+  return (
+    <div className="space-y-2">
+      {orderedGroupNames.map((name) => (
+        <div key={name}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-semibold text-slate-700">{name}</div>
+            {activeTab === "active" && name !== "Unassigned" && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const firstItem = groups.get(name)?.[0];
+                  const supplierId =
+                    firstItem?.item?.supplier?.supplier_id ||
+                    firstItem?.item?.supplier_id ||
+                    null;
+                  if (!supplierId) return;
+                  onOpenPO(name, supplierId, mtoId);
+                }}
+                className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
+              >
+                <Plus className="inline w-3 h-3 mr-1" /> Create Purchase Order
+              </button>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border border-slate-200 rounded-lg">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Image
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Category
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Details
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Quantity
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {groups.get(name).map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {item.item?.image?.url ? (
+                          <Image
+                            loading="lazy"
+                            src={`/${item.item.image.url}`}
+                            alt={item.item_id || item.item?.category || "Item image"}
+                            className="w-10 h-10 object-cover rounded border border-slate-200"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              e.target.nextSibling.style.display = "flex";
+                            }}
+                            width={40}
+                            height={40}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                            <Package className="w-5 h-5 text-slate-400" />
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                        {item.item?.category}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="text-xs text-gray-600 space-y-1">
+                        {item.item?.sheet && (
+                          <>
+                            <div>
+                              <span className="font-medium">Brand:</span>{" "}
+                              {item.item.sheet.brand || "-"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Color:</span>{" "}
+                              {item.item.sheet.color}
+                            </div>
+                            <div>
+                              <span className="font-medium">Finish:</span>{" "}
+                              {item.item.sheet.finish}
+                            </div>
+                            <div>
+                              <span className="font-medium">Face:</span>{" "}
+                              {item.item.sheet.face || "-"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Dimensions:</span>{" "}
+                              {item.item.sheet.dimensions}
+                            </div>
+                          </>
+                        )}
+                        {item.item?.handle && (
+                          <>
+                            <div>
+                              <span className="font-medium">Brand:</span>{" "}
+                              {item.item.handle.brand || "-"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Color:</span>{" "}
+                              {item.item.handle.color}
+                            </div>
+                            <div>
+                              <span className="font-medium">Type:</span>{" "}
+                              {item.item.handle.type}
+                            </div>
+                            <div>
+                              <span className="font-medium">Dimensions:</span>{" "}
+                              {item.item.handle.dimensions}
+                            </div>
+                            <div>
+                              <span className="font-medium">Material:</span>{" "}
+                              {item.item.handle.material || "-"}
+                            </div>
+                          </>
+                        )}
+                        {item.item?.hardware && (
+                          <>
+                            <div>
+                              <span className="font-medium">Brand:</span>{" "}
+                              {item.item.hardware.brand || "-"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Name:</span>{" "}
+                              {item.item.hardware.name}
+                            </div>
+                            <div>
+                              <span className="font-medium">Type:</span>{" "}
+                              {item.item.hardware.type}
+                            </div>
+                            <div>
+                              <span className="font-medium">Dimensions:</span>{" "}
+                              {item.item.hardware.dimensions}
+                            </div>
+                            <div>
+                              <span className="font-medium">Sub Category:</span>{" "}
+                              {item.item.hardware.sub_category}
+                            </div>
+                          </>
+                        )}
+                        {item.item?.accessory && (
+                          <>
+                            <div>
+                              <span className="font-medium">Name:</span>{" "}
+                              {item.item.accessory.name}
+                            </div>
+                          </>
+                        )}
+                        {item.item?.edging_tape && (
+                          <>
+                            <div>
+                              <span className="font-medium">Brand:</span>{" "}
+                              {item.item.edging_tape.brand || "-"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Color:</span>{" "}
+                              {item.item.edging_tape.color || "-"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Finish:</span>{" "}
+                              {item.item.edging_tape.finish || "-"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Dimensions:</span>{" "}
+                              {item.item.edging_tape.dimensions || "-"}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <div className="text-xs text-gray-600">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Package className="w-4 h-4 text-gray-500" />
+                          <span>
+                            <span className="font-medium">Qty:</span>{" "}
+                            {item.quantity} {item.item?.measurement_unit}
+                          </span>
+                        </div>
+                        {item.quantity_ordered > 0 && (
+                          <div className="flex items-center gap-1.5 text-blue-600 text-xs">
+                            <span>Ordered: {item.quantity_ordered}</span>
+                          </div>
+                        )}
+                        {item.quantity_received > 0 && (
+                          <div className="flex items-center gap-1.5 text-green-600 text-xs">
+                            <span>Received: {item.quantity_received}</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {item.quantity_ordered > 0 && (
+                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                          Ordered
+                        </span>
+                      )}
+                      {item.quantity_received > 0 && (
+                        <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                          Received
+                        </span>
+                      )}
+                      {item.quantity_ordered === 0 &&
+                        item.quantity_received === 0 && (
+                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                            Pending
+                          </span>
+                        )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+});
+
 export default function MaterialsToOrder({
-  supplier,
   supplierId,
   onCountChange,
 }) {
@@ -370,21 +626,19 @@ export default function MaterialsToOrder({
         <nav className="flex space-x-6">
           <button
             onClick={() => setMtoActiveTab("active")}
-            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
-              mtoActiveTab === "active"
+            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${mtoActiveTab === "active"
                 ? "border-primary text-primary"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
+              }`}
           >
             Active
           </button>
           <button
             onClick={() => setMtoActiveTab("completed")}
-            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
-              mtoActiveTab === "completed"
+            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${mtoActiveTab === "completed"
                 ? "border-primary text-primary"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
+              }`}
           >
             Completed
           </button>
@@ -484,24 +738,22 @@ export default function MaterialsToOrder({
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-1 text-xs font-medium rounded ${
-                            mto.status === "DRAFT"
+                          className={`px-2 py-1 text-xs font-medium rounded ${mto.status === "DRAFT"
                               ? "bg-yellow-100 text-yellow-800"
                               : mto.status === "PARTIALLY_ORDERED"
-                              ? "bg-blue-100 text-blue-800"
-                              : mto.status === "FULLY_ORDERED"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
+                                ? "bg-blue-100 text-blue-800"
+                                : mto.status === "FULLY_ORDERED"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-800"
+                            }`}
                         >
                           {mto.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <ChevronDown
-                          className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${
-                            openAccordionId === mto.id ? "rotate-180" : ""
-                          }`}
+                          className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${openAccordionId === mto.id ? "rotate-180" : ""
+                            }`}
                         />
                       </td>
                     </tr>
@@ -558,378 +810,12 @@ export default function MaterialsToOrder({
 
                             {/* Items grouped by supplier */}
                             {!!(mto.items && mto.items.length) && (
-                              <div className="space-y-2">
-                                {(() => {
-                                  // Group items by supplier name (Unassigned last)
-                                  const groups = new Map();
-                                  mto.items.forEach((it) => {
-                                    const supplierName =
-                                      it.item?.supplier?.name || "Unassigned";
-                                    if (!groups.has(supplierName))
-                                      groups.set(supplierName, []);
-                                    groups.get(supplierName).push(it);
-                                  });
-                                  const orderedGroupNames = Array.from(
-                                    groups.keys()
-                                  ).sort((a, b) => {
-                                    if (
-                                      a === "Unassigned" &&
-                                      b !== "Unassigned"
-                                    )
-                                      return 1;
-                                    if (
-                                      b === "Unassigned" &&
-                                      a !== "Unassigned"
-                                    )
-                                      return -1;
-                                    return a.localeCompare(b);
-                                  });
-                                  return orderedGroupNames.map((name) => (
-                                    <div key={name}>
-                                      <div className="flex items-center justify-between mb-2">
-                                        <div className="text-xs font-semibold text-slate-700">
-                                          {name}
-                                        </div>
-                                        {mtoActiveTab === "active" &&
-                                          name !== "Unassigned" && (
-                                            <button
-                                              type="button"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                const firstItem =
-                                                  groups.get(name)?.[0];
-                                                const supplierId =
-                                                  firstItem?.item?.supplier
-                                                    ?.supplier_id ||
-                                                  firstItem?.item
-                                                    ?.supplier_id ||
-                                                  null;
-                                                if (!supplierId) return;
-                                                openCreatePOForSupplier(
-                                                  name,
-                                                  supplierId,
-                                                  mto.id
-                                                );
-                                              }}
-                                              className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
-                                            >
-                                              <Plus className="inline w-3 h-3 mr-1" />{" "}
-                                              Create Purchase Order
-                                            </button>
-                                          )}
-                                      </div>
-                                      <div className="overflow-x-auto">
-                                        <table className="w-full border border-slate-200 rounded-lg">
-                                          <thead className="bg-slate-50">
-                                            <tr>
-                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Image
-                                              </th>
-                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Category
-                                              </th>
-                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Details
-                                              </th>
-                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Quantity
-                                              </th>
-                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Status
-                                              </th>
-                                            </tr>
-                                          </thead>
-                                          <tbody className="bg-white divide-y divide-slate-200">
-                                            {groups.get(name).map((item) => (
-                                              <tr
-                                                key={item.id}
-                                                className="hover:bg-slate-50"
-                                              >
-                                                <td className="px-3 py-2 whitespace-nowrap">
-                                                  <div className="flex items-center">
-                                                    {item.item?.image?.url ? (
-                                                      <Image
-                                                        loading="lazy"
-                                                        src={`/${item.item.image.url}`}
-                                                        alt={item.item_id}
-                                                        className="w-10 h-10 object-cover rounded border border-slate-200"
-                                                        onError={(e) => {
-                                                          e.target.style.display =
-                                                            "none";
-                                                          e.target.nextSibling.style.display =
-                                                            "flex";
-                                                        }}
-                                                        width={40}
-                                                        height={40}
-                                                      />
-                                                    ) : (
-                                                      <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                                                        <Package className="w-5 h-5 text-slate-400" />
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                </td>
-                                                <td className="px-3 py-2 whitespace-nowrap">
-                                                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                                    {item.item?.category}
-                                                  </span>
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                  <div className="text-xs text-gray-600 space-y-1">
-                                                    {item.item?.sheet && (
-                                                      <>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Brand:
-                                                          </span>{" "}
-                                                          {item.item.sheet
-                                                            .brand || "-"}
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Color:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.sheet
-                                                              .color
-                                                          }
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Finish:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.sheet
-                                                              .finish
-                                                          }
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Face:
-                                                          </span>{" "}
-                                                          {item.item.sheet
-                                                            .face || "-"}
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Dimensions:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.sheet
-                                                              .dimensions
-                                                          }
-                                                        </div>
-                                                      </>
-                                                    )}
-                                                    {item.item?.handle && (
-                                                      <>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Brand:
-                                                          </span>{" "}
-                                                          {item.item.handle
-                                                            .brand || "-"}
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Color:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.handle
-                                                              .color
-                                                          }
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Type:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.handle
-                                                              .type
-                                                          }
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Dimensions:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.handle
-                                                              .dimensions
-                                                          }
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Material:
-                                                          </span>{" "}
-                                                          {item.item.handle
-                                                            .material || "-"}
-                                                        </div>
-                                                      </>
-                                                    )}
-                                                    {item.item?.hardware && (
-                                                      <>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Brand:
-                                                          </span>{" "}
-                                                          {item.item.hardware
-                                                            .brand || "-"}
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Name:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.hardware
-                                                              .name
-                                                          }
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Type:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.hardware
-                                                              .type
-                                                          }
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Dimensions:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.hardware
-                                                              .dimensions
-                                                          }
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Sub Category:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.hardware
-                                                              .sub_category
-                                                          }
-                                                        </div>
-                                                      </>
-                                                    )}
-                                                    {item.item?.accessory && (
-                                                      <>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Name:
-                                                          </span>{" "}
-                                                          {
-                                                            item.item.accessory
-                                                              .name
-                                                          }
-                                                        </div>
-                                                      </>
-                                                    )}
-                                                    {item.item?.edging_tape && (
-                                                      <>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Brand:
-                                                          </span>{" "}
-                                                          {item.item.edging_tape
-                                                            .brand || "-"}
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Color:
-                                                          </span>{" "}
-                                                          {item.item.edging_tape
-                                                            .color || "-"}
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Finish:
-                                                          </span>{" "}
-                                                          {item.item.edging_tape
-                                                            .finish || "-"}
-                                                        </div>
-                                                        <div>
-                                                          <span className="font-medium">
-                                                            Dimensions:
-                                                          </span>{" "}
-                                                          {item.item.edging_tape
-                                                            .dimensions || "-"}
-                                                        </div>
-                                                      </>
-                                                    )}
-                                                  </div>
-                                                </td>
-                                                <td className="px-3 py-2 whitespace-nowrap">
-                                                  <div className="text-xs text-gray-600">
-                                                    <div className="flex items-center gap-1.5 mb-1">
-                                                      <Package className="w-4 h-4 text-gray-500" />
-                                                      <span>
-                                                        <span className="font-medium">
-                                                          Qty:
-                                                        </span>{" "}
-                                                        {item.quantity}{" "}
-                                                        {
-                                                          item.item
-                                                            ?.measurement_unit
-                                                        }
-                                                      </span>
-                                                    </div>
-                                                    {item.quantity_ordered >
-                                                      0 && (
-                                                      <div className="flex items-center gap-1.5 text-blue-600 text-xs">
-                                                        <span>
-                                                          Ordered:{" "}
-                                                          {
-                                                            item.quantity_ordered
-                                                          }
-                                                        </span>
-                                                      </div>
-                                                    )}
-                                                    {item.quantity_received >
-                                                      0 && (
-                                                      <div className="flex items-center gap-1.5 text-green-600 text-xs">
-                                                        <span>
-                                                          Received:{" "}
-                                                          {
-                                                            item.quantity_received
-                                                          }
-                                                        </span>
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                </td>
-                                                <td className="px-3 py-2 whitespace-nowrap">
-                                                  {item.quantity_ordered >
-                                                    0 && (
-                                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                                      Ordered
-                                                    </span>
-                                                  )}
-                                                  {item.quantity_received >
-                                                    0 && (
-                                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-                                                      Received
-                                                    </span>
-                                                  )}
-                                                  {item.quantity_ordered ===
-                                                    0 &&
-                                                    item.quantity_received ===
-                                                      0 && (
-                                                      <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                                        Pending
-                                                      </span>
-                                                    )}
-                                                </td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </div>
-                                  ));
-                                })()}
-                              </div>
+                              <GroupedItemsTable
+                                items={mto.items}
+                                mtoId={mto.id}
+                                activeTab={mtoActiveTab}
+                                onOpenPO={openCreatePOForSupplier}
+                              />
                             )}
                           </div>
                         </td>
@@ -1032,9 +918,8 @@ export default function MaterialsToOrder({
                           {title} ({files.length})
                         </span>
                         <div
-                          className={`transform transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
+                          className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                            }`}
                         >
                           <ChevronDown className="w-4 h-4" />
                         </div>
@@ -1048,23 +933,21 @@ export default function MaterialsToOrder({
                               key={file.id}
                               onClick={() => handleViewExistingFile(file)}
                               title="Click to view file"
-                              className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
-                                isSmall ? "w-32" : "w-40"
-                              }`}
+                              className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
+                                }`}
                             >
                               {/* File Preview */}
                               <div
-                                className={`w-full ${
-                                  isSmall ? "aspect-[4/3]" : "aspect-square"
-                                } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                                className={`w-full ${isSmall ? "aspect-[4/3]" : "aspect-square"
+                                  } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
                               >
                                 {file.mime_type?.includes("image") ||
-                                file.file_type === "image" ? (
+                                  file.file_type === "image" ? (
                                   <Image
                                     height={100}
                                     width={100}
                                     src={`/${file.url}`}
-                                    alt={file.filename}
+                                    alt={file.filename || "Media file"}
                                     className="w-full h-full object-cover rounded-lg"
                                   />
                                 ) : file.mime_type?.includes("video") ||
@@ -1077,27 +960,24 @@ export default function MaterialsToOrder({
                                   />
                                 ) : (
                                   <div
-                                    className={`w-full h-full flex items-center justify-center rounded-lg ${
-                                      file.mime_type?.includes("pdf") ||
-                                      file.file_type === "pdf" ||
-                                      file.extension === "pdf"
+                                    className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type?.includes("pdf") ||
+                                        file.file_type === "pdf" ||
+                                        file.extension === "pdf"
                                         ? "bg-red-50"
                                         : "bg-green-50"
-                                    }`}
+                                      }`}
                                   >
                                     {file.mime_type?.includes("pdf") ||
-                                    file.file_type === "pdf" ||
-                                    file.extension === "pdf" ? (
+                                      file.file_type === "pdf" ||
+                                      file.extension === "pdf" ? (
                                       <FileText
-                                        className={`${
-                                          isSmall ? "w-6 h-6" : "w-8 h-8"
-                                        } text-red-600`}
+                                        className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                                          } text-red-600`}
                                       />
                                     ) : (
                                       <File
-                                        className={`${
-                                          isSmall ? "w-6 h-6" : "w-8 h-8"
-                                        } text-green-600`}
+                                        className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                                          } text-green-600`}
                                       />
                                     )}
                                   </div>
@@ -1205,9 +1085,8 @@ export default function MaterialsToOrder({
                     Select Files {uploadingMedia && "(Uploading...)"}
                   </label>
                   <div
-                    className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
-                      uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                    className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                   >
                     <input
                       ref={fileInputRef}

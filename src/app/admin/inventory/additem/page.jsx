@@ -13,7 +13,6 @@ import Image from "next/image";
 
 export default function page() {
   const { getToken } = useAuth();
-
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -29,6 +28,7 @@ export default function page() {
   const subCategoryDropdownRef = useRef(null);
   const supplierDropdownRef = useRef(null);
   const fileInputRef = useRef(null);
+  const faceAutoSetRef = useRef(false);
   const [selectedCategory, setSelectedCategory] = useState("Sheet");
   const [imagePreview, setImagePreview] = useState(null);
   const categories = [
@@ -106,7 +106,7 @@ export default function page() {
     };
 
     fetchSuppliers();
-  }, [getToken]);
+  }, []);
 
   // Filter suppliers based on search term
   useEffect(() => {
@@ -123,21 +123,17 @@ export default function page() {
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
-      if (
-        subCategoryDropdownRef.current &&
-        !subCategoryDropdownRef.current.contains(event.target)
-      ) {
-        setIsSubCategoryDropdownOpen(false);
-      }
-      if (
-        supplierDropdownRef.current &&
-        !supplierDropdownRef.current.contains(event.target)
-      ) {
-        setIsSupplierDropdownOpen(false);
-      }
+      const dropdowns = [
+        { ref: dropdownRef, setIsOpen: setIsDropdownOpen },
+        { ref: subCategoryDropdownRef, setIsOpen: setIsSubCategoryDropdownOpen },
+        { ref: supplierDropdownRef, setIsOpen: setIsSupplierDropdownOpen },
+      ];
+
+      dropdowns.forEach(({ ref, setIsOpen }) => {
+        if (ref.current && !ref.current.contains(event.target)) {
+          setIsOpen(false);
+        }
+      });
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -152,6 +148,12 @@ export default function page() {
       setSubCategorySearchTerm(formData.sub_category);
     }
   }, [formData.sub_category]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
 
   const handleCategorySelect = (category) => {
     // Convert category to lowercase and replace spaces with underscores for API
@@ -218,13 +220,28 @@ export default function page() {
         [name]: inputValue,
       };
 
-      // If is_sunmica is checked, set face to "1" and disable it
+      // If is_sunmica is checked, set face to "1" and mark it as auto-set
       if (name === "is_sunmica" && checked) {
-        updated.face = "1";
+        // Only auto-set if face wasn't already "1" (preserve user's manual entry)
+        if (prev.face !== "1") {
+          updated.face = "1";
+          faceAutoSetRef.current = true;
+        } else {
+          // Face was already "1", so it might be user-entered, don't mark as auto-set
+          faceAutoSetRef.current = false;
+        }
       }
-      // If is_sunmica is unchecked, clear face if it was "1"
-      if (name === "is_sunmica" && !checked && prev.face === "1") {
-        updated.face = "";
+      // If is_sunmica is unchecked, only clear face if it was auto-set by the checkbox
+      if (name === "is_sunmica" && !checked) {
+        if (faceAutoSetRef.current && prev.face === "1") {
+          updated.face = "";
+        }
+        faceAutoSetRef.current = false;
+      }
+
+      // If user manually changes the face field, mark it as not auto-set
+      if (name === "face") {
+        faceAutoSetRef.current = false;
       }
 
       return updated;
@@ -307,6 +324,7 @@ export default function page() {
       setSubCategorySearchTerm("");
       setSupplierSearchTerm("");
       setSelectedCategory("Sheet");
+      faceAutoSetRef.current = false;
     } catch (error) {
       console.error(error);
       toast.error(error.response.data.message, {
@@ -469,9 +487,8 @@ export default function page() {
                               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               <ChevronDown
-                                className={`w-5 h-5 transition-transform duration-200 ${
-                                  isDropdownOpen ? "rotate-180" : ""
-                                }`}
+                                className={`w-5 h-5 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""
+                                  }`}
                               />
                             </button>
                           </div>
@@ -560,9 +577,8 @@ export default function page() {
                               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               <ChevronDown
-                                className={`w-5 h-5 transition-transform duration-200 ${
-                                  isSupplierDropdownOpen ? "rotate-180" : ""
-                                }`}
+                                className={`w-5 h-5 transition-transform duration-200 ${isSupplierDropdownOpen ? "rotate-180" : ""
+                                  }`}
                               />
                             </button>
                           </div>
@@ -696,11 +712,10 @@ export default function page() {
                                     disabled={
                                       field === "face" && formData.is_sunmica
                                     }
-                                    className={`w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
-                                      field === "face" && formData.is_sunmica
-                                        ? "bg-slate-100 cursor-not-allowed"
-                                        : ""
-                                    }`}
+                                    className={`w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${field === "face" && formData.is_sunmica
+                                      ? "bg-slate-100 cursor-not-allowed"
+                                      : ""
+                                      }`}
                                     placeholder={`Enter ${field}`}
                                   />
                                 </div>
@@ -792,11 +807,10 @@ export default function page() {
                                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                 >
                                   <ChevronDown
-                                    className={`w-5 h-5 transition-transform duration-200 ${
-                                      isSubCategoryDropdownOpen
-                                        ? "rotate-180"
-                                        : ""
-                                    }`}
+                                    className={`w-5 h-5 transition-transform duration-200 ${isSubCategoryDropdownOpen
+                                      ? "rotate-180"
+                                      : ""
+                                      }`}
                                   />
                                 </button>
                               </div>
@@ -898,11 +912,10 @@ export default function page() {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-                          isSubmitting
-                            ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                            : "bg-primary/80 hover:bg-primary text-white"
-                        }`}
+                        className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${isSubmitting
+                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                          : "bg-primary/80 hover:bg-primary text-white"
+                          }`}
                       >
                         {isSubmitting ? "Adding Item..." : "Add Item"}
                       </button>

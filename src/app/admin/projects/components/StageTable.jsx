@@ -10,7 +10,6 @@ import DeleteConfirmation from "@/components/DeleteConfirmation";
 export default function StageTable({
   selectedLotData,
   getToken,
-  fetchLotData,
   validateDateInput,
   updateLotData,
 }) {
@@ -217,12 +216,38 @@ export default function StageTable({
       if (response.data.status && response.data.data) {
         const newStage = response.data.data;
 
+        // Preserve assigned_to from the stageData we sent (API creates relationships but doesn't return them)
+        // The API creates the stage_employee relationships but the response doesn't include them
+        const preservedAssignedTo = stageData.assigned_to || [];
+
+        // Format assigned_to to match the expected structure (array of objects with employee_id and employee)
+        const formattedAssignedTo = preservedAssignedTo.length > 0
+          ? preservedAssignedTo.map((empId) => {
+            const employee = employees.find((e) => e.employee_id === empId);
+            return employee
+              ? {
+                employee_id: empId,
+                employee: {
+                  first_name: employee.first_name,
+                  last_name: employee.last_name,
+                },
+              }
+              : { employee_id: empId };
+          })
+          : (newStage.assigned_to || []);
+
+        // Merge assigned_to into the new stage
+        const stageWithAssignments = {
+          ...newStage,
+          assigned_to: formattedAssignedTo,
+        };
+
         // Replace temporary stage with real one if it exists
         setLocalStages((prev) => {
           const filtered = prev.filter(
             (s) => s.stage_id !== `temp_${stageIdentifier}`
           );
-          return [...filtered, newStage];
+          return [...filtered, stageWithAssignments];
         });
 
         // Update parent lot data
@@ -231,12 +256,17 @@ export default function StageTable({
             if (!prev) return prev;
             return {
               ...prev,
-              stages: [...(prev.stages || []), newStage],
+              stages: [
+                ...(prev.stages?.filter(
+                  (s) => s.stage_id !== `temp_${stageIdentifier}`
+                ) || []),
+                stageWithAssignments,
+              ],
             };
           });
         }
 
-        return newStage;
+        return stageWithAssignments;
       } else {
         toast.error(response.data.message || "Failed to create stage");
         return null;
@@ -336,10 +366,8 @@ export default function StageTable({
       assigned_to: updatedAssignedIds,
     });
 
-    // Re-find stage after update
-    existingStage = findStageByIdentifier(currentStageForAssignment);
-
     // Check if stage exists (not temporary)
+    // Use existingStage from before the update to avoid race condition
     if (!stageExists(currentStageForAssignment)) {
       // Stage needs to be created
       if (isPredefinedStageName(currentStageForAssignment)) {
@@ -350,27 +378,23 @@ export default function StageTable({
           notes: existingStage?.notes || "",
           startDate: existingStage?.startDate || null,
           endDate: existingStage?.endDate || null,
-          assigned_to: updatedAssignedIds,
+          assigned_to: updatedAssignedIds, // Use updatedAssignedIds directly
         };
         const created = await createStage(stageData, currentStageForAssignment);
         if (!created) {
           // Revert local state on failure
-          const previousStage = findStageByIdentifier(
-            currentStageForAssignment
-          );
-          if (previousStage) {
-            updateStageInLocalState(currentStageForAssignment, {
-              assigned_to: currentAssignedIds,
-            });
-          }
+          updateStageInLocalState(currentStageForAssignment, {
+            assigned_to: currentAssignedIds,
+          });
         }
       }
       return;
     }
 
     // Existing stage - update via API
+    // Use existingStage from before update and updatedAssignedIds directly to avoid race condition
     const stageData = prepareStageData(existingStage, {
-      assigned_to: updatedAssignedIds,
+      assigned_to: updatedAssignedIds, // Use updatedAssignedIds directly instead of re-reading from state
     });
     const updated = await updateStage(currentStageForAssignment, stageData);
     if (!updated) {
@@ -1092,11 +1116,10 @@ export default function StageTable({
                     <td className="py-3 px-2">
                       <button
                         onClick={() => handleOpenEmployeeDropdown(stageName)}
-                        className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${
-                          existingStage?.assigned_to?.length > 0
+                        className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${existingStage?.assigned_to?.length > 0
                             ? "text-secondary font-medium"
                             : "text-slate-600"
-                        }`}
+                          }`}
                       >
                         {getAssignedTeamMembersDisplay(stageName)}
                       </button>
@@ -1216,11 +1239,10 @@ export default function StageTable({
                         onClick={() =>
                           handleOpenEmployeeDropdown(stage.stage_id)
                         }
-                        className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${
-                          stage.assigned_to?.length > 0
+                        className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${stage.assigned_to?.length > 0
                             ? "text-secondary font-medium"
                             : "text-slate-600"
-                        }`}
+                          }`}
                       >
                         {getAssignedTeamMembersDisplay(stage.stage_id)}
                       </button>
@@ -1285,11 +1307,10 @@ export default function StageTable({
                         onClick={() =>
                           handleToggleEmployeeAssignment(employee.employee_id)
                         }
-                        className={`cursor-pointer w-full text-left p-3 border rounded-lg transition-colors ${
-                          isAssigned
+                        className={`cursor-pointer w-full text-left p-3 border rounded-lg transition-colors ${isAssigned
                             ? "border-secondary bg-secondary/5 hover:bg-secondary/10"
                             : "border-slate-200 hover:bg-slate-50 hover:border-secondary"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1">

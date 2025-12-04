@@ -5,7 +5,7 @@ import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
@@ -31,11 +31,13 @@ import {
   Upload,
   Trash2,
   AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import Image from "next/image";
+import CreatePurchaseOrderModal from "./components/CreatePurchaseOrderModal";
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function page() {
@@ -48,6 +50,7 @@ export default function page() {
   const [sortField, setSortField] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [showCreatePOModal, setShowCreatePOModal] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [showItemsPerPageDropdown, setShowItemsPerPageDropdown] =
@@ -1070,6 +1073,14 @@ export default function page() {
                           </div>
 
                           <button
+                            onClick={() => setShowCreatePOModal(true)}
+                            className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                          >
+                            <Plus className="h-4 w-4" />
+                            <span>Create Purchase Order</span>
+                          </button>
+
+                          <button
                             onClick={() => setShowMaterialsReceivedModal(true)}
                             className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                           >
@@ -1118,41 +1129,28 @@ export default function page() {
                             {showColumnDropdown && (
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleColumnToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
-                                  >
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedColumns.length ===
-                                        availableColumns.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedColumns.length === availableColumns.length}
+                                      onChange={() => handleColumnToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {availableColumns.map((column) => (
-                                    <button
+                                    <label
                                       key={column}
-                                      onClick={() => handleColumnToggle(column)}
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(
-                                          column
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedColumns.includes(column)}
+                                        onChange={() => handleColumnToggle(column)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -2674,6 +2672,26 @@ export default function page() {
         message="This will permanently delete the purchase order and all its associated data. This action cannot be undone."
         comparingName={poPendingDelete?.order_no || ""}
         isDeleting={deletingPOId !== null}
+      />
+
+      {showCreatePOModal && (
+        <CreatePurchaseOrderModal
+          setShowModal={setShowCreatePOModal}
+          onSuccess={fetchPOs}
+        />
+      )}
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
       />
     </AdminRoute>
   );

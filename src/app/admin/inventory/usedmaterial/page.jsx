@@ -122,7 +122,8 @@ export default function page() {
       const initialInputs = {};
       mtos.forEach((mto) => {
         mto.items?.forEach((item) => {
-          initialInputs[item.id] = item.quantity_used || 0;
+          // Store as string to allow empty input during editing
+          initialInputs[item.id] = String(item.quantity_used || 0);
         });
       });
       setQuantityInputs(initialInputs);
@@ -137,7 +138,7 @@ export default function page() {
     if (mtoItem) {
       setQuantityInputs((prev) => ({
         ...prev,
-        [mtoItemId]: mtoItem.quantity_used || 0,
+        [mtoItemId]: String(mtoItem.quantity_used || 0),
       }));
     }
   };
@@ -154,9 +155,20 @@ export default function page() {
         return;
       }
 
-      const inputValue = quantityInputs[mtoItem.id] || 0;
+      // Parse string input to number, treating empty string as 0
+      const inputString = quantityInputs[mtoItem.id] || "";
+      const inputValue = inputString === "" ? 0 : parseFloat(inputString);
       const currentUsed = mtoItem.quantity_used || 0;
       const totalQuantity = mtoItem.quantity;
+
+      // Validate that input is a valid number
+      if (isNaN(inputValue)) {
+        toast.error("Please enter a valid number", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
 
       // Validate: input should not exceed total
       if (inputValue > totalQuantity) {
@@ -252,7 +264,7 @@ export default function page() {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          "Error updating quantity used. Please try again.",
+        "Error updating quantity used. Please try again.",
         {
           position: "top-right",
           autoClose: 3000,
@@ -504,15 +516,12 @@ export default function page() {
                                                     getItemDetails(
                                                       mtoItem.item
                                                     );
+                                                  // Compare string input with original number value
+                                                  const inputString = quantityInputs[mtoItem.id];
+                                                  const originalValue = String(mtoItem.quantity_used || 0);
                                                   const hasChanges =
-                                                    quantityInputs[
-                                                      mtoItem.id
-                                                    ] !== undefined &&
-                                                    quantityInputs[
-                                                      mtoItem.id
-                                                    ] !==
-                                                      (mtoItem.quantity_used ||
-                                                        0);
+                                                    inputString !== undefined &&
+                                                    inputString !== originalValue;
                                                   return (
                                                     <div
                                                       key={mtoItem.id}
@@ -670,19 +679,19 @@ export default function page() {
                                                             )}
                                                             {mtoItem.item
                                                               ?.supplier && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Supplier:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    mtoItem.item
-                                                                      .supplier
-                                                                      .name
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
+                                                                <div>
+                                                                  <span className="text-slate-500 font-bold">
+                                                                    Supplier:
+                                                                  </span>{" "}
+                                                                  <span className="text-slate-700">
+                                                                    {
+                                                                      mtoItem.item
+                                                                        .supplier
+                                                                        .name
+                                                                    }
+                                                                  </span>
+                                                                </div>
+                                                              )}
                                                           </div>
                                                         </div>
 
@@ -696,13 +705,13 @@ export default function page() {
                                                           </div>
                                                           {mtoItem.item
                                                             ?.measurement_unit && (
-                                                            <div className="text-xs text-slate-500 mt-1">
-                                                              {
-                                                                mtoItem.item
-                                                                  .measurement_unit
-                                                              }
-                                                            </div>
-                                                          )}
+                                                              <div className="text-xs text-slate-500 mt-1">
+                                                                {
+                                                                  mtoItem.item
+                                                                    .measurement_unit
+                                                                }
+                                                              </div>
+                                                            )}
                                                         </div>
 
                                                         {/* Used Count Column */}
@@ -716,13 +725,13 @@ export default function page() {
                                                           </div>
                                                           {mtoItem.item
                                                             ?.measurement_unit && (
-                                                            <div className="text-xs text-slate-500 mt-1">
-                                                              {
-                                                                mtoItem.item
-                                                                  .measurement_unit
-                                                              }
-                                                            </div>
-                                                          )}
+                                                              <div className="text-xs text-slate-500 mt-1">
+                                                                {
+                                                                  mtoItem.item
+                                                                    .measurement_unit
+                                                                }
+                                                              </div>
+                                                            )}
                                                         </div>
 
                                                         {/* Input Field Column */}
@@ -742,17 +751,13 @@ export default function page() {
                                                                   mtoItem.id
                                                                 ] !== undefined
                                                                   ? quantityInputs[
-                                                                      mtoItem.id
-                                                                    ]
-                                                                  : mtoItem.quantity_used ||
-                                                                    0
+                                                                  mtoItem.id
+                                                                  ]
+                                                                  : String(mtoItem.quantity_used || 0)
                                                               }
                                                               onChange={(e) => {
-                                                                const value =
-                                                                  parseInt(
-                                                                    e.target
-                                                                      .value
-                                                                  ) || 0;
+                                                                // Store raw string value to allow empty input
+                                                                const value = e.target.value;
                                                                 handleQuantityInputChange(
                                                                   mtoItem.id,
                                                                   value
@@ -763,27 +768,26 @@ export default function page() {
                                                             />
                                                             {mtoItem.item
                                                               ?.measurement_unit && (
-                                                              <div className="text-xs text-slate-500 mt-1">
-                                                                {
-                                                                  mtoItem.item
-                                                                    .measurement_unit
-                                                                }
-                                                              </div>
-                                                            )}
-                                                            {quantityInputs[
-                                                              mtoItem.id
-                                                            ] !== undefined &&
-                                                              quantityInputs[
-                                                                mtoItem.id
-                                                              ] >
-                                                                mtoItem.quantity && (
-                                                                <div className="text-xs text-red-600 font-medium">
-                                                                  Max:{" "}
+                                                                <div className="text-xs text-slate-500 mt-1">
                                                                   {
-                                                                    mtoItem.quantity
+                                                                    mtoItem.item
+                                                                      .measurement_unit
                                                                   }
                                                                 </div>
                                                               )}
+                                                            {(() => {
+                                                              const inputString = quantityInputs[mtoItem.id];
+                                                              if (inputString === undefined) return null;
+                                                              const inputValue = inputString === "" ? 0 : parseFloat(inputString);
+                                                              if (!isNaN(inputValue) && inputValue > mtoItem.quantity) {
+                                                                return (
+                                                                  <div className="text-xs text-red-600 font-medium">
+                                                                    Max: {mtoItem.quantity}
+                                                                  </div>
+                                                                );
+                                                              }
+                                                              return null;
+                                                            })()}
                                                           </div>
                                                         </div>
 
@@ -803,7 +807,7 @@ export default function page() {
                                                                 disabled={
                                                                   saving
                                                                 }
-                                                                className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
+                                                                className="cursor-pointer p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
                                                                 title="Cancel"
                                                               >
                                                                 <X className="w-4 h-4" />
@@ -815,18 +819,14 @@ export default function page() {
                                                                     mtoItem
                                                                   )
                                                                 }
-                                                                disabled={
-                                                                  saving ||
-                                                                  (quantityInputs[
-                                                                    mtoItem.id
-                                                                  ] !==
-                                                                    undefined &&
-                                                                    quantityInputs[
-                                                                      mtoItem.id
-                                                                    ] >
-                                                                      mtoItem.quantity)
-                                                                }
-                                                                className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                disabled={(() => {
+                                                                  if (saving) return true;
+                                                                  const inputString = quantityInputs[mtoItem.id];
+                                                                  if (inputString === undefined) return false;
+                                                                  const inputValue = inputString === "" ? 0 : parseFloat(inputString);
+                                                                  return !isNaN(inputValue) && inputValue > mtoItem.quantity;
+                                                                })()}
+                                                                className="cursor-pointer p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                                 title="Save"
                                                               >
                                                                 <Check className="w-4 h-4" />

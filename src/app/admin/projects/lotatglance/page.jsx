@@ -158,7 +158,6 @@ export default function page() {
           }
         }
       }
-
       return true;
     });
   }, [activeLots, search, stageFilters]);
@@ -422,13 +421,12 @@ export default function page() {
                                 filteredLots.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
                                 filteredLots.length === 0 ||
                                 selectedColumns.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -444,52 +442,38 @@ export default function page() {
                               disabled={
                                 isExporting || filteredLots.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                                isExporting || filteredLots.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting || filteredLots.length === 0
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
                             {showColumnDropdown && (
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleColumnToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
-                                  >
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedColumns.length ===
-                                        availableColumns.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedColumns.length === availableColumns.length}
+                                      onChange={() => handleColumnToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {availableColumns.map((column) => (
-                                    <button
+                                    <label
                                       key={column}
-                                      onClick={() => handleColumnToggle(column)}
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(
-                                          column
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedColumns.includes(column)}
+                                        onChange={() => handleColumnToggle(column)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -522,11 +506,10 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "ALL")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                filterStatus === "ALL"
-                                  ? "bg-slate-100 font-medium"
-                                  : ""
-                              }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "ALL"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                                }`}
                             >
                               All Statuses
                             </button>
@@ -534,11 +517,10 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "NOT_STARTED")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                filterStatus === "NOT_STARTED"
-                                  ? "bg-slate-100 font-medium"
-                                  : ""
-                              }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "NOT_STARTED"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                                }`}
                             >
                               Not Started
                             </button>
@@ -546,11 +528,10 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "IN_PROGRESS")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                filterStatus === "IN_PROGRESS"
-                                  ? "bg-slate-100 font-medium"
-                                  : ""
-                              }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "IN_PROGRESS"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                                }`}
                             >
                               In Progress
                             </button>
@@ -558,11 +539,10 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "DONE")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                filterStatus === "DONE"
-                                  ? "bg-slate-100 font-medium"
-                                  : ""
-                              }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "DONE"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                                }`}
                             >
                               Done
                             </button>
@@ -570,11 +550,10 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "NA")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                filterStatus === "NA"
-                                  ? "bg-slate-100 font-medium"
-                                  : ""
-                              }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "NA"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                                }`}
                             >
                               NA
                             </button>
@@ -622,23 +601,21 @@ export default function page() {
                                         <div className="relative filter-dropdown-container flex-shrink-0">
                                           <button
                                             ref={(el) =>
-                                              (filterButtonRefs.current[stage] =
-                                                el)
+                                            (filterButtonRefs.current[stage] =
+                                              el)
                                             }
                                             onClick={(e) =>
                                               handleFilterButtonClick(stage, e)
                                             }
-                                            className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${
-                                              hasFilter ? "bg-primary/20" : ""
-                                            }`}
+                                            className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${hasFilter ? "bg-primary/20" : ""
+                                              }`}
                                             title="Filter by status"
                                           >
                                             <Funnel
-                                              className={`h-3 w-3 ${
-                                                hasFilter
-                                                  ? "text-primary"
-                                                  : "text-slate-400"
-                                              }`}
+                                              className={`h-3 w-3 ${hasFilter
+                                                ? "text-primary"
+                                                : "text-slate-400"
+                                                }`}
                                             />
                                           </button>
                                         </div>

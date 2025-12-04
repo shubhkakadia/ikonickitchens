@@ -105,7 +105,7 @@ export default function DeleteFilesPage() {
       console.error("Error fetching deleted media:", error);
       setError(
         error.response?.data?.message ||
-          "Failed to fetch deleted media. Please try again."
+        "Failed to fetch deleted media. Please try again."
       );
     } finally {
       setLoading(false);
@@ -181,7 +181,7 @@ export default function DeleteFilesPage() {
       console.error("Error deleting media:", error);
       toast.error(
         error.response?.data?.message ||
-          "Failed to delete media. Please try again."
+        "Failed to delete media. Please try again."
       );
     } finally {
       setIsDeleting(false);
@@ -276,9 +276,8 @@ export default function DeleteFilesPage() {
       const url = URL.createObjectURL(zipBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `deleted-media-${
-        new Date().toISOString().split("T")[0]
-      }.zip`;
+      link.download = `deleted-media-${new Date().toISOString().split("T")[0]
+        }.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -310,29 +309,33 @@ export default function DeleteFilesPage() {
         return;
       }
 
-      // Delete files one by one
-      const deletePromises = selectedFiles.map((file) =>
-        axios.delete(`/api/deletedmedia/${encodeURIComponent(file.filename)}`, {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-          },
-        })
-      );
+      // Extract filenames from selected files
+      const filenames = selectedFiles.map((file) => file.filename);
 
-      const results = await Promise.allSettled(deletePromises);
-      const successful = results.filter(
-        (r) => r.status === "fulfilled" && r.value.data.status
-      ).length;
-      const failed = results.length - successful;
+      // Call batch delete endpoint
+      const response = await axios.delete("/api/deletedmedia/all", {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        data: {
+          filenames: filenames,
+        },
+      });
 
-      if (successful > 0) {
-        toast.success(
-          `Successfully deleted ${successful} file(s)${
-            failed > 0 ? `, ${failed} failed` : ""
-          }`
-        );
+      if (response.data.status) {
+        const { successfulCount, failedCount } = response.data.data;
+        if (successfulCount > 0) {
+          toast.success(
+            `Successfully deleted ${successfulCount} file(s)${failedCount > 0 ? `, ${failedCount} failed` : ""
+            }`
+          );
+        } else {
+          toast.error("Failed to delete files. Please try again.");
+        }
       } else {
-        toast.error("Failed to delete files. Please try again.");
+        toast.error(
+          response.data.message || "Failed to delete files. Please try again."
+        );
       }
 
       // Clear selection and refresh
@@ -341,7 +344,10 @@ export default function DeleteFilesPage() {
       fetchDeletedMedia();
     } catch (error) {
       console.error("Error bulk deleting files:", error);
-      toast.error("Failed to delete files. Please try again.");
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to delete files. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setIsBulkDeleting(false);
     }
@@ -602,11 +608,10 @@ export default function DeleteFilesPage() {
 
                           <button
                             onClick={toggleSelectionMode}
-                            className={`flex items-center gap-2 cursor-pointer transition-all duration-200 border px-3 py-2 rounded-lg text-sm font-medium ${
-                              selectionMode
-                                ? "bg-primary text-white border-primary hover:bg-primary/90"
-                                : "text-slate-700 border-slate-300 hover:bg-slate-100"
-                            }`}
+                            className={`flex items-center gap-2 cursor-pointer transition-all duration-200 border px-3 py-2 rounded-lg text-sm font-medium ${selectionMode
+                              ? "bg-primary text-white border-primary hover:bg-primary/90"
+                              : "text-slate-700 border-slate-300 hover:bg-slate-100"
+                              }`}
                           >
                             {selectionMode ? (
                               <>
@@ -632,51 +637,38 @@ export default function DeleteFilesPage() {
                               <span>Filter by Type</span>
                               {mediaTypes.length - selectedMediaTypes.length >
                                 0 && (
-                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                  {mediaTypes.length -
-                                    selectedMediaTypes.length}
-                                </span>
-                              )}
+                                  <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                    {mediaTypes.length -
+                                      selectedMediaTypes.length}
+                                  </span>
+                                )}
                               <ChevronDown className="h-4 w-4" />
                             </button>
                             {showFilterDropdown && (
-                              <div className="absolute top-full right-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleMediaTypeToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                  >
-                                    <span>Select All</span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedMediaTypes.length ===
-                                        mediaTypes.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedMediaTypes.length === mediaTypes.length}
+                                      onChange={() => handleMediaTypeToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {mediaTypes.map((type) => (
-                                    <button
+                                    <label
                                       key={type}
-                                      onClick={() =>
-                                        handleMediaTypeToggle(type)
-                                      }
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{type}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedMediaTypes.includes(
-                                          type
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedMediaTypes.includes(type)}
+                                        onChange={() => handleMediaTypeToggle(type)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -753,7 +745,7 @@ export default function DeleteFilesPage() {
                             <File className="w-16 h-16 text-slate-400 mx-auto mb-4" />
                             <p className="text-slate-600 text-lg">
                               {search ||
-                              selectedMediaTypes.length !== mediaTypes.length
+                                selectedMediaTypes.length !== mediaTypes.length
                                 ? "No media found matching your filters"
                                 : "No deleted media found"}
                             </p>
@@ -769,7 +761,7 @@ export default function DeleteFilesPage() {
                                 className="cursor-pointer flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900"
                               >
                                 {selectedFiles.length ===
-                                filteredMedia.length ? (
+                                  filteredMedia.length ? (
                                   <CheckSquare className="w-4 h-4 text-primary" />
                                 ) : (
                                   <Square className="w-4 h-4 text-slate-400" />
@@ -789,34 +781,11 @@ export default function DeleteFilesPage() {
                             return (
                               <div
                                 key={file.id}
-                                className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border ${
-                                  isSelected
-                                    ? "border-primary ring-2 ring-primary"
-                                    : "border-slate-200"
-                                }`}
-                              >
-                                {/* Selection Checkbox */}
-                                {/* {selectionMode && (
-                              <div className="absolute top-2 left-2 z-10">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleFileSelect(file);
-                                  }}
-                                  className={`p-1.5 rounded-md transition-colors ${
-                                    isSelected
-                                      ? "bg-primary text-white"
-                                      : "bg-white/90 text-slate-600 hover:bg-slate-100"
+                                className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border ${isSelected
+                                  ? "border-primary ring-2 ring-primary"
+                                  : "border-slate-200"
                                   }`}
-                                >
-                                  {isSelected ? (
-                                    <CheckSquare className="w-4 h-4" />
-                                  ) : (
-                                    <Square className="w-4 h-4" />
-                                  )}
-                                </button>
-                              </div>
-                            )} */}
+                              >
                                 {/* File Preview */}
                                 <div
                                   onClick={() => {
@@ -826,11 +795,10 @@ export default function DeleteFilesPage() {
                                       handleFileSelect(file);
                                     }
                                   }}
-                                  className={`relative w-full aspect-square ${
-                                    selectionMode
-                                      ? "cursor-pointer"
-                                      : "cursor-pointer"
-                                  } bg-slate-100 overflow-hidden group`}
+                                  className={`relative w-full aspect-square ${selectionMode
+                                    ? "cursor-pointer"
+                                    : "cursor-pointer"
+                                    } bg-slate-100 overflow-hidden group`}
                                 >
                                   {getFilePreview(file)}
                                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">

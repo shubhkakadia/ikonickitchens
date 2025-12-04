@@ -22,7 +22,6 @@ export default function page() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
   const client_types = ["Builder", "Private", "Other"];
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -93,7 +92,7 @@ export default function page() {
         });
         return;
       }
-      const data = JSON.stringify({
+      const data = {
         client_type: formData.client_type.toLowerCase(),
         client_name: formData.client_name,
         client_address: formData.client_address,
@@ -101,7 +100,7 @@ export default function page() {
         client_email: formData.client_email,
         client_website: formData.client_website,
         client_notes: formData.client_notes,
-      });
+      };
 
       const config = {
         method: "post",
@@ -202,7 +201,7 @@ export default function page() {
   };
 
   return (
-    <div>
+    <AdminRoute>
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -241,10 +240,13 @@ export default function page() {
                           name="client_name"
                           value={formData.client_name}
                           onChange={handleInputChange}
-                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                          className={`w-full text-sm ${errors.client_name ? "border-red-500" : "border-slate-300"}text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${errors.client_name ? "border-red-500" : "border-slate-300"}`}
                           placeholder="Eg. Bettio Construction"
                           required
                         />
+                        {errors.client_name && (
+                          <p className="text-red-500 text-xs mt-1">{errors.client_name}</p>
+                        )}
                       </div>
                       <div className="relative" ref={dropdownRef}>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -256,19 +258,21 @@ export default function page() {
                             value={searchTerm}
                             onChange={handleSearchChange}
                             onFocus={() => setIsDropdownOpen(true)}
-                            className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                            className={`w-full text-sm ${errors.client_type ? "border-red-500" : "border-slate-300"}text-slate-800 px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${errors.client_type ? "border-red-500" : "border-slate-300"}`}
                             placeholder="Search or select client type..."
                             required
                           />
+                          {errors.client_type && (
+                            <p className="text-red-500 text-xs mt-1">{errors.client_type}</p>
+                          )}
                           <button
                             type="button"
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                             className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                           >
                             <ChevronDown
-                              className={`w-5 h-5 transition-transform ${
-                                isDropdownOpen ? "rotate-180" : ""
-                              }`}
+                              className={`w-5 h-5 transition-transform ${isDropdownOpen ? "rotate-180" : ""
+                                }`}
                             />
                           </button>
                         </div>
@@ -386,11 +390,10 @@ export default function page() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-                        isLoading
-                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                          : "bg-primary/80 hover:bg-primary text-white"
-                      }`}
+                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${isLoading
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        : "bg-primary/80 hover:bg-primary text-white"
+                        }`}
                     >
                       {isLoading ? "Creating Client..." : "Create Client"}
                     </button>
@@ -413,6 +416,6 @@ export default function page() {
         pauseOnHover
         theme="light"
       />
-    </div>
+    </AdminRoute>
   );
 }

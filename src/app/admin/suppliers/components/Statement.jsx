@@ -428,9 +428,8 @@ export default function Statement({ supplierId }) {
               {statements.map((statement) => (
                 <React.Fragment key={statement.id}>
                   <tr
-                    className={`hover:bg-slate-50 transition-colors ${
-                      statement.notes ? "cursor-pointer" : ""
-                    }`}
+                    className={`hover:bg-slate-50 transition-colors ${statement.notes ? "cursor-pointer" : ""
+                      }`}
                     onClick={() => statement.notes && toggleNotes(statement.id)}
                   >
                     <td className="px-4 py-2 whitespace-nowrap">
@@ -463,11 +462,10 @@ export default function Statement({ supplierId }) {
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          statement.payment_status === "PAID"
+                        className={`text-xs px-2 py-1 rounded-full ${statement.payment_status === "PAID"
                             ? "bg-green-100 text-green-800"
                             : "bg-yellow-100 text-yellow-800"
-                        }`}
+                          }`}
                       >
                         {statement.payment_status}
                       </span>
@@ -549,9 +547,8 @@ export default function Statement({ supplierId }) {
         onConfirm={handleDeleteStatementConfirm}
         deleteWithInput={true}
         heading="Statement"
-        message={`This will permanently delete the statement for ${
-          statementToDelete?.month_year || ""
-        }. This action cannot be undone.`}
+        message={`This will permanently delete the statement for ${statementToDelete?.month_year || ""
+          }. This action cannot be undone.`}
         comparingName={statementToDelete?.month_year || ""}
         isDeleting={isDeletingStatement}
       />
@@ -717,8 +714,8 @@ export default function Statement({ supplierId }) {
                     ? "Updating..."
                     : "Update Statement"
                   : isUploadingStatement
-                  ? "Uploading..."
-                  : "Upload Statement"}
+                    ? "Uploading..."
+                    : "Upload Statement"}
               </button>
             </div>
           </div>

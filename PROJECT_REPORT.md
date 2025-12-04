@@ -1,24 +1,26 @@
 # Ikoniq Kitchen and Cabinet - Project Report
 
-**Generated:** 2025-11-20
+**Generated:** 2025-12-02
 **Project Type:** Full-Stack Business Management & Portfolio Platform
-**Status:** Production-Ready with Advanced Features
+**Status:** Production-Ready with Enterprise Features
 
 ---
 
 ## Executive Summary
 
-The Ikoniq Kitchen and Cabinet platform is a comprehensive business management system designed for a kitchen and cabinet manufacturing and installation company. It combines a public-facing portfolio website with a sophisticated admin dashboard for managing projects, clients, employees, inventory, suppliers, purchase orders, material selections, and financial operations.
+The Ikoniq Kitchen and Cabinet platform is a comprehensive business management system designed for a kitchen and cabinet manufacturing and installation company. It combines a public-facing portfolio website with a sophisticated admin dashboard for managing projects, clients, employees, inventory, suppliers, purchase orders, material selections, financial operations, and activity logging.
 
-The application is built with modern web technologies including **Next.js 15.5.2**, **React 19.1.0**, **Prisma ORM 6.19.0** with MySQL, and **Redux** for state management. It features a robust session-based authentication system, role-based access control, rich document management capabilities, extensive inventory tracking, complete procurement workflow from materials requisition to purchase order management, and advanced material selection versioning with quote management.
+The application is built with modern web technologies including **Next.js 15.5.2**, **React 19.1.0**, **Prisma ORM 6.19.0** with MySQL, and **Redux** for state management. It features a robust session-based authentication system, **granular module-based access control**, rich document management capabilities, extensive inventory tracking, complete procurement workflow, advanced material selection versioning with quote management, **activity logging/audit trail**, **stock tally bulk operations**, and **Xero accounting integration**.
 
 **Major Features Since Last Report:**
-- Material Selection system with versioning and quote management
-- Supplier statements and payment tracking
-- Stock transaction management with usage tracking
-- Enhanced file handling and media management
-- LotStatus enum for active/completed lots
-- Expanded API endpoints (55 total)
+
+- **Module-Based Access Control** - Granular permissions for 24+ different admin functions
+- **Activity Logging System** - Complete audit trail with user attribution
+- **Stock Tally Feature** - Bulk Excel-based inventory updates with transaction tracking
+- **Xero Integration** - Bank transactions sync via Xero API
+- **Manager User Role** - New role type with configurable access
+- **Enhanced Authentication** - Module access per user account
+- **Logs Admin Page** - View all system activity logs
 
 ---
 
@@ -40,142 +42,165 @@ The application is built with modern web technologies including **Next.js 15.5.2
 ## Project Statistics
 
 ### Codebase Metrics
-- **Total JavaScript/JSX Files:** 131 (source code)
-- **Total API Routes:** 55 endpoints
-- **Total Admin Pages:** 26 pages
+
+- **Total JavaScript/JSX Files:** 137 (source code)
+- **Total TypeScript Files:** 2 (db.ts, TextEditor.tsx)
+- **Total Source Files:** 139 (+8 from previous)
+- **Total API Routes:** 59 endpoints (+4 from previous)
+- **Total Admin Pages:** 27 pages (+1 from previous)
 - **Total Public Pages:** 8 pages
-- **Total Components:** 15 base components
-- **Project-Specific Components:** 6 (projects) + 4 (suppliers)
-- **Database Models:** 31 models (+4 from previous)
-- **Custom Hooks:** No custom hooks directory (removed/refactored)
-- **State Management Files:** 4 files (Redux store, reducers, actions)
-- **Library Utilities:** 10 files (including validators)
+- **Total Components:** 27 components (+12 from previous)
+  - Base Components: 16
+  - Project-Specific: 6
+  - Supplier-Specific: 4
+  - Inventory-Specific: 1
+- **Database Models:** 33 models (+2 from previous)
+- **Database Enums:** 11 enums (+1 from previous)
+- **State Management Files:** 5 files (Redux store, 3 reducers, actions)
+- **Library Utilities:** 12 files (including validators)
 - **Style Files:** 3 files (globals.css + SCSS)
 
 ### Tech Stack Size
-- **Dependencies:** 64 packages (+3 from previous)
-- **Dev Dependencies:** 8 packages (+2 from previous)
-- **Total Package Installations:** 2,000+ (including transitive dependencies)
+
+- **Dependencies:** 57 packages
+- **Dev Dependencies:** 8 packages
+- **Total Package Installations:** 2,200+ (including transitive dependencies)
 
 ### Assets
-- **Public Assets:** 13 files (~2.8 MB) - logos, portfolio images
-- **Uploaded Files:** ~638 MB (project documents, employee images, supplier files)
+
+- **Public Assets:** 57+ files (~15+ MB) - logos, gallery images, project photos
+- **Uploaded Files:** ~650 MB (project documents, employee images, supplier files)
 
 ### Lines of Code (Estimated)
-- **Frontend Code:** ~14,000+ lines (+2,000 from previous)
-- **Backend API Code:** ~8,000+ lines (+1,500 from previous)
-- **Database Schema:** 642 lines (comprehensive)
-- **Authentication & Middleware:** ~300 lines
-- **Custom Utilities:** ~25,000+ characters
+
+- **Frontend Code:** ~18,000+ lines (+4,000 from previous)
+- **Backend API Code:** ~10,000+ lines (+2,000 from previous)
+- **Database Schema:** 709 lines (+67 from previous)
+- **Authentication & Middleware:** ~400 lines (+100 from previous)
+- **Custom Utilities:** ~30,000+ characters
 
 ### Development Configuration
-- **Development Server Port:** 4000 (custom)
+
+- **Development Server Port:** 3000 (default)
 - **Build System:** Next.js with Turbopack
 - **ORM Output:** Custom path (generated/prisma)
 - **Database:** MySQL with Prisma ORM
+- **Migrations:** 8 migrations applied
 
 ---
 
 ## Technology Stack
 
 ### Core Framework
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Next.js** | 15.5.2 | Full-stack React framework with App Router |
-| **React** | 19.1.0 | Frontend UI library |
-| **React DOM** | 19.1.0 | React rendering for web |
-| **Node.js** | Latest | Backend runtime |
+
+| Technology    | Version | Purpose                                    |
+| ------------- | ------- | ------------------------------------------ |
+| **Next.js**   | 15.5.2  | Full-stack React framework with App Router |
+| **React**     | 19.1.0  | Frontend UI library                        |
+| **React DOM** | 19.1.0  | React rendering for web                    |
+| **Node.js**   | Latest  | Backend runtime                            |
 
 ### Backend & Database
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Prisma** | 6.19.0 | ORM for database management |
-| **@prisma/client** | 6.19.0 | Prisma client for queries |
-| **MySQL** | - | Relational database |
-| **bcrypt** | 6.0.0 | Password hashing |
-| **jsonwebtoken** | 9.0.2 | JWT token generation (backup) |
+
+| Technology         | Version | Purpose                       |
+| ------------------ | ------- | ----------------------------- |
+| **Prisma**         | 6.19.0  | ORM for database management   |
+| **@prisma/client** | 6.19.0  | Prisma client for queries     |
+| **MySQL**          | -       | Relational database           |
+| **bcrypt**         | 6.0.0   | Password hashing              |
+| **jsonwebtoken**   | 9.0.2   | JWT token generation (backup) |
 
 ### State Management
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Redux Toolkit** | 2.9.0 | State management |
-| **React Redux** | 9.2.0 | React bindings for Redux |
-| **Redux Persist** | 6.0.0 | State persistence to localStorage |
-| **Redux** | 5.0.1 | Core Redux library |
+
+| Technology        | Version | Purpose                           |
+| ----------------- | ------- | --------------------------------- |
+| **Redux Toolkit** | 2.9.0   | State management                  |
+| **React Redux**   | 9.2.0   | React bindings for Redux          |
+| **Redux Persist** | 6.0.0   | State persistence to localStorage |
+| **Redux**         | 5.0.1   | Core Redux library                |
 
 ### Styling & UI
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Tailwind CSS** | 4 | Utility-first CSS framework |
-| **@tailwindcss/postcss** | 4 | PostCSS integration |
-| **Sass** | 1.93.2 | SCSS preprocessing |
-| **Lucide React** | 0.543.0 | Icon library (500+ icons) |
-| **React Icons** | 5.5.0 | Additional icon sets |
-| **AOS** | 2.3.4 | Animate on scroll library |
-| **Framer Motion** | 12.23.24 | Animation library |
+
+| Technology               | Version  | Purpose                      |
+| ------------------------ | -------- | ---------------------------- |
+| **Tailwind CSS**         | 4        | Utility-first CSS framework  |
+| **@tailwindcss/postcss** | 4        | PostCSS integration          |
+| **Sass**                 | 1.93.2   | SCSS preprocessing           |
+| **Lucide React**         | 0.543.0  | Icon library (500+ icons)    |
+| **React Icons**          | 5.5.0    | Additional icon sets         |
+| **AOS**                  | 2.3.4    | Animate on scroll library    |
+| **Framer Motion**        | 12.23.24 | Animation library            |
+| **tw-animate-css**       | 1.4.0    | Tailwind animation utilities |
 
 ### Rich Text Editing
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **@tiptap/react** | 3.7.0 | Rich text editor framework |
-| **@tiptap/starter-kit** | 3.7.0 | Core TipTap extensions |
-| **@tiptap/extensions** | 3.7.0 | Additional editor features |
-| Multiple TipTap extensions | 3.7.0 | Color, highlight, image, lists, alignment, etc. |
+
+| Technology                 | Version | Purpose                                         |
+| -------------------------- | ------- | ----------------------------------------------- |
+| **@tiptap/react**          | 3.7.0   | Rich text editor framework                      |
+| **@tiptap/starter-kit**    | 3.7.0   | Core TipTap extensions                          |
+| **@tiptap/extensions**     | 3.7.0   | Additional editor features                      |
+| Multiple TipTap extensions | 3.7.0   | Color, highlight, image, lists, alignment, etc. |
 
 ### UI Components & Interactions
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **@radix-ui/react-dropdown-menu** | 2.1.16 | Accessible dropdown menus |
-| **@radix-ui/react-popover** | 1.1.15 | Accessible popovers |
-| **@radix-ui/react-accordion** | 1.2.12 | Accessible accordions |
-| **@radix-ui/react-slot** | 1.2.4 | Composition utilities |
-| **@floating-ui/react** | 0.27.16 | Floating UI positioning |
-| **embla-carousel-react** | 8.6.0 | Image carousel component |
-| **react-grid-gallery** | 1.0.1 | Photo gallery grid |
-| **react-toastify** | 11.0.5 | Toast notifications |
+
+| Technology                        | Version | Purpose                   |
+| --------------------------------- | ------- | ------------------------- |
+| **@radix-ui/react-dropdown-menu** | 2.1.16  | Accessible dropdown menus |
+| **@radix-ui/react-popover**       | 1.1.15  | Accessible popovers       |
+| **@radix-ui/react-accordion**     | 1.2.12  | Accessible accordions     |
+| **@radix-ui/react-slot**          | 1.2.4   | Composition utilities     |
+| **@floating-ui/react**            | 0.27.16 | Floating UI positioning   |
+| **embla-carousel-react**          | 8.6.0   | Image carousel component  |
+| **react-grid-gallery**            | 1.0.1   | Photo gallery grid        |
+| **react-toastify**                | 11.0.5  | Toast notifications       |
 
 ### File & Data Handling
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **axios** | 1.11.0 | HTTP client for API requests |
-| **xlsx** | 0.18.5 | Excel file reading/writing |
-| **react-pdf** | 10.2.0 | PDF viewing in React |
-| **uuid** | 13.0.0 | UUID generation |
+
+| Technology    | Version | Purpose                      |
+| ------------- | ------- | ---------------------------- |
+| **axios**     | 1.11.0  | HTTP client for API requests |
+| **xlsx**      | 0.18.5  | Excel file reading/writing   |
+| **jszip**     | 3.10.1  | ZIP file compression         |
+| **react-pdf** | 10.2.0  | PDF viewing in React         |
+| **uuid**      | 13.0.0  | UUID generation              |
 
 ### Forms, Validation & Data
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **zod** | 4.1.12 | Schema validation library |
-| **date-fns** | 4.1.0 | Date manipulation |
-| **react-day-picker** | 9.11.1 | Date picker component |
-| **chart.js** | 4.5.1 | Chart rendering |
-| **react-chartjs-2** | 5.3.1 | React wrapper for Chart.js |
-| **recharts** | 3.3.0 | Composable charts |
+
+| Technology           | Version | Purpose                    |
+| -------------------- | ------- | -------------------------- |
+| **zod**              | 4.1.12  | Schema validation library  |
+| **date-fns**         | 4.1.0   | Date manipulation          |
+| **react-day-picker** | 9.11.1  | Date picker component      |
+| **chart.js**         | 4.5.1   | Chart rendering            |
+| **react-chartjs-2**  | 5.3.1   | React wrapper for Chart.js |
+| **recharts**         | 3.3.0   | Composable charts          |
 
 ### Email
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **@emailjs/browser** | 4.4.1 | Client-side email sending |
-| **emailjs** | 4.0.3 | Email service integration |
+
+| Technology           | Version | Purpose                   |
+| -------------------- | ------- | ------------------------- |
+| **@emailjs/browser** | 4.4.1   | Client-side email sending |
+| **emailjs**          | 4.0.3   | Email service integration |
 
 ### Utilities
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **cookies-next** | 6.1.0 | Cookie management for Next.js |
-| **lodash.throttle** | 4.1.1 | Function throttling |
-| **react-hotkeys-hook** | 5.2.1 | Keyboard shortcuts |
-| **clsx** | 2.1.1 | Conditional class names |
-| **tailwind-merge** | 3.3.1 | Tailwind class merging |
-| **class-variance-authority** | 0.7.1 | Component variants |
+
+| Technology                   | Version | Purpose                       |
+| ---------------------------- | ------- | ----------------------------- |
+| **cookies-next**             | 6.1.0   | Cookie management for Next.js |
+| **lodash.throttle**          | 4.1.1   | Function throttling           |
+| **react-hotkeys-hook**       | 5.2.1   | Keyboard shortcuts            |
+| **clsx**                     | 2.1.1   | Conditional class names       |
+| **tailwind-merge**           | 3.3.1   | Tailwind class merging        |
+| **class-variance-authority** | 0.7.1   | Component variants            |
 
 ### Development Tools
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **ESLint** | 9 | Code linting |
-| **eslint-config-next** | 15.5.2 | Next.js ESLint configuration |
-| **@eslint/eslintrc** | 3 | ESLint config compatibility |
-| **@types/lodash.throttle** | 4.1.9 | TypeScript types for lodash.throttle |
-| **tw-animate-css** | 1.4.0 | Tailwind animation utilities |
+
+| Technology                 | Version | Purpose                              |
+| -------------------------- | ------- | ------------------------------------ |
+| **ESLint**                 | 9       | Code linting                         |
+| **eslint-config-next**     | 15.5.2  | Next.js ESLint configuration         |
+| **@eslint/eslintrc**       | 3       | ESLint config compatibility          |
+| **@types/lodash.throttle** | 4.1.9   | TypeScript types for lodash.throttle |
 
 ---
 
@@ -187,7 +212,7 @@ The application is built with modern web technologies including **Next.js 15.5.2
 ikonickitchens/
 ├── src/
 │   ├── app/                    # Next.js App Router
-│   │   ├── api/               # Backend API routes (55 endpoints)
+│   │   ├── api/               # Backend API routes (59 endpoints)
 │   │   │   ├── admin/         # Admin tools (session cleanup)
 │   │   │   ├── client/        # Client CRUD (4 endpoints)
 │   │   │   ├── contact/       # Contact CRUD (3 endpoints)
@@ -195,28 +220,33 @@ ikonickitchens/
 │   │   │   ├── deletedmedia/  # Deleted file management (2 endpoints)
 │   │   │   ├── employee/      # Employee CRUD (3 endpoints)
 │   │   │   ├── item/          # Inventory CRUD (4 endpoints)
+│   │   │   ├── logs/          # Activity logs (1 endpoint) [NEW]
 │   │   │   ├── lot/           # Lot CRUD (3 endpoints)
 │   │   │   ├── lot_tab_notes/ # Tab notes CRUD (2 endpoints)
 │   │   │   ├── material_selection/ # Material selection (4 endpoints)
 │   │   │   ├── materials_to_order/ # MTO management (4 endpoints)
-│   │   │   ├── media/         # Media management
+│   │   │   ├── module_access/ # Access control (2 endpoints) [NEW]
 │   │   │   ├── project/       # Project CRUD (3 endpoints)
 │   │   │   ├── purchase_order/# PO management (4 endpoints)
 │   │   │   ├── stage/         # Stage CRUD (2 endpoints)
+│   │   │   ├── stock_tally/   # Bulk stock updates (1 endpoint) [NEW]
 │   │   │   ├── stock_transaction/ # Stock tracking (2 endpoints)
-│   │   │   ├── supplier/      # Supplier CRUD (5 endpoints + statements)
-│   │   │   ├── uploads/       # File upload handlers (4 endpoints)
+│   │   │   ├── supplier/      # Supplier CRUD (7 endpoints)
+│   │   │   ├── uploads/       # File upload handlers (2 endpoints)
 │   │   │   ├── user/          # User management (1 endpoint)
-│   │   │   ├── signin         # Authentication (3 endpoints)
+│   │   │   ├── xero/          # Xero integration (1 endpoint) [NEW]
+│   │   │   ├── signin         # Authentication
 │   │   │   ├── signout        #
 │   │   │   └── signup         #
-│   │   ├── admin/             # Admin dashboard pages (26 pages)
+│   │   ├── admin/             # Admin dashboard pages (27 pages)
 │   │   │   ├── clients/       # Client management (3 pages)
 │   │   │   ├── dashboard/     # Main dashboard
+│   │   │   ├── deletefiles/   # Deleted media management
 │   │   │   ├── employees/     # Employee management (3 pages)
-│   │   │   ├── finance/       # Financial analytics
 │   │   │   ├── inventory/     # Inventory management (4 pages)
+│   │   │   │   └── components/# Inventory-specific components (1)
 │   │   │   ├── login/         # Admin login page
+│   │   │   ├── logs/          # Activity logs viewer [NEW]
 │   │   │   ├── projects/      # Project management (4 pages)
 │   │   │   │   └── components/# Project-specific components (6)
 │   │   │   ├── settings/      # System settings
@@ -229,21 +259,22 @@ ikonickitchens/
 │   │   ├── wardrobes/         # Public wardrobe portfolio
 │   │   ├── portfolio/         # Gallery showcase
 │   │   ├── inquiries/         # Customer inquiry forms
-│   │   ├── dashboard/         # Dashboard redirect
+│   │   ├── uploads/           # File serving route
 │   │   ├── layout.jsx         # Root layout
 │   │   ├── page.jsx           # Home page
 │   │   ├── providers.jsx      # Redux & context providers
 │   │   └── globals.css        # Global styles
-│   ├── components/            # Reusable React components (15 components)
-│   │   ├── TextEditor/        # Rich text editor wrapper
+│   ├── components/            # Reusable React components (16 base components)
+│   │   ├── TextEditor/        # Rich text editor wrapper (TypeScript)
 │   │   ├── Carousel.jsx       # Image carousel
 │   │   ├── DeleteConfirmation.jsx # Confirmation modals
 │   │   ├── footer.jsx         # Site footer
 │   │   ├── gallerypage.jsx    # Photo gallery
 │   │   ├── Loader.jsx         # Loading spinner
 │   │   ├── Navbar.jsx         # Top navigation
-│   │   ├── ProtectedRoute.jsx # Route protection HOC
+│   │   ├── ProtectedRoute.jsx # Route protection HOC with module access
 │   │   ├── sidebar.jsx        # Admin sidebar
+│   │   ├── StockTally.jsx     # Stock tally modal component [NEW]
 │   │   ├── tabs.jsx           # Tab interface
 │   │   ├── tabscontroller.jsx # Tab controller
 │   │   ├── Tiptap.jsx         # TipTap integration
@@ -252,11 +283,11 @@ ikonickitchens/
 │   │   └── validators.js      # Client-side validators
 │   ├── config/                # Configuration (1 file)
 │   ├── contexts/              # React Context (2 files: AuthContext)
-│   ├── lib/                   # Core utilities & middleware (10 files)
+│   ├── lib/                   # Core utilities & middleware (12 files)
 │   │   ├── auth-middleware.js # Auth middleware functions
 │   │   ├── baseUrl.js         # Base URL configuration
 │   │   ├── db.ts              # Prisma client singleton (TypeScript)
-│   │   ├── fileHandler.js     # File handling utilities
+│   │   ├── fileHandler.js     # File handling utilities (297 lines)
 │   │   ├── session.js         # Session management
 │   │   ├── session-cleanup.js # Cleanup expired sessions
 │   │   ├── tiptap-utils.js    # TipTap utilities
@@ -264,21 +295,32 @@ ikonickitchens/
 │   │   └── validators/        # Server-side validators (2 files)
 │   ├── state/                 # Redux store, actions, reducers
 │   │   ├── store/             # Redux store configuration
-│   │   ├── reducer/           # Redux reducers (2 files)
+│   │   ├── reducer/           # Redux reducers (3 files)
+│   │   │   ├── loggedInUser.js
+│   │   │   ├── tabs.js
+│   │   │   └── xeroCredentials.js [NEW]
 │   │   └── action/            # Redux actions (1 file)
 │   └── styles/                # SCSS variables & animations (2 files)
-├── lib/validators/            # Additional validators
+├── lib/                       # Additional validators
+│   ├── validators/
+│   │   └── authFromToken.js   # Token validation utilities
+│   ├── withLogging.js         # Logging middleware [NEW]
+│   └── xero/
+│       └── getAccessToken.js  # Xero OAuth utilities [NEW]
 ├── prisma/                    # Database schema & migrations
-│   └── schema.prisma          # Database schema (642 lines, 31 models)
-├── public/                    # Static assets (13 files, ~2.8 MB)
-│   ├── Gallery/               # Portfolio images
+│   ├── schema.prisma          # Database schema (709 lines, 33 models)
+│   ├── migrations/            # 8 migration files
+│   └── index.js               # Prisma instance
+├── public/                    # Static assets
+│   ├── Gallery/               # Portfolio images (30+ images)
+│   ├── 18 William Avenue/     # Project-specific photos
 │   └── [logos, supplier images]
-├── uploads/                   # User uploads (~638 MB)
-│   ├── employee/              # Employee profile images
-│   ├── item/                  # Inventory item images
-│   ├── lot/                   # Lot documents
+├── uploads/                   # User uploads (~650 MB)
+│   ├── employees/             # Employee profile images
+│   ├── items/                 # Inventory item images
+│   ├── materials_to_order/    # MTO documents
 │   ├── purchase_order/        # Purchase order invoices
-│   └── supplier/              # Supplier files
+│   └── suppliers/             # Supplier files
 ├── generated/prisma/          # Prisma client
 └── [config files]
 ```
@@ -286,27 +328,32 @@ ikonickitchens/
 ### Design Patterns
 
 **Frontend Architecture:**
+
 - **App Router Pattern:** Next.js 15 App Router for file-based routing
 - **Component-Based:** Reusable React components with clear separation of concerns
 - **Context + Redux Hybrid:** AuthContext wraps Redux for global auth state
-- **Protected Routes:** HOC pattern for route protection
+- **Protected Routes:** HOC pattern for route protection with module-level access control
 - **Server-Side Rendering:** Next.js SSR for better SEO and performance
-- **Domain-Specific Components:** Specialized components in feature folders
+- **Domain-Specific Components:** Specialized components in feature folders (27 total)
 
 **Backend Architecture:**
+
 - **API Route Handlers:** Next.js API routes with RESTful design
-- **Middleware Pattern:** Higher-order functions for auth
+- **Middleware Pattern:** Higher-order functions for auth and logging
 - **Session-Based Auth:** Database-stored sessions with token validation
+- **Module Access Control:** Granular 24-field permission system per user
 - **ORM Pattern:** Prisma for type-safe database access
 - **Singleton Pattern:** Single Prisma client instance (TypeScript)
 - **Transaction Management:** Prisma transactions for data consistency
-- **File Handler Pattern:** Centralized file management utilities
+- **File Handler Pattern:** Centralized file management utilities (297 lines)
+- **Activity Logging:** withLogging middleware for audit trail
 
 **State Management:**
-- **Redux Store:** Centralized state with Redux Toolkit
+
+- **Redux Store:** Centralized state with Redux Toolkit (3 reducers)
 - **Persistence Layer:** Redux Persist for localStorage sync
 - **Async Thunks:** Async action creators for API calls
-- **Normalized State:** Separate reducers for different domains
+- **Normalized State:** Separate reducers for loggedInUser, tabs, xeroCredentials
 
 ---
 
@@ -314,23 +361,42 @@ ikonickitchens/
 
 ### Entity Relationship Overview
 
-**31 Models organized into 9 domains:**
+**33 Models organized into 10 domains:**
 
-#### 1. Authentication Domain (2 models)
+#### 1. Authentication & Access Control Domain (3 models)
+
 - **users** - Application login accounts
+
   - Links to employees (one-to-one optional)
   - Has multiple sessions
-  - Creates materials_to_order and purchase_order
-  - Creates material_selection
-  - Fields: username, password, user_type, is_active, employee_id, module_access
+  - Has one module_access (one-to-one) [NEW]
+  - Creates materials_to_order, purchase_order, material_selection
+  - Creates logs [NEW]
+  - Fields: username, password, user_type, is_active, employee_id
+
+- **module_access** [NEW] - Granular permission controls
+
+  - Belongs to users (one-to-one with cascade delete)
+  - 24 boolean permission fields
+  - Fields: all_clients, add_clients, client_details, dashboard, delete_media, all_employees, add_employees, employee_details, all_projects, add_projects, project_details, all_suppliers, add_suppliers, supplier_details, all_items, add_items, item_details, usedmaterial, logs, lotatglance, materialstoorder, purchaseorder, statements
 
 - **sessions** - Session tokens
   - Belongs to users (many-to-one with cascade delete)
   - Fields: token, user_type, expires_at
   - Indexed: user_id, user_type, expires_at
 
-#### 2. HR Domain (2 models)
+#### 2. Activity Logging Domain (1 model) [NEW]
+
+- **logs** - Activity audit trail
+  - Optional link to users (many-to-one)
+  - Fields: entity_type, entity_id, action (LogAction enum), description
+  - Indexed: createdAt, user_id, entity_type, entity_id, action
+  - Actions: CREATE, UPDATE, DELETE, STATUS_CHANGE, ASSIGN, UPLOAD, OTHER
+
+#### 3. HR Domain (2 models)
+
 - **employees** - Staff profiles
+
   - May link to user account (one-to-one)
   - May have profile image (one-to-one with media)
   - Assigned to stages (many-to-many)
@@ -340,8 +406,10 @@ ikonickitchens/
   - Belongs to employee (one-to-one) OR item OR materials_to_order
   - Fields: url, filename, file_type, mime_type, extension, size, is_deleted
 
-#### 3. Project Management Domain (4 models)
+#### 4. Project Management Domain (4 models)
+
 - **project** - Top-level project container
+
   - May link to client (many-to-one optional)
   - Has multiple lots (one-to-many)
   - Has multiple materials_to_order (one-to-many)
@@ -349,6 +417,7 @@ ikonickitchens/
   - Fields: project_id, name
 
 - **lot** - Work packages/jobs
+
   - Belongs to project (many-to-one)
   - May link to materials_to_order (many-to-one optional)
   - Has unique material_selection (one-to-one)
@@ -356,6 +425,7 @@ ikonickitchens/
   - Fields: lot_id, name, status (ACTIVE/COMPLETED), dates, notes
 
 - **stage** - Workflow steps
+
   - Belongs to lot (many-to-one)
   - Assigned to employees (many-to-many)
   - Fields: name, status (NOT_STARTED/IN_PROGRESS/DONE/NA), dates, notes
@@ -364,18 +434,22 @@ ikonickitchens/
   - Links employees to workflow stages
   - Unique constraint on (stage_id, employee_id)
 
-#### 4. Client & Contact Domain (2 models)
+#### 5. Client & Contact Domain (2 models)
+
 - **client** - Customer organizations
+
   - Has multiple projects (one-to-many)
   - Has multiple contacts (one-to-many)
   - Fields: client_id, client_type, name, contact info
 
-- **contact** - Individual contacts  
+- **contact** - Individual contacts
   - Belongs to client OR supplier (polymorphic)
   - Fields: contact_id, name, email, phone, preferred_contact_method, role
 
-#### 5. Document Management Domain (2 models)
+#### 6. Document Management Domain (2 models)
+
 - **lot_tab** - Document sections per lot
+
   - Belongs to lot (many-to-one)
   - Has files (one-to-many)
   - Unique constraint: (lot_id, tab)
@@ -385,28 +459,32 @@ ikonickitchens/
   - Belongs to lot_tab (many-to-one)
   - Fields: url, filename, file_kind (PHOTO/VIDEO/PDF/OTHER), mime_type, size, site_group, is_deleted
 
-#### 6. Material Selection Domain (5 models)
+#### 7. Material Selection Domain (5 models)
+
 - **quote** - Quote management
+
   - Has material selections (one-to-many)
   - Has material selection versions (one-to-many)
   - Fields: quote_id
 
 - **material_selection** - Material selection for lots
+
   - Belongs to lot (one-to-one)
   - Belongs to project (many-to-one)
   - May belong to quote (many-to-one)
   - Created by user (many-to-one)
   - Has current version reference (one-to-one)
   - Has multiple versions (one-to-many)
-  - Fields: project_id, quote_id, createdBy_id, current_version_id, lot_id
 
 - **material_selection_versions** - Version history
+
   - Belongs to material_selection (many-to-one)
   - May belong to quote (many-to-one)
   - Has multiple areas (one-to-many)
-  - Fields: version_number, is_current, measurements, notes
+  - Fields: version_number, is_current, ceiling_height, bulkhead_height, kicker_height, cabinetry_height, notes
 
 - **material_selection_version_area** - Areas within version
+
   - Belongs to version (many-to-one)
   - Has multiple items (one-to-many)
   - Fields: area_name, area_instance_id, bed_option, notes
@@ -415,34 +493,43 @@ ikonickitchens/
   - Belongs to area (many-to-one)
   - Fields: name, category, is_applicable, item_notes
 
-#### 7. Inventory & Supplier Domain (9 models)
+#### 8. Inventory & Supplier Domain (9 models)
+
 - **item** - Master inventory table
+
   - Category-specific details via one-to-one relations
   - Belongs to supplier (many-to-one optional)
   - May have image (one-to-one with media)
   - Used in stock_transactions, materials_to_order_items, purchase_order_item
-  - Fields: item_id, category, description, image_id, price, quantity, measurement_unit
+  - Fields: item_id, category, description, image_id, price, quantity, measurement_unit, supplier_reference, supplier_product_link
 
 - **sheet** - Sheet material details (one-to-one with item)
+
   - Fields: brand, color, finish, face, dimensions, is_sunmica
 
 - **handle** - Handle details (one-to-one with item)
+
   - Fields: brand, color, type, dimensions, material
 
 - **hardware** - Hardware details (one-to-one with item)
+
   - Fields: brand, name, type, dimensions, sub_category
 
 - **accessory** - Accessory details (one-to-one with item)
+
   - Fields: name
 
 - **edging_tape** - Edging tape details (one-to-one with item)
+
   - Fields: brand, color, finish, dimensions
 
 - **supplier** - Supplier organizations
+
   - Has items, contacts, purchase_orders, statements (one-to-many)
   - Fields: supplier_id, name, contact info, abn_number
 
 - **supplier_file** - Supplier documents
+
   - Has statements (one-to-many)
   - Linked from purchase_order as invoice
   - Fields: url, filename, file_type, mime_type, size, is_deleted
@@ -452,8 +539,10 @@ ikonickitchens/
   - Has supplier_file (many-to-one)
   - Fields: month_year, payment_status (PENDING/PAID), amount, due_date, notes
 
-#### 8. Procurement Domain (3 models)
+#### 9. Procurement Domain (4 models)
+
 - **materials_to_order** - Material requisitions
+
   - Belongs to project (many-to-one)
   - Links to lots (one-to-many)
   - Has items (one-to-many)
@@ -464,12 +553,13 @@ ikonickitchens/
   - Fields: project_id, media_id, status (DRAFT/PARTIALLY_ORDERED/FULLY_ORDERED/CLOSED), notes, createdBy_id
 
 - **materials_to_order_item** - MTO line items
+
   - Belongs to materials_to_order and item
   - Tracks quantity, quantity_ordered, quantity_used
   - Linked to purchase_order_items
-  - Fields: mto_id, item_id, quantity, quantity_ordered, quantity_used, notes
 
 - **purchase_order** - Purchase orders
+
   - Belongs to supplier (many-to-one)
   - May link to materials_to_order (many-to-one optional)
   - Ordered by user (many-to-one optional)
@@ -484,35 +574,42 @@ ikonickitchens/
   - May link to materials_to_order_item
   - Fields: quantity, quantity_received, unit_price, notes
 
-#### 9. Stock Management Domain (1 model)
+#### 10. Stock Management Domain (1 model)
+
 - **stock_transaction** - Inventory movements
   - Links to item (many-to-one)
   - May link to materials_to_order (many-to-one)
   - May link to purchase_order (many-to-one)
   - Fields: quantity, type (ADDED/USED/WASTED), notes
+  - Used by Stock Tally feature for bulk updates
 
 ### Key Schema Features
 
 **Relationship Patterns:**
-- Cascade deletes where appropriate (sessions, contacts, lots, stages, files)
+
+- Cascade deletes where appropriate (sessions, contacts, lots, stages, files, module_access)
 - Restrict deletes for critical references (employees with users)
 - SetNull for optional references (lot materials_to_orders_id)
 - Unique constraints for business keys and relationships
 
 **Data Types:**
+
 - UUIDs for all primary keys
 - Decimal(10,2) for monetary values
 - DateTime for timestamps
 - LongText for notes fields
-- JSON for flexible data (module_access, availability)
+- JSON for flexible data (availability)
 
 **Indexing Strategy:**
+
 - Indexed foreign keys for join performance
 - Indexed business keys (employee_id, client_id, lot_id, supplier_id, order_no, quote_id)
-- Indexed lookup fields (status, user_type, tab, file_kind, category)
+- Indexed lookup fields (status, user_type, tab, file_kind, category, action)
 - Composite indexes where needed (lot_id + tab)
 
-**Enums:**
+**Enums (11 total):**
+
+- **LogAction:** CREATE, UPDATE, DELETE, STATUS_CHANGE, ASSIGN, UPLOAD, OTHER [NEW]
 - **StageStatus:** NOT_STARTED, IN_PROGRESS, DONE, NA
 - **LotStatus:** ACTIVE, COMPLETED
 - **Category:** SHEET, HANDLE, HARDWARE, ACCESSORY, EDGING_TAPE
@@ -528,132 +625,173 @@ ikonickitchens/
 
 ## API Endpoints
 
-### Complete API Summary: 55 Endpoints
+### Complete API Summary: 59 Endpoints
 
 #### 1. Authentication (3 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/signin` | None | User login with credentials |
-| POST | `/api/signout` | Yes | User logout, delete session |
-| POST | `/api/signup` | None | User registration |
 
-#### 2. Client Management (4 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/client/create` | Admin | Create new client |
-| GET | `/api/client/all` | Admin | List all clients |
-| GET | `/api/client/allnames` | Admin | Get client names for dropdowns |
-| PATCH | `/api/client/[id]` | Admin | Update client |
+| Method | Endpoint       | Auth | Purpose                              |
+| ------ | -------------- | ---- | ------------------------------------ |
+| POST   | `/api/signin`  | None | User login with credentials          |
+| POST   | `/api/signout` | Yes  | User logout, delete session          |
+| POST   | `/api/signup`  | None | User registration with module access |
 
-#### 3. Employee Management (3 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/employee/create` | Admin | Create employee with image upload |
-| GET | `/api/employee/all` | Admin | List all employees |
-| PATCH | `/api/employee/[id]` | Admin | Update employee with image upload |
+#### 2. Module Access Control (2 endpoints) [NEW]
 
-#### 4. Project Management (3 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/project/create` | Admin | Create new project |
-| GET | `/api/project/all` | Admin | List all projects |
-| PATCH | `/api/project/[id]` | Admin | Update project |
+| Method | Endpoint                  | Auth  | Purpose                          |
+| ------ | ------------------------- | ----- | -------------------------------- |
+| GET    | `/api/module_access/[id]` | Admin | Get user's module permissions    |
+| PATCH  | `/api/module_access/[id]` | Admin | Update user's module permissions |
 
-#### 5. Lot Management (3 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/lot/create` | Admin | Create new lot (work package) |
-| GET | `/api/lot/[id]` | Admin | Get lot with stages & files |
-| GET | `/api/lot/active` | Admin | Get active lots |
+#### 3. Activity Logs (1 endpoint) [NEW]
 
-#### 6. Stage Management (2 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/stage/create` | Admin | Create workflow stage with assignments |
-| PATCH | `/api/stage/[id]` | Admin | Update stage status/dates/assignments |
+| Method | Endpoint    | Auth  | Purpose               |
+| ------ | ----------- | ----- | --------------------- |
+| GET    | `/api/logs` | Admin | Get all activity logs |
 
-#### 7. Inventory Management (4 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/item/create` | Admin | Create inventory item with image |
-| GET | `/api/item/all/[category]` | Admin | Get items by category |
-| GET | `/api/item/by-supplier/[id]` | Admin | Get items by supplier |
-| PATCH | `/api/item/[id]` | Admin | Update item with image upload |
+#### 4. Client Management (4 endpoints)
 
-#### 8. Supplier Management (5+ endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/supplier/create` | Admin | Create supplier |
-| GET | `/api/supplier/all` | Admin | List all suppliers |
-| GET | `/api/supplier/[id]` | Admin | Get supplier details with files |
-| PATCH | `/api/supplier/[id]` | Admin | Update supplier |
-| GET | `/api/supplier/[id]/statements` | Admin | Get supplier statements |
-| POST | `/api/supplier/[id]/statements` | Admin | Create supplier statement |
-| PATCH | `/api/supplier/[id]/statements/[statementId]` | Admin | Update statement |
+| Method | Endpoint               | Auth  | Purpose                        |
+| ------ | ---------------------- | ----- | ------------------------------ |
+| POST   | `/api/client/create`   | Admin | Create new client              |
+| GET    | `/api/client/all`      | Admin | List all clients               |
+| GET    | `/api/client/allnames` | Admin | Get client names for dropdowns |
+| PATCH  | `/api/client/[id]`     | Admin | Update client                  |
 
-#### 9. Contact Management (3 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/contact/create` | Admin | Create contact (client or supplier) |
-| GET | `/api/contact/all` | Admin | List all contacts |
-| PATCH | `/api/contact/[id]` | Admin | Update contact |
+#### 5. Employee Management (3 endpoints)
 
-#### 10. Material Selection (4 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/material_selection/create` | Admin | Create material selection |
-| GET | `/api/material_selection/[id]` | Admin | Get material selection by ID |
-| GET | `/api/material_selection/lot/[lot_id]` | Admin | Get by lot |
-| GET | `/api/material_selection/version/[version_id]` | Admin | Get specific version |
+| Method | Endpoint               | Auth  | Purpose                           |
+| ------ | ---------------------- | ----- | --------------------------------- |
+| POST   | `/api/employee/create` | Admin | Create employee with image upload |
+| GET    | `/api/employee/all`    | Admin | List all employees                |
+| PATCH  | `/api/employee/[id]`   | Admin | Update employee with image upload |
 
-#### 11. Materials to Order (4 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/materials_to_order/create` | Admin | Create MTO with items |
-| GET | `/api/materials_to_order/all` | Admin | List all MTOs |
-| GET | `/api/materials_to_order/by-supplier/[id]` | Admin | Get MTOs by supplier |
-| PATCH | `/api/materials_to_order/[id]` | Admin | Update MTO |
+#### 6. Project Management (3 endpoints)
 
-#### 12. Purchase Order Management (4 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/purchase_order/create` | Admin | Create PO with invoice upload |
-| GET | `/api/purchase_order/all` | Admin | List all POs |
-| GET | `/api/purchase_order/by-supplier/[id]` | Admin | Get POs by supplier |
-| PATCH | `/api/purchase_order/[id]` | Admin | Update PO, receive items |
+| Method | Endpoint              | Auth  | Purpose            |
+| ------ | --------------------- | ----- | ------------------ |
+| POST   | `/api/project/create` | Admin | Create new project |
+| GET    | `/api/project/all`    | Admin | List all projects  |
+| PATCH  | `/api/project/[id]`   | Admin | Update project     |
 
-#### 13. Stock Transaction (2 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/stock_transaction/create` | Admin | Create stock transaction |
-| GET | `/api/stock_transaction/by-item/[id]` | Admin | Get transactions by item |
+#### 7. Lot Management (3 endpoints)
 
-#### 14. Document Management (2 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/lot_tab_notes/create` | Admin | Create lot tab notes |
-| PATCH | `/api/lot_tab_notes/[id]` | Admin | Update tab notes |
+| Method | Endpoint          | Auth  | Purpose                       |
+| ------ | ----------------- | ----- | ----------------------------- |
+| POST   | `/api/lot/create` | Admin | Create new lot (work package) |
+| GET    | `/api/lot/[id]`   | Admin | Get lot with stages & files   |
+| GET    | `/api/lot/active` | Admin | Get active lots               |
 
-#### 15. File Management (6+ endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| POST | `/api/uploads/employee` | Admin | Upload employee images |
-| POST | `/api/uploads/item` | Admin | Upload item images |
-| POST | `/api/uploads/lot` | Admin | Upload lot documents |
-| POST | `/api/uploads/purchase_order` | Admin | Upload PO invoices |
-| GET | `/api/deletedmedia/all` | Admin | List soft-deleted files |
-| DELETE | `/api/deletedmedia/[filename]` | Admin | Permanently delete file |
+#### 8. Stage Management (2 endpoints)
 
-#### 16. Dashboard & Admin Tools (3 endpoints)
-| Method | Endpoint | Auth | Purpose |
-|--------|----------|------|---------|
-| GET | `/api/dashboard` | Admin | Get dashboard metrics |
-| POST | `/api/admin/cleanup-sessions` | Master Admin | Clean expired sessions |
-| PATCH | `/api/user/[id]` | Admin | Update user settings |
+| Method | Endpoint            | Auth  | Purpose                                |
+| ------ | ------------------- | ----- | -------------------------------------- |
+| POST   | `/api/stage/create` | Admin | Create workflow stage with assignments |
+| PATCH  | `/api/stage/[id]`   | Admin | Update stage status/dates/assignments  |
+
+#### 9. Inventory Management (4 endpoints)
+
+| Method | Endpoint                     | Auth  | Purpose                          |
+| ------ | ---------------------------- | ----- | -------------------------------- |
+| POST   | `/api/item/create`           | Admin | Create inventory item with image |
+| GET    | `/api/item/all/[category]`   | Admin | Get items by category            |
+| GET    | `/api/item/by-supplier/[id]` | Admin | Get items by supplier            |
+| PATCH  | `/api/item/[id]`             | Admin | Update item with image upload    |
+
+#### 10. Stock Tally (1 endpoint) [NEW]
+
+| Method | Endpoint           | Auth  | Purpose                                 |
+| ------ | ------------------ | ----- | --------------------------------------- |
+| POST   | `/api/stock_tally` | Admin | Bulk update stock quantities from Excel |
+
+#### 11. Supplier Management (7 endpoints)
+
+| Method | Endpoint                                      | Auth  | Purpose                         |
+| ------ | --------------------------------------------- | ----- | ------------------------------- |
+| POST   | `/api/supplier/create`                        | Admin | Create supplier                 |
+| GET    | `/api/supplier/all`                           | Admin | List all suppliers              |
+| GET    | `/api/supplier/[id]`                          | Admin | Get supplier details with files |
+| PATCH  | `/api/supplier/[id]`                          | Admin | Update supplier                 |
+| GET    | `/api/supplier/[id]/statements`               | Admin | Get supplier statements         |
+| POST   | `/api/supplier/[id]/statements`               | Admin | Create supplier statement       |
+| PATCH  | `/api/supplier/[id]/statements/[statementId]` | Admin | Update statement                |
+| GET    | `/api/supplier/statements`                    | Admin | Get all statements              |
+
+#### 12. Contact Management (3 endpoints)
+
+| Method | Endpoint              | Auth  | Purpose                             |
+| ------ | --------------------- | ----- | ----------------------------------- |
+| POST   | `/api/contact/create` | Admin | Create contact (client or supplier) |
+| GET    | `/api/contact/all`    | Admin | List all contacts                   |
+| PATCH  | `/api/contact/[id]`   | Admin | Update contact                      |
+
+#### 13. Material Selection (4 endpoints)
+
+| Method | Endpoint                                       | Auth  | Purpose                      |
+| ------ | ---------------------------------------------- | ----- | ---------------------------- |
+| POST   | `/api/material_selection/create`               | Admin | Create material selection    |
+| GET    | `/api/material_selection/[id]`                 | Admin | Get material selection by ID |
+| GET    | `/api/material_selection/lot/[lot_id]`         | Admin | Get by lot                   |
+| GET    | `/api/material_selection/version/[version_id]` | Admin | Get specific version         |
+
+#### 14. Materials to Order (4 endpoints)
+
+| Method | Endpoint                                   | Auth  | Purpose               |
+| ------ | ------------------------------------------ | ----- | --------------------- |
+| POST   | `/api/materials_to_order/create`           | Admin | Create MTO with items |
+| GET    | `/api/materials_to_order/all`              | Admin | List all MTOs         |
+| GET    | `/api/materials_to_order/by-supplier/[id]` | Admin | Get MTOs by supplier  |
+| PATCH  | `/api/materials_to_order/[id]`             | Admin | Update MTO            |
+
+#### 15. Purchase Order Management (4 endpoints)
+
+| Method | Endpoint                               | Auth  | Purpose                       |
+| ------ | -------------------------------------- | ----- | ----------------------------- |
+| POST   | `/api/purchase_order/create`           | Admin | Create PO with invoice upload |
+| GET    | `/api/purchase_order/all`              | Admin | List all POs                  |
+| GET    | `/api/purchase_order/by-supplier/[id]` | Admin | Get POs by supplier           |
+| PATCH  | `/api/purchase_order/[id]`             | Admin | Update PO, receive items      |
+
+#### 16. Stock Transaction (2 endpoints)
+
+| Method | Endpoint                              | Auth  | Purpose                  |
+| ------ | ------------------------------------- | ----- | ------------------------ |
+| POST   | `/api/stock_transaction/create`       | Admin | Create stock transaction |
+| GET    | `/api/stock_transaction/by-item/[id]` | Admin | Get transactions by item |
+
+#### 17. Document Management (2 endpoints)
+
+| Method | Endpoint                    | Auth  | Purpose              |
+| ------ | --------------------------- | ----- | -------------------- |
+| POST   | `/api/lot_tab_notes/create` | Admin | Create lot tab notes |
+| PATCH  | `/api/lot_tab_notes/[id]`   | Admin | Update tab notes     |
+
+#### 18. File Management (4 endpoints)
+
+| Method | Endpoint                               | Auth   | Purpose                 |
+| ------ | -------------------------------------- | ------ | ----------------------- |
+| GET    | `/api/uploads/lots/[...path]`          | Public | Serve lot files         |
+| GET    | `/api/uploads/materials-to-order/[id]` | Admin  | Serve MTO files         |
+| GET    | `/api/deletedmedia/all`                | Admin  | List soft-deleted files |
+| DELETE | `/api/deletedmedia/[filename]`         | Admin  | Permanently delete file |
+
+#### 19. Dashboard & Admin Tools (3 endpoints)
+
+| Method | Endpoint                      | Auth         | Purpose                |
+| ------ | ----------------------------- | ------------ | ---------------------- |
+| GET    | `/api/dashboard`              | Admin        | Get dashboard metrics  |
+| POST   | `/api/admin/cleanup-sessions` | Master Admin | Clean expired sessions |
+| PATCH  | `/api/user/[id]`              | Admin        | Update user settings   |
+
+#### 20. Xero Integration (1 endpoint) [NEW]
+
+| Method | Endpoint                      | Auth  | Purpose                           |
+| ------ | ----------------------------- | ----- | --------------------------------- |
+| GET    | `/api/xero/bank-transactions` | Admin | Fetch bank transactions from Xero |
 
 ### API Design Patterns
 
 **Consistent Response Format:**
+
 ```json
 {
   "status": true,
@@ -663,6 +801,7 @@ ikonickitchens/
 ```
 
 **Error Response Format:**
+
 ```json
 {
   "status": false,
@@ -672,87 +811,94 @@ ikonickitchens/
 ```
 
 **Authentication:**
+
 - All protected endpoints use `Authorization: Bearer <token>` header
 - Middleware validates session and user status
 - Returns 401 for invalid/expired sessions
 - Returns 403 for insufficient permissions
 
+**Activity Logging:**
+
+- `withLogging()` middleware for audit trail
+- Logs user_id, entity_type, entity_id, action, description
+- All CREATE, UPDATE, DELETE operations logged
+
 **File Upload Support:**
-- Multipart/form-data handling with formidable
+
+- Native FormData handling with fileHandler utility
 - Files stored in `/uploads/[context]/` directories
 - Metadata stored in database (media, lot_file, supplier_file)
 - Soft delete support (is_deleted flag)
-
-**Advanced Features:**
-- Transaction support for complex operations
-- Automatic inventory updates via stock transactions
-- Cascading status updates (MTO, PO statuses)
-- File handling with centralized fileHandler utility
 
 ---
 
 ## Frontend Structure
 
 ### Public Pages (8 pages)
-| Route | Purpose | Components Used |
-|-------|---------|-----------------|
-| `/` | Home page | Navbar, Carousel, Footer, contactpopup |
-| `/kitchens` | Kitchen portfolio | Navbar, gallerypage, Footer |
-| `/bathroom` | Bathroom portfolio | Navbar, gallerypage, Footer |
-| `/laundry` | Laundry portfolio | Navbar, gallerypage, Footer |
-| `/wardrobes` | Wardrobe portfolio | Navbar, gallerypage, Footer |
-| `/portfolio` | Full gallery | Navbar, gallerypage, Carousel, Footer |
-| `/inquiries` | Contact forms | Navbar, Footer |
-| `/dashboard` | Dashboard redirect | None (redirect) |
 
-### Admin Pages (26 pages)
-| Route | Purpose | Protection |
-|-------|---------|------------|
-| `/admin` | Admin redirect | AdminRoute |
-| `/admin/login` | Admin login | None |
-| `/admin/dashboard` | Main dashboard | AdminRoute |
-| `/admin/clients` | Client list | AdminRoute |
-| `/admin/clients/addclient` | Create client | AdminRoute |
-| `/admin/clients/[id]` | Edit client | AdminRoute |
-| `/admin/employees` | Employee list | AdminRoute |
-| `/admin/employees/addemployee` | Create employee | AdminRoute |
-| `/admin/employees/[id]` | Edit employee | AdminRoute |
-| `/admin/projects` | Project list | AdminRoute |
-| `/admin/projects/addproject` | Create project | AdminRoute |
-| `/admin/projects/[id]` | Edit project (lots/stages/MTO/materials) | AdminRoute |
-| `/admin/projects/lotatglance` | Lot at a glance view | AdminRoute |
-| `/admin/inventory` | Inventory list | AdminRoute |
-| `/admin/inventory/additem` | Create item | AdminRoute |
-| `/admin/inventory/[id]` | Edit item | AdminRoute |
-| `/admin/inventory/usedmaterial` | Material usage tracking | AdminRoute |
-| `/admin/suppliers` | Supplier list | AdminRoute |
-| `/admin/suppliers/addsupplier` | Create supplier | AdminRoute |
-| `/admin/suppliers/[id]` | Edit supplier | AdminRoute |
-| `/admin/suppliers/materialstoorder` | View all MTOs | AdminRoute |
-| `/admin/suppliers/purchaseorder` | View all POs | AdminRoute |
-| `/admin/suppliers/statements` | Supplier statements | AdminRoute |
-| `/admin/finance` | Financial analytics | AdminRoute |
-| `/admin/settings` | System settings | AdminRoute |
-| `/admin/deletedmedia` | Deleted media management | AdminRoute |
+| Route        | Purpose                 | Components Used                       |
+| ------------ | ----------------------- | ------------------------------------- |
+| `/`          | Home page with carousel | Navbar, Footer, AOS animations        |
+| `/kitchens`  | Kitchen portfolio       | Navbar, gallerypage, Footer           |
+| `/bathroom`  | Bathroom portfolio      | Navbar, gallerypage, Footer           |
+| `/laundry`   | Laundry portfolio       | Navbar, gallerypage, Footer           |
+| `/wardrobes` | Wardrobe portfolio      | Navbar, gallerypage, Footer           |
+| `/portfolio` | Full gallery            | Navbar, gallerypage, Carousel, Footer |
+| `/inquiries` | Contact forms           | Navbar, contactpopup, Footer          |
 
-### Key Components (15 base + 10 specialized)
+### Admin Pages (27 pages)
 
-**Navigation & Layout:**
+| Route                               | Purpose             | Module Access Key |
+| ----------------------------------- | ------------------- | ----------------- |
+| `/admin`                            | Admin redirect      | -                 |
+| `/admin/login`                      | Admin login         | -                 |
+| `/admin/dashboard`                  | Main dashboard      | dashboard         |
+| `/admin/clients`                    | Client list         | all_clients       |
+| `/admin/clients/addclient`          | Create client       | add_clients       |
+| `/admin/clients/[id]`               | Edit client         | client_details    |
+| `/admin/employees`                  | Employee list       | all_employees     |
+| `/admin/employees/addemployee`      | Create employee     | add_employees     |
+| `/admin/employees/[id]`             | Edit employee       | employee_details  |
+| `/admin/projects`                   | Project list        | all_projects      |
+| `/admin/projects/addproject`        | Create project      | add_projects      |
+| `/admin/projects/[id]`              | Edit project        | project_details   |
+| `/admin/projects/lotatglance`       | Lot at a glance     | lotatglance       |
+| `/admin/inventory`                  | Inventory list      | all_items         |
+| `/admin/inventory/additem`          | Create item         | add_items         |
+| `/admin/inventory/[id]`             | Edit item           | item_details      |
+| `/admin/inventory/usedmaterial`     | Material usage      | usedmaterial      |
+| `/admin/suppliers`                  | Supplier list       | all_suppliers     |
+| `/admin/suppliers/addsupplier`      | Create supplier     | add_suppliers     |
+| `/admin/suppliers/[id]`             | Edit supplier       | supplier_details  |
+| `/admin/suppliers/materialstoorder` | View all MTOs       | materialstoorder  |
+| `/admin/suppliers/purchaseorder`    | View all POs        | purchaseorder     |
+| `/admin/suppliers/statements`       | Supplier statements | statements        |
+| `/admin/deletefiles`                | Deleted media       | delete_media      |
+| `/admin/logs`                       | Activity logs       | logs              |
+| `/admin/settings`                   | System settings     | -                 |
+
+### Key Components (27 total)
+
+**Base Components (16):**
+
 - `Navbar.jsx` - Top navigation with responsive menu
 - `sidebar.jsx` - Admin dashboard sidebar with route links
 - `footer.jsx` - Site footer with company info
-
-**Content Display:**
 - `Carousel.jsx` - Embla-based image carousel for portfolio
 - `gallerypage.jsx` - Grid gallery with lightbox for photos
-
-**Forms & Input:**
 - `tabs.jsx` / `tabscontroller.jsx` - Tabbed interface for lot documents
-- `TextEditor/` - TipTap rich text editor wrapper
+- `TextEditor/TextEditor.tsx` - TipTap rich text editor (TypeScript)
 - `Tiptap.jsx` - Main TipTap editor integration
 - `contactpopup.jsx` - Contact form popup
+- `DeleteConfirmation.jsx` - Confirmation modal for deletions
+- `Loader.jsx` - Loading spinner component
+- `ProtectedRoute.jsx` - Route protection HOC with module access
+- `StockTally.jsx` - Stock tally modal with Excel import [NEW]
+- `constants.jsx` - Application-wide constants
+- `validators.js` - Client-side validation utilities
 
 **Project-Specific Components (6):**
+
 - `MaterialSelection.jsx` - Material selection interface with versioning
 - `MaterialSelectionConstants.jsx` - Constants for material selection
 - `MaterialsToOrder.jsx` - MTO creation and management
@@ -761,48 +907,55 @@ ikonickitchens/
 - `ViewMedia.jsx` - Media file viewer
 
 **Supplier-Specific Components (4):**
+
 - `MaterialsToOrder.jsx` - Supplier view of MTOs
 - `PurchaseOrder.jsx` - PO display component
 - `PurchaseOrderForm.jsx` - PO creation form
 - `Statement.jsx` - Supplier statement management
 
-**UI Utilities:**
-- `DeleteConfirmation.jsx` - Confirmation modal for deletions
-- `Loader.jsx` - Loading spinner component
-- `ProtectedRoute.jsx` - Route protection HOC with role checking
-- `constants.jsx` - Application-wide constants
-- `validators.js` - Client-side validation utilities
+**Inventory-Specific Components (1):**
+
+- `MultiSelectDropdown.jsx` - Multi-select dropdown for filters
 
 ### State Management Flow
 
 **Redux Store Structure:**
+
 ```javascript
 {
   loggedInUser: {
-    userData: { id, username, user_type, employee_id, ... },
+    userData: { id, username, user_type, employee_id, token, ... },
     loading: false,
     error: null,
     isAuthenticated: true
   },
   tabs: {
     // Tab state management
+  },
+  xero: {
+    access_token: null,
+    expires_at: null
   }
 }
 ```
 
 **Auth Flow:**
+
 1. User submits login → `loginUser()` action
-2. API returns token → Stored in cookie (1-month expiry)
+2. API returns token → Stored in Redux state
 3. Redux state updated → `userData` populated
 4. Redux Persist → Syncs to localStorage
-5. On app load → `restoreSession()` from cookies
-6. Protected routes → Check `isAuthenticated` & `user_type`
+5. On app load → `restoreSession()` from storage
+6. Protected routes → Check `isAuthenticated` & module access
+7. Module access fetched → Per-page permission check
 
-**Context Integration:**
-- `AuthContext` wraps Redux store
-- Provides helper functions: `login()`, `logout()`, `isAdmin()`, `isMasterAdmin()`
-- Manages cookie operations via `cookies-next`
-- PersistGate prevents render until state rehydrated
+**Module Access Flow:**
+
+1. User logs in → Session created
+2. AdminRoute component → Fetches `/api/module_access/[userId]`
+3. Current path checked → Mapped to permission key via siteMap
+4. Access denied → Shows AccessDenied component
+5. Access granted → Renders protected content
 
 ---
 
@@ -810,223 +963,251 @@ ikonickitchens/
 
 ### Authentication System
 
-**Type:** Session-Based with Database Tokens
+**Type:** Session-Based with Database Tokens + Module Access Control
 
 **Implementation:**
+
 - Sessions stored in `sessions` table with unique tokens
 - Token: 64-character hex string (crypto.randomBytes(32))
-- Expiration: Configurable (default 24 hours)
+- Expiration: 30 days (configurable)
 - Bearer token authentication: `Authorization: Bearer <token>`
 
+**User Types:**
+
+- `master-admin` - Full system access
+- `admin` - Standard admin access (controlled by module_access)
+- `manager` - Limited admin access (controlled by module_access)
+
+**Module Access Control (24 permissions):**
+
+```
+dashboard, all_clients, add_clients, client_details,
+all_employees, add_employees, employee_details,
+all_projects, add_projects, project_details,
+all_suppliers, add_suppliers, supplier_details,
+all_items, add_items, item_details,
+usedmaterial, logs, lotatglance, materialstoorder,
+purchaseorder, statements, delete_media
+```
+
 **Login Flow:**
+
 1. User submits username/password to `/api/signin`
 2. Password verified with bcrypt
 3. Check user flags: `is_active`
 4. Generate unique session token
-5. Create session record in database
+5. Create session record in database (30-day expiry)
 6. Return token and user data to client
-7. Client stores token in cookie (httpOnly in production)
+7. Client stores token in Redux (persisted to localStorage)
 
 **Session Validation Flow:**
+
 1. Extract token from `Authorization` header
 2. Query `sessions` table for matching token
 3. Check `expires_at > current time`
 4. Fetch user record and verify `is_active`
 5. Return session data or null if invalid
-6. Auto-delete invalid sessions
 
-**Logout Flow:**
-1. Client sends token to `/api/signout`
-2. Session deleted from database
-3. Client clears cookie
+**Authorization Flow:**
+
+1. AdminRoute component mounts
+2. Fetch user's module_access via API
+3. Map current path to permission key
+4. Check if permission is true
+5. Render content or AccessDenied component
 
 ### Security Features
 
 **Password Security:**
-- bcrypt hashing with automatic salt generation
+
+- bcrypt hashing with salt (10 rounds)
 - Version 6.0.0 (latest)
 - Hashes stored in `users.password` column
 
 **Session Management:**
+
 - Database-stored tokens (not stateless JWT)
 - Automatic expiration checking on every request
 - Manual cleanup endpoint: `/api/admin/cleanup-sessions` (Master Admin only)
 - Function: `cleanupExpiredSessions()` removes expired records
 
 **Authorization Levels:**
+
 - **None:** Public routes (home, portfolio, login)
 - **Authenticated:** Any logged-in user
-- **Admin:** `user_type = 'admin'` or `'master-admin'`
+- **Admin:** `user_type` = 'admin', 'master-admin', or 'manager' + module permission
 - **Master Admin:** `user_type = 'master-admin'` only
 
+**Activity Logging:**
+
+- All CRUD operations logged via `withLogging()` middleware
+- User attribution for audit trail
+- Entity type and ID tracking
+- Action type enumeration
+
 **Middleware Protection:**
+
 ```javascript
-isAdmin(request)              // Check if user is admin
-isSessionExpired(request)     // Check if session expired
+isAdmin(request); // Check if user is admin/master-admin/manager
+isSessionExpired(request); // Check if session expired
+getUserFromToken(request); // Extract user from session token
 ```
 
 **Frontend Protection:**
+
 ```jsx
-<ProtectedRoute requiredUserType="admin">
+<AdminRoute>
+  {/* Checks auth + fetches module_access + validates permission */}
   {children}
-</ProtectedRoute>
+</AdminRoute>
 ```
-
-**File Handling Security:**
-- Centralized fileHandler utility (9,215 bytes)
-- File type validation
-- Soft delete support
-- Size tracking and validation
-
-**Additional Security Measures:**
-- Cookies with secure flags (production)
-- Environment variables for sensitive config (DATABASE_URL, JWT_SECRET)
-- Prisma parameterized queries (SQL injection protection)
-- CORS: Next.js default same-origin policies
-
-### Security Considerations
-
-**Current Limitations:**
-- No rate limiting on API endpoints
-- No CSRF token protection
-- No password complexity requirements enforced
-- No multi-factor authentication
-- JWT backup not actively used
-- No API request logging/monitoring
-- File upload size limits not enforced at API level
-- No virus scanning for uploaded files
 
 ---
 
 ## What's Good (Strengths)
 
 ### 1. Modern Technology Stack ⭐⭐⭐⭐⭐
+
 - **Latest Frameworks:** Next.js 15.5.2, React 19.1.0, Tailwind CSS 4
 - **Turbopack:** Fast development and build times
 - **Type-Safe ORM:** Prisma 6.19.0 with TypeScript client
 - **Production-Ready Libraries:** All dependencies are mature packages
 - **Rich Animation Libraries:** Framer Motion + AOS
 
-### 2. Exceptionally Well-Designed Database Schema ⭐⭐⭐⭐⭐
-- **Comprehensive Coverage:** 31 models covering all business domains
+### 2. Enterprise-Grade Access Control ⭐⭐⭐⭐⭐ [NEW]
+
+- **Granular Permissions:** 24 individual permission fields
+- **Module-Based:** Per-page access control
+- **User-Specific:** Each user has their own permission set
+- **Runtime Validation:** Frontend and backend permission checks
+- **Scalable Design:** Easy to add new permissions
+
+### 3. Comprehensive Activity Logging ⭐⭐⭐⭐⭐ [NEW]
+
+- **Full Audit Trail:** All CRUD operations logged
+- **User Attribution:** Who did what and when
+- **Entity Tracking:** What was affected
+- **Action Types:** CREATE, UPDATE, DELETE, STATUS_CHANGE, ASSIGN, UPLOAD
+- **Searchable:** Indexed for fast queries
+
+### 4. Exceptionally Well-Designed Database Schema ⭐⭐⭐⭐⭐
+
+- **Comprehensive Coverage:** 33 models covering all business domains
 - **Normalized Structure:** Proper 3NF normalization
 - **Referential Integrity:** Appropriate cascade/restrict/setNull
-- **Flexible Design:** JSON fields for extensibility
-- **Advanced Features:** Material selection versioning, quote management, supplier statements
-- **Complete Workflows:** MTO → PO → Stock Transaction flow
-- **Proper Indexing:** All foreign keys and business keys indexed
+- **Flexible Design:** Extensible with proper indexing
+- **11 Enums:** Type-safe status and category tracking
 
-### 3. Advanced Business Logic ⭐⭐⭐⭐⭐
+### 5. Advanced Business Logic ⭐⭐⭐⭐⭐
+
 - **Material Selection System:** Versioning with area-based item tracking
 - **Quote Management:** Quote integration with material selections
 - **Supplier Statements:** Monthly payment tracking with due dates
 - **Stock Management:** Comprehensive transaction tracking (ADDED/USED/WASTED)
 - **Procurement Workflow:** Complete material requisition to delivery
-- **Lot Status Management:** Active/completed workflow tracking
+- **Stock Tally:** Bulk Excel-based inventory updates [NEW]
 
-### 4. Robust File Management ⭐⭐⭐⭐
-- **Centralized Handler:** fileHandler.js (9,215 bytes) for all file operations
+### 6. Robust File Management ⭐⭐⭐⭐⭐
+
+- **Centralized Handler:** fileHandler.js (297 lines) for all file operations
 - **Multi-Context Support:** Employee images, item images, lot documents, PO invoices, supplier files
 - **Soft Deletes:** Files marked as deleted, not permanently removed
 - **Metadata Tracking:** mime_type, size, extension for all files
 - **Organized Storage:** Structured uploads directory by context
 
-### 5. Clean Code Organization ⭐⭐⭐⭐⭐
-- **131 JavaScript/JSX Files:** Well-organized source code
-- **Domain-Specific Components:** Specialized components in feature folders
-- **Consistent Patterns:** Clear naming conventions
-- **Type Safety:** db.ts in TypeScript for Prisma client
-- **Modular Utilities:** 10 library files for reusable logic
+### 7. Third-Party Integration ⭐⭐⭐⭐ [NEW]
 
-### 6. Comprehensive Admin Dashboard ⭐⭐⭐⭐⭐
-- **26 Admin Pages:** Complete business management interface
-- **Specialized Views:** Lot at a glance, material usage tracking, statements
-- **Rich Components:** 10 specialized components for complex workflows
+- **Xero Accounting:** Bank transactions sync
+- **OAuth Flow:** Secure token management
+- **Redux Integration:** Token caching in state
+
+### 8. Clean Code Organization ⭐⭐⭐⭐⭐
+
+- **139 Source Files:** Well-organized codebase
+- **Domain-Specific Components:** 27 components total
+- **Consistent Patterns:** Clear naming conventions
+- **Type Safety:** TypeScript for critical files (db.ts, TextEditor.tsx)
+- **Modular Utilities:** 12 library files for reusable logic
+
+### 9. Comprehensive Admin Dashboard ⭐⭐⭐⭐⭐
+
+- **27 Admin Pages:** Complete business management interface
+- **Specialized Views:** Lot at a glance, material usage tracking, statements, logs
+- **Rich Components:** 11 specialized components for complex workflows
 - **Responsive Design:** Tailwind CSS 4 with modern aesthetics
 
-### 7. Production-Ready Features ⭐⭐⭐⭐
+### 10. Production-Ready Features ⭐⭐⭐⭐⭐
+
 - **Toast Notifications:** User feedback via react-toastify
 - **Loading States:** Loader component and Redux loading flags
 - **Error Handling:** Try-catch blocks throughout
 - **Confirmation Dialogs:** Delete confirmation modals
 - **SEO Optimization:** Next.js SSR for better indexing
 - **Professional Charts:** Chart.js and Recharts for visualizations
-
-### 8. Developer Experience ⭐⭐⭐⭐
-- **Fast Refresh:** Turbopack enables instant hot reloading
-- **Custom Port:** Development on port 4000
-- **ESLint Integration:** Code quality enforcement
-- **Prisma Studio:** Easy database browsing
-- **Clear Documentation:** Migration guides and integration docs
-
-### 9. Scalability Considerations ⭐⭐⭐⭐
-- **Database Indexing:** Strategic indexes for performance
-- **Pagination Ready:** API structure supports pagination
-- **Optimized Queries:** Prisma's efficient query building
-- **Asset Storage:** Structured file organization
-- **Transaction Support:** Complex operations in transactions
-
-### 10. Business Value ⭐⭐⭐⭐⭐
-- **Complete Solution:** Handles all business operations
-- **Advanced Workflows:** Material selection, procurement, payment tracking
-- **Audit Trail:** createdAt/updatedAt on all models
-- **Flexible Permissions:** module_access JSON for fine-grained control
-- **Quote Integration:** Professional quoting system
-- **Financial Management:** Supplier statements and payment tracking
+- **Excel Import/Export:** xlsx library for stock tally
 
 ---
 
 ## What Needs Improvement
 
 ### 1. Security Enhancements ⚠️
+
 **High Priority:**
+
 - ❌ **No Rate Limiting:** APIs vulnerable to brute force attacks
 - ❌ **No CSRF Protection:** Form submissions vulnerable
 - ❌ **No Password Requirements:** Weak passwords allowed
 - ❌ **No Multi-Factor Authentication:** Single point of failure
-- ❌ **File Upload Size Limits:** No enforced max file size
-- ❌ **No File Type Validation:** Uploads not strictly validated
+- ❌ **File Upload Size Limits:** No enforced max file size at API level
 
 **Medium Priority:**
+
 - ⚠️ **JWT Backup Unused:** jsonwebtoken installed but not used
-- ⚠️ **Cookie Security:** Not clear if httpOnly/secure flags enabled
-- ⚠️ **No API Request Logging:** No audit trail
+- ⚠️ **Cookie Security:** Not using httpOnly cookies (tokens in localStorage)
 - ⚠️ **No Virus Scanning:** Uploaded files not scanned
 
 ### 2. Code Quality & Testing ⚠️
+
 **High Priority:**
+
 - ❌ **No Unit Tests:** Zero test coverage
 - ❌ **No Integration Tests:** API endpoints not tested
 - ❌ **No E2E Tests:** User flows not tested
 
 **Medium Priority:**
-- ⚠️ **Inconsistent Error Handling:** Different error patterns
-- ⚠️ **Mixed JavaScript/TypeScript:** Only db.ts in TypeScript
-- ⚠️ **No Custom Hooks:** Previous hooks removed/refactored
+
+- ⚠️ **Inconsistent TypeScript:** Only 2 files in TypeScript
+- ⚠️ **No Custom Hooks:** Logic could be extracted to hooks
+- ⚠️ **Console Logs:** Debug statements in production code
 
 ### 3. API Improvements ⚠️
+
 **High Priority:**
-- ❌ **No Input Validation:** Request bodies not validated
+
+- ❌ **No Input Validation:** Request bodies not validated with Zod
 - ❌ **No API Versioning:** Breaking changes would affect all clients
 
 **Medium Priority:**
+
 - ⚠️ **No Pagination:** GET /all endpoints return entire datasets
 - ⚠️ **Limited Filtering/Sorting:** Few query capabilities
-- ⚠️ **No Field Selection:** Always return full objects
 - ⚠️ **No API Documentation:** No OpenAPI/Swagger spec
 
 ### 4. Performance Optimizations ⚠️
+
 - ⚠️ **No Caching Layer:** Every request hits database
-- ⚠️ **Large Bundle Size:** 64 dependencies
-- ⚠️ **Image Optimization:** Public images not optimized
-- ⚠️ **Large Upload Folder:** 638 MB of uploads
+- ⚠️ **Large Bundle Size:** 57 dependencies
+- ⚠️ **Image Optimization:** Public images could use Next.js Image optimization
+- ⚠️ **Large Upload Folder:** 650+ MB of uploads
 
 ### 5. Development Workflow ⚠️
+
 - ⚠️ **No CI/CD Pipeline:** Manual deployment
 - ⚠️ **No Pre-commit Hooks:** Code quality not enforced
 - ⚠️ **No Environment Validation:** .env not validated on startup
 
 ### 6. Monitoring & Observability ⚠️
+
 - ⚠️ **No Error Tracking:** No Sentry or similar
 - ⚠️ **No Performance Monitoring:** No metrics collection
 - ⚠️ **No Uptime Monitoring:** No alerts if site goes down
@@ -1038,16 +1219,19 @@ isSessionExpired(request)     // Check if session expired
 ### Immediate Actions (Week 1-2)
 
 1. **Add Input Validation**
+
    - Implement Zod schemas for all API routes
    - Validate all POST/PATCH request bodies
    - Priority: **HIGH** | Effort: **Medium** | Impact: **High**
 
 2. **Implement Rate Limiting**
+
    - Add rate limiting middleware to auth endpoints
    - Set limits: 5 login attempts per minute per IP
    - Priority: **HIGH** | Effort: **Low** | Impact: **High**
 
 3. **Enforce File Upload Limits**
+
    - Add file size validation (max 50 MB)
    - Whitelist allowed mime types
    - Priority: **HIGH** | Effort: **Low** | Impact: **High**
@@ -1060,12 +1244,14 @@ isSessionExpired(request)     // Check if session expired
 ### Short-Term Improvements (Month 1)
 
 5. **Add Unit Tests**
+
    - Set up Jest + React Testing Library
    - Write tests for critical paths
    - Aim for 50% coverage initially
    - Priority: **HIGH** | Effort: **High** | Impact: **High**
 
 6. **Implement Pagination**
+
    - Add pagination to all `/all` endpoints
    - Use limit/offset pattern
    - Priority: **MEDIUM** | Effort: **Medium** | Impact: **Medium**
@@ -1078,44 +1264,48 @@ isSessionExpired(request)     // Check if session expired
 ### Medium-Term Enhancements (Months 2-3)
 
 8. **Complete TypeScript Migration**
-    - Convert all files to TypeScript incrementally
-    - Add types for API responses
-    - Priority: **MEDIUM** | Effort: **High** | Impact: **High**
+
+   - Convert all files to TypeScript incrementally
+   - Add types for API responses
+   - Priority: **MEDIUM** | Effort: **High** | Impact: **High**
 
 9. **Set Up CI/CD Pipeline**
-    - Create GitHub Actions workflow
-    - Run tests on every PR
-    - Auto-deploy to staging/production
-    - Priority: **MEDIUM** | Effort: **Medium** | Impact: **High**
+
+   - Create GitHub Actions workflow
+   - Run tests on every PR
+   - Auto-deploy to staging/production
+   - Priority: **MEDIUM** | Effort: **Medium** | Impact: **High**
 
 10. **Add Caching Layer**
+
     - Set up Redis for session storage
     - Cache frequently accessed data
     - Priority: **MEDIUM** | Effort: **Medium** | Impact: **Medium**
 
 11. **Implement Cloud Storage**
     - Set up AWS S3 or Cloudflare R2
-    - Migrate 638 MB uploads to cloud
+    - Migrate 650+ MB uploads to cloud
     - Priority: **MEDIUM** | Effort: **High** | Impact: **Medium**
 
 ### Long-Term Goals (Months 4-6)
 
 12. **Add Multi-Factor Authentication**
+
     - Implement TOTP-based 2FA
     - Mandatory for master-admin accounts
     - Priority: **MEDIUM** | Effort: **High** | Impact: **High**
 
 13. **Performance Optimization**
+
     - Analyze bundle size and tree-shake
     - Implement image optimization
     - Add service worker for offline support
     - Priority: **MEDIUM** | Effort: **High** | Impact: **Medium**
 
-14. **Enhance Monitoring**
-    - Add APM tool (New Relic, Datadog)
-    - Set up custom metrics dashboards
-    - Configure uptime monitoring
-    - Priority: **LOW** | Effort: **Medium** | Impact: **Medium**
+14. **Enhance Xero Integration**
+    - Add more Xero API endpoints
+    - Sync invoices, contacts, payments
+    - Priority: **LOW** | Effort: **High** | Impact: **Medium**
 
 ---
 
@@ -1123,20 +1313,23 @@ isSessionExpired(request)     // Check if session expired
 
 ### Overall Assessment: **A+ (Outstanding)**
 
-The Ikoniq Kitchen and Cabinet platform is an **exceptionally sophisticated, production-ready application** with outstanding database design, comprehensive business logic, and advanced features that demonstrate expert-level understanding of complex business workflows.
+The Ikoniq Kitchen and Cabinet platform is an **exceptionally sophisticated, production-ready application** with outstanding database design, comprehensive business logic, enterprise-grade access control, and advanced features that demonstrate expert-level understanding of complex business workflows.
 
 ### Key Strengths Summary:
+
 1. ⭐ Modern, cutting-edge tech stack (Next.js 15.5.2, React 19.1.0, Prisma 6.19.0)
-2. ⭐ **Exceptionally well-designed database schema** (31 models, 55 API endpoints)
-3. ⭐ **Advanced material selection system** with versioning and quote management
-4. ⭐ **Complete supplier statement tracking** with payment management
-5. ⭐ **Comprehensive stock transaction system** with usage tracking
-6. ⭐ Robust session-based authentication with role-based access control
-7. ⭐ Clean code organization (131 source files, 10 library utilities)
-8. ⭐ Professional file management with centralized handler
-9. ⭐ Scalable architecture ready for enterprise deployment
+2. ⭐ **Enterprise-grade module access control** with 24 granular permissions
+3. ⭐ **Comprehensive activity logging** with full audit trail
+4. ⭐ **Exceptionally well-designed database schema** (33 models, 59 API endpoints)
+5. ⭐ **Advanced material selection system** with versioning and quote management
+6. ⭐ **Stock tally feature** for bulk Excel-based inventory updates
+7. ⭐ **Xero accounting integration** for bank transactions
+8. ⭐ Robust session-based authentication with role-based access control
+9. ⭐ Clean code organization (139 source files, 27 components)
+10. ⭐ Professional file management with centralized handler
 
 ### Key Improvement Areas:
+
 1. **Security:** Add rate limiting, input validation, 2FA, file size limits
 2. **Testing:** Implement unit, integration, and E2E tests (currently 0% coverage)
 3. **API Quality:** Add validation, pagination, documentation, versioning
@@ -1145,18 +1338,20 @@ The Ikoniq Kitchen and Cabinet platform is an **exceptionally sophisticated, pro
 6. **Performance:** Implement caching, optimize bundles, migrate to cloud storage
 
 ### Major Changes Since Last Report:
-- **+4 database models** (27 → 31): quote, material_selection, material_selection_versions, material_selection_version_area, material_selection_version_area_item, supplier_statement, stock_transaction
-- **New LotStatus enum** (ACTIVE/COMPLETED)
-- **New PaymentStatus enum** (PENDING/PAID)
-- **Material selection system:** Complete versioning with area-based tracking
-- **Quote management:** Integration with material selections
-- **Supplier statements:** Monthly payment tracking
-- **Stock management:** Comprehensive transaction tracking
-- **Enhanced file handling:** Centralized utility (9,215 bytes)
-- **New admin pages:** Lot at a glance, used materials, statements
-- **API endpoints:** Expanded to 55 total endpoints
+
+- **+2 database models** (31 → 33): module_access, logs
+- **+1 new enum** (10 → 11): LogAction
+- **+4 API endpoints** (55 → 59): module_access (2), logs (1), stock_tally (1), xero (1)
+- **+1 admin page** (26 → 27): logs page
+- **+12 components** (15 → 27): StockTally, specialized components
+- **Module access control:** 24-field granular permission system
+- **Activity logging:** Complete audit trail with withLogging middleware
+- **Stock tally feature:** Excel import for bulk stock updates
+- **Xero integration:** Bank transactions sync via OAuth
+- **Manager user type:** New role with configurable access
 
 ### Recommended Priority Order:
+
 1. **Security First:** Input validation, rate limiting, file limits (Week 1-2)
 2. **Quality Assurance:** Unit tests, error tracking (Month 1)
 3. **API Enhancement:** Pagination, documentation, validation (Months 2-3)
@@ -1164,7 +1359,7 @@ The Ikoniq Kitchen and Cabinet platform is an **exceptionally sophisticated, pro
 
 ### Final Verdict:
 
-This project is **production-ready for enterprise deployment** and demonstrates **exceptional engineering excellence**. The material selection system with versioning, quote management, and supplier statement tracking shows deep understanding of complex business workflows and professional-grade architecture design.
+This project is **production-ready for enterprise deployment** and demonstrates **exceptional engineering excellence**. The addition of granular module access control, comprehensive activity logging, stock tally bulk operations, and Xero integration shows continued evolution toward a complete enterprise resource planning (ERP) system.
 
 The development team has built an **outstanding, enterprise-grade system** with sophisticated features that rival commercial solutions. The next phase should focus on hardening security, adding comprehensive test coverage, and implementing production monitoring to ensure long-term success and scalability.
 
@@ -1176,15 +1371,21 @@ The development team has built an **outstanding, enterprise-grade system** with 
 ## Appendix: Quick Reference
 
 ### Environment Variables Required
+
 ```env
 DATABASE_URL="mysql://user:password@host:port/database"
 JWT_SECRET="your-secret-key-here"
-NEXT_PUBLIC_BASE_URL="http://localhost:4000"
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"
+XERO_CLIENT_ID="your-xero-client-id"
+XERO_CLIENT_SECRET="your-xero-client-secret"
+XERO_REFRESH_TOKEN="your-xero-refresh-token"
+XERO_TENANT_ID="your-xero-tenant-id"
 ```
 
 ### Development Commands
+
 ```bash
-npm run dev         # Start dev server on port 4000
+npm run dev         # Start dev server with Turbopack
 npm run build       # Build for production
 npm start           # Start production server
 npm run lint        # Run ESLint
@@ -1194,36 +1395,70 @@ npx prisma generate # Generate Prisma client
 ```
 
 ### Key File Locations
-- **Database Schema:** `prisma/schema.prisma` (642 lines, 31 models)
+
+- **Database Schema:** `prisma/schema.prisma` (709 lines, 33 models)
 - **Session Utils:** `src/lib/session.js`
-- **File Handler:** `src/lib/fileHandler.js` (9,215 bytes)
-- **Auth Validators:** `src/lib/validators/`
+- **File Handler:** `src/lib/fileHandler.js` (297 lines)
+- **Auth Validators:** `lib/validators/authFromToken.js`
+- **Logging Middleware:** `lib/withLogging.js`
 - **Redux Store:** `src/state/store/`
 - **Auth Context:** `src/contexts/AuthContext.jsx`
 - **Protected Route HOC:** `src/components/ProtectedRoute.jsx`
-- **API Routes:** `src/app/api/` (55 endpoints)
-- **Admin Pages:** `src/app/admin/` (26 pages)
-- **Utilities:** `src/lib/` (10 files)
+- **API Routes:** `src/app/api/` (59 endpoints)
+- **Admin Pages:** `src/app/admin/` (27 pages)
+- **Utilities:** `src/lib/` (12 files)
 
 ### Database Connection
+
 - **Type:** MySQL
 - **ORM:** Prisma 6.19.0
 - **Client Location:** `generated/prisma`
 - **Client Type:** TypeScript (db.ts)
-- **Migrations:** `prisma/migrations/`
+- **Migrations:** `prisma/migrations/` (8 migrations)
 
 ### File Upload Contexts
-- **Employee Images:** `/uploads/employee/`
-- **Item Images:** `/uploads/item/`
-- **Lot Documents:** `/uploads/lot/`
+
+- **Employee Images:** `/uploads/employees/`
+- **Item Images:** `/uploads/items/`
+- **Lot Documents:** `/uploads/[project_id]/[lot_id]/`
 - **Purchase Order Invoices:** `/uploads/purchase_order/`
-- **Supplier Files:** `/uploads/supplier/`
+- **Supplier Files:** `/uploads/suppliers/`
+- **Materials to Order:** `/uploads/materials_to_order/`
+
+### Module Access Permissions (24 fields)
+
+| Permission Key   | Admin Page                        |
+| ---------------- | --------------------------------- |
+| dashboard        | /admin/dashboard                  |
+| all_clients      | /admin/clients                    |
+| add_clients      | /admin/clients/addclient          |
+| client_details   | /admin/clients/[id]               |
+| all_employees    | /admin/employees                  |
+| add_employees    | /admin/employees/addemployee      |
+| employee_details | /admin/employees/[id]             |
+| all_projects     | /admin/projects                   |
+| add_projects     | /admin/projects/addproject        |
+| project_details  | /admin/projects/[id]              |
+| lotatglance      | /admin/projects/lotatglance       |
+| all_suppliers    | /admin/suppliers                  |
+| add_suppliers    | /admin/suppliers/addsupplier      |
+| supplier_details | /admin/suppliers/[id]             |
+| materialstoorder | /admin/suppliers/materialstoorder |
+| purchaseorder    | /admin/suppliers/purchaseorder    |
+| statements       | /admin/suppliers/statements       |
+| all_items        | /admin/inventory                  |
+| add_items        | /admin/inventory/additem          |
+| item_details     | /admin/inventory/[id]             |
+| usedmaterial     | /admin/inventory/usedmaterial     |
+| logs             | /admin/logs                       |
+| delete_media     | /admin/deletefiles                |
 
 ### Deployment Checklist
+
 - [ ] Set environment variables in production
 - [ ] Run database migrations
 - [ ] Set up SSL certificates
-- [ ] Configure httpOnly and secure cookie flags
+- [ ] Configure secure session storage
 - [ ] Set up automated backups (database + files)
 - [ ] Configure rate limiting
 - [ ] Implement input validation with Zod
@@ -1234,13 +1469,15 @@ npx prisma generate # Generate Prisma client
 - [ ] Set up CDN for static assets
 - [ ] Configure CORS policies
 - [ ] Add file upload size limits
-- [ ] Set up cloud storage for 638 MB uploads
+- [ ] Set up cloud storage for 650+ MB uploads
+- [ ] Configure Xero API credentials
 - [ ] Test all critical user flows
 - [ ] Document deployment procedures
 - [ ] Set up CI/CD pipeline
+- [ ] Verify module access permissions work correctly
 
 ---
 
-**Report Generated:** 2025-11-20
-**Next Review Recommended:** 2026-01-20 (2 months)
-**Report Version:** 3.0 (Major Update - Material Selection & Statement Tracking)
+**Report Generated:** 2025-12-02
+**Next Review Recommended:** 2026-02-02 (2 months)
+**Report Version:** 4.0 (Major Update - Module Access Control, Activity Logging, Stock Tally, Xero Integration)

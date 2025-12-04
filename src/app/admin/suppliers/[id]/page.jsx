@@ -1,6 +1,6 @@
 "use client";
-import { useParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
@@ -14,8 +14,6 @@ import {
   X,
   MapPin,
   Trash2,
-  Plus,
-  Eye,
   AlertTriangle,
   User,
   Package,
@@ -25,14 +23,13 @@ import {
   Receipt,
   BarChart3,
   Boxes,
-  Copy,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
-import ContactPopup from "@/components/contactpopup";
+import ContactSection from "@/components/ContactSection";
 import { CiMenuKebab } from "react-icons/ci";
 import MaterialsToOrder from "../components/MaterialsToOrder";
 import PurchaseOrder from "../components/PurchaseOrder";
@@ -41,6 +38,7 @@ import Image from "next/image";
 
 export default function page() {
   const { id } = useParams();
+  const router = useRouter();
   const { getToken } = useAuth();
   const [supplier, setSupplier] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -48,23 +46,18 @@ export default function page() {
   const [editData, setEditData] = useState({});
   const [showDeleteSupplierModal, setShowDeleteSupplierModal] = useState(false);
   const [isDeletingSupplier, setIsDeletingSupplier] = useState(false);
-  const [showDeleteContactModal, setShowDeleteContactModal] = useState(false);
-  const [contactPendingDelete, setContactPendingDelete] = useState(null);
-  const [isDeletingContact, setIsDeletingContact] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [selectedContact, setSelectedContact] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [activeTab, setActiveTab] = useState("materials-to-order");
-  // moved to MaterialsToOrder component
   const [mtoCount, setMtoCount] = useState(0);
   const [poCount, setPoCount] = useState(0);
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
   const [itemsCategoryTab, setItemsCategoryTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     fetchSupplier();
@@ -76,12 +69,14 @@ export default function page() {
     }
   }, [activeTab, id]);
 
-  // PO fetching moved into PurchaseOrder component
-
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showDropdown && !event.target.closest(".dropdown-container")) {
+      if (
+        showDropdown &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
         setShowDropdown(false);
       }
     };
@@ -123,14 +118,12 @@ export default function page() {
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-          "An error occurred while fetching supplier data"
+        "An error occurred while fetching supplier data"
       );
     } finally {
       setLoading(false);
     }
   };
-
-  // moved to MaterialsToOrder component
 
   const fetchItems = async () => {
     try {
@@ -161,8 +154,6 @@ export default function page() {
       setLoadingItems(false);
     }
   };
-
-  // fetchPurchaseOrders moved into PurchaseOrder component
 
   const handleEdit = () => {
     if (supplier) {
@@ -222,7 +213,7 @@ export default function page() {
       console.error("Error updating supplier:", error);
       toast.error(
         error.response?.data?.message ||
-          "Failed to update supplier. Please try again.",
+        "Failed to update supplier. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
@@ -249,47 +240,6 @@ export default function page() {
     }));
   };
 
-  const openContactModal = (contact) => {
-    setSelectedContact(contact);
-    setIsContactModalOpen(true);
-  };
-
-  const closeContactModal = () => {
-    setIsContactModalOpen(false);
-    setSelectedContact(null);
-  };
-
-  const saveEditContact = async (contactData, contactId) => {
-    try {
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-      const payload = {
-        ...contactData,
-        supplier_id:
-          selectedContact?.supplier_id || supplier?.supplier_id || "",
-      };
-      const response = await axios.patch(`/api/contact/${contactId}`, payload, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-      if (!response?.data?.status) {
-        toast.error(response?.data?.message || "Failed to update contact");
-        return;
-      }
-      const updated = response.data.data;
-      setContacts((prev) =>
-        prev.map((c) => (c.id === updated.id ? updated : c))
-      );
-      setSelectedContact(updated);
-      toast.success("Contact updated successfully");
-    } catch (err) {
-      console.error("Update contact failed", err);
-      toast.error(err?.response?.data?.message || "An error occurred");
-      throw err;
-    }
-  };
 
   const formatValue = (value) => {
     if (
@@ -310,50 +260,8 @@ export default function page() {
     if (!name) return "?";
     const parts = name.trim().split(" ");
     if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
-    return `${parts[0][0] || ""}${
-      parts[parts.length - 1][0] || ""
-    }`.toUpperCase();
-  };
-
-  const handleDeleteContact = (contactId) => {
-    // open confirmation modal without input
-    const contact = contacts.find((c) => c.id === contactId);
-    setContactPendingDelete(contact || null);
-    setShowDeleteContactModal(true);
-  };
-
-  const handleDeleteContactCancel = () => {
-    setShowDeleteContactModal(false);
-    setContactPendingDelete(null);
-  };
-
-  const handleDeleteContactConfirm = async () => {
-    if (!contactPendingDelete) return;
-    try {
-      setIsDeletingContact(true);
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-      const contactId = contactPendingDelete.id;
-      const response = await axios.delete(`/api/contact/${contactId}`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-      if (!response?.data?.status) {
-        toast.error(response?.data?.message || "Failed to delete contact");
-        return;
-      }
-      setContacts((prev) => prev.filter((c) => c.id !== contactId));
-      toast.success("Contact deleted successfully");
-      setShowDeleteContactModal(false);
-      setContactPendingDelete(null);
-    } catch (err) {
-      console.error("Delete contact failed", err);
-      toast.error(err?.response?.data?.message || "An error occurred");
-    } finally {
-      setIsDeletingContact(false);
-    }
+    return `${parts[0][0] || ""}${parts[parts.length - 1][0] || ""
+      }`.toUpperCase();
   };
 
   const handleDeleteSupplierConfirm = async () => {
@@ -377,7 +285,7 @@ export default function page() {
       toast.success("Supplier deleted successfully");
       setShowDeleteSupplierModal(false);
       // Navigate back to suppliers list
-      window.location.href = "/admin/suppliers";
+      router.push("/admin/suppliers");
     } catch (err) {
       console.error("Delete supplier failed", err);
       toast.error(err?.response?.data?.message || "An error occurred");
@@ -386,44 +294,54 @@ export default function page() {
     }
   };
 
-  const handleCreateContact = async (contactData) => {
-    try {
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
+  // Memoize available categories to avoid recalculating on every render
+  const availableCategories = useMemo(() => {
+    const categories = new Set();
+    items.forEach((item) => {
+      if (item.category) {
+        categories.add(item.category);
       }
+    });
+    return {
+      SHEET: categories.has("SHEET"),
+      HANDLE: categories.has("HANDLE"),
+      HARDWARE: categories.has("HARDWARE"),
+      ACCESSORY: categories.has("ACCESSORY"),
+      EDGING_TAPE: categories.has("EDGING_TAPE"),
+    };
+  }, [items]);
 
-      const payload = {
-        ...contactData,
-        supplier_id: supplier?.supplier_id || "",
-      };
-
-      const response = await axios.post("/api/contact/create", payload, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-
-      if (!response?.data?.status) {
-        toast.error(response?.data?.message || "Failed to create contact");
-        throw new Error(response?.data?.message || "Failed to create contact");
+  // Memoize filtered items to avoid recalculating on every render
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      // Category filter
+      if (
+        itemsCategoryTab !== "all" &&
+        item.category !== itemsCategoryTab
+      ) {
+        return false;
       }
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          item.category?.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query) ||
+          item.handle?.color?.toLowerCase().includes(query) ||
+          item.handle?.type?.toLowerCase().includes(query) ||
+          item.sheet?.color?.toLowerCase().includes(query) ||
+          item.hardware?.name?.toLowerCase().includes(query) ||
+          item.accessory?.name?.toLowerCase().includes(query) ||
+          item.edging_tape?.brand?.toLowerCase().includes(query) ||
+          item.edging_tape?.color?.toLowerCase().includes(query) ||
+          item.edging_tape?.finish?.toLowerCase().includes(query) ||
+          item.edging_tape?.dimensions?.toLowerCase().includes(query)
+        );
+      }
+      return true;
+    });
+  }, [items, itemsCategoryTab, searchQuery]);
 
-      const created = response.data.data;
-      setContacts((prev) => [created, ...prev]);
-      toast.success("Contact created successfully");
-      setIsContactModalOpen(false);
-      setSelectedContact(null);
-    } catch (err) {
-      console.error("Create contact failed", err);
-      toast.error(err?.response?.data?.message || "An error occurred");
-      throw err;
-    }
-  };
-
-  const openAddContactModal = () => {
-    setSelectedContact(null);
-    setIsContactModalOpen(true);
-  };
 
   return (
     <div className="flex h-screen bg-tertiary">
@@ -474,7 +392,7 @@ export default function page() {
                 </div>
                 <div className="flex gap-2">
                   {!isEditing ? (
-                    <div className="relative dropdown-container">
+                    <div ref={dropdownRef} className="relative dropdown-container">
                       <button
                         onClick={() => setShowDropdown(!showDropdown)}
                         className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
@@ -703,83 +621,13 @@ export default function page() {
                   </div>
 
                   {/* Contacts - 30% width */}
-                  <div className="col-span-3">
-                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 h-full">
-                      <div className="flex items-center justify-between p-3 border-b border-slate-100">
-                        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                          <User className="w-4 h-4" />
-                          Contacts
-                        </h3>
-                        <span className="text-xs text-slate-500">
-                          {contacts?.length || 0}
-                        </span>
-                      </div>
-
-                      <div className="p-3">
-                        {!contacts || contacts.length === 0 ? (
-                          <div className="text-center py-6 text-slate-500">
-                            <User className="w-6 h-6 mx-auto mb-2 text-slate-400" />
-                            <p className="text-sm">No contacts</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            {contacts.map((contact) => (
-                              <div
-                                key={contact.id}
-                                onClick={() => openContactModal(contact)}
-                                className="cursor-pointer group text-left border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 transition-colors rounded px-2 py-1.5 flex items-center gap-2 justify-between"
-                              >
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                  <div className="shrink-0 w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-slate-200">
-                                    <User className="w-2.5 h-2.5" />
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="font-medium text-slate-700 truncate text-xs">
-                                      {contact.first_name} {contact.last_name}
-                                    </div>
-                                    <div className="text-xs text-slate-500 truncate">
-                                      {contact.email}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-0.5 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openContactModal(contact);
-                                    }}
-                                    className="cursor-pointer p-2 rounded hover:bg-slate-100"
-                                    title="View"
-                                  >
-                                    <Eye className="w-3 h-3 text-slate-600" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteContact(contact.id);
-                                    }}
-                                    className="cursor-pointer p-2 rounded hover:bg-slate-100"
-                                    title="Delete"
-                                  >
-                                    <Trash2 className="w-3 h-3 text-red-600" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <button
-                          onClick={openAddContactModal}
-                          className="cursor-pointer flex items-center text-sm hover:text-secondary mt-4 text-left"
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add Contact
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <ContactSection
+                    contacts={contacts}
+                    onContactsUpdate={setContacts}
+                    parentId={supplier?.supplier_id || ""}
+                    parentType="supplier"
+                    parentName={supplier?.name || ""}
+                  />
                 </div>
 
                 {/* Main Tab Section */}
@@ -789,11 +637,10 @@ export default function page() {
                     <nav className="flex space-x-8 px-4">
                       <button
                         onClick={() => setActiveTab("materials-to-order")}
-                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                          activeTab === "materials-to-order"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                        }`}
+                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "materials-to-order"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4" />
@@ -807,11 +654,10 @@ export default function page() {
                       </button>
                       <button
                         onClick={() => setActiveTab("purchase-order")}
-                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                          activeTab === "purchase-order"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                        }`}
+                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "purchase-order"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <PackagePlus className="w-4 h-4" />
@@ -825,11 +671,10 @@ export default function page() {
                       </button>
                       <button
                         onClick={() => setActiveTab("statements")}
-                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                          activeTab === "statements"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                        }`}
+                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "statements"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <Receipt className="w-4 h-4" />
@@ -838,11 +683,10 @@ export default function page() {
                       </button>
                       <button
                         onClick={() => setActiveTab("cost-sheet")}
-                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                          activeTab === "cost-sheet"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                        }`}
+                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "cost-sheet"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4" />
@@ -851,11 +695,10 @@ export default function page() {
                       </button>
                       <button
                         onClick={() => setActiveTab("items")}
-                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                          activeTab === "items"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                        }`}
+                        className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "items"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4" />
@@ -922,83 +765,67 @@ export default function page() {
                             {/* Always show "All" tab */}
                             <button
                               onClick={() => setItemsCategoryTab("all")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                itemsCategoryTab === "all"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                              }`}
+                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "all"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                }`}
                             >
                               All
                             </button>
                             {/* Show category tabs only if items exist in that category */}
-                            {items.some(
-                              (item) => item.category === "SHEET"
-                            ) && (
+                            {availableCategories.SHEET && (
                               <button
                                 onClick={() => setItemsCategoryTab("SHEET")}
-                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                  itemsCategoryTab === "SHEET"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
+                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "SHEET"
+                                  ? "border-primary text-primary"
+                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                               >
                                 Sheet
                               </button>
                             )}
-                            {items.some(
-                              (item) => item.category === "HANDLE"
-                            ) && (
+                            {availableCategories.HANDLE && (
                               <button
                                 onClick={() => setItemsCategoryTab("HANDLE")}
-                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                  itemsCategoryTab === "HANDLE"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
+                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "HANDLE"
+                                  ? "border-primary text-primary"
+                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                               >
                                 Handle
                               </button>
                             )}
-                            {items.some(
-                              (item) => item.category === "HARDWARE"
-                            ) && (
+                            {availableCategories.HARDWARE && (
                               <button
                                 onClick={() => setItemsCategoryTab("HARDWARE")}
-                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                  itemsCategoryTab === "HARDWARE"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
+                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "HARDWARE"
+                                  ? "border-primary text-primary"
+                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                               >
                                 Hardware
                               </button>
                             )}
-                            {items.some(
-                              (item) => item.category === "ACCESSORY"
-                            ) && (
+                            {availableCategories.ACCESSORY && (
                               <button
                                 onClick={() => setItemsCategoryTab("ACCESSORY")}
-                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                  itemsCategoryTab === "ACCESSORY"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
+                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "ACCESSORY"
+                                  ? "border-primary text-primary"
+                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                               >
                                 Accessory
                               </button>
                             )}
-                            {items.some(
-                              (item) => item.category === "EDGING_TAPE"
-                            ) && (
+                            {availableCategories.EDGING_TAPE && (
                               <button
                                 onClick={() =>
                                   setItemsCategoryTab("EDGING_TAPE")
                                 }
-                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                  itemsCategoryTab === "EDGING_TAPE"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
+                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "EDGING_TAPE"
+                                  ? "border-primary text-primary"
+                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                               >
                                 Edging Tape
                               </button>
@@ -1018,318 +845,263 @@ export default function page() {
                               No items found for this supplier
                             </p>
                           </div>
+                        ) : filteredItems.length === 0 ? (
+                          <div className="text-center py-8 text-slate-500">
+                            <Search className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                            <p className="text-sm">
+                              No items match your search criteria
+                            </p>
+                          </div>
                         ) : (
-                          (() => {
-                            // Filter items by category and search
-                            const filteredItems = items.filter((item) => {
-                              // Category filter
-                              if (
-                                itemsCategoryTab !== "all" &&
-                                item.category !== itemsCategoryTab
-                              ) {
-                                return false;
-                              }
-                              // Search filter
-                              if (searchQuery) {
-                                const query = searchQuery.toLowerCase();
-                                return (
-                                  item.category
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.description
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.handle?.color
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.handle?.type
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.sheet?.color
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.hardware?.name
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.accessory?.name
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.edging_tape?.brand
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.edging_tape?.color
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.edging_tape?.finish
-                                    ?.toLowerCase()
-                                    .includes(query) ||
-                                  item.edging_tape?.dimensions
-                                    ?.toLowerCase()
-                                    .includes(query)
-                                );
-                              }
-                              return true;
-                            });
-
-                            return filteredItems.length === 0 ? (
-                              <div className="text-center py-8 text-slate-500">
-                                <Search className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                                <p className="text-sm">
-                                  No items match your search criteria
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="overflow-x-auto">
-                                <table className="w-full">
-                                  <thead className="bg-slate-50">
-                                    <tr>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Image
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Category
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Description
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Details
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Price
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Quantity
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="bg-white divide-y divide-slate-200">
-                                    {filteredItems.map((item) => (
-                                      <tr
-                                        key={item.item_id}
-                                        className="hover:bg-slate-50 transition-colors"
-                                      >
-                                        {/* Image Column */}
-                                        <td className="px-4 py-2 whitespace-nowrap">
-                                          <div className="flex items-center">
-                                            {item.image?.url ? (
-                                              <Image
-                                                loading="lazy"  
-                                                src={`/${item.image.url}`}
-                                                alt={item.item_id}
-                                                className="w-12 h-12 object-cover rounded border border-slate-200"
-                                                onError={(e) => {
-                                                  e.target.style.display =
-                                                    "none";
-                                                  e.target.nextSibling.style.display =
-                                                    "flex";
-                                                }}
-                                                width={48}
-                                                height={48}
-                                              />
-                                            ) : (
-                                              <div className="w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                                                <Package className="w-6 h-6 text-slate-400" />
-                                              </div>
-                                            )}
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-slate-50">
+                                <tr>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    Image
+                                  </th>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    Category
+                                  </th>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    Description
+                                  </th>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    Details
+                                  </th>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    Price
+                                  </th>
+                                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    Quantity
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-slate-200">
+                                {filteredItems.map((item) => (
+                                  <tr
+                                    key={item.item_id}
+                                    className="hover:bg-slate-50 transition-colors"
+                                  >
+                                    {/* Image Column */}
+                                    <td className="px-4 py-2 whitespace-nowrap">
+                                      <div className="flex items-center">
+                                        {item.image?.url ? (
+                                          <Image
+                                            loading="lazy"
+                                            src={`/${item.image.url}`}
+                                            alt={item.item_id}
+                                            className="w-12 h-12 object-cover rounded border border-slate-200"
+                                            onError={(e) => {
+                                              e.target.style.display =
+                                                "none";
+                                              e.target.nextSibling.style.display =
+                                                "flex";
+                                            }}
+                                            width={48}
+                                            height={48}
+                                          />
+                                        ) : (
+                                          <div className="w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                            <Package className="w-6 h-6 text-slate-400" />
                                           </div>
-                                        </td>
+                                        )}
+                                      </div>
+                                    </td>
 
-                                        {/* Category Column */}
-                                        <td className="px-4 py-2 whitespace-nowrap">
-                                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                            {item.category}
-                                          </span>
-                                        </td>
+                                    {/* Category Column */}
+                                    <td className="px-4 py-2 whitespace-nowrap">
+                                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                        {item.category}
+                                      </span>
+                                    </td>
 
-                                        {/* Description Column */}
-                                        <td className="px-4 py-2">
-                                          <p className="text-xs text-slate-600">
-                                            {item.description || "-"}
-                                          </p>
-                                        </td>
+                                    {/* Description Column */}
+                                    <td className="px-4 py-2">
+                                      <p className="text-xs text-slate-600">
+                                        {item.description || "-"}
+                                      </p>
+                                    </td>
 
-                                        {/* Details Column */}
-                                        <td className="px-4 py-2">
-                                          <div className="text-xs text-slate-600 space-y-1">
-                                            {item.sheet && (
-                                              <>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Brand:
-                                                  </span>{" "}
-                                                  {item.sheet.brand}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Color:
-                                                  </span>{" "}
-                                                  {item.sheet.color}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Finish:
-                                                  </span>{" "}
-                                                  {item.sheet.finish}
-                                                </div>
-                                                {item.sheet.face && (
-                                                  <div>
-                                                    <span className="font-medium">
-                                                      Face:
-                                                    </span>{" "}
-                                                    {item.sheet.face}
-                                                  </div>
-                                                )}
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Dimensions:
-                                                  </span>{" "}
-                                                  {item.sheet.dimensions}
-                                                </div>
-                                              </>
-                                            )}
-                                            {item.handle && (
-                                              <>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Brand:
-                                                  </span>{" "}
-                                                  {item.handle.brand}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Color:
-                                                  </span>{" "}
-                                                  {item.handle.color}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Type:
-                                                  </span>{" "}
-                                                  {item.handle.type}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Dimensions:
-                                                  </span>{" "}
-                                                  {item.handle.dimensions}
-                                                </div>
-                                                {item.handle.material && (
-                                                  <div>
-                                                    <span className="font-medium">
-                                                      Material:
-                                                    </span>{" "}
-                                                    {item.handle.material}
-                                                  </div>
-                                                )}
-                                                {item.handle.brand && (
-                                                  <div>
-                                                    <span className="font-medium">
-                                                      Brand:
-                                                    </span>{" "}
-                                                    {item.handle.brand}
-                                                  </div>
-                                                )}
-                                              </>
-                                            )}
-                                            {item.hardware && (
-                                              <>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Name:
-                                                  </span>{" "}
-                                                  {item.hardware.name}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Type:
-                                                  </span>{" "}
-                                                  {item.hardware.type}
-                                                </div>
-                                                {item.hardware.dimensions && (
-                                                  <div>
-                                                    <span className="font-medium">
-                                                      Dimensions:
-                                                    </span>{" "}
-                                                    {item.hardware.dimensions}
-                                                  </div>
-                                                )}
-                                                {item.hardware.sub_category && (
-                                                  <div>
-                                                    <span className="font-medium">
-                                                      Sub Category:
-                                                    </span>{" "}
-                                                    {item.hardware.sub_category}
-                                                  </div>
-                                                )}
-                                              </>
-                                            )}
-                                            {item.accessory && (
+                                    {/* Details Column */}
+                                    <td className="px-4 py-2">
+                                      <div className="text-xs text-slate-600 space-y-1">
+                                        {item.sheet && (
+                                          <>
+                                            <div>
+                                              <span className="font-medium">
+                                                Brand:
+                                              </span>{" "}
+                                              {item.sheet.brand}
+                                            </div>
+                                            <div>
+                                              <span className="font-medium">
+                                                Color:
+                                              </span>{" "}
+                                              {item.sheet.color}
+                                            </div>
+                                            <div>
+                                              <span className="font-medium">
+                                                Finish:
+                                              </span>{" "}
+                                              {item.sheet.finish}
+                                            </div>
+                                            {item.sheet.face && (
                                               <div>
                                                 <span className="font-medium">
-                                                  Name:
+                                                  Face:
                                                 </span>{" "}
-                                                {item.accessory.name}
+                                                {item.sheet.face}
                                               </div>
                                             )}
-                                            {item.edging_tape && (
-                                              <>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Brand:
-                                                  </span>{" "}
-                                                  {item.edging_tape.brand}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Color:
-                                                  </span>{" "}
-                                                  {item.edging_tape.color}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Finish:
-                                                  </span>{" "}
-                                                  {item.edging_tape.finish}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Dimensions:
-                                                  </span>{" "}
-                                                  {item.edging_tape.dimensions}
-                                                </div>
-                                              </>
+                                            <div>
+                                              <span className="font-medium">
+                                                Dimensions:
+                                              </span>{" "}
+                                              {item.sheet.dimensions}
+                                            </div>
+                                          </>
+                                        )}
+                                        {item.handle && (
+                                          <>
+                                            <div>
+                                              <span className="font-medium">
+                                                Brand:
+                                              </span>{" "}
+                                              {item.handle.brand}
+                                            </div>
+                                            <div>
+                                              <span className="font-medium">
+                                                Color:
+                                              </span>{" "}
+                                              {item.handle.color}
+                                            </div>
+                                            <div>
+                                              <span className="font-medium">
+                                                Type:
+                                              </span>{" "}
+                                              {item.handle.type}
+                                            </div>
+                                            <div>
+                                              <span className="font-medium">
+                                                Dimensions:
+                                              </span>{" "}
+                                              {item.handle.dimensions}
+                                            </div>
+                                            {item.handle.material && (
+                                              <div>
+                                                <span className="font-medium">
+                                                  Material:
+                                                </span>{" "}
+                                                {item.handle.material}
+                                              </div>
                                             )}
+                                            {item.handle.brand && (
+                                              <div>
+                                                <span className="font-medium">
+                                                  Brand:
+                                                </span>{" "}
+                                                {item.handle.brand}
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
+                                        {item.hardware && (
+                                          <>
+                                            <div>
+                                              <span className="font-medium">
+                                                Name:
+                                              </span>{" "}
+                                              {item.hardware.name}
+                                            </div>
+                                            <div>
+                                              <span className="font-medium">
+                                                Type:
+                                              </span>{" "}
+                                              {item.hardware.type}
+                                            </div>
+                                            {item.hardware.dimensions && (
+                                              <div>
+                                                <span className="font-medium">
+                                                  Dimensions:
+                                                </span>{" "}
+                                                {item.hardware.dimensions}
+                                              </div>
+                                            )}
+                                            {item.hardware.sub_category && (
+                                              <div>
+                                                <span className="font-medium">
+                                                  Sub Category:
+                                                </span>{" "}
+                                                {item.hardware.sub_category}
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
+                                        {item.accessory && (
+                                          <div>
+                                            <span className="font-medium">
+                                              Name:
+                                            </span>{" "}
+                                            {item.accessory.name}
                                           </div>
-                                        </td>
+                                        )}
+                                        {item.edging_tape && (
+                                          <>
+                                            <div>
+                                              <span className="font-medium">
+                                                Brand:
+                                              </span>{" "}
+                                              {item.edging_tape.brand}
+                                            </div>
+                                            <div>
+                                              <span className="font-medium">
+                                                Color:
+                                              </span>{" "}
+                                              {item.edging_tape.color}
+                                            </div>
+                                            <div>
+                                              <span className="font-medium">
+                                                Finish:
+                                              </span>{" "}
+                                              {item.edging_tape.finish}
+                                            </div>
+                                            <div>
+                                              <span className="font-medium">
+                                                Dimensions:
+                                              </span>{" "}
+                                              {item.edging_tape.dimensions}
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
 
-                                        {/* Price Column */}
-                                        <td className="px-4 py-2 whitespace-nowrap">
-                                          <p className="text-xs text-slate-900">
-                                            $
-                                            {parseFloat(
-                                              item.price || 0
-                                            ).toFixed(2)}
-                                          </p>
-                                        </td>
+                                    {/* Price Column */}
+                                    <td className="px-4 py-2 whitespace-nowrap">
+                                      <p className="text-xs text-slate-900">
+                                        $
+                                        {parseFloat(
+                                          item.price || 0
+                                        ).toFixed(2)}
+                                      </p>
+                                    </td>
 
-                                        {/* Quantity Column */}
-                                        <td className="px-4 py-2 whitespace-nowrap">
-                                          <div className="flex items-center gap-1.5">
-                                            <Package className="w-3.5 h-3.5 text-slate-400" />
-                                            <span className="text-xs text-slate-600">
-                                              {item.quantity ?? 0}{" "}
-                                              {item.measurement_unit}
-                                            </span>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            );
-                          })()
+                                    {/* Quantity Column */}
+                                    <td className="px-4 py-2 whitespace-nowrap">
+                                      <div className="flex items-center gap-1.5">
+                                        <Package className="w-3.5 h-3.5 text-slate-400" />
+                                        <span className="text-xs text-slate-600">
+                                          {item.quantity ?? 0}{" "}
+                                          {item.measurement_unit}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         )}
                       </div>
                     )}
@@ -1341,20 +1113,6 @@ export default function page() {
         </div>
       </div>
 
-      {/* Purchase Order modal is now handled inside MaterialsToOrder */}
-
-      {/* Contact Detail Modal */}
-      <ContactPopup
-        isOpen={isContactModalOpen}
-        contact={selectedContact}
-        onClose={closeContactModal}
-        onSave={saveEditContact}
-        onCreate={handleCreateContact}
-        parentId={supplier?.supplier_id || ""}
-        parentType="supplier"
-        parentName={supplier?.name || ""}
-      />
-
       {/* Delete Supplier Confirmation Modal */}
       <DeleteConfirmation
         isOpen={showDeleteSupplierModal}
@@ -1365,19 +1123,6 @@ export default function page() {
         message="This will remove the supplier and all associated contacts. This action cannot be undone."
         comparingName={supplier?.name || ""}
         isDeleting={isDeletingSupplier}
-      />
-
-      {/* Delete Contact Confirmation Modal */}
-      <DeleteConfirmation
-        isOpen={showDeleteContactModal}
-        onClose={handleDeleteContactCancel}
-        onConfirm={handleDeleteContactConfirm}
-        deleteWithInput={false}
-        heading="Contact"
-        message={`${contactPendingDelete?.first_name || ""} ${
-          contactPendingDelete?.last_name || ""
-        } will be removed from this supplier.`}
-        isDeleting={isDeletingContact}
       />
 
       <ToastContainer />

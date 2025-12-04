@@ -73,7 +73,6 @@ export default function page() {
   const [item, setItem] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [editData, setEditData] = useState({});
   const [showDropdown, setShowDropdown] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -101,6 +100,14 @@ export default function page() {
     fetchSuppliers();
   }, [id]);
 
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -125,7 +132,7 @@ export default function page() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showDropdown]);
+  }, [showDropdown, isSubCategoryDropdownOpen, isSupplierDropdownOpen]);
 
   const fetchItem = async () => {
     try {
@@ -159,7 +166,7 @@ export default function page() {
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-          "An error occurred while fetching item data"
+        "An error occurred while fetching item data"
       );
     } finally {
       setLoading(false);
@@ -247,33 +254,33 @@ export default function page() {
       // Add category-specific fields based on category
       const category = item.category.toLowerCase();
       if (category === "sheet" && item.sheet) {
-        editFormData.brand = item.sheet.brand || "";
-        editFormData.color = item.sheet.color || "";
-        editFormData.finish = item.sheet.finish || "";
-        editFormData.face = item.sheet.face || "";
-        editFormData.dimensions = item.sheet.dimensions || "";
-        editFormData.is_sunmica = item.sheet.is_sunmica || false;
+        editFormData.brand = item.sheet?.brand || "";
+        editFormData.color = item.sheet?.color || "";
+        editFormData.finish = item.sheet?.finish || "";
+        editFormData.face = item.sheet?.face || "";
+        editFormData.dimensions = item.sheet?.dimensions || "";
+        editFormData.is_sunmica = item.sheet?.is_sunmica || false;
       } else if (category === "handle" && item.handle) {
-        editFormData.brand = item.handle.brand || "";
-        editFormData.color = item.handle.color || "";
-        editFormData.type = item.handle.type || "";
-        editFormData.material = item.handle.material || "";
-        editFormData.dimensions = item.handle.dimensions || "";
+        editFormData.brand = item.handle?.brand || "";
+        editFormData.color = item.handle?.color || "";
+        editFormData.type = item.handle?.type || "";
+        editFormData.material = item.handle?.material || "";
+        editFormData.dimensions = item.handle?.dimensions || "";
       } else if (category === "hardware" && item.hardware) {
-        editFormData.brand = item.hardware.brand || "";
-        editFormData.name = item.hardware.name || "";
-        editFormData.type = item.hardware.type || "";
-        editFormData.dimensions = item.hardware.dimensions || "";
-        editFormData.sub_category = item.hardware.sub_category || "";
+        editFormData.brand = item.hardware?.brand || "";
+        editFormData.name = item.hardware?.name || "";
+        editFormData.type = item.hardware?.type || "";
+        editFormData.dimensions = item.hardware?.dimensions || "";
+        editFormData.sub_category = item.hardware?.sub_category || "";
         // Initialize subcategory search term
-        setSubCategorySearchTerm(item.hardware.sub_category || "");
+        setSubCategorySearchTerm(item.hardware?.sub_category || "");
       } else if (category === "accessory" && item.accessory) {
-        editFormData.name = item.accessory.name || "";
+        editFormData.name = item.accessory?.name || "";
       } else if (category === "edging_tape" && item.edging_tape) {
-        editFormData.brand = item.edging_tape.brand || "";
-        editFormData.color = item.edging_tape.color || "";
-        editFormData.finish = item.edging_tape.finish || "";
-        editFormData.dimensions = item.edging_tape.dimensions || "";
+        editFormData.brand = item.edging_tape?.brand || "";
+        editFormData.color = item.edging_tape?.color || "";
+        editFormData.finish = item.edging_tape?.finish || "";
+        editFormData.dimensions = item.edging_tape?.dimensions || "";
       }
 
       setFormData(editFormData);
@@ -346,7 +353,7 @@ export default function page() {
       console.error("Error updating item:", error);
       toast.error(
         error.response?.data?.message ||
-          "Failed to update item. Please try again.",
+        "Failed to update item. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
@@ -530,9 +537,8 @@ export default function page() {
                 onChange={(e) => handleInputChange("face", e.target.value)}
                 placeholder={formatValue(item.sheet.face)}
                 disabled={formData.is_sunmica}
-                className={`w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${
-                  formData.is_sunmica ? "bg-slate-100 cursor-not-allowed" : ""
-                }`}
+                className={`w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${formData.is_sunmica ? "bg-slate-100 cursor-not-allowed" : ""
+                  }`}
               />
             ) : (
               <p className="text-sm text-slate-800">
@@ -685,9 +691,8 @@ export default function page() {
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      isSubCategoryDropdownOpen ? "rotate-180" : ""
-                    }`}
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${isSubCategoryDropdownOpen ? "rotate-180" : ""
+                      }`}
                   />
                 </button>
 
@@ -1158,11 +1163,10 @@ export default function page() {
                                       className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                     >
                                       <ChevronDown
-                                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                          isSupplierDropdownOpen
-                                            ? "rotate-180"
-                                            : ""
-                                        }`}
+                                        className={`w-3.5 h-3.5 transition-transform duration-200 ${isSupplierDropdownOpen
+                                          ? "rotate-180"
+                                          : ""
+                                          }`}
                                       />
                                     </button>
 
@@ -1307,9 +1311,9 @@ export default function page() {
                                       >
                                         {item.supplier_product_link.length > 40
                                           ? `${item.supplier_product_link.substring(
-                                              0,
-                                              40
-                                            )}...`
+                                            0,
+                                            40
+                                          )}...`
                                           : item.supplier_product_link}
                                       </a>
                                     ) : (
@@ -1331,7 +1335,7 @@ export default function page() {
                         Stock Transactions
                       </h3>
                       {item.stock_transactions &&
-                      item.stock_transactions.length > 0 ? (
+                        item.stock_transactions.length > 0 ? (
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
@@ -1381,13 +1385,12 @@ export default function page() {
                                     </td>
                                     <td className="py-2 px-3">
                                       <span
-                                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                          transaction.type === "ADDED"
-                                            ? "bg-emerald-100 text-emerald-800"
-                                            : transaction.type === "USED"
+                                        className={`px-2 py-1 text-xs font-medium rounded-full ${transaction.type === "ADDED"
+                                          ? "bg-emerald-100 text-emerald-800"
+                                          : transaction.type === "USED"
                                             ? "bg-blue-100 text-blue-800"
                                             : "bg-red-100 text-red-800"
-                                        }`}
+                                          }`}
                                       >
                                         {transaction.type}
                                       </span>
@@ -1403,7 +1406,7 @@ export default function page() {
                                     </td>
                                     <td className="py-2 px-3 text-slate-600">
                                       {transaction.type === "ADDED" &&
-                                      transaction.purchase_order?.order_no ? (
+                                        transaction.purchase_order?.order_no ? (
                                         <span className="text-xs font-medium text-primary">
                                           {transaction.purchase_order.order_no}
                                         </span>
@@ -1413,8 +1416,8 @@ export default function page() {
                                     </td>
                                     <td className="py-2 px-3 text-slate-600">
                                       {transaction.type === "USED" &&
-                                      transaction.materials_to_order?.project
-                                        ?.name ? (
+                                        transaction.materials_to_order?.project
+                                          ?.name ? (
                                         <span className="text-xs font-medium text-slate-800">
                                           {
                                             transaction.materials_to_order
@@ -1427,9 +1430,9 @@ export default function page() {
                                     </td>
                                     <td className="py-2 px-3 text-slate-600">
                                       {transaction.type === "USED" &&
-                                      transaction.materials_to_order?.lots &&
-                                      transaction.materials_to_order.lots
-                                        .length > 0 ? (
+                                        transaction.materials_to_order?.lots &&
+                                        transaction.materials_to_order.lots
+                                          .length > 0 ? (
                                         <span className="text-xs font-medium text-slate-800">
                                           {transaction.materials_to_order.lots
                                             .map((lot) => lot.lot_id)

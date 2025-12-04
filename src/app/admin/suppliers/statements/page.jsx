@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
@@ -74,6 +74,11 @@ export default function StatementsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
+  // Refs for dropdown containers
+  const sortDropdownRef = useRef(null);
+  const itemsPerPageDropdownRef = useRef(null);
+  const columnDropdownRef = useRef(null);
+
   // Define all available columns for export
   const availableColumns = [
     "Supplier",
@@ -105,9 +110,23 @@ export default function StatementsPage() {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest(".dropdown-container")) {
+      // Check if click is outside all dropdown containers
+      if (
+        sortDropdownRef.current &&
+        !sortDropdownRef.current.contains(event.target)
+      ) {
         setShowSortDropdown(false);
+      }
+      if (
+        itemsPerPageDropdownRef.current &&
+        !itemsPerPageDropdownRef.current.contains(event.target)
+      ) {
         setShowItemsPerPageDropdown(false);
+      }
+      if (
+        columnDropdownRef.current &&
+        !columnDropdownRef.current.contains(event.target)
+      ) {
         setShowColumnDropdown(false);
       }
     };
@@ -758,16 +777,16 @@ export default function StatementsPage() {
                           {(search !== "" ||
                             sortField !== "month_year" ||
                             sortOrder !== "desc") && (
-                            <button
-                              onClick={handleReset}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                              <span>Reset</span>
-                            </button>
-                          )}
+                              <button
+                                onClick={handleReset}
+                                className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                                <span>Reset</span>
+                              </button>
+                            )}
 
-                          <div className="relative dropdown-container">
+                          <div className="relative" ref={sortDropdownRef}>
                             <button
                               onClick={() =>
                                 setShowSortDropdown(!showSortDropdown)
@@ -804,7 +823,7 @@ export default function StatementsPage() {
                             )}
                           </div>
 
-                          <div className="relative dropdown-container flex items-center">
+                          <div className="relative flex items-center" ref={columnDropdownRef}>
                             <button
                               onClick={handleExportToExcel}
                               disabled={
@@ -812,13 +831,12 @@ export default function StatementsPage() {
                                 filteredAndSortedStatements.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
                                 filteredAndSortedStatements.length === 0 ||
                                 selectedColumns.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -835,53 +853,39 @@ export default function StatementsPage() {
                                 isExporting ||
                                 filteredAndSortedStatements.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${
-                                isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${isExporting ||
                                 filteredAndSortedStatements.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                                }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
                             {showColumnDropdown && (
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleColumnToggle("Select All")
-                                    }
-                                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between sticky top-0 bg-white border-b border-slate-200"
-                                  >
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">Select All</span>
                                     <input
                                       type="checkbox"
-                                      checked={
-                                        selectedColumns.length ===
-                                        availableColumns.length
-                                      }
-                                      onChange={() => {}}
+                                      checked={selectedColumns.length === availableColumns.length}
+                                      onChange={() => handleColumnToggle("Select All")}
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
-                                  </button>
+                                  </label>
                                   {availableColumns.map((column) => (
-                                    <button
+                                    <label
                                       key={column}
-                                      onClick={() => handleColumnToggle(column)}
-                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
                                     >
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(
-                                          column
-                                        )}
-                                        onChange={() => {}}
+                                        checked={selectedColumns.includes(column)}
+                                        onChange={() => handleColumnToggle(column)}
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
-                                    </button>
+                                    </label>
                                   ))}
                                 </div>
                               </div>
@@ -896,21 +900,19 @@ export default function StatementsPage() {
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("pending")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "pending"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "pending"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
                         >
                           Pending
                         </button>
                         <button
                           onClick={() => setActiveTab("paid")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "paid"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "paid"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
                         >
                           Paid
                         </button>
@@ -992,9 +994,8 @@ export default function StatementsPage() {
                             paginatedStatements.map((statement) => (
                               <Fragment key={statement.id}>
                                 <tr
-                                  className={`cursor-pointer hover:bg-slate-50 transition-colors duration-200 ${
-                                    statement.notes ? "" : ""
-                                  }`}
+                                  className={`cursor-pointer hover:bg-slate-50 transition-colors duration-200 ${statement.notes ? "" : ""
+                                    }`}
                                   onClick={() =>
                                     statement.notes && toggleNotes(statement.id)
                                   }
@@ -1033,17 +1034,16 @@ export default function StatementsPage() {
                                   <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {statement.amount
                                       ? `$${parseFloat(
-                                          statement.amount
-                                        ).toFixed(2)}`
+                                        statement.amount
+                                      ).toFixed(2)}`
                                       : "-"}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">
                                     <span
-                                      className={`px-2 py-1 text-xs font-medium rounded ${
-                                        statement.payment_status === "PAID"
-                                          ? "bg-green-100 text-green-800"
-                                          : "bg-yellow-100 text-yellow-800"
-                                      }`}
+                                      className={`px-2 py-1 text-xs font-medium rounded ${statement.payment_status === "PAID"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                        }`}
                                     >
                                       {statement.payment_status}
                                     </span>
@@ -1123,7 +1123,7 @@ export default function StatementsPage() {
                               <span className="text-xs text-slate-600">
                                 Showing
                               </span>
-                              <div className="relative dropdown-container">
+                              <div className="relative" ref={itemsPerPageDropdownRef}>
                                 <button
                                   onClick={() =>
                                     setShowItemsPerPageDropdown(
@@ -1196,11 +1196,10 @@ export default function StatementsPage() {
                                       <button
                                         key={pageNum}
                                         onClick={() => setCurrentPage(pageNum)}
-                                        className={`cursor-pointer px-2 py-1 text-xs rounded-md transition-colors duration-200 ${
-                                          currentPage === pageNum
-                                            ? "bg-primary text-white"
-                                            : "text-slate-600 hover:bg-slate-100"
-                                        }`}
+                                        className={`cursor-pointer px-2 py-1 text-xs rounded-md transition-colors duration-200 ${currentPage === pageNum
+                                          ? "bg-primary text-white"
+                                          : "text-slate-600 hover:bg-slate-100"
+                                          }`}
                                       >
                                         {pageNum}
                                       </button>
@@ -1256,11 +1255,9 @@ export default function StatementsPage() {
               onConfirm={handleDeleteStatementConfirm}
               deleteWithInput={true}
               heading="Statement"
-              message={`This will permanently delete the statement for ${
-                statementToDelete?.month_year || ""
-              } from ${
-                statementToDelete?.supplier?.name || ""
-              }. This action cannot be undone.`}
+              message={`This will permanently delete the statement for ${statementToDelete?.month_year || ""
+                } from ${statementToDelete?.supplier?.name || ""
+                }. This action cannot be undone.`}
               comparingName={statementToDelete?.month_year || ""}
               isDeleting={isDeletingStatement}
             />
@@ -1457,8 +1454,8 @@ export default function StatementsPage() {
                           ? "Updating..."
                           : "Update Statement"
                         : isUploadingStatement
-                        ? "Uploading..."
-                        : "Upload Statement"}
+                          ? "Uploading..."
+                          : "Upload Statement"}
                     </button>
                   </div>
                 </div>

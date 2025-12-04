@@ -48,7 +48,7 @@ export default function page() {
     };
 
     fetchClients();
-  }, [getToken]);
+  }, []);
 
   // Filter clients based on search term
   useEffect(() => {
@@ -138,18 +138,17 @@ export default function page() {
           ? formData.client_id.trim()
           : null;
 
-      const data = JSON.stringify({
+      const data = {
         name: formData.name,
         project_id: formData.project_id,
         client_id: clientIdToSend,
-      });
+      };
 
       const config = {
         method: "post",
         maxBodyLength: Infinity,
         url: "/api/project/create",
         headers: {
-          "Content-Type": "text/plain",
           Authorization: `Bearer ${sessionToken}`,
         },
         data: data,
@@ -239,7 +238,7 @@ export default function page() {
   };
 
   return (
-    <div>
+    <AdminRoute>
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -329,9 +328,8 @@ export default function page() {
                             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                           >
                             <ChevronDown
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                isClientDropdownOpen ? "rotate-180" : ""
-                              }`}
+                              className={`w-5 h-5 transition-transform duration-200 ${isClientDropdownOpen ? "rotate-180" : ""
+                                }`}
                             />
                           </button>
                         </div>
@@ -377,11 +375,10 @@ export default function page() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-                        isLoading
-                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                          : "bg-primary/80 hover:bg-primary text-white"
-                      }`}
+                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${isLoading
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        : "bg-primary/80 hover:bg-primary text-white"
+                        }`}
                     >
                       {isLoading ? "Creating Project..." : "Create Project"}
                     </button>
@@ -404,6 +401,6 @@ export default function page() {
         pauseOnHover
         theme="light"
       />
-    </div>
+    </AdminRoute>
   );
 }

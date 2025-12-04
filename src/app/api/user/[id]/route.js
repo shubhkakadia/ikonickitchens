@@ -224,6 +224,14 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const user = await prisma.users.findUnique({
       where: { id: id },
+      include: {
+        employee: {
+          include: {
+            image: true,
+          },
+        },
+        module_access: true,
+      },
     });
     if (!user) {
       return NextResponse.json(

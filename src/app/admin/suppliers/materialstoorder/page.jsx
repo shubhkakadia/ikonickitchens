@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
+import PaginationFooter from "@/components/PaginationFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
@@ -19,10 +20,6 @@ import {
   ArrowUp,
   ArrowDown,
   Sheet,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Plus,
   FileUp,
   Trash,
@@ -34,6 +31,7 @@ import Image from "next/image";
 import PurchaseOrder from "../components/PurchaseOrderForm";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
+import CreateMaterialsToOrderModal from "./components/CreateMaterialsToOrderModal";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -43,6 +41,7 @@ export default function page() {
   const [activeTab, setActiveTab] = useState("active");
   const [showCreatePurchaseOrderModal, setShowCreatePurchaseOrderModal] =
     useState(false);
+  const [showCreateMTOModal, setShowCreateMTOModal] = useState(false);
   const [selectedSupplierForPO, setSelectedSupplierForPO] = useState(null);
   const [mtosForSelectedSupplier, setMtosForSelectedSupplier] = useState([]);
   const [preSelectedMtoId, setPreSelectedMtoId] = useState(null);
@@ -51,8 +50,6 @@ export default function page() {
   const [sortOrder, setSortOrder] = useState("asc");
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showItemsPerPageDropdown, setShowItemsPerPageDropdown] =
-    useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   // Define all available columns for export
@@ -114,7 +111,6 @@ export default function page() {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest(".dropdown-container")) {
-        setShowItemsPerPageDropdown(false);
         setShowColumnDropdown(false);
       }
     };
@@ -275,14 +271,16 @@ export default function page() {
 
   const handleItemsPerPageChange = (value) => {
     setItemsPerPage(value);
-    setShowItemsPerPageDropdown(false);
-    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
   };
 
   // Reset to first page when search or items per page changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, itemsPerPage]);
+  }, [search]);
 
   const handleReset = () => {
     setSearch("");
@@ -396,6 +394,12 @@ export default function page() {
           // Accessory details
           const accName = item.accessory?.name || "";
 
+          // Calculate actual quantity ordered from purchase order items
+          const actualQuantityOrdered = (it.ordered_items || []).reduce(
+            (sum, poItem) => sum + (poItem.quantity || 0),
+            0
+          );
+
           // Build full row with all columns
           const fullRow = {
             Project: projectName,
@@ -420,7 +424,7 @@ export default function page() {
             "Hardware Sub Category": hwSubCategory,
             "Accessory Name": accName,
             Quantity: it.quantity ?? "",
-            "Quantity Ordered": it.quantity_ordered ?? "",
+            "Quantity Ordered": actualQuantityOrdered || "",
             "Created At": createdAtStr,
             "Created By": createdByName,
             Notes: notes,
@@ -715,6 +719,13 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-700">
                       Materials to Order
                     </h1>
+                    <button
+                      onClick={() => setShowCreateMTOModal(true)}
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-xs font-medium"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Create Materials to Order</span>
+                    </button>
                   </div>
                 </div>
 
@@ -1512,17 +1523,20 @@ export default function page() {
                                                                               }
                                                                             </span>
                                                                           </div>
-                                                                          {item.quantity_ordered >
-                                                                            0 && (
+                                                                          {(() => {
+                                                                            const actualQuantityOrdered = (item.ordered_items || []).reduce(
+                                                                              (sum, poItem) => sum + (poItem.quantity || 0),
+                                                                              0
+                                                                            );
+                                                                            return actualQuantityOrdered > 0 && (
                                                                               <div className="flex items-center gap-1.5 text-blue-600 text-xs">
                                                                                 <span>
                                                                                   Ordered:{" "}
-                                                                                  {
-                                                                                    item.quantity_ordered
-                                                                                  }
+                                                                                  {actualQuantityOrdered}
                                                                                 </span>
                                                                               </div>
-                                                                            )}
+                                                                            );
+                                                                          })()}
                                                                           {item.quantity_received >
                                                                             0 && (
                                                                               <div className="flex items-center gap-1.5 text-green-600 text-xs">
@@ -1584,118 +1598,15 @@ export default function page() {
 
                     {/* Fixed Pagination Footer */}
                     {paginatedMTOs.length > 0 && (
-                      <div className="px-4 py-3 flex-shrink-0 border-t border-slate-200 bg-slate-50">
-                        <div className="flex items-center justify-between">
-                          {/* Items per page */}
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-slate-600 font-medium">
-                                Showing
-                              </span>
-                              <div className="relative dropdown-container">
-                                <button
-                                  onClick={() =>
-                                    setShowItemsPerPageDropdown(
-                                      !showItemsPerPageDropdown
-                                    )
-                                  }
-                                  className="cursor-pointer flex items-center gap-2 px-2 py-1 text-sm border border-slate-300 rounded-lg hover:bg-white transition-colors duration-200 bg-white font-medium"
-                                >
-                                  <span>
-                                    {itemsPerPage === 0 ? "All" : itemsPerPage}
-                                  </span>
-                                  <ChevronDown className="h-4 w-4" />
-                                </button>
-                                {showItemsPerPageDropdown && (
-                                  <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                                    <div className="py-1">
-                                      {[25, 50, 100, 0].map((value) => (
-                                        <button
-                                          key={value}
-                                          onClick={() =>
-                                            handleItemsPerPageChange(value)
-                                          }
-                                          className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                                        >
-                                          {value === 0 ? "All" : value}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <span className="text-sm text-slate-600 font-medium">
-                                of {totalItems} results
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Pagination buttons */}
-                          {itemsPerPage > 0 && (
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => setCurrentPage(1)}
-                                disabled={currentPage === 1}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronsLeft className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setCurrentPage((p) => Math.max(1, p - 1))
-                                }
-                                disabled={currentPage === 1}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronLeft className="h-4 w-4" />
-                              </button>
-                              <div className="flex items-center gap-1">
-                                {Array.from(
-                                  { length: Math.min(5, totalPages) },
-                                  (_, i) => {
-                                    let pageNum;
-                                    if (totalPages <= 5) pageNum = i + 1;
-                                    else if (currentPage <= 3) pageNum = i + 1;
-                                    else if (currentPage >= totalPages - 2)
-                                      pageNum = totalPages - 4 + i;
-                                    else pageNum = currentPage - 2 + i;
-                                    return (
-                                      <button
-                                        key={pageNum}
-                                        onClick={() => setCurrentPage(pageNum)}
-                                        className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${currentPage === pageNum
-                                          ? "bg-primary text-white shadow-sm"
-                                          : "text-slate-600 hover:bg-white"
-                                          }`}
-                                      >
-                                        {pageNum}
-                                      </button>
-                                    );
-                                  }
-                                )}
-                              </div>
-                              <button
-                                onClick={() =>
-                                  setCurrentPage((p) =>
-                                    Math.min(totalPages, p + 1)
-                                  )
-                                }
-                                disabled={currentPage === totalPages}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => setCurrentPage(totalPages)}
-                                disabled={currentPage === totalPages}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronsRight className="h-4 w-4" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <PaginationFooter
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        currentPage={currentPage}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        itemsPerPageOptions={[25, 50, 100, 0]}
+                        showItemsPerPage={true}
+                      />
                     )}
                   </div>
                 </div>
@@ -2019,6 +1930,18 @@ export default function page() {
         message="This will permanently delete the media file. This action cannot be undone."
         isDeleting={deletingMediaId !== null}
       />
+
+      {/* Create Materials to Order Modal */}
+      {showCreateMTOModal && (
+        <CreateMaterialsToOrderModal
+          setShowModal={setShowCreateMTOModal}
+          onSuccess={() => {
+            fetchMTOs();
+            setShowCreateMTOModal(false);
+          }}
+        />
+      )}
+
       <ToastContainer
         position="top-right"
         autoClose={3000}

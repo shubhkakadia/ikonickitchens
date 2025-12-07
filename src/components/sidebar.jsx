@@ -25,7 +25,6 @@ import { addTab, replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import versions from "@/config/versions.json";
-import axios from "axios";
 
 export default function sidebar() {
 
@@ -34,9 +33,9 @@ export default function sidebar() {
   const { logout } = useAuth();
   const { activeTab } = useSelector((state) => state.tabs);
   const router = useRouter();
-  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
-  const [suppliersDropdownOpen, setSuppliersDropdownOpen] = useState(false);
-  const [inventoryDropdownOpen, setInventoryDropdownOpen] = useState(false);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(true);
+  const [suppliersDropdownOpen, setSuppliersDropdownOpen] = useState(true);
+  const [inventoryDropdownOpen, setInventoryDropdownOpen] = useState(true);
   const navdata = [
     {
       icon: LayoutDashboard,
@@ -237,8 +236,8 @@ export default function sidebar() {
                   <div key={item.href} className="space-y-1">
                     <div
                       className={`w-full rounded-lg border transition-all duration-200 flex items-center gap-2 px-3 py-2 ${isParentActive
-                          ? "border-slate-600 bg-slate-800 text-white shadow-sm"
-                          : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                        ? "border-slate-600 bg-slate-800 text-white shadow-sm"
+                        : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
                         }`}
                     >
                       <button
@@ -256,14 +255,14 @@ export default function sidebar() {
                       >
                         <item.icon
                           className={`w-4 h-4 ${isParentActive
-                              ? "text-white"
-                              : "text-slate-400 group-hover:text-white"
+                            ? "text-white"
+                            : "text-slate-400 group-hover:text-white"
                             }`}
                         />
                         <h1
                           className={`text-sm font-medium ${isParentActive
-                              ? "text-white"
-                              : "text-slate-300 group-hover:text-white"
+                            ? "text-white"
+                            : "text-slate-300 group-hover:text-white"
                             }`}
                         >
                           {item.label}
@@ -338,8 +337,8 @@ export default function sidebar() {
                                 );
                               }}
                               className={`w-full text-left cursor-pointer px-3 py-2 rounded-lg border transition-all duration-200 flex items-center gap-2 ${isActiveSub
-                                  ? "bg-slate-800 text-white border-slate-700"
-                                  : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                                ? "bg-slate-800 text-white border-slate-700"
+                                : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
                                 }`}
                             >
                               <span className="text-sm font-medium">
@@ -385,20 +384,20 @@ export default function sidebar() {
                   }}
                   key={item.href}
                   className={`cursor-pointer rounded-lg px-3 py-2.5 transition-all duration-200 flex items-center gap-2 border ${isActive
-                      ? "border-slate-600 bg-slate-800 text-white shadow-sm"
-                      : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                    ? "border-slate-600 bg-slate-800 text-white shadow-sm"
+                    : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
                     }`}
                 >
                   <item.icon
                     className={`w-4 h-4 ${isActive
-                        ? "text-white"
-                        : "text-slate-400 group-hover:text-white"
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-white"
                       }`}
                   />
                   <h1
                     className={`text-sm font-medium flex-1 text-left ${isActive
-                        ? "text-white"
-                        : "text-slate-300 group-hover:text-white"
+                      ? "text-white"
+                      : "text-slate-300 group-hover:text-white"
                       }`}
                   >
                     {item.label}
@@ -452,20 +451,20 @@ export default function sidebar() {
                 );
               }}
               className={`cursor-pointer rounded-lg px-3 py-2.5 border transition-all duration-200 flex items-center gap-2 ${activeTab.href === "/admin/settings"
-                  ? "border-slate-600 bg-slate-800 text-white shadow-sm"
-                  : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+                ? "border-slate-600 bg-slate-800 text-white shadow-sm"
+                : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
                 }`}
             >
               <Settings
                 className={`w-4 h-4 ${activeTab.href === "/admin/settings"
-                    ? "text-white"
-                    : "text-slate-400 group-hover:text-white"
+                  ? "text-white"
+                  : "text-slate-400 group-hover:text-white"
                   }`}
               />
               <h1
                 className={`text-sm font-medium ${activeTab.href === "/admin/settings"
-                    ? "text-white"
-                    : "text-slate-300 group-hover:text-white"
+                  ? "text-white"
+                  : "text-slate-300 group-hover:text-white"
                   }`}
               >
                 Settings
@@ -506,20 +505,20 @@ export default function sidebar() {
             <button onClick={() => logout()}>
               <div
                 className={`cursor-pointer rounded-lg px-3 py-2.5 transition-all duration-200 flex items-center gap-2 border ${pathname === "/admin/logout"
-                    ? "border-red-200/60 bg-red-50 text-red-700 shadow-sm"
-                    : "border-transparent text-slate-300 hover:border-red-200 hover:bg-red-50/30 hover:text-red-500"
+                  ? "border-red-200/60 bg-red-50 text-red-700 shadow-sm"
+                  : "border-transparent text-slate-300 hover:border-red-200 hover:bg-red-50/30 hover:text-red-500"
                   }`}
               >
                 <LogOut
                   className={`w-4 h-4 ${pathname === "/admin/logout"
-                      ? "text-red-700"
-                      : "text-red-400"
+                    ? "text-red-700"
+                    : "text-red-400"
                     }`}
                 />
                 <h1
                   className={`text-sm font-medium ${pathname === "/admin/logout"
-                      ? "text-red-700"
-                      : "text-red-400"
+                    ? "text-red-700"
+                    : "text-red-400"
                     }`}
                 >
                   Logout

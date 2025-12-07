@@ -3,6 +3,7 @@ import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
+import PaginationFooter from "@/components/PaginationFooter";
 import {
   Edit,
   Trash2,
@@ -15,13 +16,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   RotateCcw,
   Sheet,
   AlertTriangle,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -68,16 +66,41 @@ export default function StatementsPage() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showItemsPerPageDropdown, setShowItemsPerPageDropdown] =
-    useState(false);
   const [activeTab, setActiveTab] = useState("pending");
   const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
   // Refs for dropdown containers
   const sortDropdownRef = useRef(null);
-  const itemsPerPageDropdownRef = useRef(null);
   const columnDropdownRef = useRef(null);
+  const supplierDropdownRef = useRef(null);
+
+  // Supplier search state for modal
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
+  const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
+
+  // File upload states
+  const [filePreview, setFilePreview] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showFilePreview, setShowFilePreview] = useState(false);
+
+  // Due In dropdown state
+  const [dueIn, setDueIn] = useState("custom");
+
+  // Status update loading state (tracking which statement is being updated)
+  const [updatingStatusId, setUpdatingStatusId] = useState(null);
+
+  // Status dropdown state (tracking which statement's dropdown is open)
+  const [openStatusDropdownId, setOpenStatusDropdownId] = useState(null);
+  const statusDropdownRefs = useRef({});
+
+  // Year and month filter states
+  const [yearFilter, setYearFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState("all");
+  const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
+  const [monthDropdownOpen, setMonthDropdownOpen] = useState(false);
+  const yearDropdownRef = useRef(null);
+  const monthDropdownRef = useRef(null);
 
   // Define all available columns for export
   const availableColumns = [
@@ -108,6 +131,11 @@ export default function StatementsPage() {
     );
   }, []);
 
+  // Reset to first page when search or items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       // Check if click is outside all dropdown containers
@@ -118,16 +146,38 @@ export default function StatementsPage() {
         setShowSortDropdown(false);
       }
       if (
-        itemsPerPageDropdownRef.current &&
-        !itemsPerPageDropdownRef.current.contains(event.target)
-      ) {
-        setShowItemsPerPageDropdown(false);
-      }
-      if (
         columnDropdownRef.current &&
         !columnDropdownRef.current.contains(event.target)
       ) {
         setShowColumnDropdown(false);
+      }
+      if (
+        supplierDropdownRef.current &&
+        !supplierDropdownRef.current.contains(event.target)
+      ) {
+        setIsSupplierDropdownOpen(false);
+      }
+      if (
+        yearDropdownRef.current &&
+        !yearDropdownRef.current.contains(event.target)
+      ) {
+        setYearDropdownOpen(false);
+      }
+      if (
+        monthDropdownRef.current &&
+        !monthDropdownRef.current.contains(event.target)
+      ) {
+        setMonthDropdownOpen(false);
+      }
+      // Check status dropdowns
+      let clickedOutsideAllStatusDropdowns = true;
+      Object.values(statusDropdownRefs.current).forEach((ref) => {
+        if (ref && ref.contains(event.target)) {
+          clickedOutsideAllStatusDropdowns = false;
+        }
+      });
+      if (clickedOutsideAllStatusDropdowns) {
+        setOpenStatusDropdownId(null);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -149,6 +199,48 @@ export default function StatementsPage() {
     });
     return Array.from(supplierMap.values());
   }, [statements]);
+
+  // Get available years from statements
+  const getAvailableYears = useMemo(() => {
+    const years = new Set();
+    statements.forEach((statement) => {
+      if (statement.month_year) {
+        const year = statement.month_year.split("-")[0];
+        years.add(year);
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [statements]);
+
+  // Format month number to month name
+  const formatMonthName = (monthNumber) => {
+    const date = new Date(2000, parseInt(monthNumber) - 1, 1);
+    return date.toLocaleDateString("en-US", { month: "long" });
+  };
+
+  // Get available months for selected year
+  const getAvailableMonthsForYear = useMemo(() => {
+    if (yearFilter === "all") {
+      return [];
+    }
+    const months = new Set();
+    statements.forEach((statement) => {
+      if (statement.month_year) {
+        const [year, month] = statement.month_year.split("-");
+        if (year === yearFilter) {
+          months.add(parseInt(month));
+        }
+      }
+    });
+    return Array.from(months).sort((a, b) => a - b);
+  }, [statements, yearFilter]);
+
+  // Filter suppliers for search dropdown
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter((supplier) =>
+      supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+    );
+  }, [suppliers, supplierSearchTerm]);
 
   const fetchStatements = async () => {
     try {
@@ -202,6 +294,24 @@ export default function StatementsPage() {
         : statement.payment_status === "PAID"
     );
 
+    // Apply year filter
+    if (yearFilter !== "all") {
+      filtered = filtered.filter((statement) => {
+        if (!statement.month_year) return false;
+        const year = statement.month_year.split("-")[0];
+        return year === yearFilter;
+      });
+    }
+
+    // Apply month filter (only if year is selected)
+    if (monthFilter !== "all" && yearFilter !== "all") {
+      filtered = filtered.filter((statement) => {
+        if (!statement.month_year) return false;
+        const [year, month] = statement.month_year.split("-");
+        return year === yearFilter && parseInt(month) === parseInt(monthFilter);
+      });
+    }
+
     // Then apply search filter
     if (search) {
       const searchLower = search.toLowerCase();
@@ -253,7 +363,7 @@ export default function StatementsPage() {
     });
 
     return filtered;
-  }, [statements, search, sortField, sortOrder, activeTab]);
+  }, [statements, search, sortField, sortOrder, activeTab, yearFilter, monthFilter]);
 
   // Pagination logic
   const totalItems = filteredAndSortedStatements.length;
@@ -276,6 +386,14 @@ export default function StatementsPage() {
     setShowSortDropdown(false);
   };
 
+  const handleItemsPerPageChange = (value) => {
+    setItemsPerPage(value);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
   const getSortIcon = (field) => {
     if (sortField !== field) return <ArrowUpDown className="h-4 w-4" />;
     if (sortOrder === "asc") return <ArrowUp className="h-4 w-4" />;
@@ -283,11 +401,20 @@ export default function StatementsPage() {
     return null;
   };
 
+  // Reset month filter when year changes to "all"
+  useEffect(() => {
+    if (yearFilter === "all") {
+      setMonthFilter("all");
+    }
+  }, [yearFilter]);
+
   const handleReset = () => {
     setSearch("");
     setSortField("month_year");
     setSortOrder("desc");
     setCurrentPage(1);
+    setYearFilter("all");
+    setMonthFilter("all");
   };
 
   const handleColumnToggle = (column) => {
@@ -306,6 +433,131 @@ export default function StatementsPage() {
           : [...prev, column]
       );
     }
+  };
+
+  // File handling functions
+  const validateAndSetFile = (file) => {
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Only PDF and image files are allowed", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    setStatementForm((prev) => ({ ...prev, file }));
+    setFilePreview(null);
+
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => setFilePreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      validateAndSetFile(file);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    validateAndSetFile(file);
+  };
+
+  // Supplier selection handlers
+  const handleSupplierSearchChange = (e) => {
+    setSupplierSearchTerm(e.target.value);
+    setIsSupplierDropdownOpen(true);
+  };
+
+  const handleSupplierSelect = (supplierId, supplierName) => {
+    setStatementForm((prev) => ({ ...prev, supplier_id: supplierId }));
+    setSupplierSearchTerm(supplierName);
+    setIsSupplierDropdownOpen(false);
+  };
+
+  // Helper function to calculate date X weeks from today
+  const getDateWeeksFromToday = (weeks) => {
+    const date = new Date();
+    date.setDate(date.getDate() + weeks * 7);
+    return date.toISOString().split("T")[0];
+  };
+
+  // Helper function to check if a date matches any preset option
+  const checkDueInOption = (dateString) => {
+    if (!dateString) return "custom";
+
+    const date = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+
+    const diffTime = date - today;
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    const diffWeeks = Math.round(diffDays / 7);
+
+    if (diffWeeks === 1) return "1 week";
+    if (diffWeeks === 2) return "2 weeks";
+    if (diffWeeks === 3) return "3 weeks";
+    if (diffWeeks === 4) return "4 weeks";
+
+    return "custom";
+  };
+
+  // Handle Due In dropdown change
+  const handleDueInChange = (value) => {
+    setDueIn(value);
+
+    if (value === "custom") {
+      // Don't change the date, just set to custom
+      return;
+    }
+
+    // Extract number of weeks from value
+    const weeks = parseInt(value);
+    if (!isNaN(weeks) && weeks > 0) {
+      const calculatedDate = getDateWeeksFromToday(weeks);
+      setStatementForm((prev) => ({ ...prev, due_date: calculatedDate }));
+    }
+  };
+
+  // Handle manual due date change
+  const handleDueDateChange = (e) => {
+    const newDate = e.target.value;
+    setStatementForm((prev) => ({ ...prev, due_date: newDate }));
+
+    // Check if the new date matches any preset option
+    const matchingOption = checkDueInOption(newDate);
+    setDueIn(matchingOption);
   };
 
   const handleExportToExcel = async () => {
@@ -474,6 +726,7 @@ export default function StatementsPage() {
           notes: "",
           file: null,
         });
+        setDueIn("custom");
         fetchStatements();
       } else {
         toast.error(response.data.message || "Failed to upload statement", {
@@ -499,34 +752,51 @@ export default function StatementsPage() {
     const monthYearDate = statement.month_year
       ? `${statement.month_year}-01`
       : "";
+    const dueDate = statement.due_date
+      ? new Date(statement.due_date).toISOString().split("T")[0]
+      : "";
+
     setEditingStatement(statement);
     setStatementForm({
       supplier_id: statement.supplier_id,
       month_year: monthYearDate,
-      due_date: statement.due_date
-        ? new Date(statement.due_date).toISOString().split("T")[0]
-        : "",
+      due_date: dueDate,
       amount: statement.amount ? statement.amount.toString() : "",
       payment_status: statement.payment_status || "PENDING",
       notes: statement.notes || "",
       file: null,
     });
+    setSupplierSearchTerm(statement.supplier?.name || "");
+    setFilePreview(null);
+    // Set dueIn based on the statement's due date
+    setDueIn(checkDueInOption(dueDate));
     setIsEditingStatement(true);
     setShowUploadStatementModal(true);
   };
 
-  const handleUpdateStatement = async () => {
+  const handleUpdateStatement = async (statement = null, newStatus = null) => {
+    // If statement and newStatus are provided, it's a status-only update from table
+    const isStatusOnlyUpdate = statement && newStatus !== null;
+
     try {
-      if (!statementForm.due_date || !statementForm.supplier_id) {
-        toast.error("Please fill in all required fields", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
-        return;
+      if (isStatusOnlyUpdate) {
+        // Don't update if status hasn't changed
+        if (statement.payment_status === newStatus) return;
+
+        setUpdatingStatusId(statement.id);
+      } else {
+        // Full update from edit modal
+        if (!statementForm.due_date || !statementForm.supplier_id) {
+          toast.error("Please fill in all required fields", {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          });
+          return;
+        }
+        setIsUpdatingStatement(true);
       }
 
-      setIsUpdatingStatement(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
@@ -539,17 +809,31 @@ export default function StatementsPage() {
       }
 
       const formData = new FormData();
-      if (statementForm.file) {
-        formData.append("file", statementForm.file);
+
+      if (isStatusOnlyUpdate) {
+        // Status-only update: include all existing statement data
+        formData.append("month_year", statement.month_year || "");
+        formData.append("due_date", statement.due_date || "");
+        formData.append("amount", statement.amount || "");
+        formData.append("payment_status", newStatus);
+        formData.append("notes", statement.notes || "");
+      } else {
+        // Full update from edit modal
+        if (statementForm.file) {
+          formData.append("file", statementForm.file);
+        }
+        formData.append("month_year", formatMonthYear(statementForm.month_year));
+        formData.append("due_date", statementForm.due_date);
+        formData.append("amount", statementForm.amount || "");
+        formData.append("payment_status", statementForm.payment_status);
+        formData.append("notes", statementForm.notes || "");
       }
-      formData.append("month_year", formatMonthYear(statementForm.month_year));
-      formData.append("due_date", statementForm.due_date);
-      formData.append("amount", statementForm.amount || "");
-      formData.append("payment_status", statementForm.payment_status);
-      formData.append("notes", statementForm.notes || "");
+
+      const supplierId = isStatusOnlyUpdate ? statement.supplier_id : statementForm.supplier_id;
+      const statementId = isStatusOnlyUpdate ? statement.id : editingStatement.id;
 
       const response = await axios.patch(
-        `/api/supplier/${statementForm.supplier_id}/statements/${editingStatement.id}`,
+        `/api/supplier/${supplierId}/statements/${statementId}`,
         formData,
         {
           headers: {
@@ -560,23 +844,32 @@ export default function StatementsPage() {
       );
 
       if (response.data.status) {
-        toast.success("Statement updated successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
-        setShowUploadStatementModal(false);
-        setIsEditingStatement(false);
-        setEditingStatement(null);
-        setStatementForm({
-          supplier_id: "",
-          month_year: "",
-          due_date: "",
-          amount: "",
-          payment_status: "PENDING",
-          notes: "",
-          file: null,
-        });
+        if (isStatusOnlyUpdate) {
+          toast.success("Status updated successfully!", {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          });
+        } else {
+          toast.success("Statement updated successfully!", {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          });
+          setShowUploadStatementModal(false);
+          setIsEditingStatement(false);
+          setEditingStatement(null);
+          setStatementForm({
+            supplier_id: "",
+            month_year: "",
+            due_date: "",
+            amount: "",
+            payment_status: "PENDING",
+            notes: "",
+            file: null,
+          });
+          setDueIn("custom");
+        }
         fetchStatements();
       } else {
         toast.error(response.data.message || "Failed to update statement", {
@@ -593,7 +886,11 @@ export default function StatementsPage() {
         hideProgressBar: false,
       });
     } finally {
-      setIsUpdatingStatement(false);
+      if (isStatusOnlyUpdate) {
+        setUpdatingStatusId(null);
+      } else {
+        setIsUpdatingStatement(false);
+      }
     }
   };
 
@@ -694,6 +991,12 @@ export default function StatementsPage() {
       notes: "",
       file: null,
     });
+    setSupplierSearchTerm("");
+    setIsSupplierDropdownOpen(false);
+    setFilePreview(null);
+    setIsDragging(false);
+    setShowFilePreview(false);
+    setDueIn("custom");
   };
 
   const sortOptions = [
@@ -772,19 +1075,114 @@ export default function StatementsPage() {
                           />
                         </div>
 
-                        {/* Reset, Sort, Items Per Page */}
+                        {/* Reset, Year, Month Filters, Sort, Items Per Page */}
                         <div className="flex items-center gap-2">
+                          {/* Reset Button */}
                           {(search !== "" ||
                             sortField !== "month_year" ||
-                            sortOrder !== "desc") && (
+                            sortOrder !== "desc" ||
+                            yearFilter !== "all" ||
+                            monthFilter !== "all") && (
                               <button
                                 onClick={handleReset}
-                                className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                                className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                               >
                                 <RotateCcw className="h-4 w-4" />
                                 <span>Reset</span>
                               </button>
                             )}
+
+                          {/* Year Filter Dropdown */}
+                          <div className="relative" ref={yearDropdownRef}>
+                            <button
+                              onClick={() => setYearDropdownOpen(!yearDropdownOpen)}
+                              className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                            >
+                              {yearFilter === "all" ? "All Years" : yearFilter}
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                            {yearDropdownOpen && (
+                              <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                                <button
+                                  onClick={() => {
+                                    setYearFilter("all");
+                                    setYearDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${yearFilter === "all"
+                                    ? "text-primary font-medium"
+                                    : "text-slate-600"
+                                    }`}
+                                >
+                                  All Years
+                                </button>
+                                {getAvailableYears.map((year) => (
+                                  <button
+                                    key={year}
+                                    onClick={() => {
+                                      setYearFilter(year);
+                                      setYearDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${yearFilter === year
+                                      ? "text-primary font-medium"
+                                      : "text-slate-600"
+                                      }`}
+                                  >
+                                    {year}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Month Filter Dropdown */}
+                          <div className="relative" ref={monthDropdownRef}>
+                            <button
+                              onClick={() => {
+                                if (yearFilter !== "all") {
+                                  setMonthDropdownOpen(!monthDropdownOpen);
+                                }
+                              }}
+                              disabled={yearFilter === "all"}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${yearFilter === "all"
+                                ? "text-slate-400 bg-slate-100 border border-slate-300 cursor-not-allowed"
+                                : "text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 cursor-pointer"
+                                }`}
+                            >
+                              {monthFilter === "all" ? "All Months" : formatMonthName(monthFilter)}
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                            {monthDropdownOpen && yearFilter !== "all" && (
+                              <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                                <button
+                                  onClick={() => {
+                                    setMonthFilter("all");
+                                    setMonthDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${monthFilter === "all"
+                                    ? "text-primary font-medium"
+                                    : "text-slate-600"
+                                    }`}
+                                >
+                                  All Months
+                                </button>
+                                {getAvailableMonthsForYear.map((month) => (
+                                  <button
+                                    key={month}
+                                    onClick={() => {
+                                      setMonthFilter(month.toString());
+                                      setMonthDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${monthFilter === month.toString()
+                                      ? "text-primary font-medium"
+                                      : "text-slate-600"
+                                      }`}
+                                  >
+                                    {formatMonthName(month)}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
 
                           <div className="relative" ref={sortDropdownRef}>
                             <button
@@ -1039,14 +1437,89 @@ export default function StatementsPage() {
                                       : "-"}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">
-                                    <span
-                                      className={`px-2 py-1 text-xs font-medium rounded ${statement.payment_status === "PAID"
-                                        ? "bg-green-100 text-green-800"
-                                        : "bg-yellow-100 text-yellow-800"
-                                        }`}
+                                    <div
+                                      ref={(el) => {
+                                        statusDropdownRefs.current[statement.id] = el;
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="relative inline-flex items-center gap-2"
                                     >
-                                      {statement.payment_status}
-                                    </span>
+                                      <div className="relative">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setOpenStatusDropdownId(
+                                              openStatusDropdownId === statement.id
+                                                ? null
+                                                : statement.id
+                                            )
+                                          }
+                                          disabled={updatingStatusId === statement.id}
+                                          className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-all ${statement.payment_status === "PAID"
+                                            ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                            : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                                            } ${updatingStatusId === statement.id
+                                              ? "opacity-50 cursor-not-allowed"
+                                              : "cursor-pointer"
+                                            }`}
+                                        >
+                                          <span>{statement.payment_status}</span>
+                                          <ChevronDown
+                                            className={`h-3 w-3 transition-transform duration-200 ${openStatusDropdownId === statement.id
+                                              ? "rotate-180"
+                                              : ""
+                                              }`}
+                                          />
+                                        </button>
+                                        {openStatusDropdownId === statement.id && (
+                                          <div className="absolute left-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                                            <div className="py-1">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  if (statement.payment_status !== "PENDING") {
+                                                    handleUpdateStatement(statement, "PENDING");
+                                                  }
+                                                  setOpenStatusDropdownId(null);
+                                                }}
+                                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center gap-2"
+                                              >
+                                                <span
+                                                  className={`px-1.5 py-0.5 rounded text-xs font-medium ${statement.payment_status === "PENDING"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : ""
+                                                    }`}
+                                                >
+                                                  Pending
+                                                </span>
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  if (statement.payment_status !== "PAID") {
+                                                    handleUpdateStatement(statement, "PAID");
+                                                  }
+                                                  setOpenStatusDropdownId(null);
+                                                }}
+                                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center gap-2"
+                                              >
+                                                <span
+                                                  className={`px-1.5 py-0.5 rounded text-xs font-medium ${statement.payment_status === "PAID"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : ""
+                                                    }`}
+                                                >
+                                                  Paid
+                                                </span>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                      {updatingStatusId === statement.id && (
+                                        <div className="animate-spin h-3 w-3 border-2 border-slate-400 border-t-transparent rounded-full"></div>
+                                      )}
+                                    </div>
                                   </td>
                                   <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
                                     {statement.supplier_file?.filename || "-"}
@@ -1115,120 +1588,15 @@ export default function StatementsPage() {
 
                     {/* Fixed Pagination Footer */}
                     {paginatedStatements.length > 0 && (
-                      <div className="px-3 py-2 flex-shrink-0 border-t border-slate-200">
-                        <div className="flex items-center justify-between">
-                          {/* Items per page */}
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-slate-600">
-                                Showing
-                              </span>
-                              <div className="relative" ref={itemsPerPageDropdownRef}>
-                                <button
-                                  onClick={() =>
-                                    setShowItemsPerPageDropdown(
-                                      !showItemsPerPageDropdown
-                                    )
-                                  }
-                                  className="cursor-pointer flex items-center gap-2 px-2 py-1 text-xs border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200"
-                                >
-                                  <span>
-                                    {itemsPerPage === 0 ? "All" : itemsPerPage}
-                                  </span>
-                                  <ChevronDown className="h-4 w-4" />
-                                </button>
-                                {showItemsPerPageDropdown && (
-                                  <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                                    <div className="py-1">
-                                      {[10, 25, 50, 100, 0].map((value) => (
-                                        <button
-                                          key={value}
-                                          onClick={() => {
-                                            setItemsPerPage(value);
-                                            setCurrentPage(1);
-                                            setShowItemsPerPageDropdown(false);
-                                          }}
-                                          className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100"
-                                        >
-                                          {value === 0 ? "All" : value}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <span className="text-xs text-slate-600">
-                                of {totalItems} results
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Pagination buttons */}
-                          {itemsPerPage > 0 && (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => setCurrentPage(1)}
-                                disabled={currentPage === 1}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronsLeft className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setCurrentPage((p) => Math.max(1, p - 1))
-                                }
-                                disabled={currentPage === 1}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronLeft className="h-4 w-4" />
-                              </button>
-                              <div className="flex items-center gap-1">
-                                {Array.from(
-                                  { length: Math.min(5, totalPages) },
-                                  (_, i) => {
-                                    let pageNum;
-                                    if (totalPages <= 5) pageNum = i + 1;
-                                    else if (currentPage <= 3) pageNum = i + 1;
-                                    else if (currentPage >= totalPages - 2)
-                                      pageNum = totalPages - 4 + i;
-                                    else pageNum = currentPage - 2 + i;
-                                    return (
-                                      <button
-                                        key={pageNum}
-                                        onClick={() => setCurrentPage(pageNum)}
-                                        className={`cursor-pointer px-2 py-1 text-xs rounded-md transition-colors duration-200 ${currentPage === pageNum
-                                          ? "bg-primary text-white"
-                                          : "text-slate-600 hover:bg-slate-100"
-                                          }`}
-                                      >
-                                        {pageNum}
-                                      </button>
-                                    );
-                                  }
-                                )}
-                              </div>
-                              <button
-                                onClick={() =>
-                                  setCurrentPage((p) =>
-                                    Math.min(totalPages, p + 1)
-                                  )
-                                }
-                                disabled={currentPage === totalPages}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => setCurrentPage(totalPages)}
-                                disabled={currentPage === totalPages}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronsRight className="h-4 w-4" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <PaginationFooter
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        currentPage={currentPage}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        itemsPerPageOptions={[25, 50, 100, 0]}
+                        showItemsPerPage={true}
+                      />
                     )}
                   </div>
                 </div>
@@ -1269,8 +1637,9 @@ export default function StatementsPage() {
                   className="absolute inset-0 bg-slate-900/40"
                   onClick={resetForm}
                 />
-                <div className="relative bg-white w-full max-w-2xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[95vh] overflow-y-auto">
-                  <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div className="relative bg-white w-full max-w-2xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
+                  {/* Header */}
+                  <div className="flex items-center justify-between p-5 border-b border-slate-100">
                     <h2 className="text-xl font-semibold text-slate-800">
                       {isEditingStatement
                         ? "Edit Statement"
@@ -1278,43 +1647,83 @@ export default function StatementsPage() {
                     </h2>
                     <button
                       onClick={resetForm}
-                      className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
+                      className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
                     >
                       <X className="w-5 h-5 text-slate-600" />
                     </button>
                   </div>
 
-                  <div className="p-6 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                  {/* Content */}
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {/* Top Section: Supplier & Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {!isEditingStatement && (
-                        <div className="col-span-2">
-                          <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
-                            Supplier <span className="text-red-500">*</span>
+                        <div className="relative" ref={supplierDropdownRef}>
+                          <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                            Select Supplier <span className="text-red-500">*</span>
                           </label>
-                          <select
-                            value={statementForm.supplier_id}
-                            onChange={(e) =>
-                              setStatementForm({
-                                ...statementForm,
-                                supplier_id: e.target.value,
-                              })
-                            }
-                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                          >
-                            <option value="">Select a supplier</option>
-                            {suppliers.map((supplier) => (
-                              <option
-                                key={supplier.supplier_id}
-                                value={supplier.supplier_id}
-                              >
-                                {supplier.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={supplierSearchTerm}
+                              onChange={handleSupplierSearchChange}
+                              onFocus={() => setIsSupplierDropdownOpen(true)}
+                              className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                              placeholder="Search or select supplier..."
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setIsSupplierDropdownOpen(!isSupplierDropdownOpen)
+                              }
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                              <ChevronDown
+                                className={`w-5 h-5 transition-transform duration-200 ${isSupplierDropdownOpen ? "rotate-180" : ""
+                                  }`}
+                              />
+                            </button>
+                          </div>
+
+                          {isSupplierDropdownOpen && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                              {filteredSuppliers.length > 0 ? (
+                                filteredSuppliers.map((supplier) => (
+                                  <button
+                                    key={supplier.supplier_id}
+                                    type="button"
+                                    onClick={() =>
+                                      handleSupplierSelect(
+                                        supplier.supplier_id,
+                                        supplier.name
+                                      )
+                                    }
+                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                  >
+                                    <div>
+                                      <div className="font-medium">
+                                        {supplier.name}
+                                      </div>
+                                      {supplier.email && (
+                                        <div className="text-xs text-slate-500">
+                                          {supplier.email}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                  No matching suppliers found
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
+
                       <div>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
+                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
                           Month/Year <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -1326,45 +1735,65 @@ export default function StatementsPage() {
                               month_year: e.target.value,
                             })
                           }
-                          className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                         />
                       </div>
+
                       <div>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
+                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                          Due In
+                        </label>
+                        <select
+                          value={dueIn}
+                          onChange={(e) => handleDueInChange(e.target.value)}
+                          className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                        >
+                          <option value="1 week">1 Week</option>
+                          <option value="2 weeks">2 Weeks</option>
+                          <option value="3 weeks">3 Weeks</option>
+                          <option value="4 weeks">4 Weeks</option>
+                          <option value="custom">Custom</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
                           Due Date <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="date"
                           value={statementForm.due_date}
-                          onChange={(e) =>
-                            setStatementForm({
-                              ...statementForm,
-                              due_date: e.target.value,
-                            })
-                          }
-                          className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          onChange={handleDueDateChange}
+                          className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                         />
                       </div>
+
                       <div>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
+                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
                           Amount
                         </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={statementForm.amount}
-                          onChange={(e) =>
-                            setStatementForm({
-                              ...statementForm,
-                              amount: e.target.value,
-                            })
-                          }
-                          placeholder="0.00"
-                          className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5 text-slate-500">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={statementForm.amount}
+                            onChange={(e) =>
+                              setStatementForm({
+                                ...statementForm,
+                                amount: e.target.value,
+                              })
+                            }
+                            placeholder="0.00"
+                            className="w-full px-4 py-3 pl-7 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                          />
+                        </div>
                       </div>
+
                       <div>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
+                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
                           Payment Status <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -1375,34 +1804,112 @@ export default function StatementsPage() {
                               payment_status: e.target.value,
                             })
                           }
-                          className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                         >
                           <option value="PENDING">Pending</option>
                           <option value="PAID">Paid</option>
                         </select>
                       </div>
-                      <div className="col-span-2">
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
-                          File{" "}
+                    </div>
+
+                    <hr className="border-slate-100" />
+
+                    {/* File Upload & Notes */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* File Upload */}
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                          Statement File{" "}
                           {!isEditingStatement && (
                             <span className="text-red-500">*</span>
                           )}
                         </label>
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          onChange={(e) =>
-                            setStatementForm({
-                              ...statementForm,
-                              file: e.target.files[0],
-                            })
-                          }
-                          className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                        />
-                        {statementForm.file && (
-                          <p className="mt-2 text-xs text-slate-600">
-                            Selected: {statementForm.file.name}
-                          </p>
+                        {!statementForm.file ? (
+                          <div
+                            className={`border-2 border-dashed rounded-lg py-8 transition-all ${isDragging
+                              ? "border-primary bg-blue-50"
+                              : "border-slate-300 hover:border-primary hover:bg-slate-50"
+                              }`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                          >
+                            <input
+                              type="file"
+                              id="statement-file-upload"
+                              accept="application/pdf,image/jpeg,image/jpg,image/png"
+                              onChange={handleFileChange}
+                              className="hidden"
+                            />
+                            <label
+                              htmlFor="statement-file-upload"
+                              className="cursor-pointer flex flex-col items-center text-center w-full h-full"
+                            >
+                              <FileText
+                                className={`w-8 h-8 mb-2 ${isDragging ? "text-primary" : "text-slate-400"
+                                  }`}
+                              />
+                              <p
+                                className={`text-sm font-medium ${isDragging
+                                  ? "text-primary"
+                                  : "text-slate-700"
+                                  }`}
+                              >
+                                {isDragging
+                                  ? "Drop file here"
+                                  : "Click to upload or drag and drop"}
+                              </p>
+                            </label>
+                          </div>
+                        ) : (
+                          <div className="border border-slate-200 rounded-lg p-3 flex items-center justify-between bg-slate-50">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              {filePreview ? (
+                                <img
+                                  src={filePreview}
+                                  alt="Preview"
+                                  className="w-10 h-10 rounded object-cover border border-slate-200"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-white rounded border border-slate-200 flex items-center justify-center">
+                                  <FileText className="w-5 h-5 text-slate-400" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-slate-800 truncate">
+                                  {statementForm.file.name}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {(
+                                    statementForm.file.size /
+                                    1024 /
+                                    1024
+                                  ).toFixed(2)}{" "}
+                                  MB
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setShowFilePreview(true)}
+                                className="cursor-pointer p-1.5 hover:bg-white rounded border border-transparent hover:border-slate-200 transition-colors"
+                              >
+                                <Eye className="w-4 h-4 text-slate-600" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setStatementForm((prev) => ({
+                                    ...prev,
+                                    file: null,
+                                  }));
+                                  setFilePreview(null);
+                                }}
+                                className="cursor-pointer p-1.5 hover:bg-red-50 rounded border border-transparent hover:border-red-100 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </button>
+                            </div>
+                          </div>
                         )}
                         {isEditingStatement &&
                           editingStatement?.supplier_file && (
@@ -1413,12 +1920,14 @@ export default function StatementsPage() {
                             </p>
                           )}
                       </div>
-                      <div className="col-span-2">
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
+
+                      {/* Notes */}
+                      <div>
+                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
                           Notes
                         </label>
                         <textarea
-                          rows={3}
+                          rows={5}
                           value={statementForm.notes}
                           onChange={(e) =>
                             setStatementForm({
@@ -1426,17 +1935,19 @@ export default function StatementsPage() {
                               notes: e.target.value,
                             })
                           }
+                          className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none"
                           placeholder="Add any additional notes..."
-                          className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
+                  {/* Footer */}
+                  <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
                     <button
                       onClick={resetForm}
-                      className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                      disabled={isUploadingStatement || isUpdatingStatement}
+                      className="cursor-pointer px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-colors text-sm font-medium disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -1447,18 +1958,37 @@ export default function StatementsPage() {
                           : handleUploadStatement
                       }
                       disabled={isUploadingStatement || isUpdatingStatement}
-                      className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
                     >
-                      {isEditingStatement
-                        ? isUpdatingStatement
-                          ? "Updating..."
-                          : "Update Statement"
-                        : isUploadingStatement
-                          ? "Uploading..."
-                          : "Upload Statement"}
+                      {isUploadingStatement || isUpdatingStatement ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                          {isEditingStatement ? "Updating..." : "Uploading..."}
+                        </>
+                      ) : isEditingStatement ? (
+                        "Update Statement"
+                      ) : (
+                        "Upload Statement"
+                      )}
                     </button>
                   </div>
                 </div>
+
+                {/* File Preview Modal */}
+                {showFilePreview && statementForm.file && (
+                  <ViewMedia
+                    selectedFile={{
+                      name: statementForm.file.name,
+                      url: URL.createObjectURL(statementForm.file),
+                      type: statementForm.file.type,
+                      size: statementForm.file.size,
+                      isExisting: false,
+                    }}
+                    setSelectedFile={() => { }}
+                    setViewFileModal={setShowFilePreview}
+                    setPageNumber={setPageNumber}
+                  />
+                )}
               </div>
             )}
           </div>

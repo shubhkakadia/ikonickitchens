@@ -509,7 +509,7 @@ model supplier_file {
 
 model materials_to_order {
   id                 String                    @id @default(uuid())
-  project_id         String
+  project_id         String?
   status             MTOStatus                 @default(DRAFT)
   notes              String?                   @db.LongText
   createdBy_id       String?
@@ -518,7 +518,7 @@ model materials_to_order {
   media_id           String?
   lots               lot[]
   createdBy          users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id])
-  project            project                   @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  project            project?                  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
   items              materials_to_order_item[]
   media              media[]
   purchase_order     purchase_order[]

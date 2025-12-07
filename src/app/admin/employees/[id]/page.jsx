@@ -1099,8 +1099,8 @@ export default function EmployeeDetailPage() {
                           </div>
                         ) : (
                           <div className="w-16 h-16 bg-gradient-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
-                            {employee.first_name[0]}
-                            {employee.last_name[0]}
+                            {employee?.first_name?.[0] || ""}
+                            {employee?.last_name?.[0] || ""}
                           </div>
                         )}
                         <div className="flex-1">
@@ -1276,6 +1276,7 @@ export default function EmployeeDetailPage() {
                                 handleInputChange("join_date", e.target.value)
                               }
                               placeholder={formatDate(employee.join_date)}
+                              max={new Date().toISOString().split("T")[0]}
                               className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                             />
                           ) : (

@@ -128,6 +128,22 @@ export default function page() {
     }
   };
 
+  // Helper function to get status box color (just the background)
+  const getStatusBoxColor = (status) => {
+    switch (status) {
+      case "IN_PROGRESS":
+        return "bg-yellow-400";
+      case "DONE":
+        return "bg-green-400";
+      case "NOT_STARTED":
+        return "bg-gray-400";
+      case "NA":
+        return "bg-slate-300";
+      default:
+        return "bg-gray-400";
+    }
+  };
+
   // Filter lots based on search and stage filters
   const filteredLots = useMemo(() => {
     return activeLots.filter((lot) => {
@@ -402,6 +418,24 @@ export default function page() {
                           />
                         </div>
                         <div className="flex items-center gap-2">
+                          {/* Status Legend */}
+                          <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                            <span className="text-xs font-medium text-slate-600">Status:</span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-4 h-4 rounded bg-gray-400"></div>
+                                <span className="text-xs text-slate-600">Not Started</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-4 h-4 rounded bg-yellow-400"></div>
+                                <span className="text-xs text-slate-600">In Progress</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-4 h-4 rounded bg-green-400"></div>
+                                <span className="text-xs text-slate-600">Done</span>
+                              </div>
+                            </div>
+                          </div>
                           {/* Reset Button - Always visible when filters are active */}
                           {hasActiveFilters && (
                             <button
@@ -592,17 +626,24 @@ export default function page() {
                                   return (
                                     <th
                                       key={stage}
-                                      className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider min-w-[150px]"
+                                      className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider"
+                                      style={{ minWidth: '50px', maxWidth: '50px', width: '50px', height: '200px' }}
                                     >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="truncate">
+                                      <div className="flex flex-col items-center justify-end gap-2 h-full">
+                                        <span
+                                          className="whitespace-nowrap"
+                                          style={{
+                                            writingMode: 'vertical-rl',
+                                            textOrientation: 'mixed',
+                                            transform: 'rotate(180deg)'
+                                          }}
+                                        >
                                           {stage}
                                         </span>
                                         <div className="relative filter-dropdown-container flex-shrink-0">
                                           <button
                                             ref={(el) =>
-                                            (filterButtonRefs.current[stage] =
-                                              el)
+                                              (filterButtonRefs.current[stage] = el)
                                             }
                                             onClick={(e) =>
                                               handleFilterButtonClick(stage, e)
@@ -661,21 +702,17 @@ export default function page() {
                                     </td>
                                     {stages.map((stage) => {
                                       const status = getStageStatus(lot, stage);
-                                      const formattedStatus =
-                                        formatStatus(status);
-                                      const statusColor =
-                                        getStatusColor(status);
+                                      const boxColor = getStatusBoxColor(status);
 
                                       return (
                                         <td
                                           key={stage}
-                                          className="px-4 py-3 text-sm"
+                                          className="px-2 py-3 text-sm text-center"
                                         >
-                                          <span
-                                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border ${statusColor}`}
-                                          >
-                                            {formattedStatus}
-                                          </span>
+                                          <div
+                                            className={`inline-block w-6 h-6 rounded ${boxColor}`}
+                                            title={formatStatus(status)}
+                                          ></div>
                                         </td>
                                       );
                                     })}

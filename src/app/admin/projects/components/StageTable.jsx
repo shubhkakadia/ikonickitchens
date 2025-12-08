@@ -112,13 +112,15 @@ export default function StageTable({
 
     // If stage doesn't exist and it's a predefined stage name, create temporary entry
     if (!existingStage && isPredefinedStageName(stageIdentifier)) {
+      // Get default dates for new stages
+      const defaultDates = getDefaultStageDates();
       const tempStage = {
         stage_id: `temp_${stageIdentifier}`,
         name: stageIdentifier,
         status: "NOT_STARTED",
         notes: "",
-        startDate: null,
-        endDate: null,
+        startDate: defaultDates.startDate,
+        endDate: defaultDates.endDate,
         assigned_to: [],
       };
       setLocalStages((prev) => {
@@ -371,13 +373,15 @@ export default function StageTable({
     if (!stageExists(currentStageForAssignment)) {
       // Stage needs to be created
       if (isPredefinedStageName(currentStageForAssignment)) {
+        // Get default dates if not provided
+        const defaultDates = getDefaultStageDates();
         const stageData = {
           lot_id: selectedLotData.lot_id,
           name: currentStageForAssignment,
           status: existingStage?.status || "NOT_STARTED",
           notes: existingStage?.notes || "",
-          startDate: existingStage?.startDate || null,
-          endDate: existingStage?.endDate || null,
+          startDate: existingStage?.startDate || defaultDates.startDate,
+          endDate: existingStage?.endDate || defaultDates.endDate,
           assigned_to: updatedAssignedIds, // Use updatedAssignedIds directly
         };
         const created = await createStage(stageData, currentStageForAssignment);
@@ -448,13 +452,40 @@ export default function StageTable({
 
   const handleAddStage = async () => {
     if (newStage.name.trim()) {
+      // Get default dates if not provided
+      const defaultDates = getDefaultStageDates();
+      const startDate = newStage.startDate || defaultDates.startDate;
+      const endDate = newStage.endDate || defaultDates.endDate;
+
+      // Validate dates against lot dates before creating
+      if (
+        startDate &&
+        !validateStageDateAgainstLot(startDate, "startDate")
+      ) {
+        return;
+      }
+      if (
+        endDate &&
+        !validateStageDateAgainstLot(endDate, "endDate")
+      ) {
+        return;
+      }
+      // Validate start date is not after end date
+      if (
+        startDate &&
+        endDate &&
+        !validateDateInput(startDate, endDate, "startDate")
+      ) {
+        return;
+      }
+
       const stageData = {
         lot_id: selectedLotData.lot_id,
         name: newStage.name.trim(),
         status: newStage.status,
         notes: newStage.notes,
-        startDate: newStage.startDate || "",
-        endDate: newStage.endDate || "",
+        startDate: startDate,
+        endDate: endDate,
         assigned_to: [],
       };
 
@@ -536,13 +567,15 @@ export default function StageTable({
     if (!stageExists(stageIdentifier)) {
       // Stage needs to be created (only for predefined stages)
       if (isPredefinedStageName(stageIdentifier)) {
+        // Get default dates if not provided
+        const defaultDates = getDefaultStageDates();
         const stageData = {
           lot_id: selectedLotData.lot_id,
           name: stageIdentifier,
           status: newStatus,
           notes: existingStage?.notes || "",
-          startDate: existingStage?.startDate || null,
-          endDate: existingStage?.endDate || null,
+          startDate: existingStage?.startDate || defaultDates.startDate,
+          endDate: existingStage?.endDate || defaultDates.endDate,
           assigned_to: normalizeAssignedTo(existingStage?.assigned_to || []),
         };
         const created = await createStage(stageData, stageIdentifier);
@@ -575,13 +608,15 @@ export default function StageTable({
     if (!stageExists(stageIdentifier)) {
       // Stage needs to be created (only for predefined stages)
       if (isPredefinedStageName(stageIdentifier)) {
+        // Get default dates if not provided
+        const defaultDates = getDefaultStageDates();
         const stageData = {
           lot_id: selectedLotData.lot_id,
           name: stageIdentifier,
           status: existingStage?.status || "NOT_STARTED",
           notes: notes || "",
-          startDate: existingStage?.startDate || null,
-          endDate: existingStage?.endDate || null,
+          startDate: existingStage?.startDate || defaultDates.startDate,
+          endDate: existingStage?.endDate || defaultDates.endDate,
           assigned_to: normalizeAssignedTo(existingStage?.assigned_to || []),
         };
         const created = await createStage(stageData, stageIdentifier);
@@ -629,14 +664,15 @@ export default function StageTable({
 
     // If stage doesn't exist, create a temporary entry in local state for immediate UI feedback
     if (!existingStage && isPredefinedStageName(stageIdentifier)) {
-      // It's a predefined stage name, add temporary entry to local state
+      // It's a predefined stage name, add temporary entry to local state with default dates
+      const defaultDates = getDefaultStageDates();
       const tempStage = {
         stage_id: `temp_${stageIdentifier}`, // Temporary ID
         name: stageIdentifier,
         status: "NOT_STARTED",
         notes: value,
-        startDate: null,
-        endDate: null,
+        startDate: defaultDates.startDate,
+        endDate: defaultDates.endDate,
         assigned_to: [],
       };
       setLocalStages((prev) => {
@@ -672,11 +708,134 @@ export default function StageTable({
     }, 1000);
   };
 
+  // Helper function to get default dates for new stages
+  const getDefaultStageDates = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day
+
+    const twoWeeksLater = new Date(today);
+    twoWeeksLater.setDate(twoWeeksLater.getDate() + 14);
+
+    const lotStartDate = selectedLotData?.startDate
+      ? new Date(selectedLotData.startDate)
+      : null;
+    const lotEndDate = selectedLotData?.installationDueDate
+      ? new Date(selectedLotData.installationDueDate)
+      : null;
+
+    // If lot has dates, ensure we stay within those bounds
+    let defaultStartDate = today;
+    if (lotStartDate) {
+      // Use the later of today or lot start date
+      defaultStartDate = today > lotStartDate ? today : lotStartDate;
+    }
+
+    // Calculate end date as 2 weeks from start date
+    let defaultEndDate = new Date(defaultStartDate);
+    defaultEndDate.setDate(defaultEndDate.getDate() + 14);
+
+    // If lot has end date, ensure we don't exceed it
+    if (lotEndDate) {
+      if (defaultEndDate > lotEndDate) {
+        defaultEndDate = lotEndDate;
+      }
+      // If start date is after lot end date, use lot dates
+      if (defaultStartDate > lotEndDate) {
+        defaultStartDate = lotStartDate || today;
+        defaultEndDate = lotEndDate;
+      }
+    }
+
+    // Final check: ensure end date is not before start date
+    if (defaultEndDate < defaultStartDate) {
+      defaultEndDate = new Date(defaultStartDate);
+      defaultEndDate.setDate(defaultEndDate.getDate() + 14);
+      if (lotEndDate && defaultEndDate > lotEndDate) {
+        defaultEndDate = lotEndDate;
+      }
+    }
+
+    return {
+      startDate: defaultStartDate.toISOString().split("T")[0],
+      endDate: defaultEndDate.toISOString().split("T")[0],
+    };
+  };
+
+  // Helper function to validate stage dates against lot dates
+  const validateStageDateAgainstLot = (dateValue, field) => {
+    if (!dateValue) return true; // Empty dates are allowed
+
+    const stageDate = new Date(dateValue);
+    const lotStartDate = selectedLotData?.startDate
+      ? new Date(selectedLotData.startDate)
+      : null;
+    const lotEndDate = selectedLotData?.installationDueDate
+      ? new Date(selectedLotData.installationDueDate)
+      : null;
+
+    if (field === "startDate") {
+      if (lotStartDate && stageDate < lotStartDate) {
+        toast.error(
+          "Stage start date cannot be before the lot start date",
+          {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          }
+        );
+        return false;
+      }
+      if (lotEndDate && stageDate > lotEndDate) {
+        toast.error(
+          "Stage start date cannot be after the lot end date",
+          {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          }
+        );
+        return false;
+      }
+    }
+
+    if (field === "endDate") {
+      if (lotStartDate && stageDate < lotStartDate) {
+        toast.error(
+          "Stage end date cannot be before the lot start date",
+          {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          }
+        );
+        return false;
+      }
+      if (lotEndDate && stageDate > lotEndDate) {
+        toast.error(
+          "Stage end date cannot be after the lot end date",
+          {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          }
+        );
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   // Auto-save date change
   const handleDateChange = async (stageIdentifier, field, value) => {
     // Ensure temporary stage exists in local state for immediate UI update
     ensureTempStageExists(stageIdentifier);
     let existingStage = findStageByIdentifier(stageIdentifier);
+
+    // Validate against lot dates first
+    if (value && !validateStageDateAgainstLot(value, field)) {
+      return; // Don't update if validation fails
+    }
 
     // Validate date inputs before updating
     const currentStartDate =
@@ -701,6 +860,8 @@ export default function StageTable({
     if (!stageExists(stageIdentifier)) {
       // Stage needs to be created via API
       if (isPredefinedStageName(stageIdentifier)) {
+        // Get default dates if not provided
+        const defaultDates = getDefaultStageDates();
         const stageData = {
           lot_id: selectedLotData.lot_id,
           name: stageIdentifier,
@@ -708,12 +869,12 @@ export default function StageTable({
           notes: existingStage?.notes || "",
           startDate:
             field === "startDate"
-              ? value || null
-              : existingStage?.startDate || null,
+              ? value || defaultDates.startDate
+              : existingStage?.startDate || defaultDates.startDate,
           endDate:
             field === "endDate"
-              ? value || null
-              : existingStage?.endDate || null,
+              ? value || defaultDates.endDate
+              : existingStage?.endDate || defaultDates.endDate,
           assigned_to: normalizeAssignedTo(existingStage?.assigned_to || []),
         };
         const created = await createStage(stageData, stageIdentifier);
@@ -839,7 +1000,18 @@ export default function StageTable({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-slate-800">Project Stages</h3>
           <button
-            onClick={() => setIsAddingStage(true)}
+            onClick={() => {
+              const defaultDates = getDefaultStageDates();
+              setNewStage({
+                name: "",
+                status: "NOT_STARTED",
+                notes: "",
+                startDate: defaultDates.startDate,
+                endDate: defaultDates.endDate,
+                assigned_to: [],
+              });
+              setIsAddingStage(true);
+            }}
             className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors text-sm"
           >
             <Plus className="w-4 h-4" />
@@ -896,6 +1068,14 @@ export default function StageTable({
                   value={newStage.startDate}
                   onChange={(e) => {
                     const newStartDate = e.target.value;
+                    // Validate against lot dates
+                    if (
+                      newStartDate &&
+                      !validateStageDateAgainstLot(newStartDate, "startDate")
+                    ) {
+                      return;
+                    }
+                    // Validate against stage end date
                     if (
                       validateDateInput(
                         newStartDate,
@@ -909,6 +1089,16 @@ export default function StageTable({
                       });
                     }
                   }}
+                  min={
+                    selectedLotData?.startDate
+                      ? formatDateForInput(selectedLotData.startDate)
+                      : undefined
+                  }
+                  max={
+                    selectedLotData?.installationDueDate
+                      ? formatDateForInput(selectedLotData.installationDueDate)
+                      : undefined
+                  }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
                 />
               </div>
@@ -921,6 +1111,14 @@ export default function StageTable({
                   value={newStage.endDate}
                   onChange={(e) => {
                     const newEndDate = e.target.value;
+                    // Validate against lot dates
+                    if (
+                      newEndDate &&
+                      !validateStageDateAgainstLot(newEndDate, "endDate")
+                    ) {
+                      return;
+                    }
+                    // Validate against stage start date
                     if (
                       validateDateInput(
                         newStage.startDate,
@@ -934,6 +1132,16 @@ export default function StageTable({
                       });
                     }
                   }}
+                  min={
+                    selectedLotData?.startDate
+                      ? formatDateForInput(selectedLotData.startDate)
+                      : undefined
+                  }
+                  max={
+                    selectedLotData?.installationDueDate
+                      ? formatDateForInput(selectedLotData.installationDueDate)
+                      : undefined
+                  }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
                 />
               </div>
@@ -1100,6 +1308,16 @@ export default function StageTable({
                             e.target.value
                           )
                         }
+                        min={
+                          selectedLotData?.startDate
+                            ? formatDateForInput(selectedLotData.startDate)
+                            : undefined
+                        }
+                        max={
+                          selectedLotData?.installationDueDate
+                            ? formatDateForInput(selectedLotData.installationDueDate)
+                            : undefined
+                        }
                         className="max-w-[140px] px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent text-xs"
                       />
                     </td>
@@ -1110,6 +1328,16 @@ export default function StageTable({
                         onChange={(e) =>
                           handleDateChange(stageName, "endDate", e.target.value)
                         }
+                        min={
+                          selectedLotData?.startDate
+                            ? formatDateForInput(selectedLotData.startDate)
+                            : undefined
+                        }
+                        max={
+                          selectedLotData?.installationDueDate
+                            ? formatDateForInput(selectedLotData.installationDueDate)
+                            : undefined
+                        }
                         className="max-w-[140px] px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent text-xs"
                       />
                     </td>
@@ -1117,8 +1345,8 @@ export default function StageTable({
                       <button
                         onClick={() => handleOpenEmployeeDropdown(stageName)}
                         className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${existingStage?.assigned_to?.length > 0
-                            ? "text-secondary font-medium"
-                            : "text-slate-600"
+                          ? "text-secondary font-medium"
+                          : "text-slate-600"
                           }`}
                       >
                         {getAssignedTeamMembersDisplay(stageName)}
@@ -1217,6 +1445,16 @@ export default function StageTable({
                             e.target.value
                           )
                         }
+                        min={
+                          selectedLotData?.startDate
+                            ? formatDateForInput(selectedLotData.startDate)
+                            : undefined
+                        }
+                        max={
+                          selectedLotData?.installationDueDate
+                            ? formatDateForInput(selectedLotData.installationDueDate)
+                            : undefined
+                        }
                         className="max-w-[140px] px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent text-xs"
                       />
                     </td>
@@ -1231,6 +1469,16 @@ export default function StageTable({
                             e.target.value
                           )
                         }
+                        min={
+                          selectedLotData?.startDate
+                            ? formatDateForInput(selectedLotData.startDate)
+                            : undefined
+                        }
+                        max={
+                          selectedLotData?.installationDueDate
+                            ? formatDateForInput(selectedLotData.installationDueDate)
+                            : undefined
+                        }
                         className="max-w-[140px] px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent text-xs"
                       />
                     </td>
@@ -1240,8 +1488,8 @@ export default function StageTable({
                           handleOpenEmployeeDropdown(stage.stage_id)
                         }
                         className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${stage.assigned_to?.length > 0
-                            ? "text-secondary font-medium"
-                            : "text-slate-600"
+                          ? "text-secondary font-medium"
+                          : "text-slate-600"
                           }`}
                       >
                         {getAssignedTeamMembersDisplay(stage.stage_id)}
@@ -1308,8 +1556,8 @@ export default function StageTable({
                           handleToggleEmployeeAssignment(employee.employee_id)
                         }
                         className={`cursor-pointer w-full text-left p-3 border rounded-lg transition-colors ${isAssigned
-                            ? "border-secondary bg-secondary/5 hover:bg-secondary/10"
-                            : "border-slate-200 hover:bg-slate-50 hover:border-secondary"
+                          ? "border-secondary bg-secondary/5 hover:bg-secondary/10"
+                          : "border-slate-200 hover:bg-slate-50 hover:border-secondary"
                           }`}
                       >
                         <div className="flex items-center justify-between">

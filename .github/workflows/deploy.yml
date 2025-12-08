@@ -37,7 +37,7 @@ jobs:
           echo "Remote path: $REMOTE_PATH"
 
           # Since runner is on the same server, just copy files
-          rsync -avz --delete --exclude=".git" --exclude="node_modules" --exclude=".next" --exclude="uploads/" --exclude="generated/" \
+          rsync -avz --delete --exclude=".git" --exclude="node_modules" --exclude=".next" --exclude="uploads" --exclude="generated" \
             ./ $REMOTE_PATH/
 
           # Setup app

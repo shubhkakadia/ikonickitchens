@@ -253,11 +253,21 @@ export function AdminRoute({
   const key = siteMap[pathname];
   const access = moduleAccess?.[key];
 
-  if (pathname === '/admin' && getUserData() !== null) {
-    router.push('/admin/dashboard');
-  }
-  else if (pathname === '/admin' && getUserData() === null) {
-    router.push('/admin/login');
+  // Handle redirects in useEffect to avoid updating Router during render
+  useEffect(() => {
+    if (pathname === '/admin') {
+      const userData = getUserData();
+      if (userData !== null) {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/admin/login');
+      }
+    }
+  }, [pathname, router, getUserData]);
+
+  // Show loading state while redirecting from /admin
+  if (pathname === '/admin') {
+    return <LoadingAccess />;
   }
 
   if (pathname === '/admin/settings') {

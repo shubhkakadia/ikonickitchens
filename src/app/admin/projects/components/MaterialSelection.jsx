@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, X, Save } from "lucide-react";
+import { Plus, X, Save, Download } from "lucide-react";
 import { formData } from "./MaterialSelectionConstants";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBaseUrl } from "@/lib/baseUrl";
 import axios from "axios";
 import { toast } from "react-toastify";
+import * as XLSX from "xlsx";
 
 export default function MaterialSelection({ lot_id, project_id }) {
   const { getToken } = useAuth();
@@ -25,6 +26,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
   });
   // Bed tabs: { bedId: { id, option: 'WIR' | 'BIR' | null } }
   const [bedTabs, setBedTabs] = useState({});
+  // Custom areas: { areaId: { id, name: string } }
+  const [customAreas, setCustomAreas] = useState({});
 
   // Check if current version is selected (editable)
   const isCurrentVersion = useMemo(() => {
@@ -176,8 +179,14 @@ export default function MaterialSelection({ lot_id, project_id }) {
   // Helper function to get items for a section (handles nested structure)
   // For bed tabs, returns items grouped by category: [{ category: 'Vanity', items: [...] }, ...]
   // For other tabs, returns simple array of items
+  // For custom areas, returns empty array (no predefined items)
   // bedOption: optional parameter to override bedTabs state (useful during form population)
   const getSectionItems = (sectionKey, bedOption = null) => {
+    // Handle custom areas - return empty array (no predefined items)
+    if (customAreas[sectionKey]) {
+      return [];
+    }
+
     // Handle bed tabs (Bed, Bed 2, Bed 3, etc.)
     if (sectionKey.startsWith("Bed")) {
       const bedId = sectionKey === "Bed" ? "Bed" : sectionKey;
@@ -258,7 +267,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
     return [];
   };
 
-  // Get all available tabs (including dynamic bed tabs) - memoized for performance
+  // Get all available tabs (including dynamic bed tabs and custom areas) - memoized for performance
   const allTabs = useMemo(() => {
     const tabs = [];
     Object.keys(formData).forEach((key) => {
@@ -275,11 +284,25 @@ export default function MaterialSelection({ lot_id, project_id }) {
         tabs.push(key);
       }
     });
+    // Add custom areas at the end
+    Object.keys(customAreas).forEach((areaId) => {
+      tabs.push(areaId);
+    });
     return tabs;
-  }, [bedTabs]); // Only recompute when bedTabs changes
+  }, [bedTabs, customAreas]); // Recompute when bedTabs or customAreas changes
 
   // Calculate applicable items count for a tab
   const getApplicableCount = (sectionKey) => {
+    // Handle custom areas - count only custom items
+    if (customAreas[sectionKey]) {
+      const customItemsForSection = customItems[sectionKey] || [];
+      return customItemsForSection.filter((item) => {
+        if (!item.name) return false;
+        const itemKey = getItemKey(item.name, null);
+        return applicableItems[sectionKey]?.[itemKey] || false;
+      }).length;
+    }
+
     const sectionItems = getSectionItems(sectionKey);
     let count = 0;
 
@@ -356,6 +379,225 @@ export default function MaterialSelection({ lot_id, project_id }) {
     }));
 
     setActiveTab(newBedId);
+  };
+
+  // Get the next custom area number
+  const getNextCustomAreaNumber = () => {
+    const customAreaKeys = Object.keys(customAreas);
+    if (customAreaKeys.length === 0) return 1;
+    const numbers = customAreaKeys
+      .map((key) => {
+        const match = key.match(/Custom Area (\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      })
+      .filter((n) => n > 0);
+    return numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+  };
+
+  // Handle adding a new custom area
+  const handleAddCustomArea = () => {
+    const nextNumber = getNextCustomAreaNumber();
+    const newAreaId = `Custom Area ${nextNumber}`;
+    const newCustomArea = {
+      id: newAreaId,
+      name: newAreaId,
+      originalNumber: nextNumber.toString() // Store original number for default value
+    };
+
+    setCustomAreas((prev) => ({
+      ...prev,
+      [newAreaId]: newCustomArea,
+    }));
+
+    setActiveTab(newAreaId);
+  };
+
+  // Handle renaming a custom area
+  const handleRenameCustomArea = (oldAreaId, newAreaName) => {
+    if (!newAreaName || newAreaName.trim() === "") {
+      return; // Don't allow empty names
+    }
+
+    const newAreaId = newAreaName.trim();
+
+    // If the name hasn't changed, do nothing
+    if (oldAreaId === newAreaId) {
+      return;
+    }
+
+    // Check if new name already exists
+    if (customAreas[newAreaId] || formData[newAreaId]) {
+      toast.error("An area with this name already exists", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    // Update customAreas state
+    setCustomAreas((prev) => {
+      const updated = { ...prev };
+      if (updated[oldAreaId]) {
+        // Preserve originalNumber when renaming
+        updated[newAreaId] = {
+          ...updated[oldAreaId],
+          id: newAreaId,
+          name: newAreaId,
+          originalNumber: updated[oldAreaId].originalNumber || "1",
+        };
+        delete updated[oldAreaId];
+      }
+      return updated;
+    });
+
+    // Migrate all related state to new key
+    if (applicableItems[oldAreaId]) {
+      setApplicableItems((prev) => {
+        const updated = { ...prev };
+        updated[newAreaId] = updated[oldAreaId];
+        delete updated[oldAreaId];
+        return updated;
+      });
+    }
+
+    if (notes[oldAreaId]) {
+      setNotes((prev) => {
+        const updated = { ...prev };
+        updated[newAreaId] = updated[oldAreaId];
+        delete updated[oldAreaId];
+        return updated;
+      });
+    }
+
+    if (customItems[oldAreaId]) {
+      setCustomItems((prev) => {
+        const updated = { ...prev };
+        updated[newAreaId] = updated[oldAreaId];
+        delete updated[oldAreaId];
+        return updated;
+      });
+    }
+
+    if (areaNotes[oldAreaId] !== undefined) {
+      setAreaNotes((prev) => {
+        const updated = { ...prev };
+        updated[newAreaId] = updated[oldAreaId];
+        delete updated[oldAreaId];
+        return updated;
+      });
+    }
+
+    // Update active tab if it was the renamed area
+    if (activeTab === oldAreaId) {
+      setActiveTab(newAreaId);
+    }
+  };
+
+  // Handle removing a custom area
+  const handleRemoveCustomArea = (areaId) => {
+    // If the removed area was active, switch to another tab first
+    if (activeTab === areaId) {
+      // Find another custom area or default to "Kitchen"
+      const remainingCustomAreas = Object.keys(customAreas).filter(
+        (id) => id !== areaId
+      );
+      if (remainingCustomAreas.length > 0) {
+        setActiveTab(remainingCustomAreas[0]);
+      } else {
+        // Find first non-custom area tab from formData
+        const nonCustomTabs = Object.keys(formData);
+        setActiveTab(nonCustomTabs.length > 0 ? nonCustomTabs[0] : "Kitchen");
+      }
+    }
+
+    // Remove from customAreas state
+    setCustomAreas((prev) => {
+      const updated = { ...prev };
+      delete updated[areaId];
+      return updated;
+    });
+
+    // Clean up related state for this custom area
+    setApplicableItems((prev) => {
+      const updated = { ...prev };
+      delete updated[areaId];
+      return updated;
+    });
+
+    setNotes((prev) => {
+      const updated = { ...prev };
+      delete updated[areaId];
+      return updated;
+    });
+
+    setCustomItems((prev) => {
+      const updated = { ...prev };
+      delete updated[areaId];
+      return updated;
+    });
+
+    setAreaNotes((prev) => {
+      const updated = { ...prev };
+      delete updated[areaId];
+      return updated;
+    });
+  };
+
+  // Handle removing a bed tab
+  const handleRemoveBedTab = (bedId) => {
+    // Don't allow removing the first "Bed" tab
+    if (bedId === "Bed") {
+      return;
+    }
+
+    // If the removed bed tab was active, switch to another tab first
+    if (activeTab === bedId) {
+      // Find another bed tab or default to "Kitchen"
+      const remainingBedTabs = Object.keys(bedTabs).filter(
+        (id) => id !== bedId && id.startsWith("Bed")
+      );
+      if (remainingBedTabs.length > 0) {
+        setActiveTab(remainingBedTabs[0]);
+      } else {
+        // Find first non-bed tab from formData
+        const nonBedTabs = Object.keys(formData).filter(
+          (key) => key !== "Bed"
+        );
+        setActiveTab(nonBedTabs.length > 0 ? nonBedTabs[0] : "Kitchen");
+      }
+    }
+
+    // Remove from bedTabs state
+    setBedTabs((prev) => {
+      const updated = { ...prev };
+      delete updated[bedId];
+      return updated;
+    });
+
+    // Clean up related state for this bed tab
+    setApplicableItems((prev) => {
+      const updated = { ...prev };
+      delete updated[bedId];
+      return updated;
+    });
+
+    setNotes((prev) => {
+      const updated = { ...prev };
+      delete updated[bedId];
+      return updated;
+    });
+
+    setCustomItems((prev) => {
+      const updated = { ...prev };
+      delete updated[bedId];
+      return updated;
+    });
+
+    setAreaNotes((prev) => {
+      const updated = { ...prev };
+      delete updated[bedId];
+      return updated;
+    });
   };
 
   // Handle selecting option for existing bed tab
@@ -441,6 +683,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
       setCustomItems({});
       setAreaNotes({});
       setBedTabs({});
+      setCustomAreas({});
       setActiveTab("Kitchen");
       return;
     }
@@ -465,6 +708,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
     const newCustomItems = {};
     const newAreaNotes = {};
     const newBedTabs = {};
+    const newCustomAreas = {};
 
     // Process areas
     if (version.areas && Array.isArray(version.areas)) {
@@ -484,6 +728,25 @@ export default function MaterialSelection({ lot_id, project_id }) {
               option: area.bed_option,
             };
           }
+        } else if (areaName.startsWith("Custom Area")) {
+          // Handle custom areas - extract original number
+          const match = areaName.match(/Custom Area (\d+)/);
+          const originalNumber = match ? match[1] : "1";
+          newCustomAreas[areaName] = {
+            id: areaName,
+            name: areaName,
+            originalNumber: originalNumber,
+          };
+        } else if (!formData[areaName]) {
+          // If area doesn't exist in formData and is not a bed, treat it as custom area
+          // Try to extract number if it matches pattern, otherwise use "1"
+          const match = areaName.match(/Custom Area (\d+)/);
+          const originalNumber = match ? match[1] : "1";
+          newCustomAreas[areaName] = {
+            id: areaName,
+            name: areaName,
+            originalNumber: originalNumber,
+          };
         }
 
         // Process items
@@ -507,20 +770,9 @@ export default function MaterialSelection({ lot_id, project_id }) {
               newNotes[areaName][itemKey] = item.item_notes;
             }
 
-            // Check if item is custom (not in predefined list)
-            // For bed tabs, pass the bed_option directly so getSectionItems knows which items to include
-            const bedOptionForCheck = areaName.startsWith("Bed")
-              ? area.bed_option
-              : null;
-            const sectionItems = getSectionItems(areaName, bedOptionForCheck);
-            const isPredefined = checkIfItemIsPredefined(
-              areaName,
-              item.name,
-              sectionItems
-            );
-
-            if (!isPredefined) {
-              // It's a custom item
+            // For custom areas, all items are custom items
+            if (newCustomAreas[areaName] || (!formData[areaName] && !areaName.startsWith("Bed"))) {
+              // It's a custom area, so all items are custom
               if (!newCustomItems[areaName]) {
                 newCustomItems[areaName] = [];
               }
@@ -535,6 +787,36 @@ export default function MaterialSelection({ lot_id, project_id }) {
                   category: item.category || null,
                 });
               }
+            } else {
+              // Check if item is custom (not in predefined list)
+              // For bed tabs, pass the bed_option directly so getSectionItems knows which items to include
+              const bedOptionForCheck = areaName.startsWith("Bed")
+                ? area.bed_option
+                : null;
+              const sectionItems = getSectionItems(areaName, bedOptionForCheck);
+              const isPredefined = checkIfItemIsPredefined(
+                areaName,
+                item.name,
+                sectionItems
+              );
+
+              if (!isPredefined) {
+                // It's a custom item
+                if (!newCustomItems[areaName]) {
+                  newCustomItems[areaName] = [];
+                }
+                // Check if custom item already exists
+                const exists = newCustomItems[areaName].some(
+                  (ci) => ci.name === item.name && ci.category === item.category
+                );
+                if (!exists) {
+                  newCustomItems[areaName].push({
+                    id: Date.now() + Math.random(), // Generate unique ID
+                    name: item.name,
+                    category: item.category || null,
+                  });
+                }
+              }
             }
           });
         }
@@ -546,6 +828,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
     setCustomItems(newCustomItems);
     setAreaNotes(newAreaNotes);
     setBedTabs(newBedTabs);
+    setCustomAreas(newCustomAreas);
 
     // Set active tab to first area if available
     if (version.areas && version.areas.length > 0) {
@@ -651,6 +934,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
     allTabs.forEach((sectionKey) => {
       const sectionItems = getSectionItems(sectionKey);
       const isBedTab = sectionKey.startsWith("Bed");
+      const isCustomArea = customAreas[sectionKey] !== undefined;
       const bedConfig = isBedTab ? bedTabs[sectionKey] : null;
 
       // Get area notes (convert empty strings to null)
@@ -679,7 +963,32 @@ export default function MaterialSelection({ lot_id, project_id }) {
       };
 
       // Process items based on tab type
-      if (
+      if (isCustomArea) {
+        // Custom areas - only process custom items (no predefined items)
+        const customAreaItems = (customItems[sectionKey] || []).filter(
+          (item) => !item.category && item.name.trim() !== ""
+        );
+
+        customAreaItems.forEach((customItem) => {
+          // Always include custom items if they have a name, regardless of applicable status or notes
+          const itemKey = getItemKey(customItem.name, null);
+          const isApplicable =
+            applicableItems[sectionKey]?.[itemKey] || false;
+          const itemNote =
+            notes[sectionKey]?.[itemKey] &&
+              typeof notes[sectionKey][itemKey] === "string" &&
+              notes[sectionKey][itemKey].trim() !== ""
+              ? notes[sectionKey][itemKey].trim()
+              : null;
+
+          items.push({
+            name: customItem.name,
+            category: null,
+            is_applicable: isApplicable,
+            item_notes: itemNote,
+          });
+        });
+      } else if (
         isBedTab &&
         Array.isArray(sectionItems) &&
         sectionItems[0]?.category
@@ -898,6 +1207,188 @@ export default function MaterialSelection({ lot_id, project_id }) {
     );
   }, [materialSelectionData]);
 
+  // Get selected version data
+  const getSelectedVersionData = async () => {
+    if (!materialSelectionData || !selectedVersionId) {
+      return null;
+    }
+
+    // If it's the current version, use the data we already have
+    if (selectedVersionId === materialSelectionData.current_version_id) {
+      return materialSelectionData.currentVersion;
+    }
+
+    // For past versions, fetch the version data from API
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return null;
+      }
+
+      const response = await axios.get(
+        `${getBaseUrl()}/api/material_selection/version/${selectedVersionId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status && response.data.data) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching version for export:", error);
+      toast.error("Failed to fetch version data for export", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return null;
+    }
+  };
+
+  // Export to Excel
+  const handleExportToExcel = async () => {
+    if (!selectedVersionId) {
+      toast.error("Please select a version to export", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    try {
+      const versionData = await getSelectedVersionData();
+      if (!versionData) {
+        return;
+      }
+
+      // Prepare data for Excel
+      const excelData = [];
+
+      // Add header row
+      excelData.push([
+        "Area Name",
+        "Bed Option",
+        "Area Notes",
+        "Item Name",
+        "Category",
+        "Applicable",
+        "Item Notes",
+      ]);
+
+      // Process areas - only include areas with values
+      if (versionData.areas && Array.isArray(versionData.areas)) {
+        versionData.areas.forEach((area) => {
+          // Check if area has any items or notes
+          const hasItems = area.items && Array.isArray(area.items) && area.items.length > 0;
+          const hasAreaNotes = area.notes && typeof area.notes === "string" && area.notes.trim() !== "";
+
+          if (hasItems || hasAreaNotes) {
+            const areaName = area.area_name || "";
+            const bedOption = area.bed_option || "";
+            const areaNote = area.notes || "";
+
+            // If area has items, add each item as a row
+            if (hasItems && area.items.length > 0) {
+              area.items.forEach((item) => {
+                excelData.push([
+                  areaName,
+                  bedOption,
+                  areaNote,
+                  item.name || "",
+                  item.category || "",
+                  item.is_applicable ? "Yes" : "No",
+                  item.item_notes || "",
+                ]);
+              });
+            } else {
+              // If area only has notes but no items, add one row with area info
+              excelData.push([
+                areaName,
+                bedOption,
+                areaNote,
+                "",
+                "",
+                "",
+                "",
+              ]);
+            }
+          }
+        });
+      }
+
+      // Add heights section if any height values exist
+      const hasHeights =
+        versionData.ceiling_height ||
+        versionData.bulkhead_height ||
+        versionData.kicker_height ||
+        versionData.cabinetry_height;
+
+      if (hasHeights) {
+        excelData.push([]); // Empty row
+        excelData.push(["Heights"]); // Header
+        excelData.push(["Ceiling Height (mm)", versionData.ceiling_height || ""]);
+        excelData.push([
+          "Bulkhead Height (mm)",
+          versionData.bulkhead_height || "",
+        ]);
+        excelData.push(["Kicker Height (mm)", versionData.kicker_height || ""]);
+        excelData.push([
+          "Cabinetry Height (mm)",
+          versionData.cabinetry_height || "",
+        ]);
+      }
+
+      // Create workbook and worksheet
+      const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+      // Set column widths
+      ws["!cols"] = [
+        { wch: 20 }, // Area Name
+        { wch: 15 }, // Bed Option
+        { wch: 30 }, // Area Notes
+        { wch: 25 }, // Item Name
+        { wch: 15 }, // Category
+        { wch: 12 }, // Applicable
+        { wch: 40 }, // Item Notes
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Material Selection");
+
+      // Get version number for filename
+      const versionNumber =
+        versionsList.find((v) => v.id === selectedVersionId)?.version_number ||
+        "1";
+
+      // Generate filename
+      const filename = `Material_Selection_V${versionNumber}_${new Date()
+        .toISOString()
+        .split("T")[0]}.xlsx`;
+
+      // Export file
+      XLSX.writeFile(wb, filename);
+
+      toast.success("Material selection exported to Excel successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      toast.error("Failed to export to Excel. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -946,8 +1437,20 @@ export default function MaterialSelection({ lot_id, project_id }) {
           </div>
         )}
 
-        {/* Create/Update Button - Only show for current version or when no material selection exists */}
-        <div className="flex justify-end">
+        {/* Create/Update Button and Export Button */}
+        <div className="flex justify-end gap-3">
+          {/* Export Button - Show when version is selected */}
+          {materialSelectionData && selectedVersionId && (
+            <button
+              onClick={handleExportToExcel}
+              disabled={!selectedVersionId}
+              className="cursor-pointer hover:bg-green-600 flex items-center gap-2 px-6 py-2 bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
+            >
+              <Download className="w-4 h-4" />
+              Export to Excel
+            </button>
+          )}
+          {/* Create/Update Button - Only show for current version or when no material selection exists */}
           {(!materialSelectionData || isCurrentVersion) && (
             <button
               onClick={handleCreateMaterialSelection}
@@ -1065,36 +1568,70 @@ export default function MaterialSelection({ lot_id, project_id }) {
           <div className="flex flex-wrap gap-2 overflow-x-auto items-center">
             {allTabs.map((sectionKey, index, array) => {
               const isBedTab = sectionKey.startsWith("Bed");
+              const isCustomArea = customAreas[sectionKey] !== undefined;
               const bedConfig = isBedTab ? bedTabs[sectionKey] : null;
               // Show plus button only on the last bed tab
               const isLastBedTab =
                 isBedTab &&
                 (index === array.length - 1 ||
                   !array[index + 1]?.startsWith("Bed"));
+              // Allow removing bed tabs except the first "Bed" tab
+              const canRemoveBedTab =
+                isBedTab &&
+                sectionKey !== "Bed" &&
+                (isCurrentVersion || !materialSelectionData);
+              // Allow removing custom areas
+              const canRemoveCustomArea =
+                isCustomArea && (isCurrentVersion || !materialSelectionData);
               const applicableCount = getApplicableCount(sectionKey);
+
+              // Get display name for custom areas
+              const displayName = isCustomArea
+                ? customAreas[sectionKey]?.name || sectionKey
+                : sectionKey;
 
               return (
                 <div key={sectionKey} className="flex items-center gap-1">
                   <button
                     onClick={() => setActiveTab(sectionKey)}
                     className={`cursor-pointer px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === sectionKey
-                        ? "border-secondary text-secondary"
-                        : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+                      ? "border-secondary text-secondary"
+                      : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
                       }`}
                   >
-                    {sectionKey}
+                    {displayName}
                     {applicableCount > 0 && (
                       <span className="ml-2 px-2 py-0.5 bg-secondary/20 text-secondary rounded-full text-xs font-semibold">
                         {applicableCount}
                       </span>
                     )}
                   </button>
+                  {canRemoveBedTab && (
+                    <button
+                      onClick={() => handleRemoveBedTab(sectionKey)}
+                      disabled={!isCurrentVersion && materialSelectionData}
+                      className="cursor-pointer p-1 hover:bg-red-100 rounded transition-colors text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Remove this bed tab"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  {canRemoveCustomArea && (
+                    <button
+                      onClick={() => handleRemoveCustomArea(sectionKey)}
+                      disabled={!isCurrentVersion && materialSelectionData}
+                      className="cursor-pointer p-1 hover:bg-red-100 rounded transition-colors text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Remove this custom area"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                   {isLastBedTab &&
                     (isCurrentVersion || !materialSelectionData) && (
                       <button
                         onClick={handleAddBedTab}
                         disabled={!isCurrentVersion && materialSelectionData}
-                        className="p-1 hover:bg-slate-100 rounded transition-colors text-slate-600 hover:text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="cursor-pointer p-1 hover:bg-slate-100 rounded transition-colors text-slate-600 hover:text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Add another bed tab"
                       >
                         <Plus className="w-4 h-4" />
@@ -1103,6 +1640,17 @@ export default function MaterialSelection({ lot_id, project_id }) {
                 </div>
               );
             })}
+            {/* Add Custom Area Button - After all tabs */}
+            {(isCurrentVersion || !materialSelectionData) && (
+              <button
+                onClick={handleAddCustomArea}
+                disabled={!isCurrentVersion && materialSelectionData}
+                className="cursor-pointer p-1 hover:bg-slate-100 rounded transition-colors text-slate-600 hover:text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Add custom area"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -1112,6 +1660,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
 
           const sectionItems = getSectionItems(sectionKey);
           const isBedTab = sectionKey.startsWith("Bed");
+          const isCustomArea = customAreas[sectionKey] !== undefined;
           const bedConfig = isBedTab ? bedTabs[sectionKey] : null;
 
           return (
@@ -1120,6 +1669,72 @@ export default function MaterialSelection({ lot_id, project_id }) {
               className="border border-slate-200 rounded-lg bg-white mt-4"
             >
               <div className="p-4">
+                {/* Custom Area Name Input - Show for custom areas */}
+                {isCustomArea && (isCurrentVersion || !materialSelectionData) && (
+                  <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Custom Area Name
+                    </label>
+                    <input
+                      type="text"
+                      value={customAreas[sectionKey]?.name ?? ""}
+                      onChange={(e) => {
+                        // Allow empty string during typing
+                        const newName = e.target.value;
+                        setCustomAreas((prev) => {
+                          if (prev[sectionKey]) {
+                            return {
+                              ...prev,
+                              [sectionKey]: {
+                                ...prev[sectionKey],
+                                name: newName,
+                              },
+                            };
+                          }
+                          return prev;
+                        });
+                      }}
+                      onBlur={(e) => {
+                        const newName = e.target.value.trim();
+
+                        if (newName && newName !== sectionKey) {
+                          handleRenameCustomArea(sectionKey, newName);
+                        } else if (!newName) {
+                          // Use originalNumber from customAreas for default value
+                          const originalNumber = customAreas[sectionKey]?.originalNumber || "1";
+                          const defaultValue = `Custom Area ${originalNumber}`;
+
+                          // Set to default value if empty
+                          if (defaultValue !== sectionKey) {
+                            handleRenameCustomArea(sectionKey, defaultValue);
+                          } else {
+                            // Just update the display name if it's already the default
+                            setCustomAreas((prev) => {
+                              if (prev[sectionKey]) {
+                                return {
+                                  ...prev,
+                                  [sectionKey]: {
+                                    ...prev[sectionKey],
+                                    name: defaultValue,
+                                  },
+                                };
+                              }
+                              return prev;
+                            });
+                          }
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.target.blur();
+                        }
+                      }}
+                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                      placeholder="Enter custom area name..."
+                    />
+                  </div>
+                )}
+
                 {/* Bed Option Selection - Always show for bed tabs */}
                 {isBedTab && (
                   <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1133,8 +1748,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
                         }
                         disabled={!isCurrentVersion && materialSelectionData}
                         className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${bedConfig?.option === "WIR"
-                            ? "bg-secondary text-white border-secondary"
-                            : "bg-white"
+                          ? "bg-secondary text-white border-secondary"
+                          : "bg-white"
                           }`}
                       >
                         WIR
@@ -1145,8 +1760,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
                         }
                         disabled={!isCurrentVersion && materialSelectionData}
                         className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${bedConfig?.option === "BIR"
-                            ? "bg-secondary text-white border-secondary"
-                            : "bg-white"
+                          ? "bg-secondary text-white border-secondary"
+                          : "bg-white"
                           }`}
                       >
                         BIR
@@ -1157,8 +1772,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
                         }
                         disabled={!isCurrentVersion && materialSelectionData}
                         className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:text-secondary hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${bedConfig?.option === "Both"
-                            ? "bg-secondary text-white border-secondary"
-                            : "bg-white"
+                          ? "bg-secondary text-white border-secondary"
+                          : "bg-white"
                           }`}
                       >
                         Both
@@ -1192,10 +1807,116 @@ export default function MaterialSelection({ lot_id, project_id }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {sectionKey.startsWith("Bed") &&
+                      {isCustomArea ? (
+                        // Custom areas - show only custom items (no predefined items)
+                        (customItems[sectionKey] || [])
+                          .filter((item) => !item.category)
+                          .map((customItem) => {
+                            const itemKey = getItemKey(customItem.name, null);
+                            const isApplicable =
+                              applicableItems[sectionKey]?.[itemKey] || false;
+                            const noteValue =
+                              notes[sectionKey]?.[itemKey] || "";
+
+                            return (
+                              <tr
+                                key={customItem.id}
+                                className="border-b border-slate-100 hover:bg-slate-50 transition-colors bg-blue-50/30"
+                              >
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="Enter custom name..."
+                                      value={customItem.name}
+                                      onChange={(e) =>
+                                        handleCustomItemNameChange(
+                                          sectionKey,
+                                          customItem.id,
+                                          e.target.value
+                                        )
+                                      }
+                                      disabled={
+                                        !isCurrentVersion &&
+                                        materialSelectionData
+                                      }
+                                      className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                                    />
+                                    <button
+                                      onClick={() =>
+                                        handleRemoveCustomItem(
+                                          sectionKey,
+                                          customItem.id
+                                        )
+                                      }
+                                      disabled={
+                                        !isCurrentVersion &&
+                                        materialSelectionData
+                                      }
+                                      className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="Remove this item"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <label
+                                    className={`flex items-center gap-2 ${!isCurrentVersion &&
+                                      materialSelectionData
+                                      ? "cursor-not-allowed"
+                                      : "cursor-pointer"
+                                      }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isApplicable}
+                                      onChange={(e) =>
+                                        handleApplicableChange(
+                                          sectionKey,
+                                          customItem.name,
+                                          e.target.checked,
+                                          null
+                                        )
+                                      }
+                                      disabled={
+                                        !isCurrentVersion &&
+                                        materialSelectionData
+                                      }
+                                      className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                    <span className="text-sm text-slate-600">
+                                      {isApplicable ? "Yes" : "No"}
+                                    </span>
+                                  </label>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <textarea
+                                    placeholder="Add notes..."
+                                    value={noteValue}
+                                    onChange={(e) =>
+                                      handleNotesChange(
+                                        sectionKey,
+                                        customItem.name,
+                                        e.target.value,
+                                        null
+                                      )
+                                    }
+                                    disabled={
+                                      !isCurrentVersion &&
+                                      materialSelectionData
+                                    }
+                                    rows={2}
+                                    className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })
+                      ) : sectionKey.startsWith("Bed") &&
                         Array.isArray(sectionItems) &&
-                        sectionItems[0]?.category
-                        ? // Bed tabs with grouped items by category
+                        sectionItems[0]?.category ? (
+                        // Bed tabs with grouped items by category
                         sectionItems.map((group, groupIndex) => {
                           // Get custom items for this category
                           const categoryCustomItems = (
@@ -1235,9 +1956,9 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                     <td className="py-3 px-4">
                                       <label
                                         className={`flex items-center gap-2 ${!isCurrentVersion &&
-                                            materialSelectionData
-                                            ? "cursor-not-allowed"
-                                            : "cursor-pointer"
+                                          materialSelectionData
+                                          ? "cursor-not-allowed"
+                                          : "cursor-pointer"
                                           }`}
                                       >
                                         <input
@@ -1338,9 +2059,9 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                     <td className="py-3 px-4">
                                       <label
                                         className={`flex items-center gap-2 ${!isCurrentVersion &&
-                                            materialSelectionData
-                                            ? "cursor-not-allowed"
-                                            : "cursor-pointer"
+                                          materialSelectionData
+                                          ? "cursor-not-allowed"
+                                          : "cursor-pointer"
                                           }`}
                                       >
                                         <input
@@ -1415,7 +2136,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
                             </React.Fragment>
                           );
                         })
-                        : // Regular tabs with simple array of items
+                      ) : (
+                        // Regular tabs with simple array of items
                         Array.isArray(sectionItems) &&
                         sectionItems.map((itemName, index) => {
                           const itemKey = getItemKey(itemName, null);
@@ -1435,8 +2157,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
                               <td className="py-3 px-4">
                                 <label
                                   className={`flex items-center gap-2 ${!isCurrentVersion && materialSelectionData
-                                      ? "cursor-not-allowed"
-                                      : "cursor-pointer"
+                                    ? "cursor-not-allowed"
+                                    : "cursor-pointer"
                                     }`}
                                 >
                                   <input
@@ -1482,9 +2204,10 @@ export default function MaterialSelection({ lot_id, project_id }) {
                               </td>
                             </tr>
                           );
-                        })}
-                      {/* Custom Items (only for regular tabs, bed tabs show custom items in their categories) */}
-                      {!sectionKey.startsWith("Bed") &&
+                        })
+
+                      )}
+                      {!sectionKey.startsWith("Bed") && !isCustomArea &&
                         customItems[sectionKey]
                           ?.filter((item) => !item.category)
                           .map((customItem) => {
@@ -1539,8 +2262,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                 <td className="py-3 px-4">
                                   <label
                                     className={`flex items-center gap-2 ${!isCurrentVersion && materialSelectionData
-                                        ? "cursor-not-allowed"
-                                        : "cursor-pointer"
+                                      ? "cursor-not-allowed"
+                                      : "cursor-pointer"
                                       }`}
                                   >
                                     <input
@@ -1591,7 +2314,6 @@ export default function MaterialSelection({ lot_id, project_id }) {
                   </table>
                 </div>
 
-                {/* Add Custom Item Button (only for regular tabs, bed tabs have buttons in each category) */}
                 {!sectionKey.startsWith("Bed") &&
                   (isCurrentVersion || !materialSelectionData) && (
                     <div className="mt-3">

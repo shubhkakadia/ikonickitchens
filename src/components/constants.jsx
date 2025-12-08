@@ -4,9 +4,9 @@ export const stages = [
   "Purchase Order",
   "Material Appliances Selection",
   "Drafting",
-  "Waiting for Client Approval",
-  "Site Measurements",
   "Drafting Revision",
+  "Final Design Approval",
+  "Site Measurements",
   "Final Approval for Production",
   "Machining Out",
   "Material Order",
@@ -14,6 +14,7 @@ export const stages = [
   "Assembly",
   "Delivery",
   "Installation",
+  "Invoice Sent",
   "Maintenance",
   "Job Completion",
 ];
@@ -27,6 +28,7 @@ export const tabs = [
   { id: "changes_to_do", label: "Changes to Do" },
   { id: "site_measurements", label: "Site Measurements" },
   { id: "materials_to_order", label: "Materials to Order" },
+  { id: "site_photos", label: "Site Photos" },
 ];
 
 export const hardwareSubCategories = [

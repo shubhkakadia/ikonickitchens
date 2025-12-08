@@ -38,6 +38,11 @@ export async function GET(request) {
             quantity_used: true,
             quantity_ordered: true,
             notes: true,
+            ordered_items: {
+              select: {
+                quantity: true,
+              },
+            },
             item: {
               select: {
                 item_id: true,

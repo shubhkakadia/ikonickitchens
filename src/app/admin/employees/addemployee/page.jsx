@@ -582,6 +582,7 @@ export default function page() {
                             name="join_date"
                             value={formData.join_date}
                             onChange={handleInputChange}
+                            max={new Date().toISOString().split("T")[0]}
                             className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         </div>

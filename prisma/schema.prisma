@@ -15,16 +15,15 @@ model users {
   user_type           String
   is_active           Boolean              @default(true)
   employee_id         String?              @unique
-  // module_access       String?              @db.LongText
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   logs                logs[]
   material_selection  material_selection[]
   materials_to_orders materials_to_order[] @relation("MaterialsToBeOrderedCreatedBy")
+  module_access       module_access?
   purchase_order      purchase_order[]     @relation("PurchaseOrderOrderedBy")
   sessions            sessions[]
   employee            employees?           @relation(fields: [employee_id], references: [employee_id])
-  module_access       module_access?
 
   @@index([employee_id])
 }
@@ -49,7 +48,6 @@ model module_access {
   all_items        Boolean  @default(false)
   add_items        Boolean  @default(false)
   item_details     Boolean  @default(false)
-  usedmaterial     Boolean  @default(false)
   logs             Boolean  @default(false)
   lotatglance      Boolean  @default(false)
   materialstoorder Boolean  @default(false)
@@ -57,6 +55,7 @@ model module_access {
   statements       Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  usedmaterial     Boolean  @default(false)
   user             users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
@@ -509,7 +508,7 @@ model supplier_file {
 
 model materials_to_order {
   id                 String                    @id @default(uuid())
-  project_id         String
+  project_id         String?
   status             MTOStatus                 @default(DRAFT)
   notes              String?                   @db.LongText
   createdBy_id       String?
@@ -518,7 +517,7 @@ model materials_to_order {
   media_id           String?
   lots               lot[]
   createdBy          users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id])
-  project            project                   @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  project            project?                  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
   items              materials_to_order_item[]
   media              media[]
   purchase_order     purchase_order[]
@@ -659,6 +658,9 @@ enum TabKind {
   CABINETRY_DRAWINGS
   CHANGES_TO_DO
   SITE_MEASUREMENTS
+  DELIVERY_PHOTOS
+  INSTALLATION_PHOTOS
+  MAINTENANCE_PHOTOS
 }
 
 enum FileKind {

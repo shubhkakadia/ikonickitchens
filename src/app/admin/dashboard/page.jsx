@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Calendar,
   Clock,
+  RotateCcw,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -202,72 +203,86 @@ export default function page() {
   const [logsLoading, setLogsLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState("all");
   const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
+  const [dashboardYearFilter, setDashboardYearFilter] = useState("all");
+  const [dashboardYearDropdownOpen, setDashboardYearDropdownOpen] = useState(false);
+  const [dashboardMonthFilter, setDashboardMonthFilter] = useState("all");
+  const [dashboardMonthDropdownOpen, setDashboardMonthDropdownOpen] = useState(false);
+
+  const fetchDashboard = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const sessionToken = getToken();
+
+      if (!sessionToken) {
+        setError("No valid session found. Please login again.");
+        return;
+      }
+
+      // Prepare month and year for API request
+      const month = dashboardMonthFilter === "all" ? "all" : dashboardMonthFilter;
+      const year = dashboardYearFilter === "all" ? "all" : dashboardYearFilter;
+
+      const response = await axios.post(
+        "/api/dashboard",
+        {
+          month,
+          year,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        }
+      );
+
+      if (response.data.status) {
+        setDashboardData(response.data.data);
+      } else {
+        setError(response.data.message || "Failed to fetch dashboard data");
+      }
+    } catch (err) {
+      console.error("Dashboard API Error:", err);
+      setError(
+        err.response?.data?.message ||
+        "An error occurred while fetching dashboard data"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      setLogsLoading(true);
+      const sessionToken = getToken();
+
+      if (!sessionToken) return;
+
+      const response = await axios.get("/api/logs", {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+
+      if (response.data.status) {
+        const sortedLogs = (response.data.data || [])
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 10);
+        setLogsData(sortedLogs);
+      }
+    } catch (err) {
+      console.error("Logs API Error:", err);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const sessionToken = getToken();
-
-        if (!sessionToken) {
-          setError("No valid session found. Please login again.");
-          return;
-        }
-
-        const response = await axios.get("/api/dashboard", {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-          },
-        });
-
-        if (response.data.status) {
-          setDashboardData(response.data.data);
-        } else {
-          setError(response.data.message || "Failed to fetch dashboard data");
-        }
-      } catch (err) {
-        console.error("Dashboard API Error:", err);
-        setError(
-          err.response?.data?.message ||
-          "An error occurred while fetching dashboard data"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchLogs = async () => {
-      try {
-        setLogsLoading(true);
-        const sessionToken = getToken();
-
-        if (!sessionToken) return;
-
-        const response = await axios.get("/api/logs", {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-          },
-        });
-
-        if (response.data.status) {
-          const sortedLogs = (response.data.data || [])
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .slice(0, 10);
-          setLogsData(sortedLogs);
-        }
-      } catch (err) {
-        console.error("Logs API Error:", err);
-      } finally {
-        setLogsLoading(false);
-      }
-    };
-
     fetchDashboard();
     fetchLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dashboardYearFilter, dashboardMonthFilter]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -275,10 +290,23 @@ export default function page() {
       if (!event.target.closest(".year-dropdown-container")) {
         setYearDropdownOpen(false);
       }
+      if (!event.target.closest(".dashboard-year-dropdown-container")) {
+        setDashboardYearDropdownOpen(false);
+      }
+      if (!event.target.closest(".dashboard-month-dropdown-container")) {
+        setDashboardMonthDropdownOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Reset month filter when year changes to "all"
+  useEffect(() => {
+    if (dashboardYearFilter === "all") {
+      setDashboardMonthFilter("all");
+    }
+  }, [dashboardYearFilter]);
 
   // Get available years from spending data
   const getAvailableYears = () => {
@@ -289,6 +317,70 @@ export default function page() {
       years.add(year);
     });
     return Array.from(years).sort((a, b) => b - a);
+  };
+
+  // Get all available years from dashboard data (from multiple sources)
+  const getAllDashboardYears = () => {
+    const years = new Set();
+
+    // Get years from totalSpent
+    if (dashboardData?.totalSpent) {
+      dashboardData.totalSpent.forEach((item) => {
+        const year = item.month_year.split("-")[0];
+        years.add(year);
+      });
+    }
+
+    // Get years from stages due dates
+    if (dashboardData?.topstagesDue) {
+      dashboardData.topstagesDue.forEach((stage) => {
+        if (stage.endDate) {
+          const date = new Date(stage.endDate);
+          if (!isNaN(date.getTime())) {
+            years.add(date.getFullYear().toString());
+          }
+        }
+      });
+    }
+
+    return Array.from(years).sort((a, b) => b - a);
+  };
+
+  // Format month number to month name
+  const formatMonthName = (monthNumber) => {
+    const date = new Date(2000, parseInt(monthNumber) - 1, 1);
+    return date.toLocaleDateString("en-US", { month: "long" });
+  };
+
+  // Get available months for selected year
+  const getAvailableMonthsForYear = () => {
+    if (dashboardYearFilter === "all") {
+      return [];
+    }
+
+    // Return all 12 months regardless of available data
+    // This ensures the dropdown always shows all months when a year is selected
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  };
+
+  // Get filtered totalSpent for charts (respects dashboard filters)
+  const getFilteredTotalSpentForCharts = () => {
+    if (!dashboardData?.totalSpent) return [];
+
+    let filtered = dashboardData.totalSpent;
+
+    // Filter by dashboard year filter
+    if (dashboardYearFilter !== "all") {
+      filtered = filtered.filter(item => item.month_year.startsWith(dashboardYearFilter));
+    }
+
+    // Filter by dashboard month filter
+    if (dashboardMonthFilter !== "all" && dashboardYearFilter !== "all") {
+      const monthStr = dashboardMonthFilter.padStart(2, "0");
+      filtered = filtered.filter(item => item.month_year === `${dashboardYearFilter}-${monthStr}`);
+    }
+
+    return filtered;
   };
 
   // Format month_year to readable format
@@ -303,15 +395,15 @@ export default function page() {
 
   // Transform totalSpent data for Chart.js line chart
   const getSupplierLineChartData = () => {
-    if (!dashboardData?.totalSpent) return null;
+    // Start with dashboard-filtered data
+    let filteredData = getFilteredTotalSpentForCharts();
 
-    // Filter by selected year
-    const filteredData =
-      selectedYear === "all"
-        ? dashboardData.totalSpent
-        : dashboardData.totalSpent.filter((item) =>
-          item.month_year.startsWith(selectedYear)
-        );
+    // Apply chart's own year filter on top of dashboard filters
+    if (selectedYear !== "all") {
+      filteredData = filteredData.filter((item) =>
+        item.month_year.startsWith(selectedYear)
+      );
+    }
 
     if (filteredData.length === 0) return null;
 
@@ -435,20 +527,59 @@ export default function page() {
     };
   };
 
-  // Calculate total spent
-  const getTotalSpent = () => {
-    if (!dashboardData?.totalSpent) return 0;
-    const currentYear = new Date().getFullYear().toString();
+  // Get filtered totalSpent based on year/month filters
+  const getFilteredTotalSpent = () => {
+    if (!dashboardData?.totalSpent) return [];
 
-    return dashboardData.totalSpent
-      .filter(item => item.month_year.startsWith(currentYear)) // Filter for current year
-      .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+    let filtered = dashboardData.totalSpent;
+
+    // Filter by year
+    if (dashboardYearFilter !== "all") {
+      filtered = filtered.filter(item => item.month_year.startsWith(dashboardYearFilter));
+    }
+
+    // Filter by month
+    if (dashboardMonthFilter !== "all" && dashboardYearFilter !== "all") {
+      const monthStr = dashboardMonthFilter.padStart(2, "0");
+      filtered = filtered.filter(item => item.month_year === `${dashboardYearFilter}-${monthStr}`);
+    }
+
+    return filtered;
   };
 
-  // Get sorted stages due (by least days left first)
+  // Calculate total spent based on filters
+  const getTotalSpent = () => {
+    const filtered = getFilteredTotalSpent();
+    return filtered.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+  };
+
+  // Get filtered and sorted stages due (by least days left first)
   const getSortedStagesDue = () => {
     if (!dashboardData?.topstagesDue) return [];
-    return [...dashboardData.topstagesDue].sort((a, b) => {
+
+    let filtered = [...dashboardData.topstagesDue];
+
+    // Filter by year
+    if (dashboardYearFilter !== "all") {
+      filtered = filtered.filter((stage) => {
+        if (!stage.endDate) return false;
+        const date = new Date(stage.endDate);
+        if (isNaN(date.getTime())) return false;
+        return date.getFullYear().toString() === dashboardYearFilter;
+      });
+    }
+
+    // Filter by month
+    if (dashboardMonthFilter !== "all" && dashboardYearFilter !== "all") {
+      filtered = filtered.filter((stage) => {
+        if (!stage.endDate) return false;
+        const date = new Date(stage.endDate);
+        if (isNaN(date.getTime())) return false;
+        return date.getMonth() + 1 === parseInt(dashboardMonthFilter);
+      });
+    }
+
+    return filtered.sort((a, b) => {
       const daysLeftA = getDaysLeft(a.endDate);
       const daysLeftB = getDaysLeft(b.endDate);
       if (daysLeftA === null) return 1;
@@ -593,16 +724,124 @@ export default function page() {
                       Overview of your business operations
                     </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      fetchDashboard();
-                      fetchLogs();
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                  >
-                    <RefreshCcw className="w-4 h-4" />
-                    Refresh
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {/* Reset Filters Button - Only show when filters are applied */}
+                    {(dashboardYearFilter !== "all" || dashboardMonthFilter !== "all") && (
+                      <button
+                        onClick={() => {
+                          setDashboardYearFilter("all");
+                          setDashboardMonthFilter("all");
+                          setDashboardYearDropdownOpen(false);
+                          setDashboardMonthDropdownOpen(false);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                        title="Reset filters to default"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Reset
+                      </button>
+                    )}
+                    {/* Year Filter Dropdown */}
+                    <div className="relative dashboard-year-dropdown-container">
+                      <button
+                        onClick={() => setDashboardYearDropdownOpen(!dashboardYearDropdownOpen)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        {dashboardYearFilter === "all" ? "All Years" : dashboardYearFilter}
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      {dashboardYearDropdownOpen && (
+                        <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                          <button
+                            onClick={() => {
+                              setDashboardYearFilter("all");
+                              setDashboardYearDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${dashboardYearFilter === "all"
+                              ? "text-secondary font-medium"
+                              : "text-slate-600"
+                              }`}
+                          >
+                            All Years
+                          </button>
+                          {getAllDashboardYears().map((year) => (
+                            <button
+                              key={year}
+                              onClick={() => {
+                                setDashboardYearFilter(year);
+                                setDashboardYearDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${dashboardYearFilter === year
+                                ? "text-secondary font-medium"
+                                : "text-slate-600"
+                                }`}
+                            >
+                              {year}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Month Filter Dropdown */}
+                    <div className="relative dashboard-month-dropdown-container">
+                      <button
+                        onClick={() => {
+                          if (dashboardYearFilter !== "all") {
+                            setDashboardMonthDropdownOpen(!dashboardMonthDropdownOpen);
+                          }
+                        }}
+                        disabled={dashboardYearFilter === "all"}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${dashboardYearFilter === "all"
+                          ? "text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed"
+                          : "text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                          }`}
+                      >
+                        {dashboardMonthFilter === "all" ? "All Months" : formatMonthName(dashboardMonthFilter)}
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      {dashboardMonthDropdownOpen && dashboardYearFilter !== "all" && (
+                        <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                          <button
+                            onClick={() => {
+                              setDashboardMonthFilter("all");
+                              setDashboardMonthDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${dashboardMonthFilter === "all"
+                              ? "text-secondary font-medium"
+                              : "text-slate-600"
+                              }`}
+                          >
+                            All Months
+                          </button>
+                          {getAvailableMonthsForYear().map((month) => (
+                            <button
+                              key={month}
+                              onClick={() => {
+                                setDashboardMonthFilter(month.toString());
+                                setDashboardMonthDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${dashboardMonthFilter === month.toString()
+                                ? "text-secondary font-medium"
+                                : "text-slate-600"
+                                }`}
+                            >
+                              {formatMonthName(month)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        fetchDashboard();
+                        fetchLogs();
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      <RefreshCcw className="w-4 h-4" />
+                      Refresh
+                    </button>
+                  </div>
                 </div>
 
                 {/* KPI Cards */}

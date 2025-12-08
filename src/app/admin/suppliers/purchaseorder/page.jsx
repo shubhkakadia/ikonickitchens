@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
+import PaginationFooter from "@/components/PaginationFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
@@ -20,10 +21,6 @@ import {
   ArrowUp,
   ArrowDown,
   Sheet,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   NotebookText,
   User,
   X,
@@ -51,10 +48,8 @@ export default function page() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showCreatePOModal, setShowCreatePOModal] = useState(false);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showItemsPerPageDropdown, setShowItemsPerPageDropdown] =
-    useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
@@ -169,8 +164,8 @@ export default function page() {
     let list = (pos || []).filter((po) =>
       activeTab === "active"
         ? po.status === "DRAFT" ||
-          po.status === "ORDERED" ||
-          po.status === "PARTIALLY_RECEIVED"
+        po.status === "ORDERED" ||
+        po.status === "PARTIALLY_RECEIVED"
         : po.status === "FULLY_RECEIVED" || po.status === "CANCELLED"
     );
 
@@ -260,14 +255,16 @@ export default function page() {
 
   const handleItemsPerPageChange = (value) => {
     setItemsPerPage(value);
-    setShowItemsPerPageDropdown(false);
-    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
   };
 
   // Reset to first page when search or items per page changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, itemsPerPage]);
+  }, [search]);
 
   const handleReset = () => {
     setSearch("");
@@ -364,7 +361,6 @@ export default function page() {
         setShowSortDropdown(false);
       }
       if (!event.target.closest(".dropdown-container")) {
-        setShowItemsPerPageDropdown(false);
         setShowColumnDropdown(false);
       }
     };
@@ -830,8 +826,7 @@ export default function page() {
           ? new Date(po.ordered_at).toLocaleDateString()
           : "";
         const orderedByName = po.orderedBy?.employee
-          ? `${po.orderedBy.employee.first_name || ""} ${
-              po.orderedBy.employee.last_name || ""
+          ? `${po.orderedBy.employee.first_name || ""} ${po.orderedBy.employee.last_name || ""
             }`.trim()
           : "";
         const notes = po.notes || "";
@@ -1001,6 +996,13 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-600">
                       Purchase Orders
                     </h1>
+                    <button
+                      onClick={() => setShowCreatePOModal(true)}
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-xs font-medium"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Purchase Order
+                    </button>
                   </div>
                 </div>
 
@@ -1026,14 +1028,14 @@ export default function page() {
                           {(search !== "" ||
                             sortField !== "date" ||
                             sortOrder !== "desc") && (
-                            <button
-                              onClick={handleReset}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                              <span>Reset</span>
-                            </button>
-                          )}
+                              <button
+                                onClick={handleReset}
+                                className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                                <span>Reset</span>
+                              </button>
+                            )}
 
                           <div
                             className="relative dropdown-container"
@@ -1073,14 +1075,6 @@ export default function page() {
                           </div>
 
                           <button
-                            onClick={() => setShowCreatePOModal(true)}
-                            className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                          >
-                            <Plus className="h-4 w-4" />
-                            <span>Create Purchase Order</span>
-                          </button>
-
-                          <button
                             onClick={() => setShowMaterialsReceivedModal(true)}
                             className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                           >
@@ -1096,13 +1090,12 @@ export default function page() {
                                 filteredAndSortedPOs.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                isExporting ||
-                                filteredAndSortedPOs.length === 0 ||
-                                selectedColumns.length === 0
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
+                                  filteredAndSortedPOs.length === 0 ||
+                                  selectedColumns.length === 0
                                   ? "opacity-50 cursor-not-allowed"
                                   : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -1118,11 +1111,10 @@ export default function page() {
                               disabled={
                                 isExporting || filteredAndSortedPOs.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${
-                                isExporting || filteredAndSortedPOs.length === 0
+                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${isExporting || filteredAndSortedPOs.length === 0
                                   ? "opacity-50 cursor-not-allowed"
                                   : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                                }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
@@ -1165,21 +1157,19 @@ export default function page() {
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("active")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "active"
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "active"
                               ? "border-primary text-primary"
                               : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                            }`}
                         >
                           Active
                         </button>
                         <button
                           onClick={() => setActiveTab("completed")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "completed"
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "completed"
                               ? "border-primary text-primary"
                               : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                            }`}
                         >
                           Completed
                         </button>
@@ -1278,15 +1268,14 @@ export default function page() {
                                     <td className="px-3 py-2 text-xs text-slate-700">
                                       {po.ordered_at
                                         ? `Ordered: ${new Date(
-                                            po.ordered_at
-                                          ).toLocaleDateString()}`
-                                        : `Created: ${
+                                          po.ordered_at
+                                        ).toLocaleDateString()}`
+                                        : `Created: ${po.createdAt
+                                          ? new Date(
                                             po.createdAt
-                                              ? new Date(
-                                                  po.createdAt
-                                                ).toLocaleDateString()
-                                              : "-"
-                                          }`}
+                                          ).toLocaleDateString()
+                                          : "-"
+                                        }`}
                                     </td>
                                     <td className="px-3 py-2 text-xs text-slate-700">
                                       {(po.items || []).reduce(
@@ -1300,30 +1289,28 @@ export default function page() {
                                     </td>
                                     <td className="px-3 py-2">
                                       <span
-                                        className={`px-2 py-1 text-xs font-medium rounded ${
-                                          po.status === "DRAFT"
+                                        className={`px-2 py-1 text-xs font-medium rounded ${po.status === "DRAFT"
                                             ? "bg-yellow-100 text-yellow-800"
                                             : po.status === "ORDERED"
-                                            ? "bg-blue-100 text-blue-800"
-                                            : po.status === "PARTIALLY_RECEIVED"
-                                            ? "bg-purple-100 text-purple-800"
-                                            : po.status === "FULLY_RECEIVED"
-                                            ? "bg-green-100 text-green-800"
-                                            : po.status === "CANCELLED"
-                                            ? "bg-red-100 text-red-800"
-                                            : "bg-gray-100 text-gray-800"
-                                        }`}
+                                              ? "bg-blue-100 text-blue-800"
+                                              : po.status === "PARTIALLY_RECEIVED"
+                                                ? "bg-purple-100 text-purple-800"
+                                                : po.status === "FULLY_RECEIVED"
+                                                  ? "bg-green-100 text-green-800"
+                                                  : po.status === "CANCELLED"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                          }`}
                                       >
                                         {po.status}
                                       </span>
                                     </td>
                                     <td className="px-3 py-2 text-right">
                                       <ChevronDown
-                                        className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${
-                                          openAccordionId === po.id
+                                        className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${openAccordionId === po.id
                                             ? "rotate-180"
                                             : ""
-                                        }`}
+                                          }`}
                                       />
                                     </td>
                                   </tr>
@@ -1350,8 +1337,8 @@ export default function page() {
                                                     </span>{" "}
                                                     {po.createdAt
                                                       ? new Date(
-                                                          po.createdAt
-                                                        ).toLocaleString()
+                                                        po.createdAt
+                                                      ).toLocaleString()
                                                       : "No date"}
                                                   </span>
                                                 </div>
@@ -1418,11 +1405,10 @@ export default function page() {
                                                 disabled={
                                                   deletingPOId === po.id
                                                 }
-                                                className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${
-                                                  deletingPOId === po.id
+                                                className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${deletingPOId === po.id
                                                     ? "opacity-50 cursor-not-allowed"
                                                     : ""
-                                                }`}
+                                                  }`}
                                               >
                                                 {deletingPOId === po.id ? (
                                                   <>
@@ -1511,15 +1497,14 @@ export default function page() {
                                                         deletingInvoicePOId ===
                                                         po.id
                                                       }
-                                                      className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${
-                                                        deletingInvoicePOId ===
-                                                        po.id
+                                                      className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${deletingInvoicePOId ===
+                                                          po.id
                                                           ? "opacity-50 cursor-not-allowed"
                                                           : ""
-                                                      }`}
+                                                        }`}
                                                     >
                                                       {deletingInvoicePOId ===
-                                                      po.id ? (
+                                                        po.id ? (
                                                         <>
                                                           <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
                                                           <span>
@@ -1588,18 +1573,17 @@ export default function page() {
                                                       />
                                                       <label
                                                         htmlFor={`invoice-upload-${po.id}`}
-                                                        className={`cursor-pointer px-2 py-1 border border-slate-300 rounded-lg hover:bg-slate-50 text-xs text-slate-700 flex items-center gap-2 ${
-                                                          uploadingInvoicePOId ===
-                                                          po.id
+                                                        className={`cursor-pointer px-2 py-1 border border-slate-300 rounded-lg hover:bg-slate-50 text-xs text-slate-700 flex items-center gap-2 ${uploadingInvoicePOId ===
+                                                            po.id
                                                             ? "opacity-50 cursor-not-allowed"
                                                             : ""
-                                                        }`}
+                                                          }`}
                                                         onClick={(e) =>
                                                           e.stopPropagation()
                                                         }
                                                       >
                                                         {uploadingInvoicePOId ===
-                                                        po.id ? (
+                                                          po.id ? (
                                                           <>
                                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-600"></div>
                                                             <span>
@@ -1660,7 +1644,7 @@ export default function page() {
                                                     const receivedQty =
                                                       parseFloat(
                                                         item.quantity_received ||
-                                                          0
+                                                        0
                                                       ) || 0;
                                                     const remainingQty =
                                                       Math.max(
@@ -1708,221 +1692,221 @@ export default function page() {
                                                           <div className="text-xs text-gray-600 space-y-1">
                                                             {item.item
                                                               ?.sheet && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Brand:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .sheet
-                                                                    .brand ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Color:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
+                                                                <>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Brand:
+                                                                    </span>{" "}
+                                                                    {item.item
                                                                       .sheet
-                                                                      .color
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Finish:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
+                                                                      .brand ||
+                                                                      "-"}
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Color:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .sheet
+                                                                        .color
+                                                                    }
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Finish:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .sheet
+                                                                        .finish
+                                                                    }
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Face:
+                                                                    </span>{" "}
+                                                                    {item.item
                                                                       .sheet
-                                                                      .finish
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Face:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .sheet
-                                                                    .face ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Dimensions:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .sheet
-                                                                      .dimensions
-                                                                  }
-                                                                </div>
-                                                              </>
-                                                            )}
+                                                                      .face ||
+                                                                      "-"}
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Dimensions:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .sheet
+                                                                        .dimensions
+                                                                    }
+                                                                  </div>
+                                                                </>
+                                                              )}
                                                             {item.item
                                                               ?.handle && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Brand:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .handle
-                                                                    .brand ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Color:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
+                                                                <>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Brand:
+                                                                    </span>{" "}
+                                                                    {item.item
                                                                       .handle
-                                                                      .color
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Type:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
+                                                                      .brand ||
+                                                                      "-"}
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Color:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .handle
+                                                                        .color
+                                                                    }
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Type:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .handle
+                                                                        .type
+                                                                    }
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Dimensions:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .handle
+                                                                        .dimensions
+                                                                    }
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Material:
+                                                                    </span>{" "}
+                                                                    {item.item
                                                                       .handle
-                                                                      .type
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Dimensions:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .handle
-                                                                      .dimensions
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Material:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .handle
-                                                                    .material ||
-                                                                    "-"}
-                                                                </div>
-                                                              </>
-                                                            )}
+                                                                      .material ||
+                                                                      "-"}
+                                                                  </div>
+                                                                </>
+                                                              )}
                                                             {item.item
                                                               ?.hardware && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Brand:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .hardware
-                                                                    .brand ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Name:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
+                                                                <>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Brand:
+                                                                    </span>{" "}
+                                                                    {item.item
                                                                       .hardware
-                                                                      .name
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Type:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .hardware
-                                                                      .type
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Dimensions:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .hardware
-                                                                      .dimensions
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Sub
-                                                                    Category:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .hardware
-                                                                      .sub_category
-                                                                  }
-                                                                </div>
-                                                              </>
-                                                            )}
+                                                                      .brand ||
+                                                                      "-"}
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Name:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .hardware
+                                                                        .name
+                                                                    }
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Type:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .hardware
+                                                                        .type
+                                                                    }
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Dimensions:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .hardware
+                                                                        .dimensions
+                                                                    }
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Sub
+                                                                      Category:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .hardware
+                                                                        .sub_category
+                                                                    }
+                                                                  </div>
+                                                                </>
+                                                              )}
                                                             {item.item
                                                               ?.accessory && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Name:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .accessory
-                                                                      .name
-                                                                  }
-                                                                </div>
-                                                              </>
-                                                            )}
+                                                                <>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Name:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      item.item
+                                                                        .accessory
+                                                                        .name
+                                                                    }
+                                                                  </div>
+                                                                </>
+                                                              )}
                                                             {item.item
                                                               ?.edging_tape && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Brand:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .edging_tape
-                                                                    .brand ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Color:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .edging_tape
-                                                                    .color ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Finish:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .edging_tape
-                                                                    .finish ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Dimensions:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .edging_tape
-                                                                    .dimensions ||
-                                                                    "-"}
-                                                                </div>
-                                                              </>
-                                                            )}
+                                                                <>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Brand:
+                                                                    </span>{" "}
+                                                                    {item.item
+                                                                      .edging_tape
+                                                                      .brand ||
+                                                                      "-"}
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Color:
+                                                                    </span>{" "}
+                                                                    {item.item
+                                                                      .edging_tape
+                                                                      .color ||
+                                                                      "-"}
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Finish:
+                                                                    </span>{" "}
+                                                                    {item.item
+                                                                      .edging_tape
+                                                                      .finish ||
+                                                                      "-"}
+                                                                  </div>
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Dimensions:
+                                                                    </span>{" "}
+                                                                    {item.item
+                                                                      .edging_tape
+                                                                      .dimensions ||
+                                                                      "-"}
+                                                                  </div>
+                                                                </>
+                                                              )}
                                                             {!item.item
                                                               ?.sheet &&
                                                               !item.item
@@ -1945,8 +1929,8 @@ export default function page() {
                                                             item.item
                                                               ?.description &&
                                                             item.notes !==
-                                                              item.item
-                                                                ?.description && (
+                                                            item.item
+                                                              ?.description && (
                                                               <div className="text-xs text-gray-500 mt-1 flex items-start gap-1">
                                                                 <FileText className="w-3 h-3 mt-0.5" />
                                                                 <span>
@@ -1976,13 +1960,13 @@ export default function page() {
                                                               {remainingQty}
                                                               {item.item
                                                                 ?.measurement_unit && (
-                                                                <span className="text-gray-400 ml-1">
-                                                                  {
-                                                                    item.item
-                                                                      .measurement_unit
-                                                                  }
-                                                                </span>
-                                                              )}
+                                                                  <span className="text-gray-400 ml-1">
+                                                                    {
+                                                                      item.item
+                                                                        .measurement_unit
+                                                                    }
+                                                                  </span>
+                                                                )}
                                                             </div>
                                                             <div className="text-sm text-gray-600">
                                                               <span className="font-medium">
@@ -1991,13 +1975,13 @@ export default function page() {
                                                               {receivedQty}
                                                               {item.item
                                                                 ?.measurement_unit && (
-                                                                <span className="text-gray-400 ml-1">
-                                                                  {
-                                                                    item.item
-                                                                      .measurement_unit
-                                                                  }
-                                                                </span>
-                                                              )}
+                                                                  <span className="text-gray-400 ml-1">
+                                                                    {
+                                                                      item.item
+                                                                        .measurement_unit
+                                                                    }
+                                                                  </span>
+                                                                )}
                                                             </div>
                                                           </div>
                                                         </td>
@@ -2016,9 +2000,9 @@ export default function page() {
                                                               parseFloat(
                                                                 item.quantity
                                                               ) *
-                                                                parseFloat(
-                                                                  item.unit_price
-                                                                )
+                                                              parseFloat(
+                                                                item.unit_price
+                                                              )
                                                             )}
                                                           </span>
                                                         </td>
@@ -2043,119 +2027,15 @@ export default function page() {
 
                     {/* Fixed Pagination Footer */}
                     {paginatedPOs.length > 0 && (
-                      <div className="px-3 py-2 flex-shrink-0 border-t border-slate-200">
-                        <div className="flex items-center justify-between">
-                          {/* Items per page */}
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-slate-600">
-                                Showing
-                              </span>
-                              <div className="relative dropdown-container">
-                                <button
-                                  onClick={() =>
-                                    setShowItemsPerPageDropdown(
-                                      !showItemsPerPageDropdown
-                                    )
-                                  }
-                                  className="cursor-pointer flex items-center gap-2 px-2 py-1 text-xs border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200"
-                                >
-                                  <span>
-                                    {itemsPerPage === 0 ? "All" : itemsPerPage}
-                                  </span>
-                                  <ChevronDown className="h-4 w-4" />
-                                </button>
-                                {showItemsPerPageDropdown && (
-                                  <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                                    <div className="py-1">
-                                      {[10, 25, 50, 100, 0].map((value) => (
-                                        <button
-                                          key={value}
-                                          onClick={() =>
-                                            handleItemsPerPageChange(value)
-                                          }
-                                          className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100"
-                                        >
-                                          {value === 0 ? "All" : value}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <span className="text-xs text-slate-600">
-                                of {totalItems} results
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Pagination buttons */}
-                          {itemsPerPage > 0 && (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => setCurrentPage(1)}
-                                disabled={currentPage === 1}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronsLeft className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setCurrentPage((p) => Math.max(1, p - 1))
-                                }
-                                disabled={currentPage === 1}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronLeft className="h-4 w-4" />
-                              </button>
-                              <div className="flex items-center gap-1">
-                                {Array.from(
-                                  { length: Math.min(5, totalPages) },
-                                  (_, i) => {
-                                    let pageNum;
-                                    if (totalPages <= 5) pageNum = i + 1;
-                                    else if (currentPage <= 3) pageNum = i + 1;
-                                    else if (currentPage >= totalPages - 2)
-                                      pageNum = totalPages - 4 + i;
-                                    else pageNum = currentPage - 2 + i;
-                                    return (
-                                      <button
-                                        key={pageNum}
-                                        onClick={() => setCurrentPage(pageNum)}
-                                        className={`cursor-pointer px-2 py-1 text-xs rounded-md transition-colors duration-200 ${
-                                          currentPage === pageNum
-                                            ? "bg-primary text-white"
-                                            : "text-slate-600 hover:bg-slate-100"
-                                        }`}
-                                      >
-                                        {pageNum}
-                                      </button>
-                                    );
-                                  }
-                                )}
-                              </div>
-                              <button
-                                onClick={() =>
-                                  setCurrentPage((p) =>
-                                    Math.min(totalPages, p + 1)
-                                  )
-                                }
-                                disabled={currentPage === totalPages}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => setCurrentPage(totalPages)}
-                                disabled={currentPage === totalPages}
-                                className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                              >
-                                <ChevronsRight className="h-4 w-4" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <PaginationFooter
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        currentPage={currentPage}
+                        onPageChange={handlePageChange}
+                        onItemsPerPageChange={handleItemsPerPageChange}
+                        itemsPerPageOptions={[25, 50, 100, 0]}
+                        showItemsPerPage={true}
+                      />
                     )}
                   </div>
                 </div>
@@ -2200,16 +2080,13 @@ export default function page() {
                       type="text"
                       value={
                         selectedPOId
-                          ? `${
-                              pos.find((p) => p.id === selectedPOId)
-                                ?.order_no || ""
-                            } - ${
-                              pos.find((p) => p.id === selectedPOId)?.supplier
-                                ?.name || "Unknown Supplier"
-                            } (${
-                              pos.find((p) => p.id === selectedPOId)?.status ||
-                              ""
-                            })`
+                          ? `${pos.find((p) => p.id === selectedPOId)
+                            ?.order_no || ""
+                          } - ${pos.find((p) => p.id === selectedPOId)?.supplier
+                            ?.name || "Unknown Supplier"
+                          } (${pos.find((p) => p.id === selectedPOId)?.status ||
+                          ""
+                          })`
                           : poSearchTerm
                       }
                       onChange={(e) => {
@@ -2243,9 +2120,8 @@ export default function page() {
                       className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                       <ChevronDown
-                        className={`w-5 h-5 transition-transform ${
-                          isPODropdownOpen ? "rotate-180" : ""
-                        }`}
+                        className={`w-5 h-5 transition-transform ${isPODropdownOpen ? "rotate-180" : ""
+                          }`}
                       />
                     </button>
                   </div>
@@ -2566,11 +2442,10 @@ export default function page() {
                                       e.target.value
                                     )
                                   }
-                                  className={`w-24 text-sm text-slate-800 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                    exceedsRemaining
+                                  className={`w-24 text-sm text-slate-800 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${exceedsRemaining
                                       ? "border-red-300 bg-red-50"
                                       : "border-slate-300"
-                                  }`}
+                                    }`}
                                   placeholder="0"
                                 />
                                 {item.item?.measurement_unit && (
@@ -2618,11 +2493,10 @@ export default function page() {
               <button
                 onClick={handleSubmitMaterialsReceived}
                 disabled={!selectedPOId || isSubmitting}
-                className={`cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-200 text-sm font-medium flex items-center gap-2 ${
-                  !selectedPOId || isSubmitting
+                className={`cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-200 text-sm font-medium flex items-center gap-2 ${!selectedPOId || isSubmitting
                     ? "opacity-50 cursor-not-allowed"
                     : ""
-                }`}
+                  }`}
               >
                 {isSubmitting ? (
                   <>

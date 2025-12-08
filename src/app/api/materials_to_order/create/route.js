@@ -25,18 +25,10 @@ export async function POST(request) {
     const data = await request.json();
     const { project_id, notes, createdBy_id, items, lot_ids } = data;
 
-    // Validate required fields
-    if (!project_id) {
-      return NextResponse.json(
-        { status: false, message: "project_id is required" },
-        { status: 400 }
-      );
-    }
-
     // Create materials_to_order first
     const mto = await prisma.materials_to_order.create({
       data: {
-        project_id,
+        ...(project_id && { project_id }),
         notes,
         createdBy_id,
         items:
@@ -108,7 +100,8 @@ export async function POST(request) {
       media: media,
     };
 
-    const logged = await withLogging(request, "materials_to_order", mto.id, "CREATE", `Materials to order created successfully for project: ${completeMto.project.name}`);
+    const projectName = completeMto.project?.name || "No Project";
+    const logged = await withLogging(request, "materials_to_order", mto.id, "CREATE", `Materials to order created successfully${completeMto.project ? ` for project: ${projectName}` : ""}`);
     if (!logged) {
       return NextResponse.json(
         { status: false, message: "Failed to log materials to order creation" },

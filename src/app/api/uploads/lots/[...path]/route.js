@@ -22,6 +22,9 @@ const VALID_TABKINDS = [
   "cabinetry_drawings",
   "changes_to_do",
   "site_measurements",
+  "delivery_photos",
+  "installation_photos",
+  "maintenance_photos",
 ];
 
 // Mapping lowercase to proper enum format for database
@@ -32,6 +35,9 @@ const TABKIND_TO_ENUM = {
   cabinetry_drawings: "CABINETRY_DRAWINGS",
   changes_to_do: "CHANGES_TO_DO",
   site_measurements: "SITE_MEASUREMENTS",
+  delivery_photos: "DELIVERY_PHOTOS",
+  installation_photos: "INSTALLATION_PHOTOS",
+  maintenance_photos: "MAINTENANCE_PHOTOS",
 };
 
 // Function to determine FileKind based on mime type
@@ -135,7 +141,6 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Await params before accessing its properties (Next.js 15 requirement)
     const resolvedParams = await params;
     const segments = ensureArray(resolvedParams?.path);
     if (segments.length < 3) {
@@ -148,7 +153,7 @@ export async function POST(request, { params }) {
         { status: 400 }
       );
     }
-    const [projectId, lotId, tabKind, filenameFromUrl] = segments;
+    const [projectId, lotId, tabKind] = segments;
 
     // Validate TabKind is one of the allowed values
     if (!VALID_TABKINDS.includes(tabKind)) {

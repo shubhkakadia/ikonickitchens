@@ -46,6 +46,184 @@ import MaterialsToOrder from "../components/MaterialsToOrder";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+// File item component with self-contained notes state (prevents parent re-renders from causing focus loss)
+const FileItemWithNotes = ({
+  file,
+  isSmall,
+  handleViewExistingFile,
+  openDeleteFileConfirmation,
+  isDeletingFile,
+  getToken,
+}) => {
+  const [notes, setNotes] = useState(file.notes || "");
+  const [saveStatus, setSaveStatus] = useState("idle"); // "idle" | "saving" | "saved"
+  const debounceTimer = useRef(null);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
+
+  // Save file notes to API
+  const saveFileNotes = async (notesValue) => {
+    if (!file.id) return;
+
+    try {
+      setSaveStatus("saving");
+
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        setSaveStatus("idle");
+        return;
+      }
+
+      const response = await axios.patch(
+        `/api/lot_file/${file.id}`,
+        { notes: notesValue },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status) {
+        setSaveStatus("saved");
+        setTimeout(() => {
+          setSaveStatus("idle");
+        }, 2000);
+      } else {
+        toast.error(response.data.message || "Failed to save file notes");
+        setSaveStatus("idle");
+      }
+    } catch (error) {
+      console.error("Error saving file notes:", error);
+      toast.error("Failed to save file notes. Please try again.");
+      setSaveStatus("idle");
+    }
+  };
+
+  // Debounced handler for notes changes
+  const handleNotesChange = (value) => {
+    setNotes(value);
+
+    // Clear existing timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    // Set new timer (1 second debounce)
+    debounceTimer.current = setTimeout(() => {
+      saveFileNotes(value);
+    }, 1000);
+  };
+
+  return (
+    <div className="gap-2 flex items-center">
+      <div
+        className="relative group cursor-pointer"
+        onClick={() => handleViewExistingFile(file)}
+      >
+        <div className="w-full aspect-[4/3] rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50 hover:bg-slate-100 transition-colors">
+          {file.mime_type.includes("image") ? (
+            <Image
+              height={100}
+              width={100}
+              src={`/${file.url}`}
+              alt={file.filename}
+              className="w-full h-full object-cover rounded-lg"
+            />
+          ) : file.mime_type.includes("video") ? (
+            <video
+              src={`/${file.url}`}
+              className="w-full h-full object-cover rounded-lg"
+              muted
+              playsInline
+            />
+          ) : (
+            <div
+              className={`w-full h-full flex items-center justify-center rounded-lg ${
+                file.mime_type.includes("pdf") ? "bg-red-50" : "bg-green-50"
+              }`}
+            >
+              {file.mime_type.includes("pdf") ? (
+                <FileText
+                  className={`${isSmall ? "w-6 h-6" : "w-8 h-8"} text-red-600`}
+                />
+              ) : (
+                <File
+                  className={`${isSmall ? "w-6 h-6" : "w-8 h-8"} text-green-600`}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* File Info */}
+        <div className="space-y-1">
+          <p
+            className="text-xs font-medium text-slate-700 truncate"
+            title={file.filename}
+          >
+            {file.filename}
+          </p>
+          <p className="text-xs text-slate-500">
+            {(file.size / 1024 / 1024).toFixed(2)} MB
+          </p>
+        </div>
+
+        {/* Delete Button */}
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openDeleteFileConfirmation(file);
+            }}
+            disabled={isDeletingFile === file.id}
+            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+            title="Delete file"
+          >
+            {isDeletingFile === file.id ? (
+              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+            ) : (
+              <Trash className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
+      </div>
+      <div className="relative w-full">
+        <textarea
+          rows="6"
+          value={notes}
+          onChange={(e) => handleNotesChange(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full border border-slate-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
+          placeholder="Add notes for this file..."
+        />
+        {/* Save status indicator */}
+        {saveStatus === "saving" && (
+          <span className="absolute bottom-2 right-2 text-xs text-slate-500 font-medium flex items-center gap-1">
+            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-500"></div>
+            Saving...
+          </span>
+        )}
+        {saveStatus === "saved" && (
+          <span className="absolute bottom-2 right-2 text-xs text-green-600 font-medium flex items-center gap-1">
+            <Check className="w-3 h-3" />
+            Saved!
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function page() {
   const { id } = useParams();
   const { getToken } = useAuth();
@@ -66,6 +244,7 @@ export default function page() {
   const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [activeSitePhotoSubtab, setActiveSitePhotoSubtab] = useState("delivery");
   const [selectedLotData, setSelectedLotData] = useState(null);
 
   // Client assignment states
@@ -103,6 +282,7 @@ export default function page() {
   // Notes auto-save debouncing states
   const [notesSavedIndicators, setNotesSavedIndicators] = useState(false);
   const notesDebounceTimer = useRef(null);
+
 
   // Status dropdown state
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
@@ -688,6 +868,16 @@ export default function page() {
 
   // Tab to enum mapping
   const getTabEnum = (tabId) => {
+    // Handle site_photos subtabs
+    if (tabId === "site_photos") {
+      const subtabEnumMap = {
+        delivery: "DELIVERY_PHOTOS",
+        installation: "INSTALLATION_PHOTOS",
+        maintenance: "MAINTENANCE_PHOTOS",
+      };
+      return subtabEnumMap[activeSitePhotoSubtab] || "DELIVERY_PHOTOS";
+    }
+
     const tabEnumMap = {
       architecture_drawings: "ARCHITECTURE_DRAWINGS",
       appliances_specifications: "APPLIANCES_SPECIFICATIONS",
@@ -695,6 +885,7 @@ export default function page() {
       changes_to_do: "CHANGES_TO_DO",
       site_measurements: "SITE_MEASUREMENTS",
       material_selection: "MATERIAL_SELECTION",
+      site_photos: "SITE_PHOTOS",
     };
     return tabEnumMap[tabId] || "";
   };
@@ -707,6 +898,10 @@ export default function page() {
       CABINETRY_DRAWINGS: "cabinetry_drawings",
       CHANGES_TO_DO: "changes_to_do",
       SITE_MEASUREMENTS: "site_measurements",
+      SITE_PHOTOS: "site_photos",
+      DELIVERY_PHOTOS: "delivery_photos",
+      INSTALLATION_PHOTOS: "installation_photos",
+      MAINTENANCE_PHOTOS: "maintenance_photos",
     };
     return categoryMap[category] || category.toLowerCase();
   };
@@ -862,24 +1057,9 @@ export default function page() {
     }
   };
 
-  // Existing Files Display Component with Categorization
-  const ExistingFilesSection = () => {
+  // Existing Files Display - Render function (not a component to avoid remounting)
+  const renderExistingFilesSection = () => {
     const existingFiles = getCurrentTabFiles();
-
-    // State for collapsed/expanded sections
-    const [expandedSections, setExpandedSections] = React.useState({
-      images: false,
-      videos: false,
-      pdfs: false,
-      others: false,
-    });
-
-    const toggleSection = (section) => {
-      setExpandedSections((prev) => ({
-        ...prev,
-        [section]: !prev[section],
-      }));
-    };
 
     // Categorize files by type
     const categorizeFiles = () => {
@@ -905,123 +1085,33 @@ export default function page() {
 
     const { images, videos, pdfs, others } = categorizeFiles();
 
-    // File Category Section Component
-    const FileCategorySection = ({
-      title,
-      files,
-      isSmall = false,
-      sectionKey,
-    }) => {
+    // Render a file category
+    const renderFileCategory = (title, files, isSmall, sectionKey) => {
       if (files.length === 0) return null;
 
-      const isExpanded = expandedSections[sectionKey];
-
       return (
-        <div className="mb-4">
-          {/* Category Header with Toggle */}
-          <button
-            onClick={() => toggleSection(sectionKey)}
-            className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3 hover:text-slate-900 transition-colors"
-          >
+        <div key={sectionKey} className="mb-4">
+          {/* Category Header */}
+          <div className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3">
             <span>
               {title} ({files.length})
             </span>
-            <div
-              className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
-                }`}
-            >
-              <ChevronDown className="w-4 h-4" />
-            </div>
-          </button>
+          </div>
 
-          {/* Collapsible Content */}
-          {isExpanded && (
-            <div className="flex flex-wrap gap-3">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  onClick={() => handleViewExistingFile(file)}
-                  title="Click to view file"
-                  className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
-                    }`}
-                >
-                  {/* File Preview */}
-                  <div
-                    className={`w-full ${isSmall ? "aspect-[4/3]" : "aspect-square"
-                      } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
-                  >
-                    {file.mime_type.includes("image") ? (
-                      <Image
-                        height={100}
-                        width={100}
-                        src={`/${file.url}`}
-                        alt={file.filename}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    ) : file.mime_type.includes("video") ? (
-                      <video
-                        src={`/${file.url}`}
-                        className="w-full h-full object-cover rounded-lg"
-                        muted
-                        playsInline
-                      />
-                    ) : (
-                      <div
-                        className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type.includes("pdf")
-                            ? "bg-red-50"
-                            : "bg-green-50"
-                          }`}
-                      >
-                        {file.mime_type.includes("pdf") ? (
-                          <FileText
-                            className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
-                              } text-red-600`}
-                          />
-                        ) : (
-                          <File
-                            className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
-                              } text-green-600`}
-                          />
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* File Info */}
-                  <div className="space-y-1">
-                    <p
-                      className="text-xs font-medium text-slate-700 truncate"
-                      title={file.filename}
-                    >
-                      {file.filename}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-
-                  {/* Delete Button */}
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openDeleteFileConfirmation(file);
-                      }}
-                      disabled={isDeletingFile === file.id}
-                      className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
-                      title="Delete file"
-                    >
-                      {isDeletingFile === file.id ? (
-                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
-                      ) : (
-                        <Trash className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Files Grid */}
+          <div className="gap-3 grid grid-cols-2 items-center">
+            {files.map((file) => (
+              <FileItemWithNotes
+                key={file.id}
+                file={file}
+                isSmall={isSmall}
+                handleViewExistingFile={handleViewExistingFile}
+                openDeleteFileConfirmation={openDeleteFileConfirmation}
+                isDeletingFile={isDeletingFile}
+                getToken={getToken}
+              />
+            ))}
+          </div>
         </div>
       );
     };
@@ -1034,37 +1124,10 @@ export default function page() {
 
         {existingFiles.length > 0 ? (
           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-            {/* Images Section */}
-            <FileCategorySection
-              title="Images"
-              files={images}
-              isSmall={false}
-              sectionKey="images"
-            />
-
-            {/* Videos Section */}
-            <FileCategorySection
-              title="Videos"
-              files={videos}
-              isSmall={false}
-              sectionKey="videos"
-            />
-
-            {/* PDFs Section - Smaller cards */}
-            <FileCategorySection
-              title="PDFs"
-              files={pdfs}
-              isSmall={true}
-              sectionKey="pdfs"
-            />
-
-            {/* Other Files Section - Smaller cards */}
-            <FileCategorySection
-              title="Other Files"
-              files={others}
-              isSmall={true}
-              sectionKey="others"
-            />
+            {renderFileCategory("Images", images, false, "images")}
+            {renderFileCategory("Videos", videos, false, "videos")}
+            {renderFileCategory("PDFs", pdfs, true, "pdfs")}
+            {renderFileCategory("Other Files", others, true, "others")}
           </div>
         ) : (
           <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
@@ -1080,7 +1143,7 @@ export default function page() {
   const UploadSection = () => (
     <div>
       {/* Display Existing Files First */}
-      <ExistingFilesSection />
+      {renderExistingFilesSection()}
 
       {/* Upload New Files Section */}
       <div className="space-y-4">
@@ -1133,18 +1196,11 @@ export default function page() {
         {/* Notes Section */}
         <div>
           <h3 className="text-lg font-semibold text-slate-700 mb-3">Notes</h3>
-          {/* <textarea
-            value={selectedLotData?.tabs.find((tab) => tab.tab.toLowerCase() === activeTab.toLowerCase())?.notes || ""}
-            onChange={(e) => setUploadNotes(e.target.value)}
-            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent transition-all duration-200 resize-none bg-white hover:border-slate-400"
-            placeholder="Add notes about the files..."
-            rows="4"
-          /> */}
         </div>
         <TextEditor
           initialContent={
             selectedLotData?.tabs.find(
-              (tab) => tab.tab.toLowerCase() === activeTab.toLowerCase()
+              (tab) => tab.tab.toLowerCase() === getTabEnum(activeTab).toLowerCase()
             )?.notes || ""
           }
           onSave={(content) => {
@@ -1232,9 +1288,10 @@ export default function page() {
         return;
       }
       let response;
+      const tabEnum = getTabEnum(activeTab);
       // if lot_tab exists, update it, otherwise create it
       const lotTab = selectedLotData.tabs.find(
-        (tab) => tab.tab.toLowerCase() === activeTab.toLowerCase()
+        (tab) => tab.tab.toLowerCase() === tabEnum.toLowerCase()
       );
       if (lotTab) {
         response = await axios.patch(
@@ -1247,7 +1304,7 @@ export default function page() {
           `/api/lot_tab_notes/create`,
           {
             lot_id: selectedLotData.lot_id,
-            tab: activeTab.toUpperCase(),
+            tab: tabEnum,
             notes: content,
           },
           { headers: { Authorization: `Bearer ${sessionToken}` } }
@@ -1261,7 +1318,7 @@ export default function page() {
         // Update local state instead of refetching to prevent page reload
         // Only update if we need to (new tab created) or if ID changed
         const existingTab = selectedLotData.tabs.find(
-          (tab) => tab.tab.toLowerCase() === activeTab.toLowerCase()
+          (tab) => tab.tab.toLowerCase() === tabEnum.toLowerCase()
         );
         const isNewTab = !existingTab;
         const needsIdUpdate =
@@ -1275,7 +1332,7 @@ export default function page() {
 
             const updatedTabs = [...prevData.tabs];
             const existingTabIndex = updatedTabs.findIndex(
-              (tab) => tab.tab.toLowerCase() === activeTab.toLowerCase()
+              (tab) => tab.tab.toLowerCase() === tabEnum.toLowerCase()
             );
 
             if (existingTabIndex >= 0) {
@@ -1294,7 +1351,7 @@ export default function page() {
               updatedTabs.push({
                 id: response.data.data?.id,
                 lot_id: selectedLotData.lot_id,
-                tab: activeTab.toUpperCase(),
+                tab: tabEnum,
                 notes: content,
               });
             }
@@ -1513,8 +1570,8 @@ export default function page() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`cursor-pointer py-2 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                                ? "border-secondary text-secondary"
-                                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                              ? "border-secondary text-secondary"
+                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
                               }`}
                           >
                             {tab.label}
@@ -1586,9 +1643,9 @@ export default function page() {
                                                 )
                                               }
                                               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${selectedLotData.status ===
-                                                  "COMPLETED"
-                                                  ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
-                                                  : "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200"
+                                                "COMPLETED"
+                                                ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
+                                                : "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200"
                                                 }`}
                                             >
                                               <span>
@@ -1599,8 +1656,8 @@ export default function page() {
                                               </span>
                                               <ChevronDown
                                                 className={`w-3 h-3 transition-transform ${showStatusDropdown
-                                                    ? "rotate-180"
-                                                    : ""
+                                                  ? "rotate-180"
+                                                  : ""
                                                   }`}
                                               />
                                             </button>
@@ -1611,9 +1668,9 @@ export default function page() {
                                                     handleStatusUpdate("ACTIVE")
                                                   }
                                                   className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status ===
-                                                      "ACTIVE"
-                                                      ? "bg-blue-50 text-blue-800"
-                                                      : "text-slate-700"
+                                                    "ACTIVE"
+                                                    ? "bg-blue-50 text-blue-800"
+                                                    : "text-slate-700"
                                                     }`}
                                                 >
                                                   Active
@@ -1625,9 +1682,9 @@ export default function page() {
                                                     )
                                                   }
                                                   className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status ===
-                                                      "COMPLETED"
-                                                      ? "bg-green-50 text-green-800"
-                                                      : "text-slate-700"
+                                                    "COMPLETED"
+                                                    ? "bg-green-50 text-green-800"
+                                                    : "text-slate-700"
                                                     }`}
                                                 >
                                                   Completed
@@ -1639,9 +1696,9 @@ export default function page() {
                                         {isEditing && (
                                           <span
                                             className={`px-2.5 py-1.5 rounded-full text-xs font-medium border ${selectedLotData.status ===
-                                                "COMPLETED"
-                                                ? "bg-green-100 text-green-800 border-green-200"
-                                                : "bg-blue-100 text-blue-800 border-blue-200"
+                                              "COMPLETED"
+                                              ? "bg-green-100 text-green-800 border-green-200"
+                                              : "bg-blue-100 text-blue-800 border-blue-200"
                                               }`}
                                           >
                                             {selectedLotData.status ===
@@ -2010,6 +2067,66 @@ export default function page() {
                           project={project}
                           selectedLot={selectedLot}
                         />
+                      </div>
+                    )}
+                  {project.lots &&
+                    project.lots.length > 0 &&
+                    activeTab === "site_photos" && (
+                      <div>
+
+                        {/* Subtabs Navigation */}
+                        <div className="mb-6">
+                          <div className="border-b border-slate-200">
+                            <nav className="-mb-px flex space-x-6">
+                              <button
+                                onClick={() => setActiveSitePhotoSubtab("delivery")}
+                                className={`cursor-pointer py-2 border-b-2 font-medium text-sm transition-colors ${activeSitePhotoSubtab === "delivery"
+                                  ? "border-secondary text-secondary"
+                                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                                  }`}
+                              >
+                                Delivery Photos
+                              </button>
+                              <button
+                                onClick={() => setActiveSitePhotoSubtab("installation")}
+                                className={`cursor-pointer py-2 border-b-2 font-medium text-sm transition-colors ${activeSitePhotoSubtab === "installation"
+                                  ? "border-secondary text-secondary"
+                                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                                  }`}
+                              >
+                                Installation Photos
+                              </button>
+                              <button
+                                onClick={() => setActiveSitePhotoSubtab("maintenance")}
+                                className={`cursor-pointer py-2 border-b-2 font-medium text-sm transition-colors ${activeSitePhotoSubtab === "maintenance"
+                                  ? "border-secondary text-secondary"
+                                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                                  }`}
+                              >
+                                Maintenance Photos
+                              </button>
+                            </nav>
+                          </div>
+                        </div>
+
+                        {/* Subtab Content */}
+                        <div>
+                          {activeSitePhotoSubtab === "delivery" && (
+                            <div>
+                              <UploadSection />
+                            </div>
+                          )}
+                          {activeSitePhotoSubtab === "installation" && (
+                            <div>
+                              <UploadSection />
+                            </div>
+                          )}
+                          {activeSitePhotoSubtab === "maintenance" && (
+                            <div>
+                              <UploadSection />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                 </div>

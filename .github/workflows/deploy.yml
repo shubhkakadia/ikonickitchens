@@ -23,7 +23,7 @@ jobs:
             REMOTE_PATH="/home/ikonic-server/ikonickitchens-dev"
             ENV_DATA="${{ secrets.DEV_ENV }}"
             PM2_NAME="ikonickitchens-dev"
-            PORT=4001
+            PORT=4000
             BACKUP=false
           else
             echo "Deploying to PRODUCTION SERVER"

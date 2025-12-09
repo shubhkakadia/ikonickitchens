@@ -140,7 +140,7 @@ export function generateUniqueBaseName(prefix = "") {
  */
 export async function uploadFile(file, options = {}) {
   const {
-    uploadDir = "uploads",
+    uploadDir = "mediauploads",
     subDir = "",
     filenameStrategy = "unique",
     idPrefix = "",

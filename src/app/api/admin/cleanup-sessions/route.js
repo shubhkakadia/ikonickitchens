@@ -8,7 +8,9 @@ export const POST = withAdminAuth(async (request, sessionData) => {
     const result = await cleanupSessionsAPI(request);
 
     return NextResponse.json(result, {
-      status: result.status ? 200 : 500,
+      status: 200,
+      message: result.message,
+      data: result.data,
     });
   } catch (error) {
     console.error("Session cleanup route error:", error);
@@ -16,7 +18,6 @@ export const POST = withAdminAuth(async (request, sessionData) => {
       {
         status: false,
         message: "Internal server error",
-        error: error.message,
       },
       { status: 500 }
     );

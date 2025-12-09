@@ -1,28 +1,14 @@
 import { NextResponse } from "next/server";
 import path from "path";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const po = await prisma.purchase_order.findUnique({
       where: { id },
@@ -61,8 +47,9 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/purchase_order/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -70,19 +57,8 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
 
     // Fetch existing PO to enforce immutable fields and get defaults (e.g., order_no for file naming)
@@ -294,20 +270,13 @@ export async function PATCH(request, { params }) {
             },
           });
 
-          // Update item inventory quantity (add new delivery to existing quantity)
-          const itemQuantityResult = await prisma.item.findUnique({
-            where: { item_id: existingItem.item_id },
-            select: { quantity: true },
-          });
-
-          const currentItemQuantity = parseInt(
-            itemQuantityResult?.quantity || 0,
-            10
-          );
+          // Update item inventory quantity atomically (add new delivery to existing quantity)
           const itemUpdateOp = prisma.item.update({
             where: { item_id: existingItem.item_id },
             data: {
-              quantity: currentItemQuantity + newDelivery,
+              quantity: {
+                increment: newDelivery,
+              },
             },
           });
 
@@ -427,24 +396,87 @@ export async function PATCH(request, { params }) {
     if (uploadedInvoiceFileId)
       updateData.invoice_url_id = uploadedInvoiceFileId;
 
+    // Handle items update with proper upsert logic to preserve quantity_received
     if (items !== undefined) {
-      updateData.items = {
-        deleteMany: {},
-        create:
-          Array.isArray(items) && items.length > 0
-            ? items.map((item) => ({
-                item_id: item.item_id,
-                quantity: Number(item.quantity),
-                notes: item.notes,
-                unit_price:
-                  item.unit_price !== undefined &&
-                  item.unit_price !== null &&
-                  item.unit_price !== ""
-                    ? Number(item.unit_price)
-                    : undefined,
-              }))
-            : [],
-      };
+      // Use transaction to ensure atomic updates
+      await prisma.$transaction(async (tx) => {
+        if (Array.isArray(items) && items.length > 0) {
+          // Get existing items for this purchase order
+          const existingItems = await tx.purchase_order_item.findMany({
+            where: { order_id: id },
+          });
+
+          // Create maps for efficient lookup
+          const existingById = new Map(
+            existingItems.map((item) => [item.id, item])
+          );
+          const existingByItemId = new Map(
+            existingItems.map((item) => [item.item_id, item])
+          );
+          const incomingItemIds = new Set();
+
+          // Process each incoming item
+          for (const item of items) {
+            const itemData = {
+              item_id: item.item_id,
+              quantity: Number(item.quantity),
+              notes: item.notes || null,
+              unit_price:
+                item.unit_price !== undefined &&
+                item.unit_price !== null &&
+                item.unit_price !== ""
+                  ? Number(item.unit_price)
+                  : null,
+            };
+
+            // Check if item exists by ID (preferred) or by item_id
+            const existingItem =
+              item.id && existingById.has(item.id)
+                ? existingById.get(item.id)
+                : existingByItemId.get(item.item_id);
+
+            if (existingItem) {
+              // Update existing item, preserving quantity_received
+              incomingItemIds.add(existingItem.id);
+              await tx.purchase_order_item.update({
+                where: { id: existingItem.id },
+                data: {
+                  ...itemData,
+                  // Preserve quantity_received - don't overwrite it
+                  quantity_received: existingItem.quantity_received || 0,
+                },
+              });
+            } else {
+              // Create new item
+              const newItem = await tx.purchase_order_item.create({
+                data: {
+                  ...itemData,
+                  order_id: id,
+                  quantity_received: 0, // New items start with 0 received
+                },
+              });
+              incomingItemIds.add(newItem.id);
+            }
+          }
+
+          // Delete items that are no longer in the incoming list
+          const itemsToDelete = existingItems.filter(
+            (item) => !incomingItemIds.has(item.id)
+          );
+          if (itemsToDelete.length > 0) {
+            await tx.purchase_order_item.deleteMany({
+              where: {
+                id: { in: itemsToDelete.map((item) => item.id) },
+              },
+            });
+          }
+        } else {
+          // Empty array - delete all items
+          await tx.purchase_order_item.deleteMany({
+            where: { order_id: id },
+          });
+        }
+      });
     }
 
     const updated = await prisma.purchase_order.update({
@@ -489,22 +521,21 @@ export async function PATCH(request, { params }) {
       `Purchase order updated successfully for project: ${updated.mto?.project?.name}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log purchase order update" },
-        { status: 500 }
-      );
+      console.error(`Failed to log purchase order update: ${id}`);
     }
     return NextResponse.json(
       {
         status: true,
         message: "Purchase order updated successfully",
         data: updated,
+        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in PATCH /api/purchase_order/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -512,19 +543,8 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const po = await prisma.purchase_order.delete({
       where: { id },
@@ -544,9 +564,15 @@ export async function DELETE(request, { params }) {
       `Purchase order deleted successfully for project: ${po.mto?.project?.name}`
     );
     if (!logged) {
+      console.error(`Failed to log purchase order deletion: ${id}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log purchase order deletion" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Purchase order deleted successfully",
+          data: po,
+          warning: "Note: Deletion succeeded but logging failed"
+        },
+        { status: 200 }
       );
     }
     return NextResponse.json(
@@ -558,8 +584,9 @@ export async function DELETE(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in DELETE /api/purchase_order/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

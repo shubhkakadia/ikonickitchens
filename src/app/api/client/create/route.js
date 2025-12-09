@@ -1,26 +1,12 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const {
       client_type,
       client_name,
@@ -54,7 +40,6 @@ export async function POST(request) {
         client_notes,
       },
     });
-    console.log("client");
     const logged = await withLogging(
       request,
       "client",
@@ -63,19 +48,25 @@ export async function POST(request) {
       `Client created successfully: ${client.client_name}`
     );
     if (!logged) {
+      console.error(`Failed to log client creation: ${client.client_id} - ${client.client_name}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log client creation" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Client created successfully", 
+          data: client,
+          warning: "Note: Creation succeeded but logging failed"
+        },
+        { status: 201 }
       );
     }
-    console.log("logged");
     return NextResponse.json(
       { status: true, message: "Client created successfully", data: client },
       { status: 201 }
     );
   } catch (error) {
+    console.error("Error in POST /api/client/create:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

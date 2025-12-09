@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../lib/validators/authFromToken";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+// Extend dayjs with timezone support
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // Helper function to convert month name/number to two-digit format
 function normalizeMonth(month) {
@@ -88,6 +92,11 @@ function buildMonthYearFilter(year, month) {
   return [];
 }
 
+function adelaideLocalToUTC(dateString) {
+  const adelaideDate = dayjs.tz(`${dateString}T00:00:00`, "Australia/Adelaide");
+  return adelaideDate.utc().toDate();
+}
+
 // Helper function to build date range filter for DateTime fields
 function buildDateRangeFilter(year, month) {
   const isYearAll = !year || year.toString().toLowerCase() === "all";
@@ -99,33 +108,24 @@ function buildDateRangeFilter(year, month) {
     return {};
   }
 
-  // If year is "all" but month is specific, we can't easily filter by date range
-  // For this case, we'll return null to indicate special handling is needed
-  // (This case is complex and would require raw SQL or multiple queries)
   if (isYearAll && !isMonthAll) {
-    return null; // Special case - skip date filtering for this scenario
+    return null;
   }
 
-  // If year is specific and month is "all", filter by entire year
   if (!isYearAll && isMonthAll) {
     return {
-      gte: new Date(`${year}-01-01T00:00:00.000Z`),
-      lt: new Date(`${parseInt(year) + 1}-01-01T00:00:00.000Z`),
+      gte: adelaideLocalToUTC(`${year}-01-01`),
+      lt: adelaideLocalToUTC(`${parseInt(year) + 1}-01-01`),
     };
   }
 
-  // If both are specific, filter by specific month and year
   if (!isYearAll && !isMonthAll) {
     const monthNum = parseInt(normalizedMonth, 10);
-    const startDate = new Date(`${year}-${normalizedMonth}-01T00:00:00.000Z`);
-    const endDate = new Date(
-      monthNum === 12
-        ? `${parseInt(year) + 1}-01-01T00:00:00.000Z`
-        : `${year}-${String(monthNum + 1).padStart(2, "0")}-01T00:00:00.000Z`
-    );
+    const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+    const nextYear = monthNum === 12 ? parseInt(year) + 1 : year;
     return {
-      gte: startDate,
-      lt: endDate,
+      gte: adelaideLocalToUTC(`${year}-${normalizedMonth}-01`),
+      lt: adelaideLocalToUTC(`${nextYear}-${String(nextMonth).padStart(2, "0")}-01`),
     };
   }
 
@@ -134,19 +134,8 @@ function buildDateRangeFilter(year, month) {
 
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     // Parse request body
     const body = await request.json();
@@ -169,7 +158,7 @@ export async function POST(request) {
       topstagesDue: {},
     };
 
-    // Build where clause for active projects (filter by lot startDate or createdAt)
+    // Build all where clauses first (no database calls yet)
     const activeProjectsWhere = {
       lots: {
         some: {
@@ -184,11 +173,6 @@ export async function POST(request) {
       },
     };
 
-    dashboardData.activeProjects = await prisma.project.count({
-      where: activeProjectsWhere,
-    });
-
-    // Build where clause for active lots (filter by startDate or createdAt)
     const activeLotsWhere = {
       status: "ACTIVE",
       ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
@@ -199,11 +183,6 @@ export async function POST(request) {
       }),
     };
 
-    dashboardData.activeLots = await prisma.lot.count({
-      where: activeLotsWhere,
-    });
-
-    // Build where clause for active MTOs (filter by createdAt)
     const activeMTOsWhere = {
       status: {
         in: ["DRAFT", "PARTIALLY_ORDERED"],
@@ -213,11 +192,6 @@ export async function POST(request) {
       }),
     };
 
-    dashboardData.activeMTOs = await prisma.materials_to_order.count({
-      where: activeMTOsWhere,
-    });
-
-    // Build where clause for active purchase orders (filter by createdAt or ordered_at)
     const activePurchaseOrdersWhere = {
       status: {
         in: ["DRAFT", "ORDERED", "PARTIALLY_RECEIVED"],
@@ -229,10 +203,6 @@ export async function POST(request) {
         ],
       }),
     };
-
-    dashboardData.activePurchaseOrders = await prisma.purchase_order.count({
-      where: activePurchaseOrdersWhere,
-    });
 
     // Filter supplier statements based on month and year
     const monthYearFilter = buildMonthYearFilter(year, month);
@@ -260,20 +230,6 @@ export async function POST(request) {
     }
     // If both are "all", totalSpentWhere remains empty object (no filter)
 
-    dashboardData.totalSpent = await prisma.supplier_statement.findMany({
-      where: totalSpentWhere,
-      select: {
-        month_year: true,
-        supplier: {
-          select: {
-            name: true,
-          },
-        },
-        amount: true,
-      },
-    });
-
-    // Build where clause for lots by stage (filter by stage startDate or endDate)
     const lotsByStageWhere = {
       lot: {
         status: "ACTIVE",
@@ -286,27 +242,12 @@ export async function POST(request) {
       }),
     };
 
-    // lot count by stages
-    dashboardData.lotsByStage = await prisma.stage.groupBy({
-      by: ["name"],
-      where: lotsByStageWhere,
-      _count: true,
-    });
-
-    // Build where clause for MTOs by status (filter by createdAt)
     const mtosByStatusWhere = {
       ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
         createdAt: dateRangeFilter,
       }),
     };
 
-    dashboardData.MTOsByStatus = await prisma.materials_to_order.groupBy({
-      by: ["status"],
-      where: mtosByStatusWhere,
-      _count: true,
-    });
-
-    // Build where clause for purchase orders by status (filter by createdAt or ordered_at)
     const posByStatusWhere = {
       ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
         OR: [
@@ -316,43 +257,12 @@ export async function POST(request) {
       }),
     };
 
-    dashboardData.purchaseOrdersByStatus = await prisma.purchase_order.groupBy({
-      by: ["status"],
-      where: posByStatusWhere,
-      _count: true,
-    });
-
-    // Build where clause for stock transactions (filter by createdAt)
     const stockTransactionsWhere = {
       ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
         createdAt: dateRangeFilter,
       }),
     };
 
-    // most amount of stock transactions
-    dashboardData.top10itemsCount = await prisma.stock_transaction.groupBy({
-      by: ["item_id"],
-      where: stockTransactionsWhere,
-      _count: true,
-    });
-
-    dashboardData.top10items = await prisma.item.findMany({
-      where: {
-        item_id: {
-          in: dashboardData.top10itemsCount.map((item) => item.item_id),
-        },
-      },
-      include: {
-        image: true,
-        sheet: true,
-        handle: true,
-        hardware: true,
-        accessory: true,
-        edging_tape: true,
-      },
-    });
-
-    // Build where clause for stages due (filter by endDate)
     const topstagesDueWhere = {
       status: "IN_PROGRESS",
       lot: {
@@ -363,12 +273,99 @@ export async function POST(request) {
       }),
     };
 
-    dashboardData.topstagesDue = await prisma.stage.findMany({
-      where: topstagesDueWhere,
-      orderBy: {
-        endDate: "asc",
-      },
-    });
+    // Execute all independent queries in parallel
+    const [
+      activeProjects,
+      activeLots,
+      activeMTOs,
+      activePurchaseOrders,
+      totalSpent,
+      lotsByStage,
+      MTOsByStatus,
+      purchaseOrdersByStatus,
+      allItemsCount,
+      topstagesDue,
+    ] = await Promise.all([
+      prisma.project.count({ where: activeProjectsWhere }),
+      prisma.lot.count({ where: activeLotsWhere }),
+      prisma.materials_to_order.count({ where: activeMTOsWhere }),
+      prisma.purchase_order.count({ where: activePurchaseOrdersWhere }),
+      prisma.supplier_statement.findMany({
+        where: totalSpentWhere,
+        select: {
+          month_year: true,
+          supplier: {
+            select: {
+              name: true,
+            },
+          },
+          amount: true,
+        },
+      }),
+      prisma.stage.groupBy({
+        by: ["name"],
+        where: lotsByStageWhere,
+        _count: true,
+      }),
+      prisma.materials_to_order.groupBy({
+        by: ["status"],
+        where: mtosByStatusWhere,
+        _count: true,
+      }),
+      prisma.purchase_order.groupBy({
+        by: ["status"],
+        where: posByStatusWhere,
+        _count: true,
+      }),
+      prisma.stock_transaction.groupBy({
+        by: ["item_id"],
+        where: stockTransactionsWhere,
+        _count: true,
+      }),
+      prisma.stage.findMany({
+        where: topstagesDueWhere,
+        orderBy: {
+          endDate: "asc",
+        },
+      }),
+    ]);
+
+    // Assign results to dashboard data
+    dashboardData.activeProjects = activeProjects;
+    dashboardData.activeLots = activeLots;
+    dashboardData.activeMTOs = activeMTOs;
+    dashboardData.activePurchaseOrders = activePurchaseOrders;
+    dashboardData.totalSpent = totalSpent;
+    dashboardData.lotsByStage = lotsByStage;
+    dashboardData.MTOsByStatus = MTOsByStatus;
+    dashboardData.purchaseOrdersByStatus = purchaseOrdersByStatus;
+    dashboardData.topstagesDue = topstagesDue;
+
+    // Process top 10 items (depends on allItemsCount)
+    const top10itemsCount = allItemsCount
+      .sort((a, b) => b._count - a._count)
+      .slice(0, 10);
+
+    dashboardData.top10itemsCount = top10itemsCount;
+
+    // Only fetch details for the top 10 items
+    dashboardData.top10items = top10itemsCount.length > 0
+      ? await prisma.item.findMany({
+        where: {
+          item_id: {
+            in: top10itemsCount.map((item) => item.item_id),
+          },
+        },
+        include: {
+          image: true,
+          sheet: true,
+          handle: true,
+          hardware: true,
+          accessory: true,
+          edging_tape: true,
+        },
+      })
+      : [];
 
     return NextResponse.json(
       {
@@ -379,8 +376,9 @@ export async function POST(request) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/dashboard:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

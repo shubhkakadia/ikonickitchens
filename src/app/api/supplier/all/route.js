@@ -1,29 +1,25 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 
 export async function GET(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     // include total statements amount for each supplier and number of purchase orders
     const suppliers = await prisma.supplier.findMany({
-      include: {
-        // 1. Only pending statements
+      select: {
+        // Select all supplier fields
+        supplier_id: true,
+        name: true,
+        email: true,
+        phone: true,
+        address: true,
+        website: true,
+        notes: true,
+        createdAt: true,
+        updatedAt: true,
+        // 1. Only pending statements (for amount calculation)
         statements: {
           where: {
             payment_status: "PENDING",
@@ -32,36 +28,37 @@ export async function GET(request) {
             amount: true,
           },
         },
-    
-        // 2. Only NOT fully_received or cancelled POs
-        purchase_order: {
-          where: {
-            NOT: {
-              status: {
-                in: ["FULLY_RECEIVED", "CANCELLED"],
+        // 2. Count of NOT fully_received or cancelled POs (using _count for efficiency)
+        _count: {
+          select: {
+            purchase_order: {
+              where: {
+                NOT: {
+                  status: {
+                    in: ["FULLY_RECEIVED", "CANCELLED"],
+                  },
+                },
               },
             },
-          },
-          select: {
-            id: true, // any minimal field to avoid loading everything
           },
         },
       },
     });
-    
-    
+
+
     return NextResponse.json(
       {
         status: true,
         message: "Suppliers fetched successfully",
         data: suppliers,
-        
+
       },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/supplier/all:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

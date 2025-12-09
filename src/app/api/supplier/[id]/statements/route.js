@@ -1,32 +1,71 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
 import {
   uploadFile,
   validateMultipartRequest,
   getFileFromFormData,
+  deleteFileByRelativePath,
 } from "@/lib/fileHandler";
 import path from "path";
 import { withLogging } from "../../../../../../lib/withLogging";
 
+export async function GET(request, { params }) {
+  try {
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
+
+    const { id } = await params;
+
+    // Validate supplier exists
+    const supplier = await prisma.supplier.findUnique({
+      where: { supplier_id: id },
+    });
+
+    if (!supplier) {
+      return NextResponse.json(
+        { status: false, message: "Supplier not found" },
+        { status: 404 }
+      );
+    }
+
+    // Fetch all statements for this supplier
+    const statements = await prisma.supplier_statement.findMany({
+      where: {
+        supplier_id: id,
+      },
+      include: {
+        supplier_file: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Statements fetched successfully",
+        data: statements,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error fetching statements:", error);
+    return NextResponse.json(
+      {
+        status: false,
+        message: "Internal server error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const { id } = await params;
 
@@ -80,7 +119,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Handle file upload
+    // Handle file upload (must happen before transaction)
     const sanitizedMonthYear = month_year.replace(/[^a-zA-Z0-9_-]/g, "_");
     const uploadResult = await uploadFile(file, {
       uploadDir: "uploads",
@@ -89,34 +128,52 @@ export async function POST(request, { params }) {
       idPrefix: `${id}_statement_${sanitizedMonthYear}`,
     });
 
-    // Create supplier_file record
-    const supplierFile = await prisma.supplier_file.create({
-      data: {
-        url: uploadResult.relativePath,
-        filename: uploadResult.originalFilename,
-        file_type: "statement",
-        mime_type: uploadResult.mimeType,
-        extension: uploadResult.extension,
-        size: uploadResult.size,
-        supplier_id: id,
-      },
-    });
+    // Wrap both database writes in a transaction to ensure atomicity
+    let statement;
+    try {
+      statement = await prisma.$transaction(async (tx) => {
+        // Create supplier_file record
+        const supplierFile = await tx.supplier_file.create({
+          data: {
+            url: uploadResult.relativePath,
+            filename: uploadResult.originalFilename,
+            file_type: "statement",
+            mime_type: uploadResult.mimeType,
+            extension: uploadResult.extension,
+            size: uploadResult.size,
+            supplier_id: id,
+          },
+        });
 
-    // Create supplier_statement record
-    const statement = await prisma.supplier_statement.create({
-      data: {
-        month_year: month_year,
-        due_date: new Date(due_date),
-        amount: amount ? parseFloat(amount) : null,
-        payment_status: payment_status,
-        notes: notes || null,
-        supplier_file_id: supplierFile.id,
-        supplier_id: id,
-      },
-      include: {
-        supplier_file: true,
-      },
-    });
+        // Create supplier_statement record
+        return await tx.supplier_statement.create({
+          data: {
+            month_year: month_year,
+            due_date: new Date(due_date),
+            amount: amount ? parseFloat(amount) : null,
+            payment_status: payment_status,
+            notes: notes || null,
+            supplier_file_id: supplierFile.id,
+            supplier_id: id,
+          },
+          include: {
+            supplier_file: true,
+          },
+        });
+      });
+    } catch (transactionError) {
+      // If transaction fails, clean up the uploaded file
+      try {
+        await deleteFileByRelativePath(uploadResult.relativePath);
+      } catch (deleteError) {
+        console.error(
+          `Failed to clean up uploaded file after transaction failure: ${uploadResult.relativePath}`,
+          deleteError
+        );
+      }
+      // Re-throw the original transaction error
+      throw transactionError;
+    }
 
     const logged = await withLogging(
       request,
@@ -126,9 +183,15 @@ export async function POST(request, { params }) {
       `Statement uploaded successfully: ${statement.month_year} for supplier: ${supplier.name}`
     );
     if (!logged) {
+      console.error(`Failed to log statement upload: ${statement.id} - ${statement.month_year}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log statement upload" },
-        { status: 500 }
+        {
+          status: true,
+          message: "Statement uploaded successfully",
+          data: statement,
+          warning: "Note: Creation succeeded but logging failed"
+        },
+        { status: 201 }
       );
     }
     return NextResponse.json(
@@ -145,71 +208,6 @@ export async function POST(request, { params }) {
       {
         status: false,
         message: "Internal server error",
-        error: error.message,
-      },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET(request, { params }) {
-  try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
-
-    const { id } = await params;
-
-    // Validate supplier exists
-    const supplier = await prisma.supplier.findUnique({
-      where: { supplier_id: id },
-    });
-
-    if (!supplier) {
-      return NextResponse.json(
-        { status: false, message: "Supplier not found" },
-        { status: 404 }
-      );
-    }
-
-    // Fetch all statements for this supplier
-    const statements = await prisma.supplier_statement.findMany({
-      where: {
-        supplier_id: id,
-      },
-      include: {
-        supplier_file: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    return NextResponse.json(
-      {
-        status: true,
-        message: "Statements fetched successfully",
-        data: statements,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Error fetching statements:", error);
-    return NextResponse.json(
-      {
-        status: false,
-        message: "Internal server error",
-        error: error.message,
       },
       { status: 500 }
     );

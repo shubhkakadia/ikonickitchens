@@ -1,26 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { name, email, phone, address, notes, website, abn_number } =
       await request.json();
     const existingSupplier = await prisma.supplier.findUnique({
@@ -47,9 +33,15 @@ export async function POST(request) {
       `Supplier created successfully: ${supplier.name}`
     );
     if (!logged) {
+      console.error(`Failed to log supplier creation: ${supplier.supplier_id} - ${supplier.name}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log supplier creation" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Supplier created successfully",
+          data: supplier,
+          warning: "Note: Creation succeeded but logging failed"
+        },
+        { status: 201 }
       );
     }
     return NextResponse.json(
@@ -61,8 +53,9 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error("Error in POST /api/supplier/create:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

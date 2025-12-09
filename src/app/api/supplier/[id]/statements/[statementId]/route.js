@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../../../lib/validators/authFromToken";
 import {
   uploadFile,
   deleteFileByRelativePath,
@@ -14,19 +11,8 @@ import { withLogging } from "../../../../../../../lib/withLogging";
 
 export async function PATCH(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const { id, statementId } = await params;
 
@@ -96,13 +82,14 @@ export async function PATCH(request, { params }) {
     if (notes !== undefined) updateData.notes = notes || null;
 
     // Handle file upload if new file is provided
+    let oldFileUrl = null;
     if (file) {
-      // Delete old file if it exists
+      // Store old file URL for deletion after successful update
       if (existingStatement.supplier_file) {
-        await deleteFileByRelativePath(existingStatement.supplier_file.url);
+        oldFileUrl = existingStatement.supplier_file.url;
       }
 
-      // Upload new file
+      // Upload new file first (before deleting old one)
       const sanitizedMonthYear = (
         month_year || existingStatement.month_year
       ).replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -113,47 +100,74 @@ export async function PATCH(request, { params }) {
         idPrefix: `${id}_statement_${sanitizedMonthYear}`,
       });
 
-      // Update or create supplier_file
-      if (existingStatement.supplier_file) {
-        await prisma.supplier_file.update({
-          where: { id: existingStatement.supplier_file_id },
-          data: {
-            url: uploadResult.relativePath,
-            filename: uploadResult.originalFilename,
-            mime_type: uploadResult.mimeType,
-            extension: uploadResult.extension,
-            size: uploadResult.size,
-          },
-        });
-      } else {
-        const newFile = await prisma.supplier_file.create({
-          data: {
-            url: uploadResult.relativePath,
-            filename: uploadResult.originalFilename,
-            file_type: "statement",
-            mime_type: uploadResult.mimeType,
-            extension: uploadResult.extension,
-            size: uploadResult.size,
-            supplier_id: id,
-          },
-        });
-        updateData.supplier_file_id = newFile.id;
-      }
+      // Store upload result for use in transaction
+      updateData._fileUploadResult = uploadResult;
+      updateData._hasExistingFile = !!existingStatement.supplier_file;
+      updateData._existingFileId = existingStatement.supplier_file_id;
     }
 
-    // Update statement
-    const updatedStatement = await prisma.supplier_statement.update({
-      where: { id: statementId },
-      include: {
-        supplier_file: true,
-        supplier: {
-          select: {
-            name: true,
+    // Wrap all database updates in a single transaction to ensure atomicity
+    const updatedStatement = await prisma.$transaction(async (tx) => {
+      // Update or create supplier_file if new file was uploaded
+      if (file && updateData._fileUploadResult) {
+        if (updateData._hasExistingFile) {
+          // Update existing file record
+          await tx.supplier_file.update({
+            where: { id: updateData._existingFileId },
+            data: {
+              url: updateData._fileUploadResult.relativePath,
+              filename: updateData._fileUploadResult.originalFilename,
+              mime_type: updateData._fileUploadResult.mimeType,
+              extension: updateData._fileUploadResult.extension,
+              size: updateData._fileUploadResult.size,
+            },
+          });
+        } else {
+          // Create new file record
+          const newFile = await tx.supplier_file.create({
+            data: {
+              url: updateData._fileUploadResult.relativePath,
+              filename: updateData._fileUploadResult.originalFilename,
+              file_type: "statement",
+              mime_type: updateData._fileUploadResult.mimeType,
+              extension: updateData._fileUploadResult.extension,
+              size: updateData._fileUploadResult.size,
+              supplier_id: id,
+            },
+          });
+          updateData.supplier_file_id = newFile.id;
+        }
+      }
+
+      // Clean up temporary fields before updating statement
+      delete updateData._fileUploadResult;
+      delete updateData._hasExistingFile;
+      delete updateData._existingFileId;
+
+      // Update statement (all updates happen atomically)
+      return await tx.supplier_statement.update({
+        where: { id: statementId },
+        include: {
+          supplier_file: true,
+          supplier: {
+            select: {
+              name: true,
+            },
           },
         },
-      },
-      data: updateData,
+        data: updateData,
+      });
     });
+
+    // Only delete old file after all database updates succeed
+    if (file && oldFileUrl) {
+      try {
+        await deleteFileByRelativePath(oldFileUrl);
+      } catch (deleteError) {
+        // Log error but don't fail the request - old file cleanup is best effort
+        console.error(`Failed to delete old file: ${oldFileUrl}`, deleteError);
+      }
+    }
 
     const logged = await withLogging(
       request,
@@ -163,16 +177,14 @@ export async function PATCH(request, { params }) {
       `Statement updated successfully: ${updatedStatement.month_year} for supplier: ${updatedStatement.supplier.name}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log statement update" },
-        { status: 500 }
-      );
+      console.error(`Failed to log statement update: ${statementId} - ${updatedStatement.month_year}`);
     }
     return NextResponse.json(
       {
         status: true,
         message: "Statement updated successfully",
         data: updatedStatement,
+        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
       { status: 200 }
     );
@@ -182,7 +194,6 @@ export async function PATCH(request, { params }) {
       {
         status: false,
         message: "Internal server error",
-        error: error.message,
       },
       { status: 500 }
     );
@@ -191,19 +202,8 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const { id, statementId } = await params;
 
@@ -255,9 +255,14 @@ export async function DELETE(request, { params }) {
       `Statement deleted successfully: ${statement.month_year} for supplier: ${statement.supplier.name}`
     );
     if (!logged) {
+      console.error(`Failed to log statement deletion: ${statementId} - ${statement.month_year}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log statement deletion" },
-        { status: 500 }
+        {
+          status: true,
+          message: "Statement deleted successfully",
+          warning: "Note: Deletion succeeded but logging failed"
+        },
+        { status: 200 }
       );
     }
     return NextResponse.json(
@@ -273,7 +278,6 @@ export async function DELETE(request, { params }) {
       {
         status: false,
         message: "Internal server error",
-        error: error.message,
       },
       { status: 500 }
     );

@@ -451,11 +451,11 @@ export default function page() {
         })
         .catch((error) => {
           setLoading(false);
-          console.log(error);
+          console.error("Error fetching employees:", error);
           setError(error.response.data.message);
         });
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching employees:", error);
     } finally {
       setLoading(false);
     }

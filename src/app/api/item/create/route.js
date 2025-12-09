@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import {
   uploadFile,
@@ -15,19 +12,8 @@ const CATEGORIES = ["sheet", "handle", "hardware", "accessory", "edging_tape"];
 
 export async function POST(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     // Validate and parse multipart/form-data
     const formData = await validateMultipartRequest(request);
@@ -64,23 +50,96 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Create base item first to obtain item_id
-    const createdItem = await prisma.item.create({
-      data: {
-        description,
-        price: price ? parseFloat(price) : null,
-        quantity: quantity ? parseInt(quantity) : null,
-        category: category.toUpperCase(),
-        supplier_id: supplier_id || null,
-        measurement_unit: measurement_unit || null,
-        supplier_reference: supplier_reference || null,
-        supplier_product_link: supplier_product_link || null,
-      },
+    // Prepare category-specific data based on category type
+    let categoryData = {};
+    if (category === "sheet") {
+      categoryData = {
+        sheet: {
+          create: {
+            brand,
+            color,
+            finish,
+            face,
+            dimensions,
+            is_sunmica: is_sunmica || false,
+          },
+        },
+      };
+    } else if (category === "handle") {
+      categoryData = {
+        handle: {
+          create: {
+            brand,
+            color,
+            type,
+            dimensions,
+            material,
+          },
+        },
+      };
+    } else if (category === "hardware") {
+      categoryData = {
+        hardware: {
+          create: {
+            brand,
+            name,
+            type,
+            dimensions,
+            sub_category,
+          },
+        },
+      };
+    } else if (category === "accessory") {
+      categoryData = {
+        accessory: {
+          create: {
+            name,
+          },
+        },
+      };
+    } else if (category === "edging_tape") {
+      categoryData = {
+        edging_tape: {
+          create: {
+            brand,
+            color,
+            finish,
+            dimensions,
+          },
+        },
+      };
+    }
+
+    // Use transaction to atomically create item and category-specific record
+    // This prevents "ghost items" if category creation fails
+    const createdItem = await prisma.$transaction(async (tx) => {
+      // Create item with nested category-specific record in a single atomic operation
+      return await tx.item.create({
+        data: {
+          description,
+          price: price ? parseFloat(price) : null,
+          quantity: quantity ? parseInt(quantity) : null,
+          category: category.toUpperCase(),
+          supplier_id: supplier_id || null,
+          measurement_unit: measurement_unit || null,
+          supplier_reference: supplier_reference || null,
+          supplier_product_link: supplier_product_link || null,
+          ...categoryData,
+        },
+        include: {
+          sheet: true,
+          handle: true,
+          hardware: true,
+          accessory: true,
+          edging_tape: true,
+        },
+      });
     });
 
     let imageId = null;
 
     // Handle file upload if image is provided
+    // This happens after the transaction to avoid file system operations in the transaction
     if (imageFile) {
       try {
         // Upload file with ID-based naming
@@ -91,93 +150,33 @@ export async function POST(request, { params }) {
           idPrefix: createdItem.item_id,
         });
 
-        // Create media record
-        const media = await prisma.media.create({
-          data: {
-            url: uploadResult.relativePath,
-            filename: uploadResult.originalFilename,
-            file_type: uploadResult.fileType,
-            mime_type: uploadResult.mimeType,
-            extension: uploadResult.extension,
-            size: uploadResult.size,
-            item_id: createdItem.item_id,
-          },
-        });
+        // Create media record and update item with image_id in a transaction
+        await prisma.$transaction(async (tx) => {
+          const media = await tx.media.create({
+            data: {
+              url: uploadResult.relativePath,
+              filename: uploadResult.originalFilename,
+              file_type: uploadResult.fileType,
+              mime_type: uploadResult.mimeType,
+              extension: uploadResult.extension,
+              size: uploadResult.size,
+              item_id: createdItem.item_id,
+            },
+          });
 
-        imageId = media.id;
+          imageId = media.id;
 
-        // Update item with image_id
-        await prisma.item.update({
-          where: { item_id: createdItem.item_id },
-          data: { image_id: imageId },
+          await tx.item.update({
+            where: { item_id: createdItem.item_id },
+            data: { image_id: imageId },
+          });
         });
       } catch (error) {
         console.error("Error handling image upload:", error);
-        // Continue without image if upload fails
-        // Item is already created, so we don't fail the whole request
       }
     }
 
-    // Create category-specific record using item_id
-    let sheet;
-    let handle;
-    let hardware;
-    let accessory;
-    let edging_tape;
-    if (category === "sheet") {
-      sheet = await prisma.sheet.create({
-        data: {
-          item_id: createdItem.item_id,
-          brand,
-          color,
-          finish,
-          face,
-          dimensions,
-          is_sunmica: is_sunmica || false,
-        },
-      });
-    } else if (category === "handle") {
-      handle = await prisma.handle.create({
-        data: {
-          item_id: createdItem.item_id,
-          brand,
-          color,
-          type,
-          dimensions,
-          material,
-        },
-      });
-    } else if (category === "hardware") {
-      hardware = await prisma.hardware.create({
-        data: {
-          item_id: createdItem.item_id,
-          brand,
-          name,
-          type,
-          dimensions,
-          sub_category,
-        },
-      });
-    } else if (category === "accessory") {
-      accessory = await prisma.accessory.create({
-        data: {
-          item_id: createdItem.item_id,
-          name,
-        },
-      });
-    } else if (category === "edging_tape") {
-      edging_tape = await prisma.edging_tape.create({
-        data: {
-          item_id: createdItem.item_id,
-          brand,
-          color,
-          finish,
-          dimensions,
-        },
-      });
-    }
-
-    // Fetch the updated item with image relation
+    // Fetch the updated item with image relation (if image was uploaded)
     const updatedItem = await prisma.item.findUnique({
       where: { item_id: createdItem.item_id },
       include: {
@@ -189,24 +188,25 @@ export async function POST(request, { params }) {
         edging_tape: true,
       },
     });
+
+    // Log the creation
+    const itemDescription = description || `Item (${category})`;
     const logged = await withLogging(
       request,
       "item",
       createdItem.item_id,
       "CREATE",
-      `Item created successfully: ${createdItem.name}`
+      `Item created successfully: ${itemDescription}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log item creation" },
-        { status: 500 }
-      );
+      console.error(`Failed to log item creation: ${createdItem.item_id} - ${itemDescription}`);
     }
 
     return NextResponse.json(
       {
         status: true,
         message: "Item created successfully",
+        ...(logged ? {} : { warning: "Note: Creation succeeded but logging failed" }),
         data: updatedItem,
       },
       { status: 201 }
@@ -217,7 +217,6 @@ export async function POST(request, { params }) {
       {
         status: false,
         message: "Internal server error",
-        error: error.message,
       },
       { status: 500 }
     );

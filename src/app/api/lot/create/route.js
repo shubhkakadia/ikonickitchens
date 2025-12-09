@@ -1,27 +1,15 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  isAdmin,
-  isSessionExpired,
+  validateAdminAuth,
   processDateTimeField,
 } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { lot_id, name, project_id, startDate, installationDueDate, notes } =
       await request.json();
     const existingLot = await prisma.lot.findUnique({
@@ -48,9 +36,6 @@ export async function POST(request) {
         notes,
         status: "ACTIVE",
       },
-    });
-    const data = await prisma.lot.findUnique({
-      where: { lot_id: lot.lot_id },
       include: {
         project: true,
       },
@@ -58,14 +43,20 @@ export async function POST(request) {
     const logged = await withLogging(
       request,
       "lot",
-      data.lot_id,
+      lot.lot_id,
       "CREATE",
-      `Lot created successfully: ${data.name} for project: ${data.project.name}`
+      `Lot created successfully: ${lot.name} for project: ${lot.project.name}`
     );
     if (!logged) {
+      console.error(`Failed to log lot creation: ${lot.lot_id} - ${lot.name}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log lot creation" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Lot created successfully", 
+          data: lot,
+          warning: "Note: Creation succeeded but logging failed"
+        },
+        { status: 201 }
       );
     }
     return NextResponse.json(
@@ -73,8 +64,9 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error("Error in POST /api/lot/create:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

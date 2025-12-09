@@ -1,56 +1,57 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth, getUserFromToken } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
+
+    // Get user_id from session token (more secure than relying on frontend)
+    const session = await getUserFromToken(request);
+    if (!session) {
       return NextResponse.json(
-        { status: false, message: "Unauthorized" },
+        { status: false, message: "Invalid session" },
         { status: 401 }
       );
     }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const createdBy_id = session.user_id;
 
     const data = await request.json();
-    const { project_id, notes, createdBy_id, items, lot_ids } = data;
+    const { project_id, notes, items, lot_ids } = data;
 
-    // Create materials_to_order first
-    const mto = await prisma.materials_to_order.create({
-      data: {
-        ...(project_id && { project_id }),
-        notes,
-        createdBy_id,
-        items:
-          items && items.length > 0
-            ? {
-                create: items.map((item) => ({
-                  item_id: item.item_id,
-                  quantity: item.quantity,
-                  notes: item.notes,
-                })),
-              }
-            : undefined,
-      },
-    });
-
-    // Then assign lots to this MTO
-    if (lot_ids && lot_ids.length > 0) {
-      await prisma.lot.updateMany({
-        where: { lot_id: { in: lot_ids } },
-        data: { materials_to_orders_id: mto.id },
+    // Use transaction to atomically create MTO and update lots
+    const mto = await prisma.$transaction(async (tx) => {
+      // Create materials_to_order
+      const newMto = await tx.materials_to_order.create({
+        data: {
+          ...(project_id && { project_id }),
+          notes,
+          createdBy_id,
+          items:
+            items && items.length > 0
+              ? {
+                  create: items.map((item) => ({
+                    item_id: item.item_id,
+                    quantity: item.quantity,
+                    notes: item.notes,
+                  })),
+                }
+              : undefined,
+        },
       });
-    }
+
+      // Assign lots to this MTO atomically
+      if (lot_ids && lot_ids.length > 0) {
+        await tx.lot.updateMany({
+          where: { lot_id: { in: lot_ids } },
+          data: { materials_to_orders_id: newMto.id },
+        });
+      }
+
+      return newMto;
+    });
 
     // Fetch the complete MTO with all relations
     const completeMto = await prisma.materials_to_order.findUnique({
@@ -103,9 +104,15 @@ export async function POST(request) {
     const projectName = completeMto.project?.name || "No Project";
     const logged = await withLogging(request, "materials_to_order", mto.id, "CREATE", `Materials to order created successfully${completeMto.project ? ` for project: ${projectName}` : ""}`);
     if (!logged) {
+      console.error(`Failed to log materials to order creation: ${mto.id}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log materials to order creation" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Materials to order created successfully",
+          data: mtoWithMedia,
+          warning: "Note: Creation succeeded but logging failed"
+        },
+        { status: 201 }
       );
     }
     return NextResponse.json(
@@ -117,8 +124,9 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error("Error in POST /api/materials_to_order/create:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

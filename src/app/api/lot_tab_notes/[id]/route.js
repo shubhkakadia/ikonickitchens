@@ -1,26 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const lotTab = await prisma.lot_tab.findUnique({
       where: { id },
@@ -34,8 +20,9 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/lot_tab_notes/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -43,19 +30,8 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const { notes } = await request.json();
     const lotTab = await prisma.lot_tab.update({
@@ -70,22 +46,21 @@ export async function PATCH(request, { params }) {
       `Lot tab notes updated successfully: ${lotTab.notes}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log lot tab notes update" },
-        { status: 500 }
-      );
+      console.error(`Failed to log lot tab notes update: ${id}`);
     }
     return NextResponse.json(
       {
         status: true,
         message: "Lot tab notes updated successfully",
         data: lotTab,
+        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in PATCH /api/lot_tab_notes/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

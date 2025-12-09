@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import {
-  isAdmin,
+  validateAdminAuth,
   processDateTimeField,
-  isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import {
@@ -14,19 +13,8 @@ import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const employee = await prisma.employees.findUnique({
       where: { employee_id: id },
@@ -48,57 +36,9 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/employee/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal Server Error", error: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request, { params }) {
-  try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
-    const { id } = await params;
-    const employee = await prisma.employees.delete({
-      where: { employee_id: id },
-    });
-
-    const logged = await withLogging(
-      request,
-      "employee",
-      id,
-      "DELETE",
-      `Employee deleted successfully: ${employee.first_name} ${employee.last_name}`
-    );
-    if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log employee deletion" },
-        { status: 500 }
-      );
-    }
-    return NextResponse.json(
-      {
-        status: true,
-        message: "Employee deleted successfully",
-        data: employee,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { status: false, message: "Internal Server Error", error: error.message },
+      { status: false, message: "Internal Server Error" },
       { status: 500 }
     );
   }
@@ -106,19 +46,8 @@ export async function DELETE(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     // Handle both FormData and JSON requests
     let body;
     let imageFile = null;
@@ -315,22 +244,107 @@ export async function PATCH(request, { params }) {
       `Employee updated successfully: ${employee.first_name} ${employee.last_name}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log employee update" },
-        { status: 500 }
-      );
+      console.error(`Failed to log employee update: ${id} - ${employee.first_name} ${employee.last_name}`);
     }
     return NextResponse.json(
       {
         status: true,
         message: "Employee updated successfully",
         data: updatedEmployee,
+        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in PATCH /api/employee/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal Server Error", error: error.message },
+      { status: false, message: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
+    const { id } = await params;
+
+    // Fetch employee with image relation before deleting
+    const currentEmployee = await prisma.employees.findUnique({
+      where: { employee_id: id },
+      include: { image: true },
+    });
+
+    if (!currentEmployee) {
+      return NextResponse.json(
+        { status: false, message: "Employee not found" },
+        { status: 404 }
+      );
+    }
+
+    // Handle image file deletion if exists
+    if (currentEmployee.image_id && currentEmployee.image) {
+      try {
+        // Store the image URL and ID before removing the reference
+        const imageUrl = currentEmployee.image.url;
+        const imageId = currentEmployee.image_id;
+
+        // First, update employee to remove image_id (remove foreign key reference)
+        await prisma.employees.update({
+          where: { id: currentEmployee.id },
+          data: { image_id: null },
+        });
+
+        // Now safe to delete the media record (no foreign key constraint)
+        await prisma.media.delete({
+          where: { id: imageId },
+        });
+
+        // Finally, delete the file from disk
+        await deleteFileByRelativePath(imageUrl);
+      } catch (error) {
+        console.error("Error handling image deletion:", error);
+        // Continue with employee deletion even if image deletion fails
+      }
+    }
+
+    // Now delete the employee record
+    const employee = await prisma.employees.delete({
+      where: { employee_id: id },
+    });
+
+    const logged = await withLogging(
+      request,
+      "employee",
+      id,
+      "DELETE",
+      `Employee deleted successfully: ${employee.first_name} ${employee.last_name}`
+    );
+    if (!logged) {
+      console.error(`Failed to log employee deletion: ${id} - ${employee.first_name} ${employee.last_name}`);
+      return NextResponse.json(
+        { 
+          status: true, 
+          message: "Employee deleted successfully",
+          data: employee,
+          warning: "Note: Deletion succeeded but logging failed"
+        },
+        { status: 200 }
+      );
+    }
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Employee deleted successfully",
+        data: employee,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error in DELETE /api/employee/[id]:", error);
+    return NextResponse.json(
+      { status: false, message: "Internal Server Error" },
       { status: 500 }
     );
   }

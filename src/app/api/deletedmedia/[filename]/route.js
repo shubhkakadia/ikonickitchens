@@ -2,27 +2,13 @@ import fs from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function DELETE(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     // Get filename from params
     const { filename } = await params;
@@ -118,10 +104,7 @@ export async function DELETE(request, { params }) {
       `${entityType} deleted successfully: ${deletedMedia.filename}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: `Failed to log ${entityType} deletion` },
-        { status: 500 }
-      );
+      console.error(`Failed to log ${entityType} deletion: ${deletedMedia.id} - ${deletedMedia.filename}`);
     }
 
     return NextResponse.json(
@@ -130,13 +113,14 @@ export async function DELETE(request, { params }) {
         message: "Media permanently deleted",
         filename: deletedMedia.filename,
         fileDeletedFromDisk: fileDeleted,
+        ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" })
       },
       { status: 200 }
     );
   } catch (error) {
     console.error("Delete error:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

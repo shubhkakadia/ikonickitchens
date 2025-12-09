@@ -1,26 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const {
       // id will be auto-generated on the server
       first_name,
@@ -34,7 +20,6 @@ export async function POST(request) {
       supplier_id,
     } = await request.json();
 
-    // Attempt create with a short retry loop to mitigate rare race conditions
     let contact = null;
 
     contact = await prisma.contact.create({
@@ -60,9 +45,15 @@ export async function POST(request) {
     );
 
     if (!logged) {
+      console.error(`Failed to log contact creation: ${contact.id} - ${contact.first_name} ${contact.last_name}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log contact creation" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Contact created successfully", 
+          data: contact,
+          warning: "Note: Creation succeeded but logging failed"
+        },
+        { status: 201 }
       );
     }
 
@@ -71,11 +62,11 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error("Error in POST /api/contact/create:", error);
     return NextResponse.json(
       {
         status: false,
         message: "Internal server error",
-        error: error.message,
       },
       { status: 500 }
     );

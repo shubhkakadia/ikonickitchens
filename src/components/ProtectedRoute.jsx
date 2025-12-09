@@ -197,8 +197,6 @@ export function AdminRoute({
   const pathname = usePathname();
   const { id } = useParams();
 
-  console.log(id);
-
   const siteMap = {
     "/admin/dashboard": "dashboard",
     "/admin/clients": "all_clients",
@@ -224,9 +222,6 @@ export function AdminRoute({
     "/admin/inventory/additem": "add_items",
     [`/admin/inventory/${id}`]: "item_details",
   };
-
-  console.log([`/admin/employees/${id}`]);
-  console.log(siteMap[`/admin/employees/${id}`]);
 
   useEffect(() => {
     const fetchModuleAccess = async () => {

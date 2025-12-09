@@ -1,9 +1,6 @@
 import path from "path";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import { uploadFile, validateMultipartRequest } from "@/lib/fileHandler";
 import fs from "fs";
@@ -51,6 +48,46 @@ function getFileKind(mimeType) {
   return "OTHER";
 }
 
+// Function to get MIME type from file path based on extension
+function getMimeType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    // Images
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".webp":
+      return "image/webp";
+    case ".gif":
+      return "image/gif";
+    case ".svg":
+      return "image/svg+xml";
+
+    // PDF
+    case ".pdf":
+      return "application/pdf";
+
+    // Videos
+    case ".mp4":
+      return "video/mp4";
+    case ".webm":
+      return "video/webm";
+    case ".ogg":
+      return "video/ogg";
+    case ".mov":
+      return "video/quicktime";
+    case ".avi":
+      return "video/x-msvideo";
+    case ".mkv":
+      return "video/x-matroska";
+
+    default:
+      return "application/octet-stream";
+  }
+}
+
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
@@ -61,10 +98,10 @@ export async function GET(request, { params }) {
         { status: 404 }
       );
     }
-    const targetPath = path.join(process.cwd(), "uploads", ...segments);
+    const targetPath = path.join(process.cwd(), "mediauploads", ...segments);
 
     // Prevent path traversal
-    const uploadsRoot = path.join(process.cwd(), "uploads");
+    const uploadsRoot = path.join(process.cwd(), "mediauploads");
     const normalized = path.normalize(targetPath);
     if (!normalized.startsWith(uploadsRoot)) {
       return NextResponse.json(
@@ -118,8 +155,9 @@ export async function GET(request, { params }) {
       },
     });
   } catch (error) {
+    console.error("Error in GET /api/uploads/lots/[...path]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -127,19 +165,8 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const resolvedParams = await params;
     const segments = ensureArray(resolvedParams?.path);
@@ -252,7 +279,7 @@ export async function POST(request, { params }) {
     for (const { field, file } of fileEntries) {
       // Upload file using original filename strategy
       const uploadResult = await uploadFile(file, {
-        uploadDir: "uploads",
+        uploadDir: "mediauploads",
         subDir: `${projectId}/${lotId}/${tabKind}`,
         filenameStrategy: "original",
       });
@@ -297,11 +324,9 @@ export async function POST(request, { params }) {
       )
     );
 
-    if (logged.some((log) => !log)) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log media upload" },
-        { status: 500 }
-      );
+    const hasLoggingFailures = logged.some((log) => !log);
+    if (hasLoggingFailures) {
+      console.error(`Failed to log some file uploads for lot tab: ${tab.id}`);
     }
     return NextResponse.json(
       {
@@ -311,13 +336,14 @@ export async function POST(request, { params }) {
         lotId,
         tabKind,
         files: saved,
+        ...(hasLoggingFailures ? { warning: "Note: Upload succeeded but some logging failed" } : {})
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("Error in POST /api/uploads/lots/[...path]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -325,19 +351,8 @@ export async function POST(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 200 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 200 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const resolvedParams = await params;
     const segments = ensureArray(resolvedParams?.path);
@@ -347,10 +362,10 @@ export async function DELETE(request, { params }) {
         { status: 404 }
       );
     }
-    const targetPath = path.join(process.cwd(), "uploads", ...segments);
+    const targetPath = path.join(process.cwd(), "mediauploads", ...segments);
 
     // Prevent path traversal
-    const uploadsRoot = path.join(process.cwd(), "uploads");
+    const uploadsRoot = path.join(process.cwd(), "mediauploads");
     const normalized = path.normalize(targetPath);
     if (!normalized.startsWith(uploadsRoot)) {
       return NextResponse.json(
@@ -392,9 +407,6 @@ export async function DELETE(request, { params }) {
     // If not found by URL, try to find by filename and path segments
     // This handles cases where the path might not match exactly
     if (!fileRecord && segments.length >= 3) {
-      console.log(
-        "File not found by URL, trying to find by filename and path segments"
-      );
       const [projectId, lotId, tabKind, filename] = segments;
       const tabKindEnum = TABKIND_TO_ENUM[tabKind] || tabKind.toUpperCase();
 
@@ -454,8 +466,9 @@ export async function DELETE(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in DELETE /api/uploads/lots/[...path]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

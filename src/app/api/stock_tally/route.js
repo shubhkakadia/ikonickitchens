@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../lib/withLogging";
 
 /**
@@ -13,19 +10,8 @@ import { withLogging } from "../../../../lib/withLogging";
  */
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const body = await request.json();
     const { items } = body;
@@ -80,59 +66,70 @@ export async function POST(request) {
       const { item_id, new_quantity, current_quantity } = itemData;
 
       try {
-        // Get current item
-        const currentItem = await prisma.item.findUnique({
-          where: { item_id: item_id },
-          select: { quantity: true, supplier_reference: true },
+        // Use transaction to ensure atomicity - read and write must happen atomically
+        // This prevents race conditions where another transaction modifies the item
+        // between our read and write operations
+        const result = await prisma.$transaction(async (tx) => {
+          // Get current item within transaction to lock it
+          const currentItem = await tx.item.findUnique({
+            where: { item_id: item_id },
+            select: { quantity: true, supplier_reference: true },
+          });
+
+          if (!currentItem) {
+            return { error: "Item not found" };
+          }
+
+          const oldQuantity = current_quantity ?? currentItem.quantity ?? 0;
+          const newQty = Math.floor(parseFloat(new_quantity));
+          const difference = newQty - oldQuantity;
+
+          // Skip if no change
+          if (difference === 0) {
+            return { skipped: true };
+          }
+
+          // Determine transaction type
+          const transactionType = difference > 0 ? "ADDED" : "WASTED";
+          const quantityChange = Math.abs(difference);
+
+          // Update item quantity and create stock transaction atomically
+          await Promise.all([
+            tx.item.update({
+              where: { item_id: item_id },
+              data: {
+                quantity: newQty,
+              },
+            }),
+            tx.stock_transaction.create({
+              data: {
+                item_id: item_id,
+                quantity: quantityChange,
+                type: transactionType,
+                notes: `Stock tally adjustment: ${oldQuantity} → ${newQty}`,
+              },
+            }),
+          ]);
+
+          return {
+            item_id,
+            supplier_reference: currentItem.supplier_reference,
+            old_quantity: oldQuantity,
+            new_quantity: newQty,
+            difference: difference,
+            type: transactionType,
+          };
         });
 
-        if (!currentItem) {
+        // Handle transaction result
+        if (result.error) {
           errors.push({
             item_id,
-            error: "Item not found",
+            error: result.error,
           });
-          continue;
+        } else if (!result.skipped) {
+          results.push(result);
         }
-
-        const oldQuantity = current_quantity ?? currentItem.quantity ?? 0;
-        const newQty = Math.floor(parseFloat(new_quantity));
-        const difference = newQty - oldQuantity;
-
-        // Skip if no change
-        if (difference === 0) {
-          continue;
-        }
-
-        // Determine transaction type
-        const transactionType = difference > 0 ? "ADDED" : "WASTED";
-        const quantityChange = Math.abs(difference);
-
-        // Update item quantity and create stock transaction
-        await Promise.all([
-          prisma.item.update({
-            where: { item_id: item_id },
-            data: {
-              quantity: newQty,
-            },
-          }),
-          prisma.stock_transaction.create({
-            data: {
-              item_id: item_id,
-              quantity: quantityChange,
-              type: transactionType,
-              notes: `Stock tally adjustment: ${oldQuantity} → ${newQty}`,
-            },
-          }),
-        ]);
-
-        results.push({
-          item_id,
-          supplier_reference: currentItem.supplier_reference,
-          old_quantity: oldQuantity,
-          new_quantity: newQty,
-          difference: difference,
-          type: transactionType,
-        });
       } catch (itemError) {
         console.error(`Error processing item ${item_id}:`, itemError);
         errors.push({
@@ -143,10 +140,12 @@ export async function POST(request) {
     }
 
     // Log the stock tally operation
+    // Use timestamp-based ID since this is a bulk operation without a single entity ID
+    const tallyId = `stock-tally-${Date.now()}`;
     await withLogging(
       request,
       "stock_tally",
-      null,
+      tallyId,
       "CREATE",
       `Stock tally completed: ${results.length} items updated, ${errors.length} errors`
     );
@@ -169,11 +168,11 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error("Stock tally error:", error);
+    console.error("Error in POST /api/stock_tally:", error);
     return NextResponse.json(
       {
         status: false,
         message: "Internal server error",
-        error: error.message,
       },
       { status: 500 }
     );

@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 // Helper function to get user from token
@@ -28,19 +25,8 @@ async function getUserFromToken(req) {
 
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     // Get user_id from session token (more secure than relying on frontend)
     const session = await getUserFromToken(request);
@@ -341,12 +327,15 @@ export async function POST(request) {
       `Material selection and version created successfully for lot: ${lot.name} for project: ${lot.project.name}`
     );
     if (!logged) {
+      console.error(`Failed to log material selection creation: ${result.material_selection.id}`);
       return NextResponse.json(
         {
-          status: false,
-          message: "Failed to log material selection and version creation",
+          status: true,
+          message: "Material selection and version created successfully",
+          data: result,
+          warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 500 }
+        { status: 201 }
       );
     }
     return NextResponse.json(
@@ -360,7 +349,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Error creating material selection version:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

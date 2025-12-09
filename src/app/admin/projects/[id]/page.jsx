@@ -125,16 +125,17 @@ const FileItemWithNotes = ({
   };
 
   return (
-    <div className="gap-2 flex items-center">
+    <div className="gap-2 flex items-start">
       <div
-        className="relative group cursor-pointer"
+        className="relative group cursor-pointer flex-shrink-0"
+        style={{ width: "150px" }}
         onClick={() => handleViewExistingFile(file)}
       >
-        <div className="w-full aspect-[4/3] rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50 hover:bg-slate-100 transition-colors">
+        <div className="w-full h-auto aspect-square rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50 hover:bg-slate-100 transition-colors">
           {file.mime_type.includes("image") ? (
             <Image
-              height={100}
-              width={100}
+              height={140}
+              width={140}
               src={`/${file.url}`}
               alt={file.filename}
               className="w-full h-full object-cover rounded-lg"
@@ -148,7 +149,7 @@ const FileItemWithNotes = ({
             />
           ) : (
             <div
-              className={`w-full h-full flex items-center justify-center rounded-lg ${
+              className={`w-full h-auto aspect-square flex items-center justify-center rounded-lg ${
                 file.mime_type.includes("pdf") ? "bg-red-50" : "bg-green-50"
               }`}
             >
@@ -166,9 +167,9 @@ const FileItemWithNotes = ({
         </div>
 
         {/* File Info */}
-        <div className="space-y-1">
+        <div className="space-y-1 w-full">
           <p
-            className="text-xs font-medium text-slate-700 truncate"
+            className="text-xs font-medium text-slate-700 truncate w-full"
             title={file.filename}
           >
             {file.filename}
@@ -197,7 +198,7 @@ const FileItemWithNotes = ({
           </button>
         </div>
       </div>
-      <div className="relative w-full">
+      <div className="relative flex-1">
         <textarea
           rows="6"
           value={notes}
@@ -1099,7 +1100,7 @@ export default function page() {
           </div>
 
           {/* Files Grid */}
-          <div className="gap-3 grid grid-cols-2 items-center">
+          <div className="gap-3 grid grid-cols-2 items-start">
             {files.map((file) => (
               <FileItemWithNotes
                 key={file.id}

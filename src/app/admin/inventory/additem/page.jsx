@@ -278,7 +278,6 @@ export default function page() {
           "Content-Type": "multipart/form-data",
         },
       });
-      console.log(response.data);
       if (response.data.status) {
         toast.success("Item created successfully", {
           position: "top-right",

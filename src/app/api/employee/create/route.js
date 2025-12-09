@@ -1,9 +1,8 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  isAdmin,
+  validateAdminAuth,
   processDateTimeField,
-  isSessionExpired,
 } from "../../../../../lib/validators/authFromToken";
 import {
   uploadFile,
@@ -14,19 +13,8 @@ import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     // Validate and parse multipart/form-data
     const formData = await validateMultipartRequest(request);
     const body = Object.fromEntries(formData.entries());
@@ -187,23 +175,22 @@ export async function POST(request) {
       `Employee created successfully: ${employee.first_name} ${employee.last_name}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log employee creation" },
-        { status: 500 }
-      );
+      console.error(`Failed to log employee creation: ${employee.id} - ${employee.first_name} ${employee.last_name}`);
     }
 
     return NextResponse.json(
       {
         status: true,
         message: "Employee created successfully",
+        ...(logged ? {} : { warning: "Note: Creation succeeded but logging failed" }),
         data: updatedEmployee,
       },
       { status: 201 }
     );
   } catch (error) {
+    console.error("Error in POST /api/employee/create:", error);
     return NextResponse.json(
-      { status: false, message: "Internal Server Error", error: error.message },
+      { status: false, message: "Internal Server Error" },
       { status: 500 }
     );
   }

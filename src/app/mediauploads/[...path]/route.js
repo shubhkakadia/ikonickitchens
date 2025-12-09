@@ -56,10 +56,10 @@ export async function GET(request, { params }) {
         { status: 404 }
       );
     }
-    const targetPath = path.join(process.cwd(), "uploads", ...segments);
+    const targetPath = path.join(process.cwd(), "mediauploads", ...segments);
 
     // Prevent path traversal
-    const uploadsRoot = path.join(process.cwd(), "uploads");
+    const uploadsRoot = path.join(process.cwd(), "mediauploads");
     const normalized = path.normalize(targetPath);
     if (!normalized.startsWith(uploadsRoot)) {
       return NextResponse.json(
@@ -101,3 +101,4 @@ export async function GET(request, { params }) {
     );
   }
 }
+

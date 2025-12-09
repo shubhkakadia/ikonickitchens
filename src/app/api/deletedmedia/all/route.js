@@ -2,27 +2,13 @@ import fs from "fs";
 import path from "path";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     // get lot details for each deleted media
     const lotFilesDeletedMedia = await prisma.lot_file.findMany({
       where: { is_deleted: true },
@@ -58,8 +44,9 @@ export async function GET(request) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/deletedmedia/all:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -68,19 +55,8 @@ export async function GET(request) {
 // batch delete deleted media
 export async function DELETE(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     // Get filenames from request body
     const body = await request.json();
@@ -93,13 +69,8 @@ export async function DELETE(request) {
       );
     }
 
-    const results = {
-      successful: [],
-      failed: [],
-    };
-
-    // Process each filename
-    for (const filename of filenames) {
+    // Helper function to process a single filename deletion
+    const processFileDeletion = async (filename) => {
       try {
         // Decode filename in case it's URL encoded
         const decodedFilename = decodeURIComponent(filename);
@@ -135,11 +106,11 @@ export async function DELETE(request) {
         }
 
         if (!deletedMedia) {
-          results.failed.push({
+          return {
+            success: false,
             filename: decodedFilename,
             error: "Deleted media not found",
-          });
-          continue;
+          };
         }
 
         // Delete the physical file from disk
@@ -192,25 +163,36 @@ export async function DELETE(request) {
         );
 
         if (!logged) {
-          results.failed.push({
-            filename: decodedFilename,
-            error: `Failed to log ${entityType} deletion`,
-          });
-          continue;
+          console.error(`Failed to log ${entityType} deletion: ${deletedMedia.id} - ${deletedMedia.filename}`);
         }
 
-        results.successful.push({
+        // Deletion succeeded, so mark as successful even if logging failed
+        return {
+          success: true,
           filename: decodedFilename,
           fileDeletedFromDisk: fileDeleted,
-        });
+          ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" })
+        };
       } catch (error) {
         console.error(`Error deleting file ${filename}:`, error);
-        results.failed.push({
+        return {
+          success: false,
           filename: filename,
           error: error.message || "Unknown error",
-        });
+        };
       }
-    }
+    };
+
+    // Process all files in parallel using Promise.all
+    const deletionResults = await Promise.all(
+      filenames.map(filename => processFileDeletion(filename))
+    );
+
+    // Separate successful and failed results
+    const results = {
+      successful: deletionResults.filter(r => r.success),
+      failed: deletionResults.filter(r => !r.success),
+    };
 
     // Return results
     const hasSuccess = results.successful.length > 0;
@@ -233,9 +215,9 @@ export async function DELETE(request) {
       { status: hasSuccess ? 200 : hasFailures ? 207 : 200 } // 207 Multi-Status if partial success
     );
   } catch (error) {
-    console.error("Batch delete error:", error);
+    console.error("Error in DELETE /api/deletedmedia/all:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

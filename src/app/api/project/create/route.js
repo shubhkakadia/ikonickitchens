@@ -1,25 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { name, project_id, client_id } = await request.json();
     // Normalize client_id - handle empty string, null, or undefined
     const normalizedClientId =
@@ -71,9 +57,15 @@ export async function POST(request) {
       `Project created successfully: ${project.name}`
     );
     if (!logged) {
+      console.error(`Failed to log project creation: ${project.project_id} - ${project.name}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log project creation" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Project created successfully", 
+          data: project,
+          warning: "Note: Creation succeeded but logging failed"
+        },
+        { status: 201 }
       );
     }
     return NextResponse.json(
@@ -81,8 +73,9 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error("Error in POST /api/project/create:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

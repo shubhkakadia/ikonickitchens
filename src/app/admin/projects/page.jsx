@@ -258,11 +258,11 @@ export default function page() {
         })
         .catch((error) => {
           setLoading(false);
-          console.log(error);
+          console.error("Error fetching projects:", error);
           setError(error.response?.data?.message || "Failed to fetch projects");
         });
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching projects:", error);
     } finally {
       setLoading(false);
     }

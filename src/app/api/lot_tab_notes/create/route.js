@@ -1,27 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const { lot_id, tab, notes } = await request.json();
     const lotTab = await prisma.lot_tab.create({
@@ -40,9 +24,15 @@ export async function POST(request) {
       `Lot tab notes saved successfully: ${lotTab.notes}`
     );
     if (!logged) {
+      console.error(`Failed to log lot tab notes creation: ${lotTab.id}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log lot tab notes creation" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Lot tab notes saved successfully",
+          data: lotTab,
+          warning: "Note: Creation succeeded but logging failed"
+        },
+        { status: 201 }
       );
     }
     return NextResponse.json(
@@ -54,8 +44,9 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error("Error in POST /api/lot_tab_notes/create:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

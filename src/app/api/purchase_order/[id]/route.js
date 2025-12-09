@@ -144,7 +144,7 @@ export async function PATCH(request, { params }) {
 
         // Upload file with order_no as the filename base
         const uploadResult = await uploadFile(file, {
-          uploadDir: "uploads",
+          uploadDir: "mediauploads",
           subDir: "purchase_order",
           filenameStrategy: "id-based",
           idPrefix: order_no,

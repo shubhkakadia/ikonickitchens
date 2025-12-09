@@ -219,7 +219,7 @@ export async function PATCH(request, { params }) {
 
         // Upload new image
         const uploadResult = await uploadFile(imageFile, {
-          uploadDir: "uploads",
+          uploadDir: "mediauploads",
           subDir: `items/${existingItem.category.toLowerCase()}`,
           filenameStrategy: "id-based",
           idPrefix: id,

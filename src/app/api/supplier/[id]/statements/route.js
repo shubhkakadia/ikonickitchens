@@ -122,7 +122,7 @@ export async function POST(request, { params }) {
     // Handle file upload (must happen before transaction)
     const sanitizedMonthYear = month_year.replace(/[^a-zA-Z0-9_-]/g, "_");
     const uploadResult = await uploadFile(file, {
-      uploadDir: "uploads",
+      uploadDir: "mediauploads",
       subDir: `suppliers/${id}/statements`,
       filenameStrategy: "id-based",
       idPrefix: `${id}_statement_${sanitizedMonthYear}`,

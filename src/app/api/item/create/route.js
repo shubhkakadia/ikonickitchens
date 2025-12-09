@@ -144,7 +144,7 @@ export async function POST(request, { params }) {
       try {
         // Upload file with ID-based naming
         const uploadResult = await uploadFile(imageFile, {
-          uploadDir: "uploads",
+          uploadDir: "mediauploads",
           subDir: `items/${category}`,
           filenameStrategy: "id-based",
           idPrefix: createdItem.item_id,

@@ -94,7 +94,7 @@ export async function PATCH(request, { params }) {
         month_year || existingStatement.month_year
       ).replace(/[^a-zA-Z0-9_-]/g, "_");
       const uploadResult = await uploadFile(file, {
-        uploadDir: "uploads",
+        uploadDir: "mediauploads",
         subDir: `suppliers/${id}/statements`,
         filenameStrategy: "id-based",
         idPrefix: `${id}_statement_${sanitizedMonthYear}`,

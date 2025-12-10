@@ -51,11 +51,26 @@ jobs:
 
           # ===== PRODUCTION DATABASE BACKUP =====
           if [[ "$BACKUP" == "true" ]]; then
-            BACKUP_FILE=/home/ikonic-server/db_backups/db_backup_$(date +%Y-%m-%d_%H-%M-%S).sql
-            echo "Creating database backup to: $BACKUP_FILE"
+            echo "=== Running quick SQL backup (pre-deploy) ==="
 
+            BACKUP_FILE=/home/ikonic-server/db_backups/db_backup_$(date +%Y-%m-%d_%H-%M-%S).sql
             mysqldump -h ${{ secrets.MYSQL_HOST }} -u ${{ secrets.MYSQL_USER }} -p'${{ secrets.MYSQL_PASSWORD }}' ${{ secrets.MYSQL_DB }} > $BACKUP_FILE
-            echo "Database backup created successfully"
+
+            echo "Quick database backup created successfully: $BACKUP_FILE"
+
+
+            echo "=== Running FULL backup script (DB + media) ==="
+
+            FULL_BACKUP_SCRIPT="/home/ikonic-server/auto_backups/scripts/prod_full_backup.sh"
+
+            if [[ -x "$FULL_BACKUP_SCRIPT" ]]; then
+              bash "$FULL_BACKUP_SCRIPT"
+              echo "Full backup completed successfully."
+            else
+              echo "ERROR: Full backup script missing or not executable: $FULL_BACKUP_SCRIPT"
+            fi
+
+            echo "=== All production backups completed ==="
           fi
 
           # Run prisma migrations

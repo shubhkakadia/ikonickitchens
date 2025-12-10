@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import {
   validateAdminAuth,
   processDateTimeField,
-} from "../../../../../lib/validators/authFromToken";
-import { withLogging } from "../../../../../lib/withLogging";
+} from "@/lib/validators/authFromToken";
+import { withLogging } from "@/lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
@@ -38,6 +38,9 @@ export async function GET(request, { params }) {
             files: {
               where: {
                 is_deleted: false,
+              },
+              include: {
+                maintenance_checklist: true,
               },
               orderBy: {
                 createdAt: "asc",

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { withLogging } from "../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 export async function POST(request) {
   try {

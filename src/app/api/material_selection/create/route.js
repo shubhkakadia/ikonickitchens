@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
-import { withLogging } from "../../../../../lib/withLogging";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { withLogging } from "@/lib/withLogging";
 
 // Helper function to get user from token
 async function getUserFromToken(req) {

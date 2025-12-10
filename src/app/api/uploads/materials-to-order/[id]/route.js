@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import {
   uploadMultipleFiles,
   validateMultipartRequest,
   getFileFromFormData,
 } from "@/lib/fileHandler";
-import { withLogging } from "../../../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 // Upload media files to MTO
 export async function POST(request, { params }) {

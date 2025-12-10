@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { getUserFromToken } from "./validators/authFromToken.js"; // adjust path
+import { getUserFromToken } from "@/lib/validators/authFromToken";
 
 export async function withLogging(req, entityType, entityId, action, description) {
   try {
@@ -21,3 +21,4 @@ export async function withLogging(req, entityType, entityId, action, description
     return false;
   }
 }
+

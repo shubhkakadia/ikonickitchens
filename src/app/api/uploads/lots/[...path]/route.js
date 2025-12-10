@@ -1,10 +1,10 @@
 import path from "path";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import { uploadFile, validateMultipartRequest } from "@/lib/fileHandler";
 import fs from "fs";
-import { withLogging } from "../../../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 function ensureArray(value) {
   if (!value) return [];

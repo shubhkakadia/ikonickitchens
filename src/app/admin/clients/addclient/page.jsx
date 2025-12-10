@@ -4,7 +4,7 @@ import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
 import { ChevronLeft, User, ChevronDown, Edit, Trash2 } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/components/Sidebar";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast, ToastContainer } from "react-toastify";

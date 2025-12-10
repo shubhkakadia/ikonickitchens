@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import {
   uploadFile,
   validateMultipartRequest,
   getFileFromFormData,
 } from "@/lib/fileHandler";
-import { withLogging } from "../../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 const CATEGORIES = ["sheet", "handle", "hardware", "accessory", "edging_tape"];
 

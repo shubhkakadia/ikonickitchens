@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import {
   validateAdminAuth,
   processDateTimeField,
-} from "../../../../../lib/validators/authFromToken";
-import { withLogging } from "../../../../../lib/withLogging";
+} from "@/lib/validators/authFromToken";
+import { withLogging } from "@/lib/withLogging";
 
 export async function POST(request) {
   try {

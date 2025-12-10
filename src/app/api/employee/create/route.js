@@ -3,13 +3,13 @@ import { NextResponse } from "next/server";
 import {
   validateAdminAuth,
   processDateTimeField,
-} from "../../../../../lib/validators/authFromToken";
+} from "@/lib/validators/authFromToken";
 import {
   uploadFile,
   validateMultipartRequest,
   getFileFromFormData,
 } from "@/lib/fileHandler";
-import { withLogging } from "../../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 export async function POST(request) {
   try {

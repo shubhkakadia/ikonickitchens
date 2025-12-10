@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import {
   uploadFile,
   validateMultipartRequest,
@@ -8,7 +8,7 @@ import {
   deleteFileByRelativePath,
 } from "@/lib/fileHandler";
 import path from "path";
-import { withLogging } from "../../../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 export async function GET(request, { params }) {
   try {

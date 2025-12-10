@@ -1,6 +1,6 @@
 "use client";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/footer";
+import Footer from "@/components/Footer";
 import Carousel from "@/components/Carousel";
 import Image from "next/image";
 import React, { useState } from "react";

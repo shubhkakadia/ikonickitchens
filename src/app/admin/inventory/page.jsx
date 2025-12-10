@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/components/Sidebar.jsx";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import TabsController from "@/components/tabscontroller";

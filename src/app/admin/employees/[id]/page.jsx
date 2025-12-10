@@ -1,5 +1,5 @@
 "use client";
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/components/Sidebar";
 import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
 import {

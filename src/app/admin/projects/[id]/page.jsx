@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef } from "react";
-import Sidebar from "@/components/sidebar";
+import Sidebar from "@/components/Sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useParams } from "next/navigation";
@@ -54,16 +54,65 @@ const FileItemWithNotes = ({
   openDeleteFileConfirmation,
   isDeletingFile,
   getToken,
+  activeTab,
+  activeSitePhotoSubtab,
 }) => {
   const [notes, setNotes] = useState(file.notes || "");
   const [saveStatus, setSaveStatus] = useState("idle"); // "idle" | "saving" | "saved"
   const debounceTimer = useRef(null);
 
-  // Cleanup debounce timer on unmount
+  // Checkbox states for maintenance checklist
+  const [preparedByOffice, setPreparedByOffice] = useState(
+    file.maintenance_checklist?.prepared_by_office || false
+  );
+  const [preparedByProduction, setPreparedByProduction] = useState(
+    file.maintenance_checklist?.prepared_by_production || false
+  );
+  const [deliveredToSite, setDeliveredToSite] = useState(
+    file.maintenance_checklist?.delivered_to_site || false
+  );
+  const [installed, setInstalled] = useState(
+    file.maintenance_checklist?.installed || false
+  );
+  const checklistDebounceTimer = useRef(null);
+
+  // Refs to track current checkbox values for debounced save
+  const preparedByOfficeRef = useRef(preparedByOffice);
+  const preparedByProductionRef = useRef(preparedByProduction);
+  const deliveredToSiteRef = useRef(deliveredToSite);
+  const installedRef = useRef(installed);
+
+  // Update refs when state changes
+  useEffect(() => {
+    preparedByOfficeRef.current = preparedByOffice;
+    preparedByProductionRef.current = preparedByProduction;
+    deliveredToSiteRef.current = deliveredToSite;
+    installedRef.current = installed;
+  }, [preparedByOffice, preparedByProduction, deliveredToSite, installed]);
+
+  // Sync checkbox states when file prop changes
+  useEffect(() => {
+    if (file.maintenance_checklist) {
+      setPreparedByOffice(file.maintenance_checklist.prepared_by_office || false);
+      setPreparedByProduction(file.maintenance_checklist.prepared_by_production || false);
+      setDeliveredToSite(file.maintenance_checklist.delivered_to_site || false);
+      setInstalled(file.maintenance_checklist.installed || false);
+    } else {
+      setPreparedByOffice(false);
+      setPreparedByProduction(false);
+      setDeliveredToSite(false);
+      setInstalled(false);
+    }
+  }, [file.maintenance_checklist]);
+
+  // Cleanup debounce timers on unmount
   useEffect(() => {
     return () => {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
+      }
+      if (checklistDebounceTimer.current) {
+        clearTimeout(checklistDebounceTimer.current);
       }
     };
   }, []);
@@ -124,11 +173,134 @@ const FileItemWithNotes = ({
     }, 1000);
   };
 
+  // Save maintenance checklist to API
+  const saveMaintenanceChecklist = async (checklistData) => {
+    if (!file.id) return;
+
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const response = await axios.post(
+        `/api/maintenance_checklist/upsert`,
+        {
+          lot_file_id: file.id,
+          prepared_by_office: checklistData.preparedByOffice,
+          prepared_by_production: checklistData.preparedByProduction,
+          delivered_to_site: checklistData.deliveredToSite,
+          installed: checklistData.installed,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status && response.data.data) {
+        // Update local state from API response
+        const updatedChecklist = response.data.data;
+        setPreparedByOffice(updatedChecklist.prepared_by_office || false);
+        setPreparedByProduction(updatedChecklist.prepared_by_production || false);
+        setDeliveredToSite(updatedChecklist.delivered_to_site || false);
+        setInstalled(updatedChecklist.installed || false);
+
+        // Update refs
+        preparedByOfficeRef.current = updatedChecklist.prepared_by_office || false;
+        preparedByProductionRef.current = updatedChecklist.prepared_by_production || false;
+        deliveredToSiteRef.current = updatedChecklist.delivered_to_site || false;
+        installedRef.current = updatedChecklist.installed || false;
+      } else {
+        toast.error(response.data.message || "Failed to save checklist");
+      }
+    } catch (error) {
+      console.error("Error saving maintenance checklist:", error);
+      toast.error("Failed to save checklist. Please try again.");
+    }
+  };
+
+  // Debounced handler for checklist changes with cascading logic
+  const handleChecklistChange = (field, value) => {
+    let newPreparedByOffice = preparedByOffice;
+    let newPreparedByProduction = preparedByProduction;
+    let newDeliveredToSite = deliveredToSite;
+    let newInstalled = installed;
+
+    // Cascading logic: stages must be completed in order
+    if (value) {
+      // When checking a stage, automatically check all previous stages
+      if (field === "preparedByOffice") {
+        newPreparedByOffice = true;
+      } else if (field === "preparedByProduction") {
+        newPreparedByOffice = true;
+        newPreparedByProduction = true;
+      } else if (field === "deliveredToSite") {
+        newPreparedByOffice = true;
+        newPreparedByProduction = true;
+        newDeliveredToSite = true;
+      } else if (field === "installed") {
+        newPreparedByOffice = true;
+        newPreparedByProduction = true;
+        newDeliveredToSite = true;
+        newInstalled = true;
+      }
+    } else {
+      // When unchecking a stage, automatically uncheck all subsequent stages
+      if (field === "preparedByOffice") {
+        newPreparedByOffice = false;
+        newPreparedByProduction = false;
+        newDeliveredToSite = false;
+        newInstalled = false;
+      } else if (field === "preparedByProduction") {
+        newPreparedByProduction = false;
+        newDeliveredToSite = false;
+        newInstalled = false;
+      } else if (field === "deliveredToSite") {
+        newDeliveredToSite = false;
+        newInstalled = false;
+      } else if (field === "installed") {
+        newInstalled = false;
+      }
+    }
+
+    // Update all states immediately
+    setPreparedByOffice(newPreparedByOffice);
+    setPreparedByProduction(newPreparedByProduction);
+    setDeliveredToSite(newDeliveredToSite);
+    setInstalled(newInstalled);
+
+    // Update refs
+    preparedByOfficeRef.current = newPreparedByOffice;
+    preparedByProductionRef.current = newPreparedByProduction;
+    deliveredToSiteRef.current = newDeliveredToSite;
+    installedRef.current = newInstalled;
+
+    // Clear existing timer
+    if (checklistDebounceTimer.current) {
+      clearTimeout(checklistDebounceTimer.current);
+    }
+
+    // Set new timer (1 second debounce) - single API call for all changes
+    checklistDebounceTimer.current = setTimeout(() => {
+      saveMaintenanceChecklist({
+        preparedByOffice: preparedByOfficeRef.current,
+        preparedByProduction: preparedByProductionRef.current,
+        deliveredToSite: deliveredToSiteRef.current,
+        installed: installedRef.current,
+      });
+      checklistDebounceTimer.current = null;
+    }, 1000);
+  };
+
   return (
-    <div className="gap-2 flex items-start">
+    <div className="gap-4 flex items-start">
       <div
-        className="relative group cursor-pointer flex-shrink-0"
-        style={{ width: "150px" }}
+        className="relative group cursor-pointer"
+        style={{ width: "125px" }}
         onClick={() => handleViewExistingFile(file)}
       >
         <div className="w-full h-auto aspect-square rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50 hover:bg-slate-100 transition-colors">
@@ -149,9 +321,8 @@ const FileItemWithNotes = ({
             />
           ) : (
             <div
-              className={`w-full h-auto aspect-square flex items-center justify-center rounded-lg ${
-                file.mime_type.includes("pdf") ? "bg-red-50" : "bg-green-50"
-              }`}
+              className={`w-full h-auto aspect-square flex items-center justify-center rounded-lg ${file.mime_type.includes("pdf") ? "bg-red-50" : "bg-green-50"
+                }`}
             >
               {file.mime_type.includes("pdf") ? (
                 <FileText
@@ -198,6 +369,8 @@ const FileItemWithNotes = ({
           </button>
         </div>
       </div>
+
+      {/* Notes Section - Reduced Width */}
       <div className="relative flex-1">
         <textarea
           rows="6"
@@ -221,6 +394,48 @@ const FileItemWithNotes = ({
           </span>
         )}
       </div>
+
+      {/* Maintenance Checklist Checkboxes - In Same Row - Only for Maintenance Photos Tab */}
+      {activeTab === "site_photos" && activeSitePhotoSubtab === "maintenance" && (
+        <div className="flex flex-col justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preparedByOffice}
+              onChange={(e) => handleChecklistChange("preparedByOffice", e.target.checked)}
+              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+            />
+            <span className="text-sm text-slate-700">Prepared by Office</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={preparedByProduction}
+              onChange={(e) => handleChecklistChange("preparedByProduction", e.target.checked)}
+              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+            />
+            <span className="text-sm text-slate-700">Prepared by Production</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={deliveredToSite}
+              onChange={(e) => handleChecklistChange("deliveredToSite", e.target.checked)}
+              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+            />
+            <span className="text-sm text-slate-700">Delivered to Site</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={installed}
+              onChange={(e) => handleChecklistChange("installed", e.target.checked)}
+              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+            />
+            <span className="text-sm text-slate-700">Installed</span>
+          </label>
+        </div>
+      )}
     </div>
   );
 };
@@ -288,6 +503,12 @@ export default function page() {
   // Status dropdown state
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const statusDropdownRef = useRef(null);
+
+  // Maintenance checklist filter states
+  const [filterPreparedByOffice, setFilterPreparedByOffice] = useState(false);
+  const [filterPreparedByProduction, setFilterPreparedByProduction] = useState(false);
+  const [filterDeliveredToSite, setFilterDeliveredToSite] = useState(false);
+  const [filterInstalled, setFilterInstalled] = useState(false);
 
   const fetchProject = async () => {
     try {
@@ -597,6 +818,16 @@ export default function page() {
   useEffect(() => {
     fetchClients();
   }, []); // Fetch clients on component mount
+
+  // Reset filters when switching away from maintenance tab
+  useEffect(() => {
+    if (activeTab !== "site_photos" || activeSitePhotoSubtab !== "maintenance") {
+      setFilterPreparedByOffice(false);
+      setFilterPreparedByProduction(false);
+      setFilterDeliveredToSite(false);
+      setFilterInstalled(false);
+    }
+  }, [activeTab, activeSitePhotoSubtab]);
 
   // Cleanup debounce timer on unmount
   useEffect(() => {
@@ -921,6 +1152,158 @@ export default function page() {
     return currentTab?.files || [];
   };
 
+  // Get visible files (after filtering) for mark all functionality
+  const getVisibleFiles = () => {
+    let existingFiles = getCurrentTabFiles();
+
+    // Filter files by checklist status if in maintenance photos tab
+    if (activeTab === "site_photos" && activeSitePhotoSubtab === "maintenance") {
+      existingFiles = existingFiles.filter((file) => {
+        const checklist = file.maintenance_checklist;
+
+        // If no filters are selected, show all files
+        if (!filterPreparedByOffice && !filterPreparedByProduction && !filterDeliveredToSite && !filterInstalled) {
+          return true;
+        }
+
+        // Check if file matches any selected filter
+        let matches = false;
+
+        if (filterPreparedByOffice && checklist?.prepared_by_office) {
+          matches = true;
+        }
+        if (filterPreparedByProduction && checklist?.prepared_by_production) {
+          matches = true;
+        }
+        if (filterDeliveredToSite && checklist?.delivered_to_site) {
+          matches = true;
+        }
+        if (filterInstalled && checklist?.installed) {
+          matches = true;
+        }
+
+        return matches;
+      });
+    }
+
+    return existingFiles;
+  };
+
+  // Calculate checklist statistics (percentages)
+  const getChecklistStatistics = () => {
+    if (activeTab !== "site_photos" || activeSitePhotoSubtab !== "maintenance") {
+      return {
+        preparedByOffice: 0,
+        preparedByProduction: 0,
+        deliveredToSite: 0,
+        installed: 0,
+      };
+    }
+
+    const allFiles = getCurrentTabFiles();
+    const totalFiles = allFiles.length;
+
+    if (totalFiles === 0) {
+      return {
+        preparedByOffice: 0,
+        preparedByProduction: 0,
+        deliveredToSite: 0,
+        installed: 0,
+      };
+    }
+
+    let preparedByOfficeCount = 0;
+    let preparedByProductionCount = 0;
+    let deliveredToSiteCount = 0;
+    let installedCount = 0;
+
+    allFiles.forEach((file) => {
+      const checklist = file.maintenance_checklist;
+      if (checklist?.prepared_by_office) preparedByOfficeCount++;
+      if (checklist?.prepared_by_production) preparedByProductionCount++;
+      if (checklist?.delivered_to_site) deliveredToSiteCount++;
+      if (checklist?.installed) installedCount++;
+    });
+
+    return {
+      preparedByOffice: Math.round((preparedByOfficeCount / totalFiles) * 100),
+      preparedByProduction: Math.round((preparedByProductionCount / totalFiles) * 100),
+      deliveredToSite: Math.round((deliveredToSiteCount / totalFiles) * 100),
+      installed: Math.round((installedCount / totalFiles) * 100),
+    };
+  };
+
+  // Mark all visible files with a specific stage (following hierarchy)
+  const handleMarkAll = async (stage) => {
+    const visibleFiles = getVisibleFiles();
+
+    if (visibleFiles.length === 0) {
+      toast.info("No files to mark");
+      return;
+    }
+
+    // Determine checklist values based on stage (following hierarchy)
+    let checklistValues = {
+      prepared_by_office: false,
+      prepared_by_production: false,
+      delivered_to_site: false,
+      installed: false,
+    };
+
+    if (stage === "preparedByOffice") {
+      checklistValues.prepared_by_office = true;
+    } else if (stage === "preparedByProduction") {
+      checklistValues.prepared_by_office = true;
+      checklistValues.prepared_by_production = true;
+    } else if (stage === "deliveredToSite") {
+      checklistValues.prepared_by_office = true;
+      checklistValues.prepared_by_production = true;
+      checklistValues.delivered_to_site = true;
+    } else if (stage === "installed") {
+      checklistValues.prepared_by_office = true;
+      checklistValues.prepared_by_production = true;
+      checklistValues.delivered_to_site = true;
+      checklistValues.installed = true;
+    }
+
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      // Update all visible files
+      const updatePromises = visibleFiles.map((file) =>
+        axios.post(
+          `/api/maintenance_checklist/upsert`,
+          {
+            lot_file_id: file.id,
+            prepared_by_office: checklistValues.prepared_by_office,
+            prepared_by_production: checklistValues.prepared_by_production,
+            delivered_to_site: checklistValues.delivered_to_site,
+            installed: checklistValues.installed,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        )
+      );
+
+      await Promise.all(updatePromises);
+      toast.success(`Marked all ${visibleFiles.length} file(s) as ${stage === "preparedByOffice" ? "Prepared by Office" : stage === "preparedByProduction" ? "Prepared by Production" : stage === "deliveredToSite" ? "Delivered to Site" : "Installed"}`);
+
+      // Refresh lot data to get updated files
+      fetchLotData(true);
+    } catch (error) {
+      console.error("Error marking all files:", error);
+      toast.error("Failed to mark all files. Please try again.");
+    }
+  };
+
   // Upload files function
   const handleUploadFiles = async (filesToUpload = null) => {
     const files = filesToUpload || uploadedFiles;
@@ -1060,7 +1443,37 @@ export default function page() {
 
   // Existing Files Display - Render function (not a component to avoid remounting)
   const renderExistingFilesSection = () => {
-    const existingFiles = getCurrentTabFiles();
+    let existingFiles = getCurrentTabFiles();
+
+    // Filter files by checklist status if in maintenance photos tab
+    if (activeTab === "site_photos" && activeSitePhotoSubtab === "maintenance") {
+      existingFiles = existingFiles.filter((file) => {
+        const checklist = file.maintenance_checklist;
+
+        // If no filters are selected, show all files
+        if (!filterPreparedByOffice && !filterPreparedByProduction && !filterDeliveredToSite && !filterInstalled) {
+          return true;
+        }
+
+        // Check if file matches any selected filter
+        let matches = false;
+
+        if (filterPreparedByOffice && checklist?.prepared_by_office) {
+          matches = true;
+        }
+        if (filterPreparedByProduction && checklist?.prepared_by_production) {
+          matches = true;
+        }
+        if (filterDeliveredToSite && checklist?.delivered_to_site) {
+          matches = true;
+        }
+        if (filterInstalled && checklist?.installed) {
+          matches = true;
+        }
+
+        return matches;
+      });
+    }
 
     // Categorize files by type
     const categorizeFiles = () => {
@@ -1101,17 +1514,31 @@ export default function page() {
 
           {/* Files Grid */}
           <div className="gap-3 grid grid-cols-2 items-start">
-            {files.map((file) => (
-              <FileItemWithNotes
-                key={file.id}
-                file={file}
-                isSmall={isSmall}
-                handleViewExistingFile={handleViewExistingFile}
-                openDeleteFileConfirmation={openDeleteFileConfirmation}
-                isDeletingFile={isDeletingFile}
-                getToken={getToken}
-              />
-            ))}
+            {files.map((file, index) => {
+              // Add border-bottom to all items except those in the last row
+              // In a 2-column grid, last row contains the last 1-2 items
+              const isInLastRow = index >= Math.max(0, files.length - 2);
+              // Add border-right to items in the first column (even indices: 0, 2, 4, etc.)
+              const isFirstColumn = index % 2 === 0;
+
+              return (
+                <div
+                  key={file.id}
+                  className={`p-4 ${!isInLastRow ? 'border-b border-slate-200' : ''} ${isFirstColumn ? 'border-r border-slate-200' : ''}`}
+                >
+                  <FileItemWithNotes
+                    file={file}
+                    isSmall={isSmall}
+                    handleViewExistingFile={handleViewExistingFile}
+                    openDeleteFileConfirmation={openDeleteFileConfirmation}
+                    isDeletingFile={isDeletingFile}
+                    getToken={getToken}
+                    activeTab={activeTab}
+                    activeSitePhotoSubtab={activeSitePhotoSubtab}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       );
@@ -2124,6 +2551,127 @@ export default function page() {
                           )}
                           {activeSitePhotoSubtab === "maintenance" && (
                             <div>
+                              {/* Checklist Filter Section */}
+                              <div className="mb-6 bg-slate-50 rounded-lg p-4 border border-slate-200">
+                                <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                                  Filter by Checklist Status
+                                </h3>
+                                <div className="grid grid-cols-2 gap-6">
+                                  {/* First Column - Filter Checkboxes */}
+                                  <div className="space-y-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={filterPreparedByOffice}
+                                        onChange={(e) => setFilterPreparedByOffice(e.target.checked)}
+                                        className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+                                      />
+                                      <span className="text-sm text-slate-700">Prepared by Office</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={filterPreparedByProduction}
+                                        onChange={(e) => setFilterPreparedByProduction(e.target.checked)}
+                                        className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+                                      />
+                                      <span className="text-sm text-slate-700">Prepared by Production</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={filterDeliveredToSite}
+                                        onChange={(e) => setFilterDeliveredToSite(e.target.checked)}
+                                        className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+                                      />
+                                      <span className="text-sm text-slate-700">Delivered to Site</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={filterInstalled}
+                                        onChange={(e) => setFilterInstalled(e.target.checked)}
+                                        className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+                                      />
+                                      <span className="text-sm text-slate-700">Installed</span>
+                                    </label>
+                                    {(filterPreparedByOffice || filterPreparedByProduction || filterDeliveredToSite || filterInstalled) && (
+                                      <button
+                                        onClick={() => {
+                                          setFilterPreparedByOffice(false);
+                                          setFilterPreparedByProduction(false);
+                                          setFilterDeliveredToSite(false);
+                                          setFilterInstalled(false);
+                                        }}
+                                        className="text-sm text-slate-600 hover:text-slate-800 underline cursor-pointer"
+                                      >
+                                        Clear Filters
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Second Column - Statistics */}
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm text-slate-700">Prepared by Office</span>
+                                      <span className="text-sm font-semibold text-slate-900">
+                                        {getChecklistStatistics().preparedByOffice}%
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm text-slate-700">Prepared by Production</span>
+                                      <span className="text-sm font-semibold text-slate-900">
+                                        {getChecklistStatistics().preparedByProduction}%
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm text-slate-700">Delivered to Site</span>
+                                      <span className="text-sm font-semibold text-slate-900">
+                                        {getChecklistStatistics().deliveredToSite}%
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm text-slate-700">Installed</span>
+                                      <span className="text-sm font-semibold text-slate-900">
+                                        {getChecklistStatistics().installed}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Mark All Section */}
+                              <div className="mb-6 bg-slate-50 rounded-lg p-4 border border-slate-200">
+                                <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                                  Mark All
+                                </h3>
+                                <div className="flex flex-wrap gap-3">
+                                  <button
+                                    onClick={() => handleMarkAll("preparedByOffice")}
+                                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 hover:border-secondary transition-colors cursor-pointer"
+                                  >
+                                    Mark All - Prepared by Office
+                                  </button>
+                                  <button
+                                    onClick={() => handleMarkAll("preparedByProduction")}
+                                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 hover:border-secondary transition-colors cursor-pointer"
+                                  >
+                                    Mark All - Prepared by Production
+                                  </button>
+                                  <button
+                                    onClick={() => handleMarkAll("deliveredToSite")}
+                                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 hover:border-secondary transition-colors cursor-pointer"
+                                  >
+                                    Mark All - Delivered to Site
+                                  </button>
+                                  <button
+                                    onClick={() => handleMarkAll("installed")}
+                                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 hover:border-secondary transition-colors cursor-pointer"
+                                  >
+                                    Mark All - Installed
+                                  </button>
+                                </div>
+                              </div>
                               <UploadSection />
                             </div>
                           )}

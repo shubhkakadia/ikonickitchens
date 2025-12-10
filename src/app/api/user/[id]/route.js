@@ -1,59 +1,39 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import bcrypt from "bcrypt";
 import { withLogging } from "../../../../../lib/withLogging";
 
-export async function DELETE(request, { params }) {
+export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
-    const user = await prisma.users.delete({
+    const user = await prisma.users.findUnique({
       where: { id: id },
       include: {
         employee: {
-          select: {
-            first_name: true,
-            last_name: true,
+          include: {
+            image: true,
           },
         },
+        module_access: true,
       },
     });
-    const logged = await withLogging(
-      request,
-      "user",
-      id,
-      "DELETE",
-      `User deleted successfully: ${user.employee?.first_name} ${user.employee?.last_name}`
-    );
-    if (!logged) {
+    if (!user) {
       return NextResponse.json(
-        { status: false, message: "Failed to log user deletion" },
-        { status: 500 }
+        { status: false, message: "User not found" },
+        { status: 404 }
       );
     }
     return NextResponse.json(
-      { status: true, message: "User deleted successfully", data: user },
+      { status: true, message: "User fetched successfully", data: user },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/user/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal Server Error", error: error.message },
+      { status: false, message: "Internal Server Error" },
       { status: 500 }
     );
   }
@@ -61,19 +41,8 @@ export async function DELETE(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     let body;
     const contentType = request.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
@@ -82,7 +51,6 @@ export async function PATCH(request, { params }) {
       const formData = await request.formData();
       body = Object.fromEntries(formData.entries());
     }
-    console.log(body);
     const { user_type, is_active, module_access, password, old_password } =
       body;
 
@@ -136,10 +104,8 @@ export async function PATCH(request, { params }) {
       updateData.password = hashedPassword;
     }
 
-    console.log("updated", updateData)
     let user;
     try {
-      console.log(updateData, id);
       user = await prisma.users.update({
         where: { id: id },
         data: {
@@ -181,8 +147,9 @@ export async function PATCH(request, { params }) {
         module_access: moduleAccess,
       };
     } catch (error) {
+      console.error("Error updating user:", error);
       return NextResponse.json(
-        { status: false, message: "User not updated", error: error.message },
+        { status: false, message: "User not updated" },
         { status: 404 }
       );
     }
@@ -195,57 +162,69 @@ export async function PATCH(request, { params }) {
       `User updated successfully: ${user.employee?.first_name} ${user.employee?.last_name}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log user update" },
-        { status: 500 }
-      );
+      console.error(`Failed to log user update: ${id}`);
     }
     return NextResponse.json(
-      { status: true, message: "User updated successfully", data: user },
+      {
+        status: true,
+        message: "User updated successfully",
+        data: user,
+        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+      },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in PATCH /api/user/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal Server Error", error: error.message },
+      { status: false, message: "Internal Server Error" },
       { status: 500 }
     );
   }
 }
 
-export async function GET(request, { params }) {
+export async function DELETE(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
-    const user = await prisma.users.findUnique({
+    const user = await prisma.users.delete({
       where: { id: id },
       include: {
         employee: {
-          include: {
-            image: true,
+          select: {
+            first_name: true,
+            last_name: true,
           },
         },
-        module_access: true,
       },
     });
-    if (!user) {
+    const logged = await withLogging(
+      request,
+      "user",
+      id,
+      "DELETE",
+      `User deleted successfully: ${user.employee?.first_name} ${user.employee?.last_name}`
+    );
+    if (!logged) {
+      console.error(`Failed to log user deletion: ${id} - ${user.employee?.first_name} ${user.employee?.last_name}`);
       return NextResponse.json(
-        { status: false, message: "User not found" },
-        { status: 404 }
+        {
+          status: true,
+          message: "User deleted successfully",
+          data: user,
+          warning: "Note: Deletion succeeded but logging failed"
+        },
+        { status: 200 }
       );
     }
     return NextResponse.json(
-      { status: true, message: "User fetched successfully", data: user },
+      { status: true, message: "User deleted successfully", data: user },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in DELETE /api/user/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal Server Error", error: error.message },
+      { status: false, message: "Internal Server Error" },
       { status: 500 }
     );
   }

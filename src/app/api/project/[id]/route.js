@@ -1,26 +1,12 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const project = await prisma.project.findUnique({
       where: { project_id: id },
@@ -55,52 +41,9 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/project/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request, { params }) {
-  try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
-    const { id } = await params;
-    const project = await prisma.project.delete({
-      where: { project_id: id },
-    });
-    const logged = await withLogging(
-      request,
-      "project",
-      id,
-      "DELETE",
-      `Project deleted successfully: ${project.name}`
-    );
-    if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log project deletion" },
-        { status: 500 }
-      );
-    }
-    return NextResponse.json(
-      { status: true, message: "Project deleted successfully", data: project },
-      { status: 200 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -108,19 +51,8 @@ export async function DELETE(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const { name, client_id } = await request.json();
 
@@ -147,18 +79,61 @@ export async function PATCH(request, { params }) {
       `Project updated successfully: ${project.name}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log project update" },
-        { status: 500 }
-      );
+      console.error(`Failed to log project update: ${id} - ${project.name}`);
     }
     return NextResponse.json(
-      { status: true, message: "Project updated successfully", data: project },
+      { 
+        status: true, 
+        message: "Project updated successfully", 
+        data: project,
+        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+      },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in PATCH /api/project/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
+    const { id } = await params;
+    const project = await prisma.project.delete({
+      where: { project_id: id },
+    });
+    const logged = await withLogging(
+      request,
+      "project",
+      id,
+      "DELETE",
+      `Project deleted successfully: ${project.name}`
+    );
+    if (!logged) {
+      console.error(`Failed to log project deletion: ${id} - ${project.name}`);
+      return NextResponse.json(
+        { 
+          status: true, 
+          message: "Project deleted successfully", 
+          data: project,
+          warning: "Note: Deletion succeeded but logging failed"
+        },
+        { status: 200 }
+      );
+    }
+    return NextResponse.json(
+      { status: true, message: "Project deleted successfully", data: project },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error in DELETE /api/project/[id]:", error);
+    return NextResponse.json(
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

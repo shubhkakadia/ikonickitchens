@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
 import {
   uploadMultipleFiles,
   validateMultipartRequest,
@@ -14,19 +11,8 @@ import { withLogging } from "../../../../../../lib/withLogging";
 // Upload media files to MTO
 export async function POST(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const { id } = await params;
 
@@ -55,7 +41,7 @@ export async function POST(request, { params }) {
 
     // Upload multiple files
     const uploadResults = await uploadMultipleFiles(files, {
-      uploadDir: "uploads",
+      uploadDir: "mediauploads",
       subDir: `materials_to_order/${mto.project_id}`,
       filenameStrategy: "original",
     });
@@ -97,11 +83,9 @@ export async function POST(request, { params }) {
       )
     );
 
-    if (logged.some((log) => !log)) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log media upload" },
-        { status: 500 }
-      );
+    const hasLoggingFailures = logged.some((log) => !log);
+    if (hasLoggingFailures) {
+      console.error(`Failed to log some media uploads for MTO: ${id}`);
     }
 
     return NextResponse.json(
@@ -109,13 +93,14 @@ export async function POST(request, { params }) {
         status: true,
         message: `${uploadedMedia.length} file(s) uploaded successfully`,
         data: uploadedMedia,
+        ...(hasLoggingFailures ? { warning: "Note: Upload succeeded but some logging failed" } : {})
       },
       { status: 201 }
     );
   } catch (error) {
     console.error("Error in media upload:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -124,19 +109,8 @@ export async function POST(request, { params }) {
 // Delete media file from MTO
 export async function DELETE(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const { id } = await params;
     const { searchParams } = new URL(request.url);
@@ -146,6 +120,26 @@ export async function DELETE(request, { params }) {
       return NextResponse.json(
         { status: false, message: "mediaId is required" },
         { status: 400 }
+      );
+    }
+
+    // Verify MTO exists and get it for logging context
+    const mto = await prisma.materials_to_order.findUnique({
+      where: { id },
+      include: {
+        project: {
+          select: {
+            project_id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!mto) {
+      return NextResponse.json(
+        { status: false, message: "Materials to order not found" },
+        { status: 404 }
       );
     }
 
@@ -171,6 +165,19 @@ export async function DELETE(request, { params }) {
       data: { is_deleted: true },
     });
 
+    // Log the deletion action
+    const logged = await withLogging(
+      request,
+      "media",
+      updatedMedia.id,
+      "DELETE",
+      `Media deleted successfully: ${updatedMedia.filename} for MTO: ${mto.id} (Project: ${mto.project.name})`
+    );
+
+    if (!logged) {
+      console.error(`Failed to log media deletion: ${updatedMedia.id} - ${updatedMedia.filename}`);
+    }
+
     return NextResponse.json(
       {
         status: true,
@@ -179,13 +186,14 @@ export async function DELETE(request, { params }) {
           fileId: updatedMedia.id,
           filename: updatedMedia.filename,
         },
+        ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" }),
       },
       { status: 200 }
     );
   } catch (error) {
     console.error("Error deleting media:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

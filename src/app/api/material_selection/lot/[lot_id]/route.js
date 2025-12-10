@@ -1,25 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
 
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     // Get lot_id from params
     const { lot_id } = await params;
@@ -104,7 +90,7 @@ export async function GET(request, { params }) {
   } catch (error) {
     console.error("Error fetching material selection:", error);
     return NextResponse.json(
-      { status: false, message: "Internal Server Error", error: error.message },
+      { status: false, message: "Internal Server Error" },
       { status: 500 }
     );
   }

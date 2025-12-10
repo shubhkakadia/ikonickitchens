@@ -1,26 +1,12 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const mto = await prisma.materials_to_order.findUnique({
       where: { id },
@@ -75,8 +61,9 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/materials_to_order/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -84,19 +71,8 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const { id } = await params;
     const data = await request.json();
@@ -167,22 +143,21 @@ export async function PATCH(request, { params }) {
 
     const logged = await withLogging(request, "materials_to_order", id, "UPDATE", `Materials to order updated successfully for project: ${mto.project.name}`);
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log materials to order update" },
-        { status: 500 }
-      );
+      console.error(`Failed to log materials to order update: ${id}`);
     }
     return NextResponse.json(
       {
         status: true,
         message: "Materials to order updated successfully",
         data: mtoWithMedia,
+        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in PATCH /api/materials_to_order/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -190,20 +165,17 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
+
+    // Fetch MTO with project info before deletion for logging
+    const mtoForLogging = await prisma.materials_to_order.findUnique({
+      where: { id },
+      include: {
+        project: true,
+      },
+    });
 
     // Update lots to remove reference to this MTO
     await prisma.lot.updateMany({
@@ -220,17 +192,31 @@ export async function DELETE(request, { params }) {
     const mto = await prisma.materials_to_order.delete({
       where: { id },
     });
+
+    const logged = await withLogging(
+      request,
+      "materials_to_order",
+      id,
+      "DELETE",
+      `Materials to order deleted successfully for project: ${mtoForLogging?.project?.name || 'Unknown'}`
+    );
+    if (!logged) {
+      console.error(`Failed to log materials to order deletion: ${id}`);
+    }
+
     return NextResponse.json(
       {
         status: true,
         message: "Materials to order deleted successfully",
         data: mto,
+        ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" })
       },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in DELETE /api/materials_to_order/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

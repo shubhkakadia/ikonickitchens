@@ -1,25 +1,11 @@
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const pos = await prisma.purchase_order.findMany({
       where: {
@@ -62,6 +48,9 @@ export async function GET(request, { params }) {
         },
         invoice_url: true,
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
     return NextResponse.json(
       {
@@ -72,8 +61,9 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/purchase_order/by-supplier/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

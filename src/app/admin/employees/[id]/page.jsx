@@ -670,8 +670,6 @@ export default function EmployeeDetailPage() {
         module_access: moduleAccess,
       };
 
-      console.log(createData);
-
       const response = await axios.post(`/api/signup`, createData, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,

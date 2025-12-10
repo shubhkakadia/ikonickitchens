@@ -1,28 +1,14 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const contentType = request.headers.get("content-type") || "";
 
     let supplier_id;
@@ -99,7 +85,7 @@ export async function POST(request) {
 
         // Upload file with order_no as the filename base
         const uploadResult = await uploadFile(file, {
-          uploadDir: "uploads",
+          uploadDir: "mediauploads",
           subDir: "purchase_order",
           filenameStrategy: "id-based",
           idPrefix: order_no,
@@ -234,9 +220,15 @@ export async function POST(request) {
       `Purchase order created successfully for project: ${result.mto_id}`
     );
     if (!logged) {
+      console.error(`Failed to log purchase order creation: ${result.id}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log purchase order creation" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Purchase order created successfully",
+          data: result,
+          warning: "Note: Creation succeeded but logging failed"
+        },
+        { status: 201 }
       );
     }
 
@@ -249,8 +241,9 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error("Error in POST /api/purchase_order/create:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

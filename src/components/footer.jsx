@@ -48,7 +48,7 @@ export default function Footer() {
             setEmail(""); // Clear the input after successful subscription
           },
           (error) => {
-            console.log(error.text);
+            console.error("Error sending email:", error.text);
           }
         );
       // Success! Clear form and show success message

@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import {
   uploadFile,
   deleteFileByRelativePath,
@@ -13,19 +10,8 @@ import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const item = await prisma.item.findUnique({
       where: { item_id: id },
@@ -93,8 +79,9 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/item/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -102,19 +89,8 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     let formData;
     try {
       formData = await request.formData();
@@ -243,7 +219,7 @@ export async function PATCH(request, { params }) {
 
         // Upload new image
         const uploadResult = await uploadFile(imageFile, {
-          uploadDir: "uploads",
+          uploadDir: "mediauploads",
           subDir: `items/${existingItem.category.toLowerCase()}`,
           filenameStrategy: "id-based",
           idPrefix: id,
@@ -409,10 +385,7 @@ export async function PATCH(request, { params }) {
       `Item updated successfully: ${completeItem.name}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log item update" },
-        { status: 500 }
-      );
+      console.error(`Failed to log item update: ${id} - ${completeItem.name}`);
     }
 
     return NextResponse.json(
@@ -420,12 +393,14 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Item updated successfully",
         data: itemWithTransactions,
+        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in PATCH /api/item/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -433,19 +408,8 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const item = await prisma.item.findUnique({
       where: { item_id: id },
@@ -461,19 +425,22 @@ export async function DELETE(request, { params }) {
     });
     const logged = await withLogging(request, "item", id, "DELETE", `Item deleted successfully: ${item.name}`);
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log item deletion" },
-        { status: 500 }
-      );
+      console.error(`Failed to log item deletion: ${id} - ${item.name}`);
     }
     // delete file from storage
     return NextResponse.json(
-      { status: true, message: "Item deleted successfully", data: item },
+      { 
+        status: true, 
+        message: "Item deleted successfully", 
+        data: item,
+        ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" })
+      },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in DELETE /api/item/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

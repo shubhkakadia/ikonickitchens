@@ -152,7 +152,6 @@ export default function sidebar() {
   //   const fetchModuleAccess = async () => {
   //     const user = getUserData();
   //     const userId = user.user.id;
-  //     console.log('user', userId);
   //     try {
   //       const response = await axios.get(`/api/module_access/${userId}`, {
   //         headers: {
@@ -190,8 +189,6 @@ export default function sidebar() {
 
   // const key = siteMap[pathname];
   // const access = moduleAccess?.[key];
-  // console.log('key', key);
-  // console.log('visibleNavdata', visibleNavdata);
   return (
     <div className="bg-slate-900 w-60 h-screen border-r border-slate-800">
       <div className="flex flex-col h-full px-4 py-4 gap-4">

@@ -1,27 +1,14 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  isAdmin,
-  isSessionExpired,
-  processDateTimeField,
+  validateAdminAuth,
 } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function PATCH(request, { params }) {
     try {
-        const admin = await isAdmin(request);
-        if (!admin) {
-            return NextResponse.json(
-                { status: false, message: "Unauthorized" },
-                { status: 401 }
-            );
-        }
-        if (await isSessionExpired(request)) {
-            return NextResponse.json(
-                { status: false, message: "Session expired" },
-                { status: 401 }
-            );
-        }
+        const authError = await validateAdminAuth(request);
+        if (authError) return authError;
         const { id } = await params;
         const { notes } = await request.json();
         const lotFile = await prisma.lot_file.update({
@@ -36,19 +23,22 @@ export async function PATCH(request, { params }) {
             `Lot file updated successfully: ${lotFile.notes}`
         );
         if (!logged) {
-            return NextResponse.json(
-                { status: false, message: "Failed to log lot file update" },
-                { status: 500 }
-            );
+            console.error(`Failed to log lot file update: ${id}`);
         }
         return NextResponse.json(
-            { status: true, message: "Lot file updated successfully", data: lotFile },
+            { 
+                status: true, 
+                message: "Lot file updated successfully", 
+                data: lotFile,
+                ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+            },
             { status: 200 }
         );
     }
     catch (error) {
+        console.error("Error in PATCH /api/lot_file/[id]:", error);
         return NextResponse.json(
-            { status: false, message: "Internal server error", error: error.message },
+            { status: false, message: "Internal server error" },
             { status: 500 }
         );
     }

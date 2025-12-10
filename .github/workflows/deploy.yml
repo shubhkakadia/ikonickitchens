@@ -23,7 +23,7 @@ jobs:
             REMOTE_PATH="/home/ikonic-server/ikonickitchens-dev"
             ENV_DATA="${{ secrets.DEV_ENV }}"
             PM2_NAME="ikonickitchens-dev"
-            PORT=4001
+            PORT=4000
             BACKUP=false
           else
             echo "Deploying to PRODUCTION SERVER"
@@ -37,7 +37,7 @@ jobs:
           echo "Remote path: $REMOTE_PATH"
 
           # Since runner is on the same server, just copy files
-          rsync -avz --delete --exclude=".git" --exclude="node_modules" --exclude=".next" --exclude="uploads" --exclude="generated" \
+          rsync -avz --delete --exclude=".git" --exclude="node_modules" --exclude=".next" --exclude="/mediauploads" --exclude="generated" \
             ./ $REMOTE_PATH/
 
           # Setup app

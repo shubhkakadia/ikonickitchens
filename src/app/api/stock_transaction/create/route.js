@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 /**
@@ -35,29 +32,13 @@ async function handleUsedTransaction(data) {
     };
   }
 
-  // Calculate new quantity_used (increment by quantity)
-  const currentUsed = mtoItem.quantity_used || 0;
-  const newQuantityUsed = currentUsed + quantity;
-
-  // Update materials_to_order_item's quantity_used
-  const updatedMtoItem = await prisma.materials_to_order_item.update({
-    where: { id: mtoItem.id },
-    data: {
-      quantity_used: newQuantityUsed,
-    },
-    include: {
-      item: true,
-      mto: true,
-    },
-  });
-
-  // Get current item quantity
-  const currentItem = await prisma.item.findUnique({
+  // Verify item exists
+  const itemExists = await prisma.item.findUnique({
     where: { item_id: item_id },
-    select: { quantity: true },
+    select: { item_id: true },
   });
 
-  if (!currentItem) {
+  if (!itemExists) {
     return {
       status: false,
       message: "Item not found",
@@ -65,18 +46,33 @@ async function handleUsedTransaction(data) {
     };
   }
 
-  // Decrease item inventory quantity
-  const currentQuantity = currentItem.quantity || 0;
-  const newQuantity = Math.max(0, currentQuantity - quantity);
+  // Calculate new quantity_used (increment by quantity)
+  const currentUsed = mtoItem.quantity_used || 0;
+  const newQuantityUsed = currentUsed + quantity;
 
-  // Update item quantity and create stock transaction
-  await Promise.all([
+  // Wrap all database writes in a transaction to ensure atomicity
+  const [updatedMtoItem] = await prisma.$transaction([
+    // Update materials_to_order_item's quantity_used
+    prisma.materials_to_order_item.update({
+      where: { id: mtoItem.id },
+      data: {
+        quantity_used: newQuantityUsed,
+      },
+      include: {
+        item: true,
+        mto: true,
+      },
+    }),
+    // Atomically decrease item inventory quantity
     prisma.item.update({
       where: { item_id: item_id },
       data: {
-        quantity: newQuantity,
+        quantity: {
+          decrement: quantity,
+        },
       },
     }),
+    // Create stock transaction
     prisma.stock_transaction.create({
       data: {
         item_id: item_id,
@@ -125,29 +121,13 @@ async function handleAddedTransaction(data) {
     };
   }
 
-  // Calculate new quantity_received (increment by quantity)
-  const currentReceived = poItem.quantity_received || 0;
-  const newQuantityReceived = currentReceived + quantity;
-
-  // Update purchase_order_item's quantity_received
-  const updatedPoItem = await prisma.purchase_order_item.update({
-    where: { id: poItem.id },
-    data: {
-      quantity_received: newQuantityReceived,
-    },
-    include: {
-      item: true,
-      order: true,
-    },
-  });
-
-  // Get current item quantity
-  const currentItem = await prisma.item.findUnique({
+  // Verify item exists
+  const itemExists = await prisma.item.findUnique({
     where: { item_id: item_id },
-    select: { quantity: true },
+    select: { item_id: true },
   });
 
-  if (!currentItem) {
+  if (!itemExists) {
     return {
       status: false,
       message: "Item not found",
@@ -155,19 +135,32 @@ async function handleAddedTransaction(data) {
     };
   }
 
-  // Increase item inventory quantity
-  const currentQuantity = currentItem.quantity || 0;
-  const newQuantity = currentQuantity + quantity;
+  // Calculate new quantity_received (increment by quantity)
+  const currentReceived = poItem.quantity_received || 0;
+  const newQuantityReceived = currentReceived + quantity;
 
-  // Update item quantity and create stock transaction
-  await Promise.all([
-    prisma.item.update({
+  // Wrap all database writes in a transaction to ensure atomicity
+  await prisma.$transaction(async (tx) => {
+    // Update purchase_order_item's quantity_received
+    await tx.purchase_order_item.update({
+      where: { id: poItem.id },
+      data: {
+        quantity_received: newQuantityReceived,
+      },
+    });
+
+    // Atomically increase item inventory quantity
+    await tx.item.update({
       where: { item_id: item_id },
       data: {
-        quantity: newQuantity,
+        quantity: {
+          increment: quantity,
+        },
       },
-    }),
-    prisma.stock_transaction.create({
+    });
+
+    // Create stock transaction
+    await tx.stock_transaction.create({
       data: {
         item_id: item_id,
         quantity: quantity,
@@ -175,44 +168,45 @@ async function handleAddedTransaction(data) {
         purchase_order_id: purchase_order_id,
         notes: notes || `Received from PO ${purchase_order_id}`,
       },
-    }),
-  ]);
+    });
 
-  // Check if all items are fully received to update PO status
-  const updatedPO = await prisma.purchase_order.findUnique({
-    where: { id: purchase_order_id },
-    include: {
-      items: true,
-    },
+    // Check if all items are fully received to update PO status
+    const updatedPO = await tx.purchase_order.findUnique({
+      where: { id: purchase_order_id },
+      include: {
+        items: true,
+      },
+    });
+
+    const allItemsReceived = updatedPO.items.every(
+      (item) => (item.quantity_received || 0) >= item.quantity
+    );
+    const someItemsReceived = updatedPO.items.some(
+      (item) => (item.quantity_received || 0) > 0
+    );
+
+    let newStatus = updatedPO.status;
+    if (allItemsReceived && updatedPO.status !== "CANCELLED") {
+      newStatus = "FULLY_RECEIVED";
+    } else if (
+      someItemsReceived &&
+      !allItemsReceived &&
+      updatedPO.status !== "CANCELLED"
+    ) {
+      newStatus = "PARTIALLY_RECEIVED";
+    }
+
+    // Apply status update if needed
+    if (newStatus !== updatedPO.status) {
+      await tx.purchase_order.update({
+        where: { id: purchase_order_id },
+        data: { status: newStatus },
+      });
+    }
   });
 
-  const allItemsReceived = updatedPO.items.every(
-    (item) => (item.quantity_received || 0) >= item.quantity
-  );
-  const someItemsReceived = updatedPO.items.some(
-    (item) => (item.quantity_received || 0) > 0
-  );
-
-  let newStatus = updatedPO.status;
-  if (allItemsReceived && updatedPO.status !== "CANCELLED") {
-    newStatus = "FULLY_RECEIVED";
-  } else if (
-    someItemsReceived &&
-    !allItemsReceived &&
-    updatedPO.status !== "CANCELLED"
-  ) {
-    newStatus = "PARTIALLY_RECEIVED";
-  }
-
-  // Apply status update if needed
-  if (newStatus !== updatedPO.status) {
-    await prisma.purchase_order.update({
-      where: { id: purchase_order_id },
-      data: { status: newStatus },
-    });
-  }
-
-  // Fetch updated PO with all relations for return
+  // Fetch updated PO with all relations for return (after transaction commits)
+  // Status was already updated inside the transaction, so it will be correct here
   const finalPO = await prisma.purchase_order.findUnique({
     where: { id: purchase_order_id },
     include: {
@@ -250,11 +244,6 @@ async function handleAddedTransaction(data) {
     },
   });
 
-  // Update status in response
-  if (newStatus !== updatedPO.status) {
-    finalPO.status = newStatus;
-  }
-
   return {
     status: true,
     message: "Quantity received updated successfully",
@@ -271,13 +260,13 @@ async function handleAddedTransaction(data) {
 async function handleWastedTransaction(data) {
   const { item_id, quantity, notes } = data;
 
-  // Get current item quantity
-  const currentItem = await prisma.item.findUnique({
+  // Verify item exists
+  const itemExists = await prisma.item.findUnique({
     where: { item_id: item_id },
-    select: { quantity: true },
+    select: { item_id: true },
   });
 
-  if (!currentItem) {
+  if (!itemExists) {
     return {
       status: false,
       message: "Item not found",
@@ -285,18 +274,18 @@ async function handleWastedTransaction(data) {
     };
   }
 
-  // Decrease item inventory quantity (wasted means always decrease)
-  const currentQuantity = currentItem.quantity || 0;
-  const newQuantity = Math.max(0, currentQuantity - quantity);
-
-  // Update item quantity and create stock transaction
-  await Promise.all([
+  // Wrap all database writes in a transaction to ensure atomicity
+  await prisma.$transaction([
+    // Atomically decrease item inventory quantity
     prisma.item.update({
       where: { item_id: item_id },
       data: {
-        quantity: newQuantity,
+        quantity: {
+          decrement: quantity,
+        },
       },
     }),
+    // Create stock transaction
     prisma.stock_transaction.create({
       data: {
         item_id: item_id,
@@ -307,7 +296,7 @@ async function handleWastedTransaction(data) {
     }),
   ]);
 
-  // Fetch updated item for return
+  // Fetch updated item for return (after transaction commits)
   const updatedItem = await prisma.item.findUnique({
     where: { item_id: item_id },
     include: {
@@ -333,19 +322,8 @@ async function handleWastedTransaction(data) {
  */
 export async function POST(request) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
 
     const body = await request.json();
     const {
@@ -437,27 +415,24 @@ export async function POST(request) {
     );
 
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log stock transaction creation" },
-        { status: 500 }
-      );
+      console.error(`Failed to log stock transaction creation: ${result.data.id}`);
     }
 
     return NextResponse.json(
       {
         status: result.status,
         message: result.message,
+        ...(logged ? {} : { warning: "Note: Creation succeeded but logging failed" }),
         data: result.data,
       },
       { status: result.statusCode }
     );
   } catch (error) {
-    console.error("Error creating stock transaction:", error);
+    console.error("Error in POST /api/stock_transaction/create:", error);
     return NextResponse.json(
       {
         status: false,
         message: "Internal server error",
-        error: error.message,
       },
       { status: 500 }
     );

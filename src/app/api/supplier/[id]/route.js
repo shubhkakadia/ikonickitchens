@@ -1,26 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
 import { withLogging } from "../../../../../lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const supplier = await prisma.supplier.findUnique({
       where: {
@@ -50,8 +36,9 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/supplier/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -59,19 +46,8 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const { name, email, phone, address, notes, website, abn_number } =
       await request.json();
@@ -88,22 +64,21 @@ export async function PATCH(request, { params }) {
       `Supplier updated successfully: ${supplier.name}`
     );
     if (!logged) {
-      return NextResponse.json(
-        { status: false, message: "Failed to log supplier update" },
-        { status: 500 }
-      );
+      console.error(`Failed to log supplier update: ${id} - ${supplier.name}`);
     }
     return NextResponse.json(
       {
         status: true,
         message: "Supplier updated successfully",
         data: supplier,
+        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in PATCH /api/supplier/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -111,19 +86,8 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { id } = await params;
     const supplier = await prisma.supplier.delete({
       where: { supplier_id: id },
@@ -136,9 +100,15 @@ export async function DELETE(request, { params }) {
       `Supplier deleted successfully: ${supplier.name}`
     );
     if (!logged) {
+      console.error(`Failed to log supplier deletion: ${id} - ${supplier.name}`);
       return NextResponse.json(
-        { status: false, message: "Failed to log supplier deletion" },
-        { status: 500 }
+        { 
+          status: true, 
+          message: "Supplier deleted successfully",
+          data: supplier,
+          warning: "Note: Deletion succeeded but logging failed"
+        },
+        { status: 200 }
       );
     }
     return NextResponse.json(
@@ -150,8 +120,9 @@ export async function DELETE(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in DELETE /api/supplier/[id]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

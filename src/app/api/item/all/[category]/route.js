@@ -1,51 +1,49 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  isAdmin,
-  isSessionExpired,
-} from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
 
 const CATEGORIES = ["sheet", "handle", "hardware", "accessory", "edging_tape"];
 export async function GET(request, { params }) {
   try {
-    const admin = await isAdmin(request);
-    if (!admin) {
-      return NextResponse.json(
-        { status: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (await isSessionExpired(request)) {
-      return NextResponse.json(
-        { status: false, message: "Session expired" },
-        { status: 401 }
-      );
-    }
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
     const { category } = await params;
-    if (!CATEGORIES.includes(category)) {
+    const normalizedCategory = category.toLowerCase();
+    if (!CATEGORIES.includes(normalizedCategory)) {
       return NextResponse.json(
         { status: false, message: "Invalid category" },
         { status: 400 }
       );
     }
+    
+    // Dynamically construct include object based on category
+    const include = {
+      image: true, // Always include image relation
+    };
+    
+    // Map category to its corresponding relation
+    const categoryRelationMap = {
+      sheet: "sheet",
+      handle: "handle",
+      hardware: "hardware",
+      accessory: "accessory",
+      edging_tape: "edging_tape",
+    };
+    
+    include[categoryRelationMap[normalizedCategory]] = true;
+    
     const items = await prisma.item.findMany({
-      where: { category: category.toUpperCase() },
-      include: {
-        sheet: true,
-        handle: true,
-        hardware: true,
-        accessory: true,
-        edging_tape: true,
-        image: true,
-      },
+      where: { category: normalizedCategory.toUpperCase() },
+      include,
     });
     return NextResponse.json(
       { status: true, message: "Items fetched successfully", data: items },
       { status: 200 }
     );
   } catch (error) {
+    console.error("Error in GET /api/item/all/[category]:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error", error: error.message },
+      { status: false, message: "Internal server error" },
       { status: 500 }
     );
   }

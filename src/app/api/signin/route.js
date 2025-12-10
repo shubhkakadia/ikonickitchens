@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 export async function POST(request) {
@@ -13,38 +12,42 @@ export async function POST(request) {
       where: { username },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        {
-          status: false,
-          message: "User not found",
-        },
-        { status: 401 }
-      );
+    // Generic error message to prevent username enumeration
+    // Always return the same message whether user exists or password is wrong
+    const invalidCredentialsResponse = NextResponse.json(
+      {
+        status: false,
+        message: "Invalid username or password",
+      },
+      { status: 401 }
+    );
+
+    // Check if user exists and password is valid
+    // Use dummy hash comparison if user doesn't exist to prevent timing attacks
+    let isValidPassword = false;
+    if (user) {
+      isValidPassword = await bcrypt.compare(password, user.password);
+      
+      // Check if user account is active
+      if (!user.is_active) {
+        return NextResponse.json(
+          {
+            status: false,
+            message: "User account is not active",
+          },
+          { status: 403 }
+        );
+      }
+    } else {
+      // Perform dummy bcrypt comparison to prevent timing attacks
+      // Use a valid bcrypt hash format to ensure consistent timing
+      // This ensures similar response times whether user exists or not
+      const dummyHash = "$2b$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuv";
+      await bcrypt.compare(password, dummyHash);
     }
 
-    // Check if user account is active
-    if (!user.is_active) {
-      return NextResponse.json(
-        {
-          status: false,
-          message: "User account is not active",
-        },
-        { status: 403 }
-      );
-    }
-
-    // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-
-    if (!isValidPassword) {
-      return NextResponse.json(
-        {
-          status: false,
-          message: "Invalid password",
-        },
-        { status: 401 }
-      );
+    if (!user || !isValidPassword) {
+      return invalidCredentialsResponse;
     }
 
     // Generate session token (using random bytes for better security)
@@ -89,7 +92,6 @@ export async function POST(request) {
       {
         status: false,
         message: "Internal server error",
-        error: error.message,
       },
       { status: 500 }
     );

@@ -2,7 +2,7 @@
 import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
 import { ChevronLeft, ChevronDown, Upload, X, Package } from "lucide-react";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/sidebar";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import React, { useState, useRef, useEffect } from "react";
 import { toast, ToastContainer } from "react-toastify";

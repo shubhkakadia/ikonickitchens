@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { useState, useEffect } from "react";
 import {

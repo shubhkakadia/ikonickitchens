@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef } from "react";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useParams } from "next/navigation";

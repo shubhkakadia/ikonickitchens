@@ -1,6 +1,5 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Sidebar from "@/components/Sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,6 +35,7 @@ import {
   Filler,
 } from "chart.js";
 import { Line, Doughnut } from "react-chartjs-2";
+import Sidebar from "../../../components/sidebar";
 
 // Register Chart.js components
 ChartJS.register(

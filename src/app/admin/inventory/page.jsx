@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import Sidebar from "@/components/Sidebar.jsx";
+import Sidebar from "@/components/sidebar.jsx";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import TabsController from "@/components/tabscontroller";
@@ -30,8 +30,8 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { ToastContainer } from "react-toastify";
-import MultiSelectDropdown from "@/components/MultiSelectDropdown.jsx";
 import StockTally from "@/components/StockTally.jsx";
+import MultiSelectDropdown from "./components/MultiSelectDropdown";
 
 export default function page() {
   const router = useRouter();

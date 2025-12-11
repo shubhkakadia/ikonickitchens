@@ -1,6 +1,6 @@
 "use client";
 import { Fragment, useEffect, useMemo, useState, useRef } from "react";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import PaginationFooter from "@/components/PaginationFooter";

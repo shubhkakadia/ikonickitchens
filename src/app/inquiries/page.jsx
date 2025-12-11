@@ -2,7 +2,7 @@
 import Navbar from "@/components/Navbar";
 import React from "react";
 import { useRef, useState } from "react";
-import Footer from "@/components/Footer";
+import Footer from "@/components/footer";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import Image from "next/image";
 

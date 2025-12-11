@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import versions from "@/config/versions.json";
-import Footer from "@/components/Footer";
+import Footer from "@/components/footer";
 
 export default function page() {
   const router = useRouter();

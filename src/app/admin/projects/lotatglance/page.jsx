@@ -2,7 +2,7 @@
 import { AdminRoute } from "@/components/ProtectedRoute";
 import CRMLayout from "@/components/tabs";
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/sidebar";
 import { stages } from "@/components/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";

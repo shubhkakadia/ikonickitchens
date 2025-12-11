@@ -145,7 +145,7 @@ export default function page() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#B92F34] mx-auto mb-4"></div>
           <p className="text-white text-lg font-medium">
@@ -157,7 +157,7 @@ export default function page() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex flex-col">
       <Navbar bar={true} />
       <div className="flex justify-center items-center h-screen px-4">
         <div className="max-w-md w-full space-y-8">
@@ -259,7 +259,7 @@ export default function page() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative w-full flex justify-center py-4 px-6 border border-transparent text-base font-semibold rounded-xl text-white bg-gradient-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 shadow-lg hover:shadow-xl cursor-pointer"
+                className="group relative w-full flex justify-center py-4 px-6 border border-transparent text-base font-semibold rounded-xl text-white bg-linear-to-r from-slate-500 to-slate-600 hover:from-slate-600 hover:to-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 shadow-lg hover:shadow-xl cursor-pointer"
               >
                 {isLoading ? (
                   <div className="flex items-center">
@@ -281,7 +281,7 @@ export default function page() {
                 {errorType === "invalid_credentials" && (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
                     <div className="flex items-start">
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         <XCircle className="h-6 w-6 text-red-500" />
                       </div>
                       <div className="ml-3 flex-1">
@@ -300,7 +300,7 @@ export default function page() {
                 {errorType === "inactive" && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-sm">
                     <div className="flex items-start">
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         <AlertCircle className="h-6 w-6 text-amber-500" />
                       </div>
                       <div className="ml-3 flex-1">
@@ -334,7 +334,7 @@ export default function page() {
                 {errorType === "network" && (
                   <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-sm">
                     <div className="flex items-start">
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         <AlertCircle className="h-6 w-6 text-gray-500" />
                       </div>
                       <div className="ml-3 flex-1">
@@ -357,7 +357,7 @@ export default function page() {
                 {errorType === "general" && (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
                     <div className="flex items-start">
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         <XCircle className="h-6 w-6 text-red-500" />
                       </div>
                       <div className="ml-3 flex-1">

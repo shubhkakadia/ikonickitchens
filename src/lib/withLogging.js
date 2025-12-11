@@ -21,4 +21,3 @@ export async function withLogging(req, entityType, entityId, action, description
     return false;
   }
 }
-

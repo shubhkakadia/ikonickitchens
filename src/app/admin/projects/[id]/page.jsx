@@ -577,7 +577,7 @@ export default function page() {
     // Only prevent fetching if we already have the data for this lot and it's not a force refresh
     if (
       selectedLotData &&
-      selectedLotData.lot_id === selectedLot?.lot_id &&
+      selectedLotData.id === selectedLot?.id &&
       !forceRefresh
     ) {
       return;
@@ -596,7 +596,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.get(`/api/lot/${selectedLot.lot_id}`, {
+      const response = await axios.get(`/api/lot/${selectedLot.id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -878,7 +878,7 @@ export default function page() {
         toast.error("No valid session found. Please login again.");
         return;
       }
-      const response = await axios.delete(`/api/lot/${selectedLot.lot_id}`, {
+      const response = await axios.delete(`/api/lot/${selectedLot.id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -991,10 +991,10 @@ export default function page() {
         return;
       }
 
-      if (selectedLotData?.lot_id) {
+      if (selectedLotData?.id) {
         // Update lot information
         const response = await axios.patch(
-          `/api/lot/${selectedLotData.lot_id}`,
+          `/api/lot/${selectedLotData.id}`,
           editData,
           {
             headers: {
@@ -1034,7 +1034,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/lot/${selectedLotData.lot_id}`,
+        `/api/lot/${selectedLotData.id}`,
         { status: newStatus },
         {
           headers: {
@@ -1651,7 +1651,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/lot/${selectedLotData.lot_id}`,
+        `/api/lot/${selectedLotData.id}`,
         {
           name: selectedLotData.name,
           startDate:

@@ -12,7 +12,7 @@ export async function GET(request, { params }) {
     if (authError) return authError;
     const { id } = await params;
     const lot = await prisma.lot.findUnique({
-      where: { lot_id: id },
+      where: { id: id },
       include: {
         project: {
           include: {
@@ -98,7 +98,7 @@ export async function PATCH(request, { params }) {
 
     // Update the lot only if there are fields to update
     const lot = await prisma.lot.update({
-      where: { lot_id: id },
+      where: { id: id },
       data: updateData,
       include: {
         project: true,
@@ -139,13 +139,13 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
     // Fetch lot with project before deleting
     const lotToDelete = await prisma.lot.findUnique({
-      where: { lot_id: id },
+      where: { id: id },
       include: {
         project: true,
       },
     });
     const lot = await prisma.lot.delete({
-      where: { lot_id: id },
+      where: { id: id },
     });
     const logged = await withLogging(
       request,

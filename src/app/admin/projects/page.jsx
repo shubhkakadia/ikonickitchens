@@ -871,7 +871,7 @@ export default function page() {
                                       {project.project_id || "-"}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                      <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 bg-slate-50 text-slate-700 rounded-md font-medium">
+                                      <span className="inline-flex items-center justify-center min-w-8 px-2 py-1 bg-slate-50 text-slate-700 rounded-md font-medium">
                                         {project.lots ? project.lots.length : 0}
                                       </span>
                                     </td>

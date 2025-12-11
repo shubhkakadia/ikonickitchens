@@ -98,9 +98,8 @@ export default function SiteMeasurementsSection({
 
       formData.append("site_group", siteGroup);
 
-      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
-        selectedLotData.lot_id
-      }/site_measurements`;
+      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${selectedLotData.lot_id
+        }/site_measurements`;
 
       const response = await axios.post(apiUrl, formData, {
         headers: {
@@ -213,9 +212,8 @@ export default function SiteMeasurementsSection({
               {title} ({files.length})
             </span>
             <div
-              className={`transform transition-transform duration-200 ${
-                isExpanded ? "rotate-180" : ""
-              }`}
+              className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                }`}
             >
               <ChevronDown className="w-4 h-4" />
             </div>
@@ -229,15 +227,13 @@ export default function SiteMeasurementsSection({
                   key={file.id}
                   onClick={() => handleViewExistingFile(file)}
                   title="Click to view file"
-                  className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
-                    isSmall ? "w-32" : "w-40"
-                  }`}
+                  className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
+                    }`}
                 >
                   {/* File Preview */}
                   <div
-                    className={`w-full ${
-                      isSmall ? "aspect-[4/3]" : "aspect-square"
-                    } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                    className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
+                      } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
                   >
                     {file.mime_type.includes("image") ? (
                       <Image
@@ -256,23 +252,20 @@ export default function SiteMeasurementsSection({
                       />
                     ) : (
                       <div
-                        className={`w-full h-full flex items-center justify-center rounded-lg ${
-                          file.mime_type.includes("pdf")
-                            ? "bg-red-50"
-                            : "bg-green-50"
-                        }`}
+                        className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type.includes("pdf")
+                          ? "bg-red-50"
+                          : "bg-green-50"
+                          }`}
                       >
                         {file.mime_type.includes("pdf") ? (
                           <FileText
-                            className={`${
-                              isSmall ? "w-6 h-6" : "w-8 h-8"
-                            } text-red-600`}
+                            className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                              } text-red-600`}
                           />
                         ) : (
                           <File
-                            className={`${
-                              isSmall ? "w-6 h-6" : "w-8 h-8"
-                            } text-green-600`}
+                            className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                              } text-green-600`}
                           />
                         )}
                       </div>
@@ -372,9 +365,8 @@ export default function SiteMeasurementsSection({
           Select Files {isUploading && "(Uploading...)"}
         </label>
         <div
-          className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
-            isUploading ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+          className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${isUploading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
         >
           <input
             type="file"

@@ -1853,7 +1853,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                         !isCurrentVersion &&
                                         materialSelectionData
                                       }
-                                      className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                                       title="Remove this item"
                                     >
                                       <X className="w-4 h-4" />
@@ -2049,7 +2049,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                             !isCurrentVersion &&
                                             materialSelectionData
                                           }
-                                          className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                          className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                                           title="Remove this item"
                                         >
                                           <X className="w-4 h-4" />
@@ -2252,7 +2252,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                         !isCurrentVersion &&
                                         materialSelectionData
                                       }
-                                      className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                                       title="Remove this item"
                                     >
                                       <X className="w-4 h-4" />

@@ -714,7 +714,7 @@ export default function page() {
               </div>
             ) : (
               <>
-                <div className="px-4 py-2 flex-shrink-0">
+                <div className="px-4 py-2 shrink-0">
                   <div className="flex justify-between items-center">
                     <h1 className="text-xl font-bold text-slate-700">
                       Materials to Order
@@ -732,7 +732,7 @@ export default function page() {
                 <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
                   <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                     {/* Fixed Header Section */}
-                    <div className="p-4 flex-shrink-0 border-b border-slate-200">
+                    <div className="p-4 shrink-0 border-b border-slate-200">
                       <div className="flex items-center justify-between gap-3">
                         {/* Search */}
                         <div className="flex items-center gap-2 flex-1 max-w-sm relative">
@@ -865,7 +865,7 @@ export default function page() {
                     </div>
 
                     {/* Tabs Section */}
-                    <div className="px-4 flex-shrink-0 border-b border-slate-200">
+                    <div className="px-4 shrink-0 border-b border-slate-200">
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("active")}
@@ -1721,7 +1721,7 @@ export default function page() {
                             >
                               {/* File Preview */}
                               <div
-                                className={`w-full ${isSmall ? "aspect-[4/3]" : "aspect-square"
+                                className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
                                   } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
                               >
                                 {file.mime_type?.includes("image") ||

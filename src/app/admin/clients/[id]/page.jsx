@@ -651,7 +651,7 @@ export default function page() {
                     <div className="col-span-7">
                       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
                         <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 bg-gradient-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
+                          <div className="w-16 h-16 bg-linear-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
                             {getInitials(client.client_name)}
                           </div>
                           <div className="flex-1">

@@ -419,7 +419,7 @@ const TextEditor = ({
 
       <div className="border border-slate-300 rounded-lg bg-white overflow-hidden">
         {/* Toolbar */}
-        <div className="border-b-2 border-gray-200 bg-gradient-to-b from-gray-50 to-white px-3 py-3">
+        <div className="border-b-2 border-gray-200 bg-linear-to-b from-gray-50 to-white px-3 py-3">
           <div className="flex flex-wrap items-center gap-2">
             {/* Heading Dropdown */}
             <div className="relative dropdown-container">

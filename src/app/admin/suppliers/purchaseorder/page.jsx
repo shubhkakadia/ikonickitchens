@@ -991,7 +991,7 @@ export default function page() {
               </div>
             ) : (
               <>
-                <div className="px-3 py-2 flex-shrink-0">
+                <div className="px-3 py-2 shrink-0">
                   <div className="flex justify-between items-center">
                     <h1 className="text-xl font-bold text-slate-600">
                       Purchase Orders
@@ -1009,7 +1009,7 @@ export default function page() {
                 <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3">
                   <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                     {/* Fixed Header Section */}
-                    <div className="p-3 flex-shrink-0">
+                    <div className="p-3 shrink-0">
                       <div className="flex items-center justify-between">
                         {/* Search */}
                         <div className="flex items-center gap-2 flex-1 max-w-sm relative">
@@ -1091,10 +1091,10 @@ export default function page() {
                                 selectedColumns.length === 0
                               }
                               className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
-                                  filteredAndSortedPOs.length === 0 ||
-                                  selectedColumns.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
+                                filteredAndSortedPOs.length === 0 ||
+                                selectedColumns.length === 0
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
                                 }`}
                             >
                               <Sheet className="h-4 w-4" />
@@ -1112,8 +1112,8 @@ export default function page() {
                                 isExporting || filteredAndSortedPOs.length === 0
                               }
                               className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${isExporting || filteredAndSortedPOs.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
                                 }`}
                             >
                               <ChevronDown className="h-5 w-5" />
@@ -1153,13 +1153,13 @@ export default function page() {
                     </div>
 
                     {/* Tabs Section */}
-                    <div className="px-3 flex-shrink-0 border-b border-slate-200">
+                    <div className="px-3 shrink-0 border-b border-slate-200">
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("active")}
                           className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "active"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             }`}
                         >
                           Active
@@ -1167,8 +1167,8 @@ export default function page() {
                         <button
                           onClick={() => setActiveTab("completed")}
                           className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "completed"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             }`}
                         >
                           Completed
@@ -1290,16 +1290,16 @@ export default function page() {
                                     <td className="px-3 py-2">
                                       <span
                                         className={`px-2 py-1 text-xs font-medium rounded ${po.status === "DRAFT"
-                                            ? "bg-yellow-100 text-yellow-800"
-                                            : po.status === "ORDERED"
-                                              ? "bg-blue-100 text-blue-800"
-                                              : po.status === "PARTIALLY_RECEIVED"
-                                                ? "bg-purple-100 text-purple-800"
-                                                : po.status === "FULLY_RECEIVED"
-                                                  ? "bg-green-100 text-green-800"
-                                                  : po.status === "CANCELLED"
-                                                    ? "bg-red-100 text-red-800"
-                                                    : "bg-gray-100 text-gray-800"
+                                          ? "bg-yellow-100 text-yellow-800"
+                                          : po.status === "ORDERED"
+                                            ? "bg-blue-100 text-blue-800"
+                                            : po.status === "PARTIALLY_RECEIVED"
+                                              ? "bg-purple-100 text-purple-800"
+                                              : po.status === "FULLY_RECEIVED"
+                                                ? "bg-green-100 text-green-800"
+                                                : po.status === "CANCELLED"
+                                                  ? "bg-red-100 text-red-800"
+                                                  : "bg-gray-100 text-gray-800"
                                           }`}
                                       >
                                         {po.status}
@@ -1308,8 +1308,8 @@ export default function page() {
                                     <td className="px-3 py-2 text-right">
                                       <ChevronDown
                                         className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${openAccordionId === po.id
-                                            ? "rotate-180"
-                                            : ""
+                                          ? "rotate-180"
+                                          : ""
                                           }`}
                                       />
                                     </td>
@@ -1406,8 +1406,8 @@ export default function page() {
                                                   deletingPOId === po.id
                                                 }
                                                 className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${deletingPOId === po.id
-                                                    ? "opacity-50 cursor-not-allowed"
-                                                    : ""
+                                                  ? "opacity-50 cursor-not-allowed"
+                                                  : ""
                                                   }`}
                                               >
                                                 {deletingPOId === po.id ? (
@@ -1498,9 +1498,9 @@ export default function page() {
                                                         po.id
                                                       }
                                                       className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${deletingInvoicePOId ===
-                                                          po.id
-                                                          ? "opacity-50 cursor-not-allowed"
-                                                          : ""
+                                                        po.id
+                                                        ? "opacity-50 cursor-not-allowed"
+                                                        : ""
                                                         }`}
                                                     >
                                                       {deletingInvoicePOId ===
@@ -1574,9 +1574,9 @@ export default function page() {
                                                       <label
                                                         htmlFor={`invoice-upload-${po.id}`}
                                                         className={`cursor-pointer px-2 py-1 border border-slate-300 rounded-lg hover:bg-slate-50 text-xs text-slate-700 flex items-center gap-2 ${uploadingInvoicePOId ===
-                                                            po.id
-                                                            ? "opacity-50 cursor-not-allowed"
-                                                            : ""
+                                                          po.id
+                                                          ? "opacity-50 cursor-not-allowed"
+                                                          : ""
                                                           }`}
                                                         onClick={(e) =>
                                                           e.stopPropagation()
@@ -2131,7 +2131,7 @@ export default function page() {
               {isPODropdownOpen && (
                 <div
                   data-dropdown="po-dropdown"
-                  className="fixed z-[9999] bg-white border border-slate-300 rounded-lg shadow-xl max-h-60 overflow-auto"
+                  className="fixed z-9999 bg-white border border-slate-300 rounded-lg shadow-xl max-h-60 overflow-auto"
                   style={{
                     top: `${dropdownPosition.top}px`,
                     left: `${dropdownPosition.left}px`,
@@ -2443,8 +2443,8 @@ export default function page() {
                                     )
                                   }
                                   className={`w-24 text-sm text-slate-800 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${exceedsRemaining
-                                      ? "border-red-300 bg-red-50"
-                                      : "border-slate-300"
+                                    ? "border-red-300 bg-red-50"
+                                    : "border-slate-300"
                                     }`}
                                   placeholder="0"
                                 />
@@ -2494,8 +2494,8 @@ export default function page() {
                 onClick={handleSubmitMaterialsReceived}
                 disabled={!selectedPOId || isSubmitting}
                 className={`cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-200 text-sm font-medium flex items-center gap-2 ${!selectedPOId || isSubmitting
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
                   }`}
               >
                 {isSubmitting ? (

@@ -15,7 +15,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Briefcase,
   Calendar,
   UserCircle,
   Settings as SettingsIcon,
@@ -379,7 +378,7 @@ export default function SettingsPage() {
 
                 {/* Warning Banner */}
                 {/* <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                       Contact Administrator to Change Your Details
@@ -396,7 +395,7 @@ export default function SettingsPage() {
                     <div className="lg:col-span-1">
                       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                         <div
-                          className={`bg-gradient-to-br p-6 ${!darkMode ? "from-primary to-primary/80" : ""
+                          className={`bg-linear-to-br p-6 ${!darkMode ? "from-primary to-primary/80" : ""
                             }`}
                           style={darkMode ? {
                             background: `linear-gradient(to bottom right, ${complementaryColors.base}, ${complementaryColors.lighter})`
@@ -436,7 +435,7 @@ export default function SettingsPage() {
                           {/* Date of Birth */}
                           {employee.dob && (
                             <div className="flex items-center gap-3 text-sm">
-                              <Calendar className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                              <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
                               <div className="flex-1">
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
                                   Date of Birth
@@ -451,7 +450,7 @@ export default function SettingsPage() {
                           {/* Start Date with Days Count */}
                           {employee.join_date && (
                             <div className="flex items-center gap-3 text-sm">
-                              <Calendar className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                              <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
                               <div className="flex-1">
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
                                   Start Date
@@ -480,7 +479,7 @@ export default function SettingsPage() {
                           {/* Email */}
                           {employee.email && (
                             <div className="flex items-center gap-3 text-sm">
-                              <Mail className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                              <Mail className="h-4 w-4 text-slate-400 shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
                                   Email
@@ -495,7 +494,7 @@ export default function SettingsPage() {
                           {/* Mobile Number */}
                           {employee.phone && (
                             <div className="flex items-center gap-3 text-sm">
-                              <Phone className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                              <Phone className="h-4 w-4 text-slate-400 shrink-0" />
                               <div className="flex-1">
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
                                   Mobile Number
@@ -510,7 +509,7 @@ export default function SettingsPage() {
                           {/* Address */}
                           {employee.address && (
                             <div className="flex items-start gap-3 text-sm">
-                              <MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                              <MapPin className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
                               <div className="flex-1">
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
                                   Address

@@ -66,12 +66,12 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
       {/* Hero Section */}
       <div className="relative h-screen overflow-hidden">
         <Navbar />
         {/* Animated Background Carousel */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 to-slate-800/60">
+        <div className="absolute inset-0 bg-linear-to-r from-slate-900/80 to-slate-800/60">
           {/* Carousel Images */}
           <div className="absolute inset-0 overflow-hidden">
             {carouselImages.map((image, index) => (
@@ -88,7 +88,7 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/70 to-transparent"></div>
+          <div className="absolute inset-0 bg-linear-to-r from-slate-900/70 to-transparent"></div>
         </div>
 
         {/* Hero Content */}
@@ -157,7 +157,7 @@ export default function Home() {
       </div>
 
       {/* Statistics Section */}
-      <div className="bg-gradient-to-r from-slate-800 to-slate-900 py-16 sm:py-20 lg:py-24">
+      <div className="bg-linear-to-r from-slate-800 to-slate-900 py-16 sm:py-20 lg:py-24">
         <div className="container mx-auto px-6 lg:px-8">
           <div className="text-center mb-12 sm:mb-16" data-aos="fade-up">
             <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-white mb-4">
@@ -178,7 +178,7 @@ export default function Home() {
               data-aos-delay="200"
             >
               <div className="relative inline-block mb-4 sm:mb-6">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-gradient-to-br from-[#B92F34] to-[#A0252A] rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-500 shadow-lg group-hover:shadow-2xl">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-linear-to-br from-[#B92F34] to-[#A0252A] rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-500 shadow-lg group-hover:shadow-2xl">
                   <svg
                     className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white"
                     fill="none"
@@ -214,7 +214,7 @@ export default function Home() {
               data-aos-delay="400"
             >
               <div className="relative inline-block mb-4 sm:mb-6">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-gradient-to-br from-[#B92F34] to-[#A0252A] rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-500 shadow-lg group-hover:shadow-2xl">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-linear-to-br from-[#B92F34] to-[#A0252A] rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-500 shadow-lg group-hover:shadow-2xl">
                   <svg
                     className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white"
                     fill="none"
@@ -250,7 +250,7 @@ export default function Home() {
               data-aos-delay="600"
             >
               <div className="relative inline-block mb-4 sm:mb-6">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-gradient-to-br from-[#B92F34] to-[#A0252A] rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-500 shadow-lg group-hover:shadow-2xl">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 bg-linear-to-br from-[#B92F34] to-[#A0252A] rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-500 shadow-lg group-hover:shadow-2xl">
                   <svg
                     className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-white"
                     fill="none"
@@ -347,7 +347,7 @@ export default function Home() {
                       fill
                       className="object-cover group-hover:scale-110 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent"></div>
                   </div>
                   <div className="p-4 sm:p-6 lg:p-8">
                     <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800 mb-3 sm:mb-4 group-hover:text-[#B92F34] transition-colors duration-300">
@@ -396,7 +396,7 @@ export default function Home() {
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent"></div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center space-y-2 sm:space-y-4 px-4">
                       <h3 className="font-extralight text-white text-xl sm:text-2xl lg:text-4xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0">
@@ -424,7 +424,7 @@ export default function Home() {
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent"></div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center space-y-2 sm:space-y-4 px-4">
                       <h3 className="text-white font-extralight text-xl sm:text-2xl lg:text-4xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0">
@@ -452,7 +452,7 @@ export default function Home() {
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent"></div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center space-y-2 sm:space-y-4 px-4">
                       <h3 className="text-white font-extralight text-xl sm:text-2xl lg:text-4xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0">
@@ -480,7 +480,7 @@ export default function Home() {
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent"></div>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center space-y-2 sm:space-y-4 px-4">
                       <h3 className="text-white font-extralight text-xl sm:text-2xl lg:text-4xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0">

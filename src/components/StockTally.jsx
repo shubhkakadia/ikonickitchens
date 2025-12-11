@@ -621,7 +621,7 @@ export default function StockTally({
                   {stockTallyError && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left">
                       <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                        <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
                         <div>
                           <p className="font-medium text-red-700">Error</p>
                           <p className="text-sm text-red-600 whitespace-pre-wrap">
@@ -685,7 +685,7 @@ export default function StockTally({
                 {stockTallyError && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-medium text-amber-700">
                           Some rows had issues

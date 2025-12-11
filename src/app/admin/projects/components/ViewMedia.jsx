@@ -129,49 +129,49 @@ export default function ViewMedia({
               {selectedFile.type?.includes("image")
                 ? "Image"
                 : selectedFile.type?.includes("pdf")
-                ? "PDF"
-                : selectedFile.type?.includes("video")
-                ? "Video"
-                : "Unknown file type"}
+                  ? "PDF"
+                  : selectedFile.type?.includes("video")
+                    ? "Video"
+                    : "Unknown file type"}
             </div>
 
             {/* PDF Controls */}
             {(selectedFile.type?.includes("pdf") ||
               selectedFile.name?.endsWith(".pdf")) && (
-              <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
-                <button
-                  onClick={() =>
-                    setPdfScale((prev) => Math.max(prev - 0.25, 0.5))
-                  }
-                  disabled={pdfScale <= 0.5}
-                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-                <span className="text-sm font-medium text-slate-700 min-w-[50px] text-center">
-                  {Math.round(pdfScale * 100)}%
-                </span>
-                <button
-                  onClick={() =>
-                    setPdfScale((prev) => Math.min(prev + 0.25, 3.0))
-                  }
-                  disabled={pdfScale >= 3.0}
-                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-                {numPages && (
-                  <>
-                    <div className="h-6 w-px bg-slate-300 mx-1"></div>
-                    <span className="text-sm font-medium text-slate-700">
-                      Page {currentPageInView} of {numPages}
-                    </span>
-                  </>
-                )}
-              </div>
-            )}
+                <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
+                  <button
+                    onClick={() =>
+                      setPdfScale((prev) => Math.max(prev - 0.25, 0.5))
+                    }
+                    disabled={pdfScale <= 0.5}
+                    className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <span className="text-sm font-medium text-slate-700 min-w-[50px] text-center">
+                    {Math.round(pdfScale * 100)}%
+                  </span>
+                  <button
+                    onClick={() =>
+                      setPdfScale((prev) => Math.min(prev + 0.25, 3.0))
+                    }
+                    disabled={pdfScale >= 3.0}
+                    className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                  {numPages && (
+                    <>
+                      <div className="h-6 w-px bg-slate-300 mx-1"></div>
+                      <span className="text-sm font-medium text-slate-700">
+                        Page {currentPageInView} of {numPages}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
 
             <button
               onClick={() => {

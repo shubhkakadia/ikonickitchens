@@ -869,8 +869,8 @@ export default function page() {
                         type="submit"
                         disabled={!isFormValid || isSubmitting}
                         className={`cursor-pointer flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${isFormValid && !isSubmitting
-                            ? "bg-primary/80 hover:bg-primary text-white"
-                            : "bg-slate-300 text-slate-500 cursor-not-allowed"
+                          ? "bg-primary/80 hover:bg-primary text-white"
+                          : "bg-slate-300 text-slate-500 cursor-not-allowed"
                           }`}
                       >
                         <Save className="w-5 h-5" />

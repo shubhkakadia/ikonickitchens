@@ -92,7 +92,7 @@ function AccessDenied({ pathname }) {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -175,7 +175,7 @@ function AccessDenied({ pathname }) {
 // Loading Component
 function LoadingAccess() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center">
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
         <p className="text-gray-600 font-medium">Checking permissions...</p>

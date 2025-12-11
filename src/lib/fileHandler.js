@@ -67,7 +67,7 @@ export async function getFileMetadata(filePath, file = null) {
   };
 }
 
-export async function getRelativePath(absolutePath) {
+export function getRelativePath(absolutePath) {
   return path.relative(process.cwd(), absolutePath).replaceAll("\\", "/");
 }
 

@@ -10,7 +10,7 @@ export default function ProtectedRoute({
   children,
   requiredUserType,
   fallback,
-  redirectTo = "/login",
+  redirectTo = "/admin/login",
 }) {
   const router = useRouter();
   const { isAuthenticated, getUserType, loading } = useAuth();

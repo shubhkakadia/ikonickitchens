@@ -26,7 +26,7 @@ import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import versions from "@/config/versions.json";
 
-export default function sidebar() {
+export default function Sidebar() {
 
   const dispatch = useDispatch();
   const pathname = usePathname();

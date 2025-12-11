@@ -1,3 +1,5 @@
+"use server";
+
 import fs from "fs";
 import path from "path";
 
@@ -105,7 +107,7 @@ export async function getFileMetadata(filePath, file = null) {
  * @param {string} absolutePath - Absolute file path
  * @returns {string} - Relative path (with forward slashes)
  */
-export function getRelativePath(absolutePath) {
+export async function getRelativePath(absolutePath) {
   return path.relative(process.cwd(), absolutePath).replaceAll("\\", "/");
 }
 
@@ -114,7 +116,7 @@ export function getRelativePath(absolutePath) {
  * @param {string} prefix - Optional prefix (e.g., entity ID)
  * @returns {string} - Unique base name
  */
-export function generateUniqueBaseName(prefix = "") {
+export async function generateUniqueBaseName(prefix = "") {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(7);
   return prefix ? `${prefix}-${timestamp}-${random}` : `${timestamp}-${random}`;
@@ -286,7 +288,7 @@ export async function validateMultipartRequest(request) {
  * @param {boolean} getAll - If true, returns array of all files with this name
  * @returns {File|File[]|null} - File object(s) or null if not found
  */
-export function getFileFromFormData(formData, fieldName, getAll = false) {
+export async function getFileFromFormData(formData, fieldName, getAll = false) {
   if (getAll) {
     const files = formData.getAll(fieldName);
     return files.filter((file) => file instanceof File);

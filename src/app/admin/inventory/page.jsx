@@ -30,7 +30,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { ToastContainer } from "react-toastify";
-import MultiSelectDropdown from "./components/MultiSelectDropdown.jsx";
+import MultiSelectDropdown from "@/components/MultiSelectDropdown.jsx";
 import StockTally from "@/components/StockTally.jsx";
 
 export default function page() {

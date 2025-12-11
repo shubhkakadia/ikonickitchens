@@ -1,16 +1,7 @@
+
 import fs from "fs";
 import path from "path";
 
-/**
- * Centralized File Handler Library
- * Provides utilities for file operations across all API routes
- */
-
-/**
- * Check if a file exists at the given path
- * @param {string} filePath - Absolute path to the file
- * @returns {Promise<boolean>} - True if file exists, false otherwise
- */
 export async function fileExists(filePath) {
   try {
     await fs.promises.access(filePath);
@@ -20,12 +11,6 @@ export async function fileExists(filePath) {
   }
 }
 
-/**
- * Write a file to disk
- * @param {string} targetPath - Absolute path where file should be written
- * @param {File} file - File object from FormData
- * @returns {Promise<void>}
- */
 export async function writeFileToDisk(targetPath, file) {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
@@ -33,13 +18,6 @@ export async function writeFileToDisk(targetPath, file) {
   await fs.promises.writeFile(targetPath, buffer);
 }
 
-/**
- * Get unique filename by appending counter if file exists
- * @param {string} targetDir - Directory where file will be saved
- * @param {string} baseName - Base name for the file (without extension)
- * @param {string} extension - File extension (e.g., ".jpg", ".pdf")
- * @returns {Promise<string>} - Unique filename
- */
 export async function getUniqueFilename(targetDir, baseName, extension) {
   let filename = `${baseName}${extension}`;
   let counter = 1;
@@ -50,11 +28,6 @@ export async function getUniqueFilename(targetDir, baseName, extension) {
   return filename;
 }
 
-/**
- * Delete a file from disk
- * @param {string} filePath - Absolute path to the file
- * @returns {Promise<boolean>} - True if deleted successfully, false otherwise
- */
 export async function deleteFileFromDisk(filePath) {
   try {
     if (await fileExists(filePath)) {
@@ -68,12 +41,6 @@ export async function deleteFileFromDisk(filePath) {
   }
 }
 
-/**
- * Get file metadata
- * @param {string} filePath - Absolute path to the file
- * @param {File} file - File object from FormData (optional, for mime type)
- * @returns {Promise<Object>} - File metadata object
- */
 export async function getFileMetadata(filePath, file = null) {
   const fileStats = await fs.promises.stat(filePath);
   const extension = path.extname(filePath).slice(1); // Remove the dot
@@ -100,44 +67,16 @@ export async function getFileMetadata(filePath, file = null) {
   };
 }
 
-/**
- * Get relative path from project root
- * @param {string} absolutePath - Absolute file path
- * @returns {string} - Relative path (with forward slashes)
- */
 export function getRelativePath(absolutePath) {
   return path.relative(process.cwd(), absolutePath).replaceAll("\\", "/");
 }
 
-/**
- * Generate a unique base name for a file
- * @param {string} prefix - Optional prefix (e.g., entity ID)
- * @returns {string} - Unique base name
- */
-export function generateUniqueBaseName(prefix = "") {
+export async function generateUniqueBaseName(prefix = "") {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(7);
   return prefix ? `${prefix}-${timestamp}-${random}` : `${timestamp}-${random}`;
 }
 
-/**
- * Upload configuration options
- * @typedef {Object} UploadOptions
- * @property {string} uploadDir - Base upload directory (relative to process.cwd())
- * @property {string} subDir - Optional subdirectory (e.g., entity ID)
- * @property {string} filenameStrategy - 'unique' | 'id-based' | 'original'
- * @property {string} idPrefix - Optional ID prefix for id-based strategy
- * @property {number} maxSize - Maximum file size in bytes (optional)
- * @property {string[]} allowedTypes - Allowed MIME types (optional)
- * @property {string[]} allowedExtensions - Allowed file extensions (optional)
- */
-
-/**
- * Upload a single file
- * @param {File} file - File object from FormData
- * @param {UploadOptions} options - Upload configuration options
- * @returns {Promise<Object>} - Upload result with file info
- */
 export async function uploadFile(file, options = {}) {
   const {
     uploadDir = "mediauploads",
@@ -219,12 +158,6 @@ export async function uploadFile(file, options = {}) {
   };
 }
 
-/**
- * Upload multiple files
- * @param {File[]} files - Array of File objects from FormData
- * @param {UploadOptions} options - Upload configuration options
- * @returns {Promise<Object>} - Upload results with successful and failed uploads
- */
 export async function uploadMultipleFiles(files, options = {}) {
   const filesArray = Array.isArray(files) ? files : [files];
   const results = {
@@ -250,22 +183,11 @@ export async function uploadMultipleFiles(files, options = {}) {
   return results;
 }
 
-/**
- * Delete a file by relative path
- * @param {string} relativePath - Relative path from project root
- * @returns {Promise<boolean>} - True if deleted successfully
- */
 export async function deleteFileByRelativePath(relativePath) {
   const absolutePath = path.join(process.cwd(), relativePath);
   return await deleteFileFromDisk(absolutePath);
 }
 
-/**
- * Validate multipart form data request
- * @param {Request} request - Next.js request object
- * @returns {Promise<FormData>} - Parsed FormData
- * @throws {Error} - If request is not multipart/form-data
- */
 export async function validateMultipartRequest(request) {
   const contentType = request.headers.get("content-type");
   if (!contentType || !contentType.includes("multipart/form-data")) {
@@ -279,14 +201,7 @@ export async function validateMultipartRequest(request) {
   }
 }
 
-/**
- * Get file from FormData by field name
- * @param {FormData} formData - FormData object
- * @param {string} fieldName - Field name in FormData
- * @param {boolean} getAll - If true, returns array of all files with this name
- * @returns {File|File[]|null} - File object(s) or null if not found
- */
-export function getFileFromFormData(formData, fieldName, getAll = false) {
+export async function getFileFromFormData(formData, fieldName, getAll = false) {
   if (getAll) {
     const files = formData.getAll(fieldName);
     return files.filter((file) => file instanceof File);

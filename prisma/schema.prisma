@@ -258,26 +258,41 @@ model lot_tab {
 }
 
 model lot_file {
-  id         String            @id @default(uuid())
-  tab_id     String
-  file_kind  FileKind          @default(PHOTO)
-  url        String
-  filename   String
-  mime_type  String?
-  extension  String?
-  size       Int?
-  site_group SiteMeasurements?
-  is_deleted Boolean           @default(false)
-  notes      String?           @db.LongText
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-  tab        lot_tab           @relation(fields: [tab_id], references: [id], onDelete: Cascade)
+  id                    String                 @id @default(uuid())
+  tab_id                String
+  file_kind             FileKind               @default(PHOTO)
+  url                   String
+  filename              String
+  mime_type             String?
+  extension             String?
+  size                  Int?
+  site_group            SiteMeasurements?
+  is_deleted            Boolean                @default(false)
+  notes                 String?                @db.LongText
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  tab                   lot_tab                @relation(fields: [tab_id], references: [id], onDelete: Cascade)
+  maintenance_checklist maintenance_checklist?
 
   @@index([createdAt])
   @@index([tab_id])
   @@index([file_kind])
   @@index([site_group])
   @@index([is_deleted])
+}
+
+model maintenance_checklist {
+  id                     String    @id @default(uuid())
+  prepared_by_office     Boolean   @default(false)
+  prepared_by_production Boolean   @default(false)
+  delivered_to_site      Boolean   @default(false)
+  installed              Boolean   @default(false)
+  lot_file_id            String?   @unique
+  lot_file               lot_file? @relation(fields: [lot_file_id], references: [id])
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([lot_file_id])
 }
 
 model quote {

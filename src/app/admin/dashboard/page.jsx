@@ -1,6 +1,5 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,6 +35,7 @@ import {
   Filler,
 } from "chart.js";
 import { Line, Doughnut } from "react-chartjs-2";
+import Sidebar from "../../../components/sidebar";
 
 // Register Chart.js components
 ChartJS.register(
@@ -850,35 +850,35 @@ export default function page() {
                     title="Active Projects"
                     value={dashboardData?.activeProjects || 0}
                     icon={FolderKanban}
-                    color="bg-gradient-to-br from-blue-500 to-blue-600"
+                    color="bg-linear-to-br from-blue-500 to-blue-600"
                     subtitle="Currently in progress"
                   />
                   <KPICard
                     title="Active Lots"
                     value={dashboardData?.activeLots || 0}
                     icon={Layers}
-                    color="bg-gradient-to-br from-emerald-500 to-emerald-600"
+                    color="bg-linear-to-br from-emerald-500 to-emerald-600"
                     subtitle="Across all projects"
                   />
                   <KPICard
                     title="Active MTOs"
                     value={dashboardData?.activeMTOs || 0}
                     icon={ClipboardList}
-                    color="bg-gradient-to-br from-violet-500 to-violet-600"
+                    color="bg-linear-to-br from-violet-500 to-violet-600"
                     subtitle="Materials to order"
                   />
                   <KPICard
                     title="Purchase Orders"
                     value={dashboardData?.activePurchaseOrders || 0}
                     icon={ShoppingCart}
-                    color="bg-gradient-to-br from-amber-500 to-amber-600"
+                    color="bg-linear-to-br from-amber-500 to-amber-600"
                     subtitle="Active orders"
                   />
                   <KPICard
                     title="Total Spent this year"
                     value={getTotalSpent()}
                     icon={TrendingUp}
-                    color="bg-gradient-to-br from-slate-700 to-slate-800"
+                    color="bg-linear-to-br from-slate-700 to-slate-800"
                     subtitle="Across all suppliers"
                     prefix="$"
                   />
@@ -1116,7 +1116,7 @@ export default function page() {
                                 className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
                               >
                                 <td className="py-3 px-2 text-center">
-                                  <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-gradient-to-br from-slate-600 to-slate-700 rounded-full">
+                                  <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-linear-to-br from-slate-600 to-slate-700 rounded-full">
                                     {index + 1}
                                   </span>
                                 </td>

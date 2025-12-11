@@ -32,13 +32,14 @@ export default function page() {
 
   // Define all available columns for export
   const availableColumns = useMemo(() => {
-    return ["Project Name", "Lot ID", ...stages];
+    return ["Project Name", "Lot ID", "Percentage Completed", ...stages];
   }, []);
 
   // Initialize selected columns with all columns
   const [selectedColumns, setSelectedColumns] = useState(() => [
     "Project Name",
     "Lot ID",
+    "Percentage Completed",
     ...stages,
   ]);
 
@@ -94,6 +95,17 @@ export default function page() {
       return "NOT_STARTED";
     }
     return stage.status;
+  };
+
+  // Helper function to calculate percentage completed
+  const getPercentageCompleted = (lot) => {
+    if (!lot.stages || lot.stages.length === 0) {
+      return 0;
+    }
+    const doneCount = lot.stages.filter(
+      (stage) => stage.status === "DONE"
+    ).length;
+    return Math.round((doneCount / stages.length) * 100);
   };
 
   // Helper function to format status for display
@@ -272,6 +284,7 @@ export default function page() {
       const columnMap = {
         "Project Name": (lot) => lot.project?.name || "N/A",
         "Lot ID": (lot) => lot.lot_id || "",
+        "Percentage Completed": (lot) => `${getPercentageCompleted(lot)}%`,
       };
 
       // Add stage columns to the map
@@ -308,6 +321,7 @@ export default function page() {
       const colWidths = selectedColumns.map((column) => {
         if (column === "Project Name") return { wch: 25 };
         if (column === "Lot ID") return { wch: 15 };
+        if (column === "Percentage Completed") return { wch: 20 };
         return { wch: 18 }; // Stage columns
       });
       ws["!cols"] = colWidths;
@@ -393,7 +407,7 @@ export default function page() {
               </div>
             ) : (
               <>
-                <div className="px-4 py-2 flex-shrink-0">
+                <div className="px-4 py-2 shrink-0">
                   <div className="flex justify-between items-center">
                     <h1 className="text-xl font-bold text-slate-700">
                       Lots at a Glance
@@ -404,7 +418,7 @@ export default function page() {
                 <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
                   <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                     {/* Fixed Header Section */}
-                    <div className="p-4 flex-shrink-0 border-b border-slate-200">
+                    <div className="p-4 shrink-0 border-b border-slate-200">
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         {/* Search */}
                         <div className="flex items-center gap-2 flex-1 max-w-sm relative">
@@ -618,6 +632,9 @@ export default function page() {
                                 <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider sticky left-0 bg-slate-50 z-20 border-r border-slate-200">
                                   Project Name - Lot Number
                                 </th>
+                                <th className="px-4 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider sticky left-[200px] bg-slate-50 z-20 border-r border-slate-200" style={{ minWidth: '120px', maxWidth: '120px', width: '120px' }}>
+                                  Percentage Completed
+                                </th>
                                 {stages.map((stage) => {
                                   const filterStatus =
                                     stageFilters[stage] || "ALL";
@@ -640,7 +657,7 @@ export default function page() {
                                         >
                                           {stage}
                                         </span>
-                                        <div className="relative filter-dropdown-container flex-shrink-0">
+                                        <div className="relative filter-dropdown-container shrink-0">
                                           <button
                                             ref={(el) =>
                                               (filterButtonRefs.current[stage] = el)
@@ -670,7 +687,7 @@ export default function page() {
                               {filteredLots.length === 0 ? (
                                 <tr>
                                   <td
-                                    colSpan={stages.length + 1}
+                                    colSpan={stages.length + 2}
                                     className="px-4 py-8 text-center text-sm text-slate-500"
                                   >
                                     <div className="flex flex-col items-center gap-3">
@@ -699,6 +716,9 @@ export default function page() {
                                     <td className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap">
                                       {lot.project?.name || "N/A"} -{" "}
                                       {lot.lot_id}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[200px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap">
+                                      {getPercentageCompleted(lot)}%
                                     </td>
                                     {stages.map((stage) => {
                                       const status = getStageStatus(lot, stage);

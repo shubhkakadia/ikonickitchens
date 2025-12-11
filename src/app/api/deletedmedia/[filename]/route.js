@@ -2,8 +2,8 @@ import fs from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
-import { withLogging } from "../../../../../lib/withLogging";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { withLogging } from "@/lib/withLogging";
 
 export async function DELETE(request, { params }) {
   try {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 
 export async function GET(request) {

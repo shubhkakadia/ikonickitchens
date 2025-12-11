@@ -52,18 +52,6 @@ export async function isSessionExpired(req) {
   return session ? new Date() > new Date(session.expires_at) : false;
 }
 
-/**
- * Validates admin authentication and session expiration
- * Returns NextResponse with error if validation fails, null if validation passes
- * 
- * @param {Request} request - The incoming request object
- * @returns {NextResponse|null} - NextResponse with error if validation fails, null if validation passes
- * 
- * @example
- * const authError = await validateAdminAuth(request);
- * if (authError) return authError;
- * // Continue with your route handler logic
- */
 export async function validateAdminAuth(request) {
   const admin = await isAdmin(request);
   if (!admin) {
@@ -80,3 +68,5 @@ export async function validateAdminAuth(request) {
   }
   return null;
 }
+
+

@@ -1096,7 +1096,7 @@ export default function EmployeeDetailPage() {
                             </div>
                           </div>
                         ) : (
-                          <div className="w-16 h-16 bg-gradient-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
+                          <div className="w-16 h-16 bg-linear-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
                             {employee?.first_name?.[0] || ""}
                             {employee?.last_name?.[0] || ""}
                           </div>

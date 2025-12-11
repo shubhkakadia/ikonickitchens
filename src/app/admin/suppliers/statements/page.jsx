@@ -1040,7 +1040,7 @@ export default function StatementsPage() {
               </div>
             ) : (
               <>
-                <div className="px-3 py-2 flex-shrink-0">
+                <div className="px-3 py-2 shrink-0">
                   <div className="flex justify-between items-center">
                     <h1 className="text-xl font-bold text-slate-600">
                       Supplier Statements
@@ -1058,7 +1058,7 @@ export default function StatementsPage() {
                 <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3">
                   <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                     {/* Fixed Header Section */}
-                    <div className="p-3 flex-shrink-0 border-b border-slate-200">
+                    <div className="p-3 shrink-0 border-b border-slate-200">
                       <div className="flex items-center justify-between">
                         {/* Search */}
                         <div className="flex items-center gap-2 flex-1 max-w-sm relative">
@@ -1294,7 +1294,7 @@ export default function StatementsPage() {
                     </div>
 
                     {/* Tabs Section */}
-                    <div className="px-3 flex-shrink-0 border-b border-slate-200">
+                    <div className="px-3 shrink-0 border-b border-slate-200">
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("pending")}

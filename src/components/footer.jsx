@@ -220,12 +220,12 @@ export default function Footer() {
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="flex-grow px-4 py-3 rounded-l-full outline-none text-gray-800 text-sm"
+                  className="grow px-4 py-3 rounded-l-full outline-none text-gray-800 text-sm"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
                 <button
-                  className="cursor-pointer bg-[#B92F34] text-white px-6 py-3 rounded-r-full hover:bg-white hover:text-[#B92F34] hover:bg- transition-colors duration-200 font-semibold"
+                  className="cursor-pointer bg-[#B92F34] text-white px-6 py-3 rounded-r-full hover:bg-white hover:text-[#B92F34] transition-colors duration-200 font-semibold"
                   onClick={handleJoinClick}
                 >
                   Subscribe

@@ -81,7 +81,7 @@ export default function PaginationFooter({
 
   return (
     <div
-      className={`px-4 py-3 flex-shrink-0 border-t border-slate-200 bg-slate-50 ${className}`}
+      className={`px-4 py-3 shrink-0 border-t border-slate-200 bg-slate-50 ${className}`}
     >
       <div className="flex items-center justify-between">
         {/* Items per page dropdown and showing indicator */}

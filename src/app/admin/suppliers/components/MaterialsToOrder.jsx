@@ -627,8 +627,8 @@ export default function MaterialsToOrder({
           <button
             onClick={() => setMtoActiveTab("active")}
             className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${mtoActiveTab === "active"
-                ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              ? "border-primary text-primary"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
           >
             Active
@@ -636,8 +636,8 @@ export default function MaterialsToOrder({
           <button
             onClick={() => setMtoActiveTab("completed")}
             className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${mtoActiveTab === "completed"
-                ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              ? "border-primary text-primary"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
           >
             Completed
@@ -739,12 +739,12 @@ export default function MaterialsToOrder({
                       <td className="px-4 py-3">
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded ${mto.status === "DRAFT"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : mto.status === "PARTIALLY_ORDERED"
-                                ? "bg-blue-100 text-blue-800"
-                                : mto.status === "FULLY_ORDERED"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-gray-100 text-gray-800"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : mto.status === "PARTIALLY_ORDERED"
+                              ? "bg-blue-100 text-blue-800"
+                              : mto.status === "FULLY_ORDERED"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
                             }`}
                         >
                           {mto.status}
@@ -938,7 +938,7 @@ export default function MaterialsToOrder({
                             >
                               {/* File Preview */}
                               <div
-                                className={`w-full ${isSmall ? "aspect-[4/3]" : "aspect-square"
+                                className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
                                   } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
                               >
                                 {file.mime_type?.includes("image") ||
@@ -961,10 +961,10 @@ export default function MaterialsToOrder({
                                 ) : (
                                   <div
                                     className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type?.includes("pdf") ||
-                                        file.file_type === "pdf" ||
-                                        file.extension === "pdf"
-                                        ? "bg-red-50"
-                                        : "bg-green-50"
+                                      file.file_type === "pdf" ||
+                                      file.extension === "pdf"
+                                      ? "bg-red-50"
+                                      : "bg-green-50"
                                       }`}
                                   >
                                     {file.mime_type?.includes("pdf") ||

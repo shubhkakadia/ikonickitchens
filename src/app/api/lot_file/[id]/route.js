@@ -2,8 +2,8 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
   validateAdminAuth,
-} from "../../../../../lib/validators/authFromToken";
-import { withLogging } from "../../../../../lib/withLogging";
+} from "@/lib/validators/authFromToken";
+import { withLogging } from "@/lib/withLogging";
 
 export async function PATCH(request, { params }) {
     try {

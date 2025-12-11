@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth, getUserFromToken } from "../../../../../lib/validators/authFromToken";
-import { withLogging } from "../../../../../lib/withLogging";
+import { validateAdminAuth, getUserFromToken } from "@/lib/validators/authFromToken";
+import { withLogging } from "@/lib/withLogging";
 
 export async function POST(request) {
   try {

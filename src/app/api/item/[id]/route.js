@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import {
   uploadFile,
   deleteFileByRelativePath,
   getFileFromFormData,
 } from "@/lib/fileHandler";
-import { withLogging } from "../../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 export async function GET(request, { params }) {
   try {

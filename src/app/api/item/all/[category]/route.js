@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
 
 const CATEGORIES = ["sheet", "handle", "hardware", "accessory", "edging_tape"];
 export async function GET(request, { params }) {

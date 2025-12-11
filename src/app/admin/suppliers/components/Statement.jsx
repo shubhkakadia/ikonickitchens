@@ -463,8 +463,8 @@ export default function Statement({ supplierId }) {
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${statement.payment_status === "PAID"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
                           }`}
                       >
                         {statement.payment_status}

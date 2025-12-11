@@ -416,7 +416,7 @@ export default function page() {
               </div>
             ) : (
               <>
-                <div className="px-4 py-2 flex-shrink-0">
+                <div className="px-4 py-2 shrink-0">
                   <h1 className="text-xl font-bold text-slate-700">
                     Used Material
                   </h1>
@@ -468,7 +468,7 @@ export default function page() {
                                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                                 >
                                   <div className="flex items-center gap-3 flex-1 text-left">
-                                    <div className="flex-shrink-0">
+                                    <div className="shrink-0">
                                       {isExpanded ? (
                                         <ChevronUp className="w-4 h-4 text-slate-500" />
                                       ) : (
@@ -530,7 +530,7 @@ export default function page() {
                                                       {/* Single Row: Item Details + Quantity Columns */}
                                                       <div className="flex gap-4 items-center">
                                                         {/* Item Image */}
-                                                        <div className="flex-shrink-0">
+                                                        <div className="shrink-0">
                                                           {itemDetails?.image ? (
                                                             <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-300 bg-white flex items-center justify-center relative">
                                                               <Image

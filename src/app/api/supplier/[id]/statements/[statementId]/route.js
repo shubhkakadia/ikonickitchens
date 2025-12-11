@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "../../../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import {
   uploadFile,
   deleteFileByRelativePath,
   getFileFromFormData,
 } from "@/lib/fileHandler";
 import path from "path";
-import { withLogging } from "../../../../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 export async function PATCH(request, { params }) {
   try {

@@ -67,7 +67,7 @@ export default function CRMLayout() {
             <button
               onClick={scrollLeft}
               disabled={!canScrollLeft}
-              className={`absolute left-0 top-0 z-10 h-full w-8 bg-gradient-to-r from-white to-transparent flex items-center justify-center transition-all duration-200 ${
+              className={`absolute left-0 top-0 z-10 h-full w-8 bg-linear-to-r from-white to-transparent flex items-center justify-center transition-all duration-200 ${
                 canScrollLeft
                   ? "text-gray-600 hover:text-[#B92F34] hover:bg-gray-50"
                   : "text-gray-300 cursor-not-allowed"
@@ -79,7 +79,7 @@ export default function CRMLayout() {
             <button
               onClick={scrollRight}
               disabled={!canScrollRight}
-              className={`absolute right-0 top-0 z-10 h-full w-8 bg-gradient-to-l from-white to-transparent flex items-center justify-center transition-all duration-200 ${
+              className={`absolute right-0 top-0 z-10 h-full w-8 bg-linear-to-l from-white to-transparent flex items-center justify-center transition-all duration-200 ${
                 canScrollRight
                   ? "text-gray-600 hover:text-[#B92F34] hover:bg-gray-50"
                   : "text-gray-300 cursor-not-allowed"
@@ -134,7 +134,7 @@ export default function CRMLayout() {
                   dispatch(closeTab(tab.id));
                 }}
                 className={`
-                  cursor-pointer flex-shrink-0 p-1 rounded-full transition-all duration-200
+                  cursor-pointer shrink-0 p-1 rounded-full transition-all duration-200
                   ${
                     activeTab.id === tab.id
                       ? "text-[#B92F34] hover:bg-red-50 hover:text-red-600"
@@ -149,7 +149,7 @@ export default function CRMLayout() {
 
               {/* Active Tab Indicator */}
               {activeTab.id === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#B92F34] to-[#A0252A]"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-linear-to-r from-[#B92F34] to-[#A0252A]"></div>
               )}
             </div>
           ))}

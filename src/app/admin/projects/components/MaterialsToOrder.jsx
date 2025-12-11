@@ -1568,7 +1568,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                               >
                                 <div className="flex items-center gap-3">
                                   {item.image?.url ? (
-                                    <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
+                                    <div className="relative w-12 h-12 shrink-0 rounded-md overflow-hidden bg-slate-100">
                                       <Image
                                         src={`/${item.image.url}`}
                                         alt={item.item_id}
@@ -1577,7 +1577,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                       />
                                     </div>
                                   ) : (
-                                    <div className="w-12 h-12 flex-shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
+                                    <div className="w-12 h-12 shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
                                       <Package className="w-6 h-6 text-slate-400" />
                                     </div>
                                   )}
@@ -1786,7 +1786,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                 >
                                   <div className="flex items-center gap-3">
                                     {item.image?.url ? (
-                                      <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
+                                      <div className="relative w-12 h-12 shrink-0 rounded-md overflow-hidden bg-slate-100">
                                         <Image
                                           src={`/${item.image.url}`}
                                           alt={item.item_id}
@@ -1795,7 +1795,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                         />
                                       </div>
                                     ) : (
-                                      <div className="w-12 h-12 flex-shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
+                                      <div className="w-12 h-12 shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
                                         <Package className="w-6 h-6 text-slate-400" />
                                       </div>
                                     )}
@@ -1998,7 +1998,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                               >
                                 <div className="flex items-center gap-3">
                                   {item.image?.url ? (
-                                    <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
+                                    <div className="relative w-12 h-12 shrink-0 rounded-md overflow-hidden bg-slate-100">
                                       <Image
                                         src={`/${item.image.url}`}
                                         alt={item.item_id}
@@ -2007,7 +2007,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                       />
                                     </div>
                                   ) : (
-                                    <div className="w-12 h-12 flex-shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
+                                    <div className="w-12 h-12 shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
                                       <Package className="w-6 h-6 text-slate-400" />
                                     </div>
                                   )}
@@ -2208,7 +2208,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                               >
                                 <div className="flex items-center gap-3">
                                   {item.image?.url ? (
-                                    <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
+                                    <div className="relative w-12 h-12 shrink-0 rounded-md overflow-hidden bg-slate-100">
                                       <Image
                                         src={`/${item.image.url}`}
                                         alt={item.item_id}
@@ -2217,7 +2217,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                       />
                                     </div>
                                   ) : (
-                                    <div className="w-12 h-12 flex-shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
+                                    <div className="w-12 h-12 shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
                                       <Package className="w-6 h-6 text-slate-400" />
                                     </div>
                                   )}
@@ -2406,7 +2406,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                 >
                                   <div className="flex items-center gap-3">
                                     {item.image?.url ? (
-                                      <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-slate-100">
+                                      <div className="relative w-12 h-12 shrink-0 rounded-md overflow-hidden bg-slate-100">
                                         <Image
                                           src={`/${item.image.url}`}
                                           alt={item.item_id}
@@ -2415,7 +2415,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                                         />
                                       </div>
                                     ) : (
-                                      <div className="w-12 h-12 flex-shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
+                                      <div className="w-12 h-12 shrink-0 rounded-md bg-slate-100 flex items-center justify-center">
                                         <Package className="w-6 h-6 text-slate-400" />
                                       </div>
                                     )}
@@ -2535,7 +2535,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                         >
                           {/* File Preview */}
                           <div
-                            className={`w-full ${isSmall ? "aspect-[4/3]" : "aspect-square"
+                            className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
                               } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
                           >
                             {file.mime_type?.includes("image") ||
@@ -2558,10 +2558,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                             ) : (
                               <div
                                 className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type?.includes("pdf") ||
-                                    file.file_type === "pdf" ||
-                                    file.extension === "pdf"
-                                    ? "bg-red-50"
-                                    : "bg-green-50"
+                                  file.file_type === "pdf" ||
+                                  file.extension === "pdf"
+                                  ? "bg-red-50"
+                                  : "bg-green-50"
                                   }`}
                               >
                                 {file.mime_type?.includes("pdf") ||

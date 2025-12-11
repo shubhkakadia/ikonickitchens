@@ -313,7 +313,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
             {/* Category Dropdown and Search Bar */}
             <div className="mb-6 flex gap-3">
               {/* Category Dropdown */}
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
                   Category <span className="text-red-500">*</span>
                 </label>
@@ -370,7 +370,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                           onClick={() => handleAddItem(item)}
                           className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 flex items-center gap-3"
                         >
-                          <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                          <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
                             {item.image?.url ? (
                               <Image src={`/${item.image.url}`} alt="Item" width={40} height={40} className="w-full h-full object-cover" />
                             ) : (
@@ -415,7 +415,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                       <tr key={item.item_id} className="hover:bg-slate-50">
                         {/* Image Column */}
                         <td className="px-4 py-3">
-                          <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                          <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
                             {item.image?.url ? (
                               <Image src={`/${item.image.url}`} alt="Item" width={40} height={40} className="w-full h-full object-cover" />
                             ) : (

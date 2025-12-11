@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import {
   validateAdminAuth,
   processDateTimeField,
-} from "../../../../../lib/validators/authFromToken";
+} from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import {
   uploadFile,
   deleteFileByRelativePath,
   getFileFromFormData,
 } from "@/lib/fileHandler";
-import { withLogging } from "../../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 export async function GET(request, { params }) {
   try {

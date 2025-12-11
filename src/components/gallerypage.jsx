@@ -49,7 +49,7 @@ export default function GalleryPage({ title, description, images }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
       <Navbar bar={true} />
 
       {/* Hero Section */}
@@ -180,7 +180,7 @@ export default function GalleryPage({ title, description, images }) {
       </div>
 
       {/* Call to Action Section */}
-      <div className="bg-gradient-to-r from-[#B92F34] to-[#A0252A] py-20 px-4">
+      <div className="bg-linear-to-r from-[#B92F34] to-[#A0252A] py-20 px-4">
         <div className="max-w-4xl mx-auto text-center text-white">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
             Ready to Design Your Dream {title}?

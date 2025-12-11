@@ -44,7 +44,7 @@ export default function page() {
     <div>
       <Navbar bar={true} />
       {/* Contact Section */}
-      <div className="pt-32 pb-16 bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="pt-32 pb-16 bg-linear-to-br from-slate-50 to-slate-100">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div
             className="text-center space-y-4 sm:space-y-6 mb-12 sm:mb-16"
@@ -84,7 +84,7 @@ export default function page() {
                     className="flex items-center gap-3 hover:text-gray-700 transition-colors"
                     aria-label="View our location on Google Maps"
                   >
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <MapPin size={20} />
                     </div>
                     <p>
@@ -98,7 +98,7 @@ export default function page() {
                     className="flex items-center gap-3 hover:text-gray-700 transition-colors"
                     aria-label="Send us an email"
                   >
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <Mail size={20} />
                     </div>
                     <p className="break-words">info@ikonickitchens.com.au</p>
@@ -108,7 +108,7 @@ export default function page() {
                     className="flex items-center gap-3 hover:text-gray-700 transition-colors"
                     aria-label="Call our office"
                   >
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <Phone size={20} />
                     </div>
                     <div className="flex flex-col">
@@ -120,7 +120,7 @@ export default function page() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <Clock size={20} />
                     </div>
                     <p>Monday - Friday, 9 am - 5 pm</p>

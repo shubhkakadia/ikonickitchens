@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "../../../../../lib/validators/authFromToken";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
-import { withLogging } from "../../../../../lib/withLogging";
+import { withLogging } from "@/lib/withLogging";
 
 export async function POST(request) {
   try {

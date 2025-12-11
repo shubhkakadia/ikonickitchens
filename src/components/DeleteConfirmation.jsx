@@ -62,7 +62,7 @@ export default function DeleteConfirmation({
         <div className="p-6 space-y-4">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
               <div>
                 <h3 className="text-sm font-medium text-red-800">
                   {deleteWithInput

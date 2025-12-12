@@ -105,6 +105,7 @@ model employees {
   image                   media?           @relation(fields: [image_id], references: [id], onDelete: Cascade)
   stages                  stage_employee[]
   user                    users?
+  lot                     lot[]
 
   @@index([employee_id])
 }
@@ -196,6 +197,8 @@ model lot {
   startDate              DateTime?
   installationDueDate    DateTime?
   notes                  String?             @db.LongText
+  installer              employees?          @relation(fields: [installer_id], references: [employee_id])
+  installer_id           String?
   materials_to_orders_id String?
   material_selection_id  String?             @unique
   materials_to_orders    materials_to_order? @relation(fields: [materials_to_orders_id], references: [id])
@@ -644,6 +647,16 @@ model logs {
   @@index([action])
 }
 
+// model constants_config {
+//   id        String   @id @default(uuid())
+//   category  String //role, hardwareSubCategories
+//   value     String   @db.LongText
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([category])
+// }
+
 enum LogAction {
   CREATE
   UPDATE
@@ -676,6 +689,7 @@ enum TabKind {
   DELIVERY_PHOTOS
   INSTALLATION_PHOTOS
   MAINTENANCE_PHOTOS
+  FINISHED_SITE_PHOTOS
 }
 
 enum FileKind {

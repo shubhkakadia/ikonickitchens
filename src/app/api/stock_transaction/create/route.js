@@ -253,6 +253,74 @@ async function handleAddedTransaction(data) {
 }
 
 /**
+ * Handle manual USED transaction (without MTO)
+ * Decreases item inventory quantity
+ * Creates stock_transaction with type USED
+ */
+async function handleManualUsedTransaction(data) {
+  const { item_id, quantity, notes } = data;
+
+  // Verify item exists
+  const itemExists = await prisma.item.findUnique({
+    where: { item_id: item_id },
+    select: { item_id: true, quantity: true },
+  });
+
+  if (!itemExists) {
+    return {
+      status: false,
+      message: "Item not found",
+      statusCode: 404,
+    };
+  }
+
+  // Check if sufficient quantity is available
+  if (itemExists.quantity < quantity) {
+    return {
+      status: false,
+      message: `Insufficient quantity. Available: ${itemExists.quantity}, Requested: ${quantity}`,
+      statusCode: 400,
+    };
+  }
+
+  // Wrap all database writes in a transaction to ensure atomicity
+  const [updatedItem, stockTransaction] = await prisma.$transaction([
+    // Atomically decrease item inventory quantity
+    prisma.item.update({
+      where: { item_id: item_id },
+      data: {
+        quantity: {
+          decrement: quantity,
+        },
+      },
+      include: {
+        sheet: true,
+        handle: true,
+        hardware: true,
+        accessory: true,
+        edging_tape: true,
+      },
+    }),
+    // Create stock transaction
+    prisma.stock_transaction.create({
+      data: {
+        item_id: item_id,
+        quantity: quantity,
+        type: "USED",
+        notes: notes || `Manually recorded used quantity`,
+      },
+    }),
+  ]);
+
+  return {
+    status: true,
+    message: "Material used recorded successfully",
+    data: stockTransaction,
+    statusCode: 200,
+  };
+}
+
+/**
  * Handle WASTED transaction
  * Only creates stock_transaction
  * Decreases item inventory quantity
@@ -359,21 +427,22 @@ export async function POST(request) {
     // Route to appropriate handler based on type
     let result;
     if (type === "USED") {
-      if (!materials_to_order_id) {
-        return NextResponse.json(
-          {
-            status: false,
-            message: "materials_to_order_id is required for USED transactions",
-          },
-          { status: 400 }
-        );
+      // If materials_to_order_id is provided, use MTO handler
+      // Otherwise, use manual handler
+      if (materials_to_order_id) {
+        result = await handleUsedTransaction({
+          item_id,
+          quantity,
+          materials_to_order_id,
+          notes,
+        });
+      } else {
+        result = await handleManualUsedTransaction({
+          item_id,
+          quantity,
+          notes,
+        });
       }
-      result = await handleUsedTransaction({
-        item_id,
-        quantity,
-        materials_to_order_id,
-        notes,
-      });
     } else if (type === "ADDED") {
       if (!purchase_order_id) {
         return NextResponse.json(

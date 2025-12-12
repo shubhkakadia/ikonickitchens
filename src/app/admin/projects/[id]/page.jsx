@@ -16,9 +16,6 @@ import {
   Check,
   Trash,
   PanelsTopLeft,
-  FileUp,
-  FileText,
-  File,
   ChevronDown,
   SquareArrowOutUpRight,
 } from "lucide-react";
@@ -37,408 +34,14 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import StageTable from "../components/StageTable";
-import TextEditor from "@/components/TextEditor/TextEditor";
 import MaterialSelection from "../components/MaterialSelection";
 import Image from "next/image";
 import SiteMeasurementsSection from "../components/SiteMeasurement";
-import ViewMedia from "../components/ViewMedia";
 import MaterialsToOrder from "../components/MaterialsToOrder";
+import FileUploadSection from "../components/FileUploadSection";
+import ViewMedia from "../components/ViewMedia";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
-// File item component with self-contained notes state (prevents parent re-renders from causing focus loss)
-const FileItemWithNotes = ({
-  file,
-  isSmall,
-  handleViewExistingFile,
-  openDeleteFileConfirmation,
-  isDeletingFile,
-  getToken,
-  activeTab,
-  activeSitePhotoSubtab,
-}) => {
-  const [notes, setNotes] = useState(file.notes || "");
-  const [saveStatus, setSaveStatus] = useState("idle"); // "idle" | "saving" | "saved"
-  const debounceTimer = useRef(null);
-
-  // Checkbox states for maintenance checklist
-  const [preparedByOffice, setPreparedByOffice] = useState(
-    file.maintenance_checklist?.prepared_by_office || false
-  );
-  const [preparedByProduction, setPreparedByProduction] = useState(
-    file.maintenance_checklist?.prepared_by_production || false
-  );
-  const [deliveredToSite, setDeliveredToSite] = useState(
-    file.maintenance_checklist?.delivered_to_site || false
-  );
-  const [installed, setInstalled] = useState(
-    file.maintenance_checklist?.installed || false
-  );
-  const checklistDebounceTimer = useRef(null);
-
-  // Refs to track current checkbox values for debounced save
-  const preparedByOfficeRef = useRef(preparedByOffice);
-  const preparedByProductionRef = useRef(preparedByProduction);
-  const deliveredToSiteRef = useRef(deliveredToSite);
-  const installedRef = useRef(installed);
-
-  // Update refs when state changes
-  useEffect(() => {
-    preparedByOfficeRef.current = preparedByOffice;
-    preparedByProductionRef.current = preparedByProduction;
-    deliveredToSiteRef.current = deliveredToSite;
-    installedRef.current = installed;
-  }, [preparedByOffice, preparedByProduction, deliveredToSite, installed]);
-
-  // Sync checkbox states when file prop changes
-  useEffect(() => {
-    if (file.maintenance_checklist) {
-      setPreparedByOffice(file.maintenance_checklist.prepared_by_office || false);
-      setPreparedByProduction(file.maintenance_checklist.prepared_by_production || false);
-      setDeliveredToSite(file.maintenance_checklist.delivered_to_site || false);
-      setInstalled(file.maintenance_checklist.installed || false);
-    } else {
-      setPreparedByOffice(false);
-      setPreparedByProduction(false);
-      setDeliveredToSite(false);
-      setInstalled(false);
-    }
-  }, [file.maintenance_checklist]);
-
-  // Cleanup debounce timers on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
-      if (checklistDebounceTimer.current) {
-        clearTimeout(checklistDebounceTimer.current);
-      }
-    };
-  }, []);
-
-  // Save file notes to API
-  const saveFileNotes = async (notesValue) => {
-    if (!file.id) return;
-
-    try {
-      setSaveStatus("saving");
-
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        setSaveStatus("idle");
-        return;
-      }
-
-      const response = await axios.patch(
-        `/api/lot_file/${file.id}`,
-        { notes: notesValue },
-        {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.data.status) {
-        setSaveStatus("saved");
-        setTimeout(() => {
-          setSaveStatus("idle");
-        }, 2000);
-      } else {
-        toast.error(response.data.message || "Failed to save file notes");
-        setSaveStatus("idle");
-      }
-    } catch (error) {
-      console.error("Error saving file notes:", error);
-      toast.error("Failed to save file notes. Please try again.");
-      setSaveStatus("idle");
-    }
-  };
-
-  // Debounced handler for notes changes
-  const handleNotesChange = (value) => {
-    setNotes(value);
-
-    // Clear existing timer
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
-
-    // Set new timer (1 second debounce)
-    debounceTimer.current = setTimeout(() => {
-      saveFileNotes(value);
-    }, 1000);
-  };
-
-  // Save maintenance checklist to API
-  const saveMaintenanceChecklist = async (checklistData) => {
-    if (!file.id) return;
-
-    try {
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-
-      const response = await axios.post(
-        `/api/maintenance_checklist/upsert`,
-        {
-          lot_file_id: file.id,
-          prepared_by_office: checklistData.preparedByOffice,
-          prepared_by_production: checklistData.preparedByProduction,
-          delivered_to_site: checklistData.deliveredToSite,
-          installed: checklistData.installed,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.data.status && response.data.data) {
-        // Update local state from API response
-        const updatedChecklist = response.data.data;
-        setPreparedByOffice(updatedChecklist.prepared_by_office || false);
-        setPreparedByProduction(updatedChecklist.prepared_by_production || false);
-        setDeliveredToSite(updatedChecklist.delivered_to_site || false);
-        setInstalled(updatedChecklist.installed || false);
-
-        // Update refs
-        preparedByOfficeRef.current = updatedChecklist.prepared_by_office || false;
-        preparedByProductionRef.current = updatedChecklist.prepared_by_production || false;
-        deliveredToSiteRef.current = updatedChecklist.delivered_to_site || false;
-        installedRef.current = updatedChecklist.installed || false;
-      } else {
-        toast.error(response.data.message || "Failed to save checklist");
-      }
-    } catch (error) {
-      console.error("Error saving maintenance checklist:", error);
-      toast.error("Failed to save checklist. Please try again.");
-    }
-  };
-
-  // Debounced handler for checklist changes with cascading logic
-  const handleChecklistChange = (field, value) => {
-    let newPreparedByOffice = preparedByOffice;
-    let newPreparedByProduction = preparedByProduction;
-    let newDeliveredToSite = deliveredToSite;
-    let newInstalled = installed;
-
-    // Cascading logic: stages must be completed in order
-    if (value) {
-      // When checking a stage, automatically check all previous stages
-      if (field === "preparedByOffice") {
-        newPreparedByOffice = true;
-      } else if (field === "preparedByProduction") {
-        newPreparedByOffice = true;
-        newPreparedByProduction = true;
-      } else if (field === "deliveredToSite") {
-        newPreparedByOffice = true;
-        newPreparedByProduction = true;
-        newDeliveredToSite = true;
-      } else if (field === "installed") {
-        newPreparedByOffice = true;
-        newPreparedByProduction = true;
-        newDeliveredToSite = true;
-        newInstalled = true;
-      }
-    } else {
-      // When unchecking a stage, automatically uncheck all subsequent stages
-      if (field === "preparedByOffice") {
-        newPreparedByOffice = false;
-        newPreparedByProduction = false;
-        newDeliveredToSite = false;
-        newInstalled = false;
-      } else if (field === "preparedByProduction") {
-        newPreparedByProduction = false;
-        newDeliveredToSite = false;
-        newInstalled = false;
-      } else if (field === "deliveredToSite") {
-        newDeliveredToSite = false;
-        newInstalled = false;
-      } else if (field === "installed") {
-        newInstalled = false;
-      }
-    }
-
-    // Update all states immediately
-    setPreparedByOffice(newPreparedByOffice);
-    setPreparedByProduction(newPreparedByProduction);
-    setDeliveredToSite(newDeliveredToSite);
-    setInstalled(newInstalled);
-
-    // Update refs
-    preparedByOfficeRef.current = newPreparedByOffice;
-    preparedByProductionRef.current = newPreparedByProduction;
-    deliveredToSiteRef.current = newDeliveredToSite;
-    installedRef.current = newInstalled;
-
-    // Clear existing timer
-    if (checklistDebounceTimer.current) {
-      clearTimeout(checklistDebounceTimer.current);
-    }
-
-    // Set new timer (1 second debounce) - single API call for all changes
-    checklistDebounceTimer.current = setTimeout(() => {
-      saveMaintenanceChecklist({
-        preparedByOffice: preparedByOfficeRef.current,
-        preparedByProduction: preparedByProductionRef.current,
-        deliveredToSite: deliveredToSiteRef.current,
-        installed: installedRef.current,
-      });
-      checklistDebounceTimer.current = null;
-    }, 1000);
-  };
-
-  return (
-    <div className="gap-4 flex items-start">
-      <div
-        className="relative group cursor-pointer"
-        style={{ width: "125px" }}
-        onClick={() => handleViewExistingFile(file)}
-      >
-        <div className="w-full h-auto aspect-square rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50 hover:bg-slate-100 transition-colors">
-          {file.mime_type.includes("image") ? (
-            <Image
-              height={140}
-              width={140}
-              src={`/${file.url}`}
-              alt={file.filename}
-              className="w-full h-full object-cover rounded-lg"
-            />
-          ) : file.mime_type.includes("video") ? (
-            <video
-              src={`/${file.url}`}
-              className="w-full h-full object-cover rounded-lg"
-              muted
-              playsInline
-            />
-          ) : (
-            <div
-              className={`w-full h-auto aspect-square flex items-center justify-center rounded-lg ${file.mime_type.includes("pdf") ? "bg-red-50" : "bg-green-50"
-                }`}
-            >
-              {file.mime_type.includes("pdf") ? (
-                <FileText
-                  className={`${isSmall ? "w-6 h-6" : "w-8 h-8"} text-red-600`}
-                />
-              ) : (
-                <File
-                  className={`${isSmall ? "w-6 h-6" : "w-8 h-8"} text-green-600`}
-                />
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* File Info */}
-        <div className="space-y-1 w-full">
-          <p
-            className="text-xs font-medium text-slate-700 truncate w-full"
-            title={file.filename}
-          >
-            {file.filename}
-          </p>
-          <p className="text-xs text-slate-500">
-            {(file.size / 1024 / 1024).toFixed(2)} MB
-          </p>
-        </div>
-
-        {/* Delete Button */}
-        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              openDeleteFileConfirmation(file);
-            }}
-            disabled={isDeletingFile === file.id}
-            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
-            title="Delete file"
-          >
-            {isDeletingFile === file.id ? (
-              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
-            ) : (
-              <Trash className="w-3.5 h-3.5" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Notes Section - Reduced Width */}
-      <div className="relative flex-1">
-        <textarea
-          rows="6"
-          value={notes}
-          onChange={(e) => handleNotesChange(e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full border border-slate-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
-          placeholder="Add notes for this file..."
-        />
-        {/* Save status indicator */}
-        {saveStatus === "saving" && (
-          <span className="absolute bottom-2 right-2 text-xs text-slate-500 font-medium flex items-center gap-1">
-            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-500"></div>
-            Saving...
-          </span>
-        )}
-        {saveStatus === "saved" && (
-          <span className="absolute bottom-2 right-2 text-xs text-green-600 font-medium flex items-center gap-1">
-            <Check className="w-3 h-3" />
-            Saved!
-          </span>
-        )}
-      </div>
-
-      {/* Maintenance Checklist Checkboxes - In Same Row - Only for Maintenance Photos Tab */}
-      {activeTab === "site_photos" && activeSitePhotoSubtab === "maintenance" && (
-        <div className="flex flex-col justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={preparedByOffice}
-              onChange={(e) => handleChecklistChange("preparedByOffice", e.target.checked)}
-              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
-            />
-            <span className="text-sm text-slate-700">Prepared by Office</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={preparedByProduction}
-              onChange={(e) => handleChecklistChange("preparedByProduction", e.target.checked)}
-              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
-            />
-            <span className="text-sm text-slate-700">Prepared by Production</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={deliveredToSite}
-              onChange={(e) => handleChecklistChange("deliveredToSite", e.target.checked)}
-              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
-            />
-            <span className="text-sm text-slate-700">Delivered to Site</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={installed}
-              onChange={(e) => handleChecklistChange("installed", e.target.checked)}
-              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
-            />
-            <span className="text-sm text-slate-700">Installed</span>
-          </label>
-        </div>
-      )}
-    </div>
-  );
-};
 
 export default function page() {
   const { id } = useParams();
@@ -469,6 +72,10 @@ export default function page() {
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [isAssigningClient, setIsAssigningClient] = useState(false);
 
+  // Lot selector states
+  const [isLotDropdownOpen, setIsLotDropdownOpen] = useState(false);
+  const lotDropdownRef = useRef(null);
+
   // Lot creation states
   const [showAddLotForm, setShowAddLotForm] = useState(false);
   const [newLot, setNewLot] = useState({
@@ -482,15 +89,14 @@ export default function page() {
 
   // files upload states
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [viewFileModal, setViewFileModal] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pdfScale, setPdfScale] = useState(1.0);
-  const [currentPageInView, setCurrentPageInView] = useState(1);
   const [isDeletingFile, setIsDeletingFile] = useState(null);
   const [uploadNotes, setUploadNotes] = useState("");
   const [isSavingUpload, setIsSavingUpload] = useState(false);
+
+  // ViewMedia modal state (for SiteMeasurementsSection)
+  const [viewFileModal, setViewFileModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
 
   const [showDeleteFileModal, setShowDeleteFileModal] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
@@ -498,6 +104,12 @@ export default function page() {
   // Notes auto-save debouncing states
   const [notesSavedIndicators, setNotesSavedIndicators] = useState(false);
   const notesDebounceTimer = useRef(null);
+
+  // Installer assignment states (installer is per-lot)
+  const [employees, setEmployees] = useState([]);
+  const [installerSearchTerm, setInstallerSearchTerm] = useState("");
+  const [showInstallerDropdown, setShowInstallerDropdown] = useState(false);
+  const [isAssigningInstaller, setIsAssigningInstaller] = useState(false);
 
 
   // Status dropdown state
@@ -545,19 +157,28 @@ export default function page() {
             setSelectedLot(stillExists);
           } else {
             // Fallback if the current lot was deleted or doesn't exist
-            setSelectedLot(
-              projectData.lots && projectData.lots.length > 0
-                ? projectData.lots[0]
-                : {}
-            );
+            // Get first lot in sorted order
+            const sortedLots = [...(projectData.lots || [])].sort((a, b) => {
+              const getLotNumber = (lotId) => {
+                const match = lotId.match(/(\d+)$/);
+                return match ? parseInt(match[1], 10) : 0;
+              };
+              return getLotNumber(a.lot_id) - getLotNumber(b.lot_id);
+            });
+            const firstLot = sortedLots.length > 0 ? sortedLots[0] : {};
+            setSelectedLot(firstLot);
           }
         } else {
-          // Initial load
-          setSelectedLot(
-            projectData.lots && projectData.lots.length > 0
-              ? projectData.lots[0]
-              : {}
-          );
+          // Initial load - get first lot in sorted order
+          const sortedLots = [...(projectData.lots || [])].sort((a, b) => {
+            const getLotNumber = (lotId) => {
+              const match = lotId.match(/(\d+)$/);
+              return match ? parseInt(match[1], 10) : 0;
+            };
+            return getLotNumber(a.lot_id) - getLotNumber(b.lot_id);
+          });
+          const firstLot = sortedLots.length > 0 ? sortedLots[0] : {};
+          setSelectedLot(firstLot);
         }
       } else {
         setError(response.data.message || "Failed to fetch project data");
@@ -641,6 +262,29 @@ export default function page() {
     } catch (err) {
       console.error("API Error:", err);
       toast.error("Failed to fetch clients. Please try again.");
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+      const response = await axios.get("/api/employee/all", {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+      if (response.data.status) {
+        setEmployees(response.data.data || []);
+      } else {
+        toast.error(response.data.message || "Failed to fetch employees");
+      }
+    } catch (err) {
+      console.error("API Error:", err);
+      toast.error("Failed to fetch employees. Please try again.");
     }
   };
 
@@ -819,6 +463,12 @@ export default function page() {
     fetchClients();
   }, []); // Fetch clients on component mount
 
+  useEffect(() => {
+    if (showInstallerDropdown && employees.length === 0) {
+      fetchEmployees();
+    }
+  }, [showInstallerDropdown]); // Lazy-load employees when assigning installer
+
   // Reset filters when switching away from maintenance tab
   useEffect(() => {
     if (activeTab !== "site_photos" || activeSitePhotoSubtab !== "maintenance") {
@@ -852,6 +502,24 @@ export default function page() {
         setClientSearchTerm("");
       }
 
+      // Close installer dropdown when clicking outside
+      if (
+        showInstallerDropdown &&
+        !event.target.closest(".installer-dropdown")
+      ) {
+        setShowInstallerDropdown(false);
+        setInstallerSearchTerm("");
+      }
+
+      // Close lot dropdown when clicking outside
+      if (
+        isLotDropdownOpen &&
+        lotDropdownRef.current &&
+        !lotDropdownRef.current.contains(event.target)
+      ) {
+        setIsLotDropdownOpen(false);
+      }
+
       // Close status dropdown when clicking outside
       if (
         showStatusDropdown &&
@@ -862,13 +530,25 @@ export default function page() {
       }
     };
 
-    if (showDropdown || showClientDropdown || showStatusDropdown) {
+    if (
+      showDropdown ||
+      showClientDropdown ||
+      isLotDropdownOpen ||
+      showStatusDropdown ||
+      showInstallerDropdown
+    ) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
-  }, [showDropdown, showClientDropdown, showStatusDropdown]);
+  }, [
+    showDropdown,
+    showClientDropdown,
+    isLotDropdownOpen,
+    showStatusDropdown,
+    showInstallerDropdown,
+  ]);
 
   const handleDeleteLotConfirm = async () => {
     try {
@@ -1061,6 +741,44 @@ export default function page() {
     }
   };
 
+  const handleAssignInstaller = async (newInstallerEmployeeId) => {
+    try {
+      setIsAssigningInstaller(true);
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const response = await axios.patch(
+        `/api/lot/${selectedLotData.id}`,
+        { installer_id: newInstallerEmployeeId || null },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success(
+          newInstallerEmployeeId ? "Installer assigned" : "Installer unassigned"
+        );
+        setShowInstallerDropdown(false);
+        setInstallerSearchTerm("");
+        fetchLotData(true);
+      } else {
+        toast.error(response.data.message || "Failed to update installer");
+      }
+    } catch (error) {
+      console.error("Error updating installer:", error);
+      toast.error("Failed to update installer. Please try again.");
+    } finally {
+      setIsAssigningInstaller(false);
+    }
+  };
+
   // Function to validate date inputs
   const validateDateInput = (startDate, endDate, fieldChanged) => {
     if (!startDate || !endDate) return true;
@@ -1087,6 +805,12 @@ export default function page() {
     }
 
     return true;
+  };
+
+  // Lot selector handlers
+  const handleLotSelect = (lot) => {
+    setSelectedLot(lot);
+    setIsLotDropdownOpen(false);
   };
 
   const filteredClients = clients.filter(
@@ -1118,6 +842,7 @@ export default function page() {
       site_measurements: "SITE_MEASUREMENTS",
       material_selection: "MATERIAL_SELECTION",
       site_photos: "SITE_PHOTOS",
+      finished_site_photos: "FINISHED_SITE_PHOTOS",
     };
     return tabEnumMap[tabId] || "";
   };
@@ -1134,6 +859,7 @@ export default function page() {
       DELIVERY_PHOTOS: "delivery_photos",
       INSTALLATION_PHOTOS: "installation_photos",
       MAINTENANCE_PHOTOS: "maintenance_photos",
+      FINISHED_SITE_PHOTOS: "finished_site_photos",
     };
     return categoryMap[category] || category.toLowerCase();
   };
@@ -1367,19 +1093,6 @@ export default function page() {
     }
   };
 
-  // View existing file from server
-  const handleViewExistingFile = (file) => {
-    const fileUrl = `/${file.url}`;
-    setSelectedFile({
-      name: file.filename,
-      type: file.mime_type,
-      size: file.size,
-      url: fileUrl,
-      isExisting: true,
-    });
-    setViewFileModal(true);
-  };
-
   // Handle file selection - upload immediately
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files);
@@ -1390,6 +1103,19 @@ export default function page() {
 
     // Reset the input so the same file can be selected again if needed
     e.target.value = "";
+  };
+
+  // View existing file from server (for SiteMeasurementsSection)
+  const handleViewExistingFile = (file) => {
+    const fileUrl = `/${file.url}`;
+    setSelectedFile({
+      name: file.filename,
+      type: file.mime_type,
+      size: file.size,
+      url: fileUrl,
+      isExisting: true,
+    });
+    setViewFileModal(true);
   };
 
   // Function to open delete confirmation
@@ -1440,204 +1166,6 @@ export default function page() {
       setIsDeletingFile(null);
     }
   };
-
-  // Existing Files Display - Render function (not a component to avoid remounting)
-  const renderExistingFilesSection = () => {
-    let existingFiles = getCurrentTabFiles();
-
-    // Filter files by checklist status if in maintenance photos tab
-    if (activeTab === "site_photos" && activeSitePhotoSubtab === "maintenance") {
-      existingFiles = existingFiles.filter((file) => {
-        const checklist = file.maintenance_checklist;
-
-        // If no filters are selected, show all files
-        if (!filterPreparedByOffice && !filterPreparedByProduction && !filterDeliveredToSite && !filterInstalled) {
-          return true;
-        }
-
-        // Check if file matches any selected filter
-        let matches = false;
-
-        if (filterPreparedByOffice && checklist?.prepared_by_office) {
-          matches = true;
-        }
-        if (filterPreparedByProduction && checklist?.prepared_by_production) {
-          matches = true;
-        }
-        if (filterDeliveredToSite && checklist?.delivered_to_site) {
-          matches = true;
-        }
-        if (filterInstalled && checklist?.installed) {
-          matches = true;
-        }
-
-        return matches;
-      });
-    }
-
-    // Categorize files by type
-    const categorizeFiles = () => {
-      const images = [];
-      const videos = [];
-      const pdfs = [];
-      const others = [];
-
-      existingFiles.forEach((file) => {
-        if (file.mime_type.includes("image")) {
-          images.push(file);
-        } else if (file.mime_type.includes("video")) {
-          videos.push(file);
-        } else if (file.mime_type.includes("pdf")) {
-          pdfs.push(file);
-        } else {
-          others.push(file);
-        }
-      });
-
-      return { images, videos, pdfs, others };
-    };
-
-    const { images, videos, pdfs, others } = categorizeFiles();
-
-    // Render a file category
-    const renderFileCategory = (title, files, isSmall, sectionKey) => {
-      if (files.length === 0) return null;
-
-      return (
-        <div key={sectionKey} className="mb-4">
-          {/* Category Header */}
-          <div className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3">
-            <span>
-              {title} ({files.length})
-            </span>
-          </div>
-
-          {/* Files Grid */}
-          <div className="gap-3 grid grid-cols-2 items-start">
-            {files.map((file, index) => {
-              // Add border-bottom to all items except those in the last row
-              // In a 2-column grid, last row contains the last 1-2 items
-              const isInLastRow = index >= Math.max(0, files.length - 2);
-              // Add border-right to items in the first column (even indices: 0, 2, 4, etc.)
-              const isFirstColumn = index % 2 === 0;
-
-              return (
-                <div
-                  key={file.id}
-                  className={`p-4 ${!isInLastRow ? 'border-b border-slate-200' : ''} ${isFirstColumn ? 'border-r border-slate-200' : ''}`}
-                >
-                  <FileItemWithNotes
-                    file={file}
-                    isSmall={isSmall}
-                    handleViewExistingFile={handleViewExistingFile}
-                    openDeleteFileConfirmation={openDeleteFileConfirmation}
-                    isDeletingFile={isDeletingFile}
-                    getToken={getToken}
-                    activeTab={activeTab}
-                    activeSitePhotoSubtab={activeSitePhotoSubtab}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    };
-
-    return (
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-slate-700 mb-4">
-          Uploaded Files
-        </h3>
-
-        {existingFiles.length > 0 ? (
-          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-            {renderFileCategory("Images", images, false, "images")}
-            {renderFileCategory("Videos", videos, false, "videos")}
-            {renderFileCategory("PDFs", pdfs, true, "pdfs")}
-            {renderFileCategory("Other Files", others, true, "others")}
-          </div>
-        ) : (
-          <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-            <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-            <p className="text-slate-600">No files uploaded yet</p>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Upload Section Component
-  const UploadSection = () => (
-    <div>
-      {/* Display Existing Files First */}
-      {renderExistingFilesSection()}
-
-      {/* Upload New Files Section */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-slate-700">
-          Upload New Files
-        </h3>
-
-        {/* File Upload Area */}
-        <div className="relative">
-          <label className="block text-sm font-medium text-slate-600 mb-2">
-            Select Files {isSavingUpload && "(Uploading...)"}
-          </label>
-          <div
-            className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${isSavingUpload ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-          >
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.dwg,.jpg,.jpeg,.png,.mp4,.mov"
-              onChange={handleFileSelect}
-              disabled={isSavingUpload}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
-            />
-            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-              {isSavingUpload ? (
-                <>
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-3"></div>
-                  <p className="text-sm font-medium text-slate-700 mb-1">
-                    Uploading files...
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mb-3">
-                    <FileUp className="w-6 h-6 text-secondary" />
-                  </div>
-                  <p className="text-sm font-medium text-slate-700 mb-1">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    PDF, DWG, JPG, PNG, MP4, or MOV
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Notes Section */}
-        <div>
-          <h3 className="text-lg font-semibold text-slate-700 mb-3">Notes</h3>
-        </div>
-        <TextEditor
-          initialContent={
-            selectedLotData?.tabs.find(
-              (tab) => tab.tab.toLowerCase() === getTabEnum(activeTab).toLowerCase()
-            )?.notes || ""
-          }
-          onSave={(content) => {
-            handleNotesSave(content);
-          }}
-        />
-      </div>
-    </div>
-  );
 
   // Debounced auto-save function for lot notes
   const saveLotNotes = async (notes) => {
@@ -1869,23 +1397,65 @@ export default function page() {
                       </h1>
                     )}
                     {!isEditing && project.lots && project.lots.length > 0 && (
-                      <select
-                        className="text-sm text-slate-600 cursor-pointer border border-slate-300 rounded-lg p-2"
-                        value={selectedLot?.id || ""}
-                        onChange={(e) => {
-                          setSelectedLot(
-                            project.lots?.find(
-                              (lot) => lot.id === e.target.value
-                            )
-                          );
-                        }}
-                      >
-                        {project.lots?.map((lot) => (
-                          <option key={lot.id} value={lot.id}>
-                            {lot.lot_id}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative" ref={lotDropdownRef}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsLotDropdownOpen(!isLotDropdownOpen)
+                          }
+                          className="flex justify-between items-center gap-4 w-full text-sm text-slate-600 px-2 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                        >
+                          <span>
+                            {selectedLot?.lot_id || "Select lot..."}
+                          </span>
+                          <ChevronDown
+                            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isLotDropdownOpen ? "rotate-180" : ""
+                              }`}
+                          />
+                        </button>
+
+                        {isLotDropdownOpen && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                            {project.lots && project.lots.length > 0 ? (
+                              [...project.lots]
+                                .sort((a, b) => {
+                                  // Extract numbers from lot_id (e.g., "IK002-lot 1" -> 1)
+                                  const getLotNumber = (lotId) => {
+                                    const match = lotId.match(/(\d+)$/);
+                                    return match ? parseInt(match[1], 10) : 0;
+                                  };
+                                  return getLotNumber(a.lot_id) - getLotNumber(b.lot_id);
+                                })
+                                .map((lot) => (
+                                  <button
+                                    key={lot.id}
+                                    type="button"
+                                    onClick={() => handleLotSelect(lot)}
+                                    className={`cursor-pointer w-full text-left px-4 py-3 text-sm hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg ${selectedLot?.id === lot.id
+                                      ? "bg-slate-50 font-medium"
+                                      : "text-slate-800"
+                                      }`}
+                                  >
+                                    <div>
+                                      <div className="font-medium">
+                                        {lot.lot_id}
+                                      </div>
+                                      {lot.name && (
+                                        <div className="text-xs text-slate-500">
+                                          {lot.name}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </button>
+                                ))
+                            ) : (
+                              <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                No lots available
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                     {isEditing && project.lots && project.lots.length > 0 && (
                       <span className="text-sm bg-slate-200 rounded-lg p-2 text-slate-600">
@@ -2023,19 +1593,85 @@ export default function page() {
                         {project.lots && project.lots.length > 0 ? (
                           selectedLot && selectedLotData ? (
                             <>
-                              {/* Top Section - 3 Grid Items */}
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                              {/* Overview - quick info cards */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
                                 {/* Lot Information */}
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                                  <h3 className="text-lg font-bold text-slate-800 mb-3">
-                                    Lot Information
-                                  </h3>
-                                  <div className="space-y-2">
+                                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                                  <div className="flex items-start justify-between gap-3 mb-3">
                                     <div>
-                                      <label className="text-xs font-medium text-slate-600">
-                                        Name
-                                      </label>
-                                      <div className="flex items-center gap-2 mt-1">
+                                      <h3 className="text-base font-semibold text-slate-900">
+                                        Lot Overview
+                                      </h3>
+                                      <p className="text-xs text-slate-500">
+                                        Lot ID: {selectedLotData.lot_id || "—"}
+                                      </p>
+                                    </div>
+                                    {!isEditing ? (
+                                      <div className="relative" ref={statusDropdownRef}>
+                                        <button
+                                          onClick={() =>
+                                            setShowStatusDropdown(!showStatusDropdown)
+                                          }
+                                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${selectedLotData.status === "COMPLETED"
+                                            ? "bg-green-50 text-green-800 border-green-200 hover:bg-green-100"
+                                            : "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
+                                            }`}
+                                        >
+                                          <span>
+                                            {selectedLotData.status === "COMPLETED"
+                                              ? "Completed"
+                                              : "Active"}
+                                          </span>
+                                          <ChevronDown
+                                            className={`w-3 h-3 transition-transform ${showStatusDropdown ? "rotate-180" : ""
+                                              }`}
+                                          />
+                                        </button>
+                                        {showStatusDropdown && (
+                                          <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[140px] overflow-hidden">
+                                            <button
+                                              onClick={() => handleStatusUpdate("ACTIVE")}
+                                              className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status === "ACTIVE"
+                                                ? "bg-blue-50 text-blue-800"
+                                                : "text-slate-700"
+                                                }`}
+                                            >
+                                              Active
+                                            </button>
+                                            <button
+                                              onClick={() =>
+                                                handleStatusUpdate("COMPLETED")
+                                              }
+                                              className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status === "COMPLETED"
+                                                ? "bg-green-50 text-green-800"
+                                                : "text-slate-700"
+                                                }`}
+                                            >
+                                              Completed
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span
+                                        className={`px-2.5 py-1.5 rounded-full text-xs font-medium border ${selectedLotData.status === "COMPLETED"
+                                          ? "bg-green-50 text-green-800 border-green-200"
+                                          : "bg-blue-50 text-blue-800 border-blue-200"
+                                          }`}
+                                      >
+                                        {selectedLotData.status === "COMPLETED"
+                                          ? "Completed"
+                                          : "Active"}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    <div>
+                                      <div className="text-xs font-medium text-slate-600">
+                                        Lot name
+                                      </div>
+                                      <div className="mt-1">
                                         {isEditing ? (
                                           <input
                                             type="text"
@@ -2050,98 +1686,22 @@ export default function page() {
                                                 name: e.target.value,
                                               })
                                             }
-                                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
                                             placeholder="Enter lot name"
                                           />
                                         ) : (
-                                          <p className="flex-1 text-sm text-slate-900">
-                                            {selectedLotData.name ||
-                                              "Not specified"}
+                                          <p className="text-sm text-slate-900">
+                                            {selectedLotData.name || "Not specified"}
                                           </p>
-                                        )}
-                                        {!isEditing && (
-                                          <div
-                                            className="relative"
-                                            ref={statusDropdownRef}
-                                          >
-                                            <button
-                                              onClick={() =>
-                                                setShowStatusDropdown(
-                                                  !showStatusDropdown
-                                                )
-                                              }
-                                              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${selectedLotData.status ===
-                                                "COMPLETED"
-                                                ? "bg-green-100 text-green-800 border-green-200 hover:bg-green-200"
-                                                : "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200"
-                                                }`}
-                                            >
-                                              <span>
-                                                {selectedLotData.status ===
-                                                  "COMPLETED"
-                                                  ? "Completed"
-                                                  : "Active"}
-                                              </span>
-                                              <ChevronDown
-                                                className={`w-3 h-3 transition-transform ${showStatusDropdown
-                                                  ? "rotate-180"
-                                                  : ""
-                                                  }`}
-                                              />
-                                            </button>
-                                            {showStatusDropdown && (
-                                              <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[120px]">
-                                                <button
-                                                  onClick={() =>
-                                                    handleStatusUpdate("ACTIVE")
-                                                  }
-                                                  className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status ===
-                                                    "ACTIVE"
-                                                    ? "bg-blue-50 text-blue-800"
-                                                    : "text-slate-700"
-                                                    }`}
-                                                >
-                                                  Active
-                                                </button>
-                                                <button
-                                                  onClick={() =>
-                                                    handleStatusUpdate(
-                                                      "COMPLETED"
-                                                    )
-                                                  }
-                                                  className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status ===
-                                                    "COMPLETED"
-                                                    ? "bg-green-50 text-green-800"
-                                                    : "text-slate-700"
-                                                    }`}
-                                                >
-                                                  Completed
-                                                </button>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-                                        {isEditing && (
-                                          <span
-                                            className={`px-2.5 py-1.5 rounded-full text-xs font-medium border ${selectedLotData.status ===
-                                              "COMPLETED"
-                                              ? "bg-green-100 text-green-800 border-green-200"
-                                              : "bg-blue-100 text-blue-800 border-blue-200"
-                                              }`}
-                                          >
-                                            {selectedLotData.status ===
-                                              "COMPLETED"
-                                              ? "Completed"
-                                              : "Active"}
-                                          </span>
                                         )}
                                       </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
+
+                                    <div className="grid grid-cols-2 gap-3">
                                       <div>
-                                        <label className="text-xs font-medium text-slate-600">
-                                          Start Date
-                                        </label>
+                                        <div className="text-xs font-medium text-slate-600">
+                                          Start date
+                                        </div>
                                         {isEditing ? (
                                           <input
                                             type="date"
@@ -2165,7 +1725,7 @@ export default function page() {
                                                 selectedLotData.startDate
                                               ).toLocaleDateString("en-AU", {
                                                 year: "numeric",
-                                                month: "long",
+                                                month: "short",
                                                 day: "numeric",
                                               })
                                               : "Not set"}
@@ -2173,9 +1733,9 @@ export default function page() {
                                         )}
                                       </div>
                                       <div>
-                                        <label className="text-xs font-medium text-slate-600">
-                                          Installation Due Date
-                                        </label>
+                                        <div className="text-xs font-medium text-slate-600">
+                                          Install due
+                                        </div>
                                         {isEditing ? (
                                           <input
                                             type="date"
@@ -2187,8 +1747,7 @@ export default function page() {
                                             onChange={(e) =>
                                               setEditData({
                                                 ...editData,
-                                                installationDueDate:
-                                                  e.target.value,
+                                                installationDueDate: e.target.value,
                                               })
                                             }
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent mt-1"
@@ -2200,7 +1759,7 @@ export default function page() {
                                                 selectedLotData.installationDueDate
                                               ).toLocaleDateString("en-AU", {
                                                 year: "numeric",
-                                                month: "long",
+                                                month: "short",
                                                 day: "numeric",
                                               })
                                               : "Not set"}
@@ -2211,129 +1770,121 @@ export default function page() {
                                   </div>
                                 </div>
 
-                                {/* Client Information */}
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                                  <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-                                    <User className="w-4 h-4" />
-                                    Client Information
-                                  </h3>
+                                {/* Client Information (project-level) */}
+                                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <User className="w-4 h-4 text-slate-500" />
+                                    <h3 className="text-base font-semibold text-slate-900">
+                                      Client
+                                    </h3>
+                                  </div>
 
                                   {project.client ? (
-                                    <div className="space-y-2">
-                                      <div>
-                                        <label className="text-xs font-medium text-slate-600">
-                                          Name
-                                        </label>
-                                        <div className="flex items-center gap-2 mt-1">
-                                          <div className="flex-1">
-                                            <button
-                                              onClick={() => {
-                                                const clientHref = `/admin/clients/${project.client.client_id}`;
-                                                router.push(clientHref);
-                                                dispatch(
-                                                  replaceTab({
-                                                    id: uuidv4(),
-                                                    title:
-                                                      project.client.client_name,
-                                                    href: clientHref,
-                                                  })
-                                                );
-                                              }}
-                                              className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
-                                            >
-                                              {project.client.client_name}
-                                            </button>
-                                            <p className="text-xs text-slate-500 mt-0.5">
-                                              ID: {project.client.client_id}
-                                            </p>
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                const clientHref = `/admin/clients/${project.client.client_id}`;
-                                                dispatch(
-                                                  addTab({
-                                                    id: uuidv4(),
-                                                    title:
-                                                      project.client.client_name,
-                                                    href: clientHref,
-                                                  })
-                                                );
-                                              }}
-                                              className="p-1.5 rounded hover:bg-slate-100 transition-colors duration-200 cursor-pointer"
-                                              title="Open client in new tab"
-                                            >
-                                              <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 hover:text-slate-600" />
-                                            </button>
-                                            {!isEditing && (
-                                              <>
-                                                <button
-                                                  onClick={() => {
-                                                    fetchClients();
-                                                    setShowClientDropdown(true);
-                                                    setClientSearchTerm("");
-                                                  }}
-                                                  className="p-1.5 rounded hover:bg-blue-100 transition-colors duration-200 cursor-pointer"
-                                                  title="Change Client"
-                                                >
-                                                  <Edit className="w-4 h-4 text-blue-600" />
-                                                </button>
-                                                <button
-                                                  onClick={handleRemoveClient}
-                                                  disabled={isAssigningClient}
-                                                  className="p-1.5 rounded hover:bg-red-100 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                  title="Remove Client"
-                                                >
-                                                  <X className="w-4 h-4 text-red-600" />
-                                                </button>
-                                              </>
-                                            )}
-                                          </div>
+                                    <div className="space-y-3">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <button
+                                            onClick={() => {
+                                              const clientHref = `/admin/clients/${project.client.client_id}`;
+                                              router.push(clientHref);
+                                              dispatch(
+                                                replaceTab({
+                                                  id: uuidv4(),
+                                                  title: project.client.client_name,
+                                                  href: clientHref,
+                                                })
+                                              );
+                                            }}
+                                            className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors truncate"
+                                          >
+                                            {project.client.client_name}
+                                          </button>
+                                          <p className="text-xs text-slate-500 mt-0.5">
+                                            ID: {project.client.client_id}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const clientHref = `/admin/clients/${project.client.client_id}`;
+                                              dispatch(
+                                                addTab({
+                                                  id: uuidv4(),
+                                                  title: project.client.client_name,
+                                                  href: clientHref,
+                                                })
+                                              );
+                                            }}
+                                            className="p-1.5 rounded hover:bg-slate-100 transition-colors duration-200 cursor-pointer"
+                                            title="Open client in new tab"
+                                          >
+                                            <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                                          </button>
+                                          {!isEditing && (
+                                            <>
+                                              <button
+                                                onClick={() => {
+                                                  fetchClients();
+                                                  setShowClientDropdown(true);
+                                                  setClientSearchTerm("");
+                                                }}
+                                                className="p-1.5 rounded hover:bg-blue-100 transition-colors duration-200 cursor-pointer"
+                                                title="Change Client"
+                                              >
+                                                <Edit className="w-4 h-4 text-blue-600" />
+                                              </button>
+                                              <button
+                                                onClick={handleRemoveClient}
+                                                disabled={isAssigningClient}
+                                                className="p-1.5 rounded hover:bg-red-100 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title="Remove Client"
+                                              >
+                                                <X className="w-4 h-4 text-red-600" />
+                                              </button>
+                                            </>
+                                          )}
                                         </div>
                                       </div>
-                                      <div>
-                                        <label className="text-xs font-medium text-slate-600">
-                                          Email
-                                        </label>
-                                        <p className="text-sm text-slate-900 mt-1">
-                                          {project.client.client_email ||
-                                            "No email"}
-                                        </p>
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-2">
+
+                                      <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                          <label className="text-xs font-medium text-slate-600">
+                                          <div className="text-xs font-medium text-slate-600">
+                                            Email
+                                          </div>
+                                          <p className="text-sm text-slate-900 mt-1 truncate">
+                                            {project.client.client_email || "—"}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <div className="text-xs font-medium text-slate-600">
                                             Phone
-                                          </label>
-                                          <p className="text-sm text-slate-900 mt-1">
-                                            {project.client.client_phone ||
-                                              "No phone"}
+                                          </div>
+                                          <p className="text-sm text-slate-900 mt-1 truncate">
+                                            {project.client.client_phone || "—"}
                                           </p>
                                         </div>
-                                        <div>
-                                          <label className="text-xs font-medium text-slate-600">
-                                            Type
-                                          </label>
-                                          <p className="text-sm text-slate-900 mt-1 capitalize">
-                                            {project.client.client_type}
-                                          </p>
+                                      </div>
+
+                                      <div>
+                                        <div className="text-xs font-medium text-slate-600">
+                                          Type
                                         </div>
+                                        <p className="text-sm text-slate-900 mt-1 capitalize">
+                                          {project.client.client_type || "—"}
+                                        </p>
                                       </div>
                                     </div>
                                   ) : (
                                     <div className="text-center py-6 text-slate-500">
-                                      <User className="w-6 h-6 mx-auto mb-2 text-slate-400" />
-                                      <p className="text-sm mb-3">
-                                        No client assigned
-                                      </p>
+                                      <p className="text-sm mb-3">No client assigned</p>
                                       <button
                                         onClick={() => {
                                           fetchClients();
                                           setShowClientDropdown(true);
                                           setClientSearchTerm("");
                                         }}
-                                        className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
+                                        className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
                                       >
                                         <Plus className="w-4 h-4" />
                                         Assign Client
@@ -2342,27 +1893,153 @@ export default function page() {
                                   )}
                                 </div>
 
-                                {/* Notes Section */}
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                                  <h3 className="text-lg font-bold text-slate-800 mb-3">
+                                {/* Installer Information (lot-level) */}
+                                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <User className="w-4 h-4 text-slate-500" />
+                                    <h3 className="text-base font-semibold text-slate-900">
+                                      Installer
+                                    </h3>
+                                  </div>
+
+                                  {selectedLotData?.installer ? (
+                                    <div className="space-y-3">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <button
+                                            onClick={() => {
+                                              const installerHref = `/admin/employees/${selectedLotData.installer.employee_id}`;
+                                              router.push(installerHref);
+                                              dispatch(
+                                                replaceTab({
+                                                  id: uuidv4(),
+                                                  title: `${selectedLotData.installer.first_name || ""} ${selectedLotData.installer.last_name || ""}`.trim() || "Installer",
+                                                  href: installerHref,
+                                                })
+                                              );
+                                            }}
+                                            className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors truncate"
+                                          >
+                                            {`${selectedLotData.installer.first_name || ""} ${selectedLotData.installer.last_name || ""}`.trim() ||
+                                              "Not specified"}
+                                          </button>
+                                          <p className="text-xs text-slate-500 mt-0.5">
+                                            ID: {selectedLotData.installer.employee_id}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const installerHref = `/admin/employees/${selectedLotData.installer.employee_id}`;
+                                              dispatch(
+                                                addTab({
+                                                  id: uuidv4(),
+                                                  title: `${selectedLotData.installer.first_name || ""} ${selectedLotData.installer.last_name || ""}`.trim() || "Installer",
+                                                  href: installerHref,
+                                                })
+                                              );
+                                            }}
+                                            className="p-1.5 rounded hover:bg-slate-100 transition-colors duration-200 cursor-pointer"
+                                            title="Open installer in new tab"
+                                          >
+                                            <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 hover:text-slate-600" />
+                                          </button>
+                                          {!isEditing && (
+                                            <>
+                                              <button
+                                                onClick={() => {
+                                                  setShowInstallerDropdown(true);
+                                                  setInstallerSearchTerm("");
+                                                }}
+                                                className="p-1.5 rounded hover:bg-blue-100 transition-colors duration-200 cursor-pointer"
+                                                title="Change Installer"
+                                              >
+                                                <Edit className="w-4 h-4 text-blue-600" />
+                                              </button>
+                                              <button
+                                                onClick={() => handleAssignInstaller(null)}
+                                                disabled={isAssigningInstaller}
+                                                className="p-1.5 rounded hover:bg-red-100 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title="Remove Installer"
+                                              >
+                                                <X className="w-4 h-4 text-red-600" />
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                          <div className="text-xs font-medium text-slate-600">
+                                            Email
+                                          </div>
+                                          <p className="text-sm text-slate-900 mt-1 truncate">
+                                            {selectedLotData.installer.email || "—"}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <div className="text-xs font-medium text-slate-600">
+                                            Phone
+                                          </div>
+                                          <p className="text-sm text-slate-900 mt-1 truncate">
+                                            {selectedLotData.installer.phone || "—"}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <div className="text-xs font-medium text-slate-600">
+                                          Role
+                                        </div>
+                                        <p className="text-sm text-slate-900 mt-1 capitalize">
+                                          {selectedLotData.installer.role || "—"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-center py-6 text-slate-500">
+                                      <p className="text-sm mb-3">No installer assigned</p>
+                                      <button
+                                        onClick={() => {
+                                          setShowInstallerDropdown(true);
+                                          setInstallerSearchTerm("");
+                                        }}
+                                        className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                        Assign Installer
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Notes */}
+                              <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+                                <div className="flex items-center justify-between gap-3 mb-2">
+                                  <h3 className="text-base font-semibold text-slate-900">
                                     Notes
                                   </h3>
-
-                                  <textarea
-                                    value={selectedLotData.notes || ""}
-                                    onChange={(e) =>
-                                      handleLotNotesChange(e.target.value)
-                                    }
-                                    className="w-full px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent resize-none"
-                                    rows="5"
-                                    placeholder="Add notes"
-                                  />
                                   {notesSavedIndicators && (
-                                    <span className="text-xs text-green-600 font-medium block mt-1">
-                                      Saved!
+                                    <span className="text-xs text-green-600 font-medium">
+                                      Saved
                                     </span>
                                   )}
                                 </div>
+                                <textarea
+                                  value={selectedLotData.notes || ""}
+                                  onChange={(e) =>
+                                    handleLotNotesChange(e.target.value)
+                                  }
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 bg-white resize-none text-sm"
+                                  rows="4"
+                                  placeholder="Add lot-specific notes (auto-saves)"
+                                />
+                                <p className="text-xs text-slate-500 mt-2">
+                                  Notes are saved automatically.
+                                </p>
                               </div>
 
                               {/* Stages Section - Full Width */}
@@ -2415,7 +2092,19 @@ export default function page() {
                         <h2 className="text-xl font-semibold text-slate-700 mb-4">
                           Architecture Drawings
                         </h2>
-                        <UploadSection />
+                        <FileUploadSection
+                          existingFiles={getCurrentTabFiles()}
+                          handleFileSelect={handleFileSelect}
+                          isSavingUpload={isSavingUpload}
+                          openDeleteFileConfirmation={openDeleteFileConfirmation}
+                          isDeletingFile={isDeletingFile}
+                          getToken={getToken}
+                          activeTab={activeTab}
+                          activeSitePhotoSubtab={activeSitePhotoSubtab}
+                          selectedLotData={selectedLotData}
+                          getTabEnum={getTabEnum}
+                          handleNotesSave={handleNotesSave}
+                        />
                       </div>
                     )}
 
@@ -2426,7 +2115,19 @@ export default function page() {
                         <h2 className="text-xl font-semibold text-slate-700 mb-4">
                           Appliances and Specifications
                         </h2>
-                        <UploadSection />
+                        <FileUploadSection
+                          existingFiles={getCurrentTabFiles()}
+                          handleFileSelect={handleFileSelect}
+                          isSavingUpload={isSavingUpload}
+                          openDeleteFileConfirmation={openDeleteFileConfirmation}
+                          isDeletingFile={isDeletingFile}
+                          getToken={getToken}
+                          activeTab={activeTab}
+                          activeSitePhotoSubtab={activeSitePhotoSubtab}
+                          selectedLotData={selectedLotData}
+                          getTabEnum={getTabEnum}
+                          handleNotesSave={handleNotesSave}
+                        />
                       </div>
                     )}
 
@@ -2451,7 +2152,19 @@ export default function page() {
                         <h2 className="text-xl font-semibold text-slate-700 mb-4">
                           Cabinetry Drawings
                         </h2>
-                        <UploadSection />
+                        <FileUploadSection
+                          existingFiles={getCurrentTabFiles()}
+                          handleFileSelect={handleFileSelect}
+                          isSavingUpload={isSavingUpload}
+                          openDeleteFileConfirmation={openDeleteFileConfirmation}
+                          isDeletingFile={isDeletingFile}
+                          getToken={getToken}
+                          activeTab={activeTab}
+                          activeSitePhotoSubtab={activeSitePhotoSubtab}
+                          selectedLotData={selectedLotData}
+                          getTabEnum={getTabEnum}
+                          handleNotesSave={handleNotesSave}
+                        />
                       </div>
                     )}
 
@@ -2462,7 +2175,19 @@ export default function page() {
                         <h2 className="text-xl font-semibold text-slate-700 mb-4">
                           Changes to Do
                         </h2>
-                        <UploadSection />
+                        <FileUploadSection
+                          existingFiles={getCurrentTabFiles()}
+                          handleFileSelect={handleFileSelect}
+                          isSavingUpload={isSavingUpload}
+                          openDeleteFileConfirmation={openDeleteFileConfirmation}
+                          isDeletingFile={isDeletingFile}
+                          getToken={getToken}
+                          activeTab={activeTab}
+                          activeSitePhotoSubtab={activeSitePhotoSubtab}
+                          selectedLotData={selectedLotData}
+                          getTabEnum={getTabEnum}
+                          handleNotesSave={handleNotesSave}
+                        />
                       </div>
                     )}
 
@@ -2501,7 +2226,6 @@ export default function page() {
                     project.lots.length > 0 &&
                     activeTab === "site_photos" && (
                       <div>
-
                         {/* Subtabs Navigation */}
                         <div className="mb-6">
                           <div className="border-b border-slate-200">
@@ -2541,12 +2265,38 @@ export default function page() {
                         <div>
                           {activeSitePhotoSubtab === "delivery" && (
                             <div>
-                              <UploadSection />
+                              <FileUploadSection
+                                existingFiles={getCurrentTabFiles()}
+                                handleFileSelect={handleFileSelect}
+                                isSavingUpload={isSavingUpload}
+                                handleViewExistingFile={handleViewExistingFile}
+                                openDeleteFileConfirmation={openDeleteFileConfirmation}
+                                isDeletingFile={isDeletingFile}
+                                getToken={getToken}
+                                activeTab={activeTab}
+                                activeSitePhotoSubtab={activeSitePhotoSubtab}
+                                selectedLotData={selectedLotData}
+                                getTabEnum={getTabEnum}
+                                handleNotesSave={handleNotesSave}
+                              />
                             </div>
                           )}
                           {activeSitePhotoSubtab === "installation" && (
                             <div>
-                              <UploadSection />
+                              <FileUploadSection
+                                existingFiles={getCurrentTabFiles()}
+                                handleFileSelect={handleFileSelect}
+                                isSavingUpload={isSavingUpload}
+                                handleViewExistingFile={handleViewExistingFile}
+                                openDeleteFileConfirmation={openDeleteFileConfirmation}
+                                isDeletingFile={isDeletingFile}
+                                getToken={getToken}
+                                activeTab={activeTab}
+                                activeSitePhotoSubtab={activeSitePhotoSubtab}
+                                selectedLotData={selectedLotData}
+                                getTabEnum={getTabEnum}
+                                handleNotesSave={handleNotesSave}
+                              />
                             </div>
                           )}
                           {activeSitePhotoSubtab === "maintenance" && (
@@ -2672,12 +2422,52 @@ export default function page() {
                                   </button>
                                 </div>
                               </div>
-                              <UploadSection />
+                              <FileUploadSection
+                                existingFiles={getCurrentTabFiles()}
+                                handleFileSelect={handleFileSelect}
+                                isSavingUpload={isSavingUpload}
+                                openDeleteFileConfirmation={openDeleteFileConfirmation}
+                                isDeletingFile={isDeletingFile}
+                                getToken={getToken}
+                                activeTab={activeTab}
+                                activeSitePhotoSubtab={activeSitePhotoSubtab}
+                                filterPreparedByOffice={filterPreparedByOffice}
+                                filterPreparedByProduction={filterPreparedByProduction}
+                                filterDeliveredToSite={filterDeliveredToSite}
+                                filterInstalled={filterInstalled}
+                                selectedLotData={selectedLotData}
+                                getTabEnum={getTabEnum}
+                                handleNotesSave={handleNotesSave}
+                              />
                             </div>
                           )}
                         </div>
                       </div>
                     )}
+
+                  {project.lots &&
+                    project.lots.length > 0 &&
+                    activeTab === "finished_site_photos" && (
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                          Finished Site Photos
+                        </h2>
+                        <FileUploadSection
+                          existingFiles={getCurrentTabFiles()}
+                          handleFileSelect={handleFileSelect}
+                          isSavingUpload={isSavingUpload}
+                          openDeleteFileConfirmation={openDeleteFileConfirmation}
+                          isDeletingFile={isDeletingFile}
+                          getToken={getToken}
+                          activeTab={activeTab}
+                          activeSitePhotoSubtab={activeSitePhotoSubtab}
+                          selectedLotData={selectedLotData}
+                          getTabEnum={getTabEnum}
+                          handleNotesSave={handleNotesSave}
+                        />
+                      </div>
+                    )}
+
                 </div>
               </div>
             )}
@@ -2749,6 +2539,102 @@ export default function page() {
                     <p className="text-sm">No clients found</p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Installer Assignment Dropdown */}
+        {showInstallerDropdown && (
+          <div className="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center z-50">
+            <div className="installer-dropdown bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-800">
+                  Assign Installer
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowInstallerDropdown(false);
+                    setInstallerSearchTerm("");
+                  }}
+                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Search installers by name, ID, or role..."
+                  value={installerSearchTerm}
+                  onChange={(e) => setInstallerSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+
+              <div className="max-h-64 overflow-y-auto">
+                {(() => {
+                  const all = Array.isArray(employees) ? employees : [];
+                  const installerOnly = all.filter((e) =>
+                    (e?.role || "").toLowerCase().includes("installer")
+                  );
+                  const source = installerOnly.length > 0 ? installerOnly : all;
+
+                  const q = (installerSearchTerm || "").toLowerCase().trim();
+                  const filtered = source.filter((e) => {
+                    if (!q) return true;
+                    const name = `${e?.first_name || ""} ${e?.last_name || ""}`.toLowerCase();
+                    const role = (e?.role || "").toLowerCase();
+                    const empId = (e?.employee_id || "").toLowerCase();
+                    return name.includes(q) || role.includes(q) || empId.includes(q);
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-slate-500">
+                        <User className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm">No installers found</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      {filtered.map((e) => {
+                        const fullName =
+                          `${e?.first_name || ""} ${e?.last_name || ""}`.trim() ||
+                          "Unnamed";
+                        return (
+                          <button
+                            key={e.id || e.employee_id}
+                            onClick={() => handleAssignInstaller(e.employee_id)}
+                            disabled={isAssigningInstaller}
+                            className="cursor-pointer w-full text-left p-3 border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-medium text-slate-900">
+                                  {fullName}
+                                </div>
+                                <div className="text-sm text-slate-600">
+                                  ID: {e.employee_id}
+                                </div>
+                                <div className="text-xs text-slate-500 capitalize">
+                                  Role: {e.role || "—"}
+                                </div>
+                              </div>
+                              {isAssigningInstaller && (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-secondary"></div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -2902,16 +2788,6 @@ export default function page() {
           </div>
         )}
 
-        {/* File View Modal */}
-        {viewFileModal && selectedFile && (
-          <ViewMedia
-            selectedFile={selectedFile}
-            setSelectedFile={setSelectedFile}
-            setViewFileModal={setViewFileModal}
-            setPageNumber={setPageNumber}
-          />
-        )}
-
         <DeleteConfirmation
           isOpen={showDeleteLotModal}
           onClose={() => setShowDeleteLotModal(false)}
@@ -2935,6 +2811,16 @@ export default function page() {
         />
 
         {/* Delete File Confirmation Modal */}
+        {/* File View Modal (for SiteMeasurementsSection) */}
+        {viewFileModal && selectedFile && (
+          <ViewMedia
+            selectedFile={selectedFile}
+            setSelectedFile={setSelectedFile}
+            setViewFileModal={setViewFileModal}
+            setPageNumber={setPageNumber}
+          />
+        )}
+
         <DeleteConfirmation
           isOpen={showDeleteFileModal}
           onClose={() => {
@@ -2942,7 +2828,7 @@ export default function page() {
             setFileToDelete(null);
           }}
           onConfirm={handleDeleteFile}
-          deleteWithInput={true}
+          deleteWithInput={false}
           heading="File"
           message="This will permanently delete this file. This action cannot be undone."
           comparingName={fileToDelete ? fileToDelete.filename : ""}

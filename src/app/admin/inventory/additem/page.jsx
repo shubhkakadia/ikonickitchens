@@ -265,6 +265,14 @@ export default function page() {
       }
       const data = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
+        // Skip image field here - handle it separately
+        if (key === "image") {
+          // Only append image if it's a File object
+          if (value instanceof File) {
+            data.append(key, value);
+          }
+          return;
+        }
         // Convert boolean to string for FormData
         if (typeof value === "boolean") {
           data.append(key, value.toString());

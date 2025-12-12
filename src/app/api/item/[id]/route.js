@@ -245,8 +245,24 @@ export async function PATCH(request, { params }) {
         });
       } catch (error) {
         console.error("Error handling image upload:", error);
-        // Continue without image if upload fails
-        // Item is already updated, so we don't fail the whole request
+        console.error("Upload error details:", {
+          message: error.message,
+          stack: error.stack,
+          imageFile: imageFile ? {
+            name: imageFile.name,
+            size: imageFile.size,
+            type: imageFile.type,
+          } : null,
+        });
+        // Return error instead of silently failing
+        return NextResponse.json(
+          {
+            status: false,
+            message: "Failed to upload image",
+            error: error.message,
+          },
+          { status: 500 }
+        );
       }
     }
 

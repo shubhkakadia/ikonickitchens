@@ -201,11 +201,20 @@ export async function validateMultipartRequest(request) {
   }
 }
 
-export async function getFileFromFormData(formData, fieldName, getAll = false) {
+export function getFileFromFormData(formData, fieldName, getAll = false) {
   if (getAll) {
     const files = formData.getAll(fieldName);
     return files.filter((file) => file instanceof File);
   }
   const file = formData.get(fieldName);
-  return file instanceof File ? file : null;
+  // Return the file if it's a File instance
+  if (file instanceof File) {
+    return file;
+  }
+  // Return empty string if it's explicitly an empty string (for deletion)
+  if (file === "") {
+    return "";
+  }
+  // Return null for null/undefined/not found
+  return null;
 }

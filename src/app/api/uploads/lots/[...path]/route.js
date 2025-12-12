@@ -22,6 +22,7 @@ const VALID_TABKINDS = [
   "delivery_photos",
   "installation_photos",
   "maintenance_photos",
+  "finished_site_photos",
 ];
 
 // Mapping lowercase to proper enum format for database
@@ -35,6 +36,7 @@ const TABKIND_TO_ENUM = {
   delivery_photos: "DELIVERY_PHOTOS",
   installation_photos: "INSTALLATION_PHOTOS",
   maintenance_photos: "MAINTENANCE_PHOTOS",
+  finished_site_photos: "FINISHED_SITE_PHOTOS",
 };
 
 // Function to determine FileKind based on mime type

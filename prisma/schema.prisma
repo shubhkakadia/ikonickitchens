@@ -53,6 +53,7 @@ model module_access {
   materialstoorder Boolean  @default(false)
   purchaseorder    Boolean  @default(false)
   statements       Boolean  @default(false)
+  site_photos      Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   usedmaterial     Boolean  @default(false)

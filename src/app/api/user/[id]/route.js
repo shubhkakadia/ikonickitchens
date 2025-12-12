@@ -140,6 +140,7 @@ export async function PATCH(request, { params }) {
           materialstoorder: updateData.module_access.materialstoorder,
           purchaseorder: updateData.module_access.purchaseorder,
           statements: updateData.module_access.statements,
+          site_photos: updateData.module_access.site_photos,
         },
       });
       user = {

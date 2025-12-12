@@ -32,7 +32,8 @@ export async function isAdmin(req) {
     session &&
     (session.user_type.toLowerCase() === "admin" ||
       session.user_type.toLowerCase() === "master-admin" ||
-      session.user_type.toLowerCase() === "manager")
+      session.user_type.toLowerCase() === "manager" ||
+      session.user_type.toLowerCase() === "employee")
   );
 }
 

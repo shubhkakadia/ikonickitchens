@@ -190,7 +190,7 @@ export function AdminRoute({
   redirectTo = "/admin/login",
   fallback,
 }) {
-  const { getUserData, getToken } = useAuth();
+  const { getUserData, getToken, getUserType } = useAuth();
   const [moduleAccess, setModuleAccess] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -221,6 +221,7 @@ export function AdminRoute({
     "/admin/inventory": "all_items",
     "/admin/inventory/additem": "add_items",
     [`/admin/inventory/${id}`]: "item_details",
+    "/admin/site_photos": "site_photos",
   };
 
   useEffect(() => {
@@ -260,6 +261,14 @@ export function AdminRoute({
     }
   }, [pathname, router, getUserData]);
 
+  // Redirect employees to site_photos page
+  useEffect(() => {
+    const userType = getUserType();
+    if (userType === 'employee' && pathname !== '/admin/site_photos') {
+      router.push('/admin/site_photos');
+    }
+  }, [pathname, router, getUserType]);
+
   // Show loading state while redirecting from /admin
   if (pathname === '/admin') {
     return <LoadingAccess />;
@@ -267,7 +276,7 @@ export function AdminRoute({
 
   if (pathname === '/admin/settings') {
     return (<ProtectedRoute
-      requiredUserType={["admin", "master-admin", "manager"]}
+      requiredUserType={["admin", "master-admin", "manager", "employee"]}
       redirectTo={redirectTo}
       fallback={fallback}
     >
@@ -296,7 +305,7 @@ export function AdminRoute({
   // User has access - render protected content
   return (
     <ProtectedRoute
-      requiredUserType={["admin", "master-admin", "manager"]}
+      requiredUserType={["admin", "master-admin", "manager", "employee"]}
       redirectTo={redirectTo}
       fallback={fallback}
     >

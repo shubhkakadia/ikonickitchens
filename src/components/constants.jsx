@@ -29,6 +29,7 @@ export const tabs = [
   { id: "site_measurements", label: "Site Measurements" },
   { id: "materials_to_order", label: "Materials to Order" },
   { id: "site_photos", label: "Site Photos" },
+  { id: "finished_site_photos", label: "Finished Site Photos" },
 ];
 
 export const hardwareSubCategories = [
@@ -45,4 +46,14 @@ export const hardwareSubCategories = [
   "Plastic Wraps",
   "Shelf Support",
   "LED",
+];
+
+export const roleOptions = [
+  "Administrator",
+  "Site Manager",
+  "Supervisor",
+  "Employee",
+  "Contractor",
+  "CNC Operator",
+  "Installer",
 ];

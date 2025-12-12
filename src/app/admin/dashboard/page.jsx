@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   FolderKanban,
@@ -79,8 +80,12 @@ const KPICard = ({
   color,
   subtitle,
   prefix = "",
+  onClick,
 }) => (
-  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all duration-300 group">
+  <div
+    onClick={onClick}
+    className={`bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all duration-300 group ${onClick ? 'cursor-pointer' : ''}`}
+  >
     <div className="flex items-start justify-between">
       <div className="flex-1">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
@@ -196,6 +201,7 @@ const getStatusColor = (status) => {
 
 export default function page() {
   const { getToken } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
@@ -852,6 +858,7 @@ export default function page() {
                     icon={FolderKanban}
                     color="bg-linear-to-br from-blue-500 to-blue-600"
                     subtitle="Currently in progress"
+                    onClick={() => router.push("/admin/projects")}
                   />
                   <KPICard
                     title="Active Lots"
@@ -866,6 +873,7 @@ export default function page() {
                     icon={ClipboardList}
                     color="bg-linear-to-br from-violet-500 to-violet-600"
                     subtitle="Materials to order"
+                    onClick={() => router.push("/admin/suppliers/materialstoorder")}
                   />
                   <KPICard
                     title="Purchase Orders"
@@ -873,6 +881,7 @@ export default function page() {
                     icon={ShoppingCart}
                     color="bg-linear-to-br from-amber-500 to-amber-600"
                     subtitle="Active orders"
+                    onClick={() => router.push("/admin/suppliers/purchaseorder")}
                   />
                   <KPICard
                     title="Total Spent this year"
@@ -881,6 +890,7 @@ export default function page() {
                     color="bg-linear-to-br from-slate-700 to-slate-800"
                     subtitle="Across all suppliers"
                     prefix="$"
+                    onClick={() => router.push("/admin/suppliers/statements")}
                   />
                 </div>
 

@@ -20,8 +20,17 @@ export async function GET(request) {
         },
         stages: {
           select: {
+            stage_id: true,
             name: true,
             status: true,
+            notes: true,
+            startDate: true,
+            endDate: true,
+            assigned_to: {
+              select: {
+                employee_id: true,
+              },
+            },
           },
         },
       },

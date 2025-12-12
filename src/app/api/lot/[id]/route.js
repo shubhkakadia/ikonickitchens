@@ -14,6 +14,16 @@ export async function GET(request, { params }) {
     const lot = await prisma.lot.findUnique({
       where: { id: id },
       include: {
+        installer: {
+          select: {
+            employee_id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            phone: true,
+            role: true,
+          },
+        },
         project: {
           include: {
             client: true,
@@ -68,7 +78,7 @@ export async function PATCH(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const { name, startDate, installationDueDate, notes, status } =
+    const { name, startDate, installationDueDate, notes, status, installer_id } =
       await request.json();
 
     // Build update data object with only provided fields
@@ -96,12 +106,40 @@ export async function PATCH(request, { params }) {
       updateData.status = status;
     }
 
+    if (installer_id !== undefined) {
+      if (installer_id === null || installer_id === "") {
+        updateData.installer_id = null;
+      } else {
+        const installerExists = await prisma.employees.findUnique({
+          where: { employee_id: installer_id },
+          select: { employee_id: true },
+        });
+        if (!installerExists) {
+          return NextResponse.json(
+            { status: false, message: "Invalid installer selected" },
+            { status: 400 }
+          );
+        }
+        updateData.installer_id = installer_id;
+      }
+    }
+
     // Update the lot only if there are fields to update
     const lot = await prisma.lot.update({
       where: { id: id },
       data: updateData,
       include: {
         project: true,
+        installer: {
+          select: {
+            employee_id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            phone: true,
+            role: true,
+          },
+        },
       },
     });
     const logged = await withLogging(

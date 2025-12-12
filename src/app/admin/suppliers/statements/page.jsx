@@ -35,7 +35,9 @@ export default function StatementsPage() {
   const dispatch = useDispatch();
   const { getToken } = useAuth();
   const [statements, setStatements] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
   const [error, setError] = useState(null);
   const [showUploadStatementModal, setShowUploadStatementModal] =
     useState(false);
@@ -122,6 +124,7 @@ export default function StatementsPage() {
 
   useEffect(() => {
     fetchStatements();
+    fetchSuppliers();
     dispatch(
       replaceTab({
         id: uuidv4(),
@@ -186,19 +189,35 @@ export default function StatementsPage() {
     };
   }, []);
 
-  // Extract unique suppliers from statements data
-  const suppliers = useMemo(() => {
-    const supplierMap = new Map();
-    statements.forEach((statement) => {
-      if (
-        statement.supplier &&
-        !supplierMap.has(statement.supplier.supplier_id)
-      ) {
-        supplierMap.set(statement.supplier.supplier_id, statement.supplier);
+  // Fetch all suppliers from API
+  const fetchSuppliers = async () => {
+    try {
+      setLoadingSuppliers(true);
+      const sessionToken = getToken();
+      if (!sessionToken) return;
+
+      const response = await axios.get("/api/supplier/all", {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+
+      if (response.data.status) {
+        setSuppliers(response.data.data || []);
+      } else {
+        toast.error("Failed to fetch suppliers", {
+          position: "top-right",
+          autoClose: 3000,
+        });
       }
-    });
-    return Array.from(supplierMap.values());
-  }, [statements]);
+    } catch (err) {
+      console.error("Error fetching suppliers:", err);
+      toast.error("Error fetching suppliers", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setLoadingSuppliers(false);
+    }
+  };
 
   // Get available years from statements
   const getAvailableYears = useMemo(() => {
@@ -238,7 +257,7 @@ export default function StatementsPage() {
   // Filter suppliers for search dropdown
   const filteredSuppliers = useMemo(() => {
     return suppliers.filter((supplier) =>
-      supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+      supplier.name?.toLowerCase().includes(supplierSearchTerm.toLowerCase())
     );
   }, [suppliers, supplierSearchTerm]);
 
@@ -1670,6 +1689,7 @@ export default function StatementsPage() {
                               onFocus={() => setIsSupplierDropdownOpen(true)}
                               className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                               placeholder="Search or select supplier..."
+                              disabled={loadingSuppliers}
                             />
                             <button
                               type="button"
@@ -1678,16 +1698,24 @@ export default function StatementsPage() {
                               }
                               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
-                              <ChevronDown
-                                className={`w-5 h-5 transition-transform duration-200 ${isSupplierDropdownOpen ? "rotate-180" : ""
-                                  }`}
-                              />
+                              {loadingSuppliers ? (
+                                <div className="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"></div>
+                              ) : (
+                                <ChevronDown
+                                  className={`w-5 h-5 transition-transform duration-200 ${isSupplierDropdownOpen ? "rotate-180" : ""
+                                    }`}
+                                />
+                              )}
                             </button>
                           </div>
 
                           {isSupplierDropdownOpen && (
                             <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                              {filteredSuppliers.length > 0 ? (
+                              {loadingSuppliers ? (
+                                <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                  Loading suppliers...
+                                </div>
+                              ) : filteredSuppliers.length > 0 ? (
                                 filteredSuppliers.map((supplier) => (
                                   <button
                                     key={supplier.supplier_id}

@@ -24,9 +24,10 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
+import { roleOptions } from "@/components/constants";
 
 export default function page() {
-  const [formData, setFormData] = useState({
+  const formDataInitialState = {
     employee_id: "",
     first_name: "",
     last_name: "",
@@ -49,9 +50,9 @@ export default function page() {
     availability: "",
     notes: "",
     image: null,
-  });
+  }
 
-  const [availability, setAvailability] = useState({
+  const availabilityInitialState = {
     monday: { start: "", end: "" },
     tuesday: { start: "", end: "" },
     wednesday: { start: "", end: "" },
@@ -59,19 +60,7 @@ export default function page() {
     friday: { start: "", end: "" },
     saturday: { start: "", end: "" },
     sunday: { start: "", end: "" },
-  });
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { getToken } = useAuth();
-
-  const roleOptions = [
-    "Administrator",
-    "Site Manager",
-    "Supervisor",
-    "Employee",
-    "Contractor",
-    "CNC Operator",
-  ];
+  }
 
   const daysOfWeek = [
     "monday",
@@ -82,6 +71,12 @@ export default function page() {
     "saturday",
     "sunday",
   ];
+
+  const [formData, setFormData] = useState(formDataInitialState);
+  const [availability, setAvailability] = useState(availabilityInitialState);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { getToken } = useAuth();
 
   // Role dropdown state
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
@@ -244,48 +239,12 @@ export default function page() {
       }
 
       // Reset form
-      setFormData({
-        employee_id: "",
-        first_name: "",
-        last_name: "",
-        role: "",
-        email: "",
-        phone: "",
-        dob: "",
-        join_date: "",
-        address: "",
-        emergency_contact_name: "",
-        emergency_contact_phone: "",
-        bank_account_name: "",
-        bank_account_number: "",
-        bank_account_bsb: "",
-        supper_account_name: "",
-        supper_account_number: "",
-        tfn_number: "",
-        abn_number: "",
-        education: "",
-        availability: "",
-        notes: "",
-        image: null,
-      });
-
-      // Reset availability
-      setAvailability({
-        monday: { start: "", end: "" },
-        tuesday: { start: "", end: "" },
-        wednesday: { start: "", end: "" },
-        thursday: { start: "", end: "" },
-        friday: { start: "", end: "" },
-        saturday: { start: "", end: "" },
-        sunday: { start: "", end: "" },
-      });
-
-      // Reset role dropdown
+      setFormData(formDataInitialState);
+      setAvailability(availabilityInitialState);
       setRoleSearchTerm("");
       setIsRoleDropdownOpen(false);
-
-      // Reset image
       setImagePreview(null);
+
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }

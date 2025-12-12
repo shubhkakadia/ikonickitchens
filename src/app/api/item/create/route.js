@@ -173,6 +173,24 @@ export async function POST(request, { params }) {
         });
       } catch (error) {
         console.error("Error handling image upload:", error);
+        console.error("Upload error details:", {
+          message: error.message,
+          stack: error.stack,
+          imageFile: imageFile ? {
+            name: imageFile.name,
+            size: imageFile.size,
+            type: imageFile.type,
+          } : null,
+        });
+        // Return error instead of silently failing
+        return NextResponse.json(
+          {
+            status: false,
+            message: "Failed to upload image",
+            error: error.message,
+          },
+          { status: 500 }
+        );
       }
     }
 

@@ -18,6 +18,7 @@ import {
   X,
   Download,
   ChevronDown,
+  ChevronUp,
   Building2,
   Ruler,
   ExternalLink,
@@ -91,6 +92,7 @@ export default function page() {
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
   const supplierDropdownRef = React.useRef(null);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [expandedNotes, setExpandedNotes] = useState(new Set());
 
   const filteredSubCategories = hardwareSubCategories.filter((subCategory) =>
     subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase())
@@ -457,6 +459,18 @@ export default function page() {
       return "-";
     }
     return value;
+  };
+
+  const toggleNotes = (transactionId) => {
+    setExpandedNotes((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(transactionId)) {
+        newSet.delete(transactionId);
+      } else {
+        newSet.add(transactionId);
+      }
+      return newSet;
+    });
   };
 
   const getItemTitle = () => {
@@ -1342,6 +1356,7 @@ export default function page() {
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="border-b border-slate-200">
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide w-8"></th>
                                   <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
                                     Date
                                   </th>
@@ -1370,81 +1385,109 @@ export default function page() {
                                       new Date(a.createdAt)
                                   )
                                   .map((transaction) => (
-                                    <tr
-                                      key={transaction.id}
-                                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                                    >
-                                      <td className="py-2 px-3 text-slate-700">
-                                        {new Date(
-                                          transaction.createdAt
-                                        ).toLocaleString("en-US", {
-                                          year: "numeric",
-                                          month: "short",
-                                          day: "numeric",
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        })}
-                                      </td>
-                                      <td className="py-2 px-3">
-                                        <span
-                                          className={`px-2 py-1 text-xs font-medium rounded-full ${transaction.type === "ADDED"
-                                            ? "bg-emerald-100 text-emerald-800"
-                                            : transaction.type === "USED"
-                                              ? "bg-blue-100 text-blue-800"
-                                              : "bg-red-100 text-red-800"
-                                            }`}
-                                        >
-                                          {transaction.type}
-                                        </span>
-                                      </td>
-                                      <td className="py-2 px-3 text-right font-medium text-slate-800">
-                                        {transaction.type === "ADDED" ? "+" : "-"}
-                                        {transaction.quantity}
-                                        {item.measurement_unit && (
-                                          <span className="ml-1 text-xs text-slate-500 font-normal">
-                                            {item.measurement_unit}
+                                    <React.Fragment key={transaction.id}>
+                                      <tr
+                                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${transaction.notes ? "cursor-pointer" : ""
+                                          }`}
+                                        onClick={() => transaction.notes && toggleNotes(transaction.id)}
+                                      >
+                                        <td className="py-2 px-3 whitespace-nowrap">
+                                          {transaction.notes && (
+                                            <div className="flex items-center">
+                                              {expandedNotes.has(transaction.id) ? (
+                                                <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                                              ) : (
+                                                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                                              )}
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-700">
+                                          {new Date(
+                                            transaction.createdAt
+                                          ).toLocaleString("en-US", {
+                                            year: "numeric",
+                                            month: "short",
+                                            day: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          })}
+                                        </td>
+                                        <td className="py-2 px-3">
+                                          <span
+                                            className={`px-2 py-1 text-xs font-medium rounded-full ${transaction.type === "ADDED"
+                                              ? "bg-emerald-100 text-emerald-800"
+                                              : transaction.type === "USED"
+                                                ? "bg-blue-100 text-blue-800"
+                                                : "bg-red-100 text-red-800"
+                                              }`}
+                                          >
+                                            {transaction.type}
                                           </span>
-                                        )}
-                                      </td>
-                                      <td className="py-2 px-3 text-slate-600">
-                                        {transaction.type === "ADDED" &&
-                                          transaction.purchase_order?.order_no ? (
-                                          <span className="text-xs font-medium text-primary">
-                                            {transaction.purchase_order.order_no}
-                                          </span>
-                                        ) : (
-                                          "-"
-                                        )}
-                                      </td>
-                                      <td className="py-2 px-3 text-slate-600">
-                                        {transaction.type === "USED" &&
-                                          transaction.materials_to_order?.project
-                                            ?.name ? (
-                                          <span className="text-xs font-medium text-slate-800">
-                                            {
-                                              transaction.materials_to_order
-                                                .project.name
-                                            }
-                                          </span>
-                                        ) : (
-                                          "-"
-                                        )}
-                                      </td>
-                                      <td className="py-2 px-3 text-slate-600">
-                                        {transaction.type === "USED" &&
-                                          transaction.materials_to_order?.lots &&
-                                          transaction.materials_to_order.lots
-                                            .length > 0 ? (
-                                          <span className="text-xs font-medium text-slate-800">
-                                            {transaction.materials_to_order.lots
-                                              .map((lot) => lot.lot_id)
-                                              .join(", ")}
-                                          </span>
-                                        ) : (
-                                          "-"
-                                        )}
-                                      </td>
-                                    </tr>
+                                        </td>
+                                        <td className="py-2 px-3 text-right font-medium text-slate-800">
+                                          {transaction.type === "ADDED" ? "+" : "-"}
+                                          {transaction.quantity}
+                                          {item.measurement_unit && (
+                                            <span className="ml-1 text-xs text-slate-500 font-normal">
+                                              {item.measurement_unit}
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-600">
+                                          {transaction.type === "ADDED" &&
+                                            transaction.purchase_order?.order_no ? (
+                                            <span className="text-xs font-medium text-primary">
+                                              {transaction.purchase_order.order_no}
+                                            </span>
+                                          ) : (
+                                            "-"
+                                          )}
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-600">
+                                          {transaction.type === "USED" &&
+                                            transaction.materials_to_order?.project
+                                              ?.name ? (
+                                            <span className="text-xs font-medium text-slate-800">
+                                              {
+                                                transaction.materials_to_order
+                                                  .project.name
+                                              }
+                                            </span>
+                                          ) : (
+                                            "-"
+                                          )}
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-600">
+                                          {transaction.type === "USED" &&
+                                            transaction.materials_to_order?.lots &&
+                                            transaction.materials_to_order.lots
+                                              .length > 0 ? (
+                                            <span className="text-xs font-medium text-slate-800">
+                                              {transaction.materials_to_order.lots
+                                                .map((lot) => lot.lot_id)
+                                                .join(", ")}
+                                            </span>
+                                          ) : (
+                                            "-"
+                                          )}
+                                        </td>
+                                      </tr>
+                                      {transaction.notes && expandedNotes.has(transaction.id) && (
+                                        <tr className="bg-slate-50">
+                                          <td colSpan="7" className="px-4 py-4">
+                                            <div className="text-xs text-slate-700">
+                                              <span className="font-medium text-slate-800 mb-2 block">
+                                                Notes:
+                                              </span>
+                                              <div className="text-slate-600 whitespace-pre-wrap pl-4 border-l-2 border-slate-300">
+                                                {transaction.notes}
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                    </React.Fragment>
                                   ))}
                               </tbody>
                             </table>

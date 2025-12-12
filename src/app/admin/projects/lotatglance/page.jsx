@@ -16,9 +16,15 @@ import {
   AlertTriangle,
   ChevronDown,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { addTab, replaceTab } from "@/state/reducer/tabs";
+import { v4 as uuidv4 } from "uuid";
 
 export default function page() {
   const { getToken } = useAuth();
+  const router = useRouter();
+  const dispatch = useDispatch();
   const [activeLots, setActiveLots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -29,6 +35,9 @@ export default function page() {
   const [dropdownPositions, setDropdownPositions] = useState({});
   const filterButtonRefs = useRef({});
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(null); // Format: "lot_id-stage_name"
+  const [statusDropdownPositions, setStatusDropdownPositions] = useState({});
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // Define all available columns for export
   const availableColumns = useMemo(() => {
@@ -357,6 +366,144 @@ export default function page() {
     }
   };
 
+  // Handle project name click - navigate to project page
+  const handleProjectNameClick = (lot, event) => {
+    event.stopPropagation();
+    if (!lot.project?.project_id) {
+      toast.error("Project ID not found", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+      return;
+    }
+
+    const projectHref = `/admin/projects/${lot.project.project_id}`;
+    router.push(projectHref);
+    dispatch(
+      replaceTab({
+        id: uuidv4(),
+        title: lot.project.name,
+        href: projectHref,
+      })
+    );
+  };
+
+  // Handle status square click
+  const handleStatusSquareClick = (lot, stage, event) => {
+    const button = event.currentTarget;
+    const rect = button.getBoundingClientRect();
+    const dropdownKey = `${lot.lot_id}-${stage}`;
+
+    setStatusDropdownPositions((prev) => ({
+      ...prev,
+      [dropdownKey]: {
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+      },
+    }));
+
+    setStatusDropdownOpen(statusDropdownOpen === dropdownKey ? null : dropdownKey);
+  };
+
+  // Handle stage status update
+  const handleStageStatusUpdate = async (lot, stage, newStatus) => {
+    try {
+      setIsUpdatingStatus(true);
+      const sessionToken = getToken();
+
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        });
+        return;
+      }
+
+      // Find the stage object for this lot and stage name
+      const stageObj = lot.stages?.find(
+        (s) => s.name.toLowerCase() === stage.toLowerCase()
+      );
+
+      if (!stageObj || !stageObj.stage_id) {
+        // Stage doesn't exist yet, we need to create it
+        const createResponse = await axios.post(
+          "/api/stage/create",
+          {
+            lot_id: lot.lot_id,
+            name: stage.toLowerCase(),
+            status: newStatus,
+            notes: "",
+            startDate: null,
+            endDate: null,
+            assigned_to: [],
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (createResponse.data.status) {
+          toast.success("Stage status updated successfully", {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          });
+          setStatusDropdownOpen(null);
+          fetchActiveLots();
+        } else {
+          toast.error(createResponse.data.message || "Failed to update stage status");
+        }
+      } else {
+        // Stage exists, update it
+        const response = await axios.patch(
+          `/api/stage/${stageObj.stage_id}`,
+          {
+            name: stageObj.name,
+            status: newStatus,
+            notes: stageObj.notes || "",
+            startDate: stageObj.startDate || null,
+            endDate: stageObj.endDate || null,
+            assigned_to: stageObj.assigned_to?.map((a) =>
+              typeof a === "string" ? a : (a.employee_id || a)
+            ) || [],
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.data.status) {
+          toast.success("Stage status updated successfully", {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+          });
+          setStatusDropdownOpen(null);
+          fetchActiveLots();
+        } else {
+          toast.error(response.data.message || "Failed to update stage status");
+        }
+      }
+    } catch (error) {
+      console.error("Error updating stage status:", error);
+      toast.error("Failed to update stage status. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -365,6 +512,9 @@ export default function page() {
       }
       if (!event.target.closest(".dropdown-container")) {
         setShowColumnDropdown(false);
+      }
+      if (!event.target.closest(".status-dropdown-container")) {
+        setStatusDropdownOpen(null);
       }
     };
 
@@ -713,9 +863,12 @@ export default function page() {
                                     key={lot.lot_id}
                                     className="group hover:bg-slate-50 transition-colors duration-200"
                                   >
-                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap">
-                                      {lot.project?.name || "N/A"} -{" "}
-                                      {lot.lot_id}
+                                    <td
+                                      onClick={(e) => handleProjectNameClick(lot, e)}
+                                      className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 transition-colors"
+                                      title="Click to open project"
+                                    >
+                                      {lot.project?.name || "N/A"} - {lot.lot_id}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[200px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap">
                                       {getPercentageCompleted(lot)}%
@@ -723,16 +876,60 @@ export default function page() {
                                     {stages.map((stage) => {
                                       const status = getStageStatus(lot, stage);
                                       const boxColor = getStatusBoxColor(status);
+                                      const dropdownKey = `${lot.lot_id}-${stage}`;
+                                      const isDropdownOpen = statusDropdownOpen === dropdownKey;
+                                      const dropdownPosition = statusDropdownPositions[dropdownKey];
 
                                       return (
                                         <td
                                           key={stage}
-                                          className="px-2 py-3 text-sm text-center"
+                                          className="px-2 py-3 text-sm text-center relative"
                                         >
-                                          <div
-                                            className={`inline-block w-6 h-6 rounded ${boxColor}`}
-                                            title={formatStatus(status)}
-                                          ></div>
+                                          <div className="relative inline-block">
+                                            <button
+                                              onClick={(e) => handleStatusSquareClick(lot, stage, e)}
+                                              disabled={isUpdatingStatus}
+                                              className={`inline-block w-6 h-6 rounded ${boxColor} cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
+                                              title={`${formatStatus(status)} - Click to change`}
+                                            ></button>
+
+                                            {isDropdownOpen && dropdownPosition && (
+                                              <div
+                                                className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 status-dropdown-container"
+                                                style={{
+                                                  top: `${dropdownPosition.top}px`,
+                                                  left: `${dropdownPosition.left}px`,
+                                                }}
+                                              >
+                                                <div className="py-1">
+                                                  <button
+                                                    onClick={() => handleStageStatusUpdate(lot, stage, "NOT_STARTED")}
+                                                    disabled={isUpdatingStatus}
+                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${status === "NOT_STARTED" ? "bg-slate-100 font-medium" : ""
+                                                      }`}
+                                                  >
+                                                    Not Started
+                                                  </button>
+                                                  <button
+                                                    onClick={() => handleStageStatusUpdate(lot, stage, "IN_PROGRESS")}
+                                                    disabled={isUpdatingStatus}
+                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${status === "IN_PROGRESS" ? "bg-slate-100 font-medium" : ""
+                                                      }`}
+                                                  >
+                                                    In Progress
+                                                  </button>
+                                                  <button
+                                                    onClick={() => handleStageStatusUpdate(lot, stage, "DONE")}
+                                                    disabled={isUpdatingStatus}
+                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${status === "DONE" ? "bg-slate-100 font-medium" : ""
+                                                      }`}
+                                                  >
+                                                    Done
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
                                         </td>
                                       );
                                     })}

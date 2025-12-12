@@ -74,6 +74,14 @@ export default function MaterialsToOrder({ project, selectedLot }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [saveStatus, setSaveStatus] = useState("idle"); // 'idle', 'saving', 'saved', 'error'
+  // Local UI override: after deleting an MTO, the parent `project` prop may still contain
+  // stale materials_to_order data until it is re-fetched. Track "freed" lots so the UI
+  // immediately allows creating a new MTO for those lots.
+  const [locallyFreedLotIds, setLocallyFreedLotIds] = useState([]);
+  const locallyFreedLotIdsSet = useMemo(
+    () => new Set(locallyFreedLotIds),
+    [locallyFreedLotIds]
+  );
   // Snapshot of the last saved/loaded state to compare against for changes
   const dataSnapshotRef = useRef({
     categoryItems: {
@@ -178,13 +186,16 @@ export default function MaterialsToOrder({ project, selectedLot }) {
     project.materials_to_order.forEach((mto) => {
       if (mto.lots) {
         mto.lots.forEach((lot) => {
-          allLotsWithMto.add(lot.lot_id);
+          // If a lot was just freed by a delete, ignore stale project data for it.
+          if (!locallyFreedLotIdsSet.has(lot.lot_id)) {
+            allLotsWithMto.add(lot.lot_id);
+          }
         });
       }
     });
 
     return allLotsWithMto;
-  }, [project?.materials_to_order]);
+  }, [project?.materials_to_order, locallyFreedLotIdsSet]);
 
   // Memoize: Compute lots available for selection: only those without existing MTO
   const selectableLots = useMemo(() => {
@@ -342,7 +353,12 @@ export default function MaterialsToOrder({ project, selectedLot }) {
       const selectedLotIds = new Set(selectedLots.map((lot) => lot.lot_id));
       const relevantMto = project.materials_to_order.find(
         (mto) =>
-          mto.lots && mto.lots.some((lot) => selectedLotIds.has(lot.lot_id))
+          mto.lots &&
+          mto.lots.some(
+            (lot) =>
+              selectedLotIds.has(lot.lot_id) &&
+              !locallyFreedLotIdsSet.has(lot.lot_id)
+          )
       );
 
       if (!relevantMto) {
@@ -414,7 +430,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
     };
 
     fetchMaterialsToOrder();
-  }, [project, selectedLots, getToken]);
+  }, [project, selectedLots, getToken, locallyFreedLotIdsSet]);
 
   // Re-filter displayed items when selected lots change or when MTO data loads
   useEffect(() => {
@@ -679,6 +695,15 @@ export default function MaterialsToOrder({ project, selectedLot }) {
     [categoryItems]
   );
 
+  // Allow saving even when only notes/files changed (no line items yet)
+  const hasNotes = useMemo(() => (notes || "").trim().length > 0, [notes]);
+  const hasMedia = useMemo(() => (mediaFiles || []).length > 0, [mediaFiles]);
+  const canSave = useMemo(() => {
+    if (!project?.project_id) return false;
+    if (!currentMtoId && (!selectedLots || selectedLots.length === 0)) return false;
+    return hasItems || hasNotes || hasMedia;
+  }, [project?.project_id, currentMtoId, selectedLots, hasItems, hasNotes, hasMedia]);
+
   const isItemAlreadySelected = (category, item) => {
     return categoryItems[category].some((row) => {
       if (!row.item) return false;
@@ -871,6 +896,17 @@ export default function MaterialsToOrder({ project, selectedLot }) {
 
       if (response.data.status) {
         toast.success("Materials to order deleted successfully!");
+        // Mark lots as "freed" locally so UI doesn't keep showing stale "already created"
+        // until the parent `project` prop refreshes.
+        const lotsToFree = (materialsToOrderData?.lots || lotsWithSameMtoId || [])
+          .map((lot) => lot.lot_id)
+          .filter(Boolean);
+        if (lotsToFree.length > 0) {
+          setLocallyFreedLotIds((prev) =>
+            Array.from(new Set([...(prev || []), ...lotsToFree]))
+          );
+        }
+
         // Reset state
         setLoadingState((prev) => ({ ...prev, isUpdatingFromApi: true }));
         const resetSelectedLots = selectedLot ? [selectedLot] : [];
@@ -885,6 +921,9 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         setMaterialsToOrderData(null);
         setCurrentMtoId(null);
         setSelectedLots(resetSelectedLots);
+        setMediaFiles([]);
+        setSelectedFiles([]);
+        setDeletingMediaId(null);
         // Update snapshot
         dataSnapshotRef.current = createSnapshot(
           {
@@ -922,8 +961,8 @@ export default function MaterialsToOrder({ project, selectedLot }) {
   // Save function
   const saveMaterials = async (silent = false) => {
     try {
-      // Check if there are items to save
-      if (!hasItems) {
+      // Check if there is anything to save (items, notes, or files)
+      if (!canSave) {
         return;
       }
 
@@ -1148,13 +1187,6 @@ export default function MaterialsToOrder({ project, selectedLot }) {
   const handleUploadMedia = async (filesToUpload = null) => {
     const files = filesToUpload || selectedFiles;
 
-    if (!currentMtoId) {
-      toast.warning(
-        "Please save the materials to order first before uploading files."
-      );
-      return;
-    }
-
     if (!files || files.length === 0) {
       toast.warning("Please select files to upload.");
       return;
@@ -1163,6 +1195,50 @@ export default function MaterialsToOrder({ project, selectedLot }) {
     setUploadingMedia(true);
     try {
       const sessionToken = getToken();
+      // If this is a brand new MTO (no ID yet), create a minimal draft MTO first
+      // so uploads can be attached without forcing the user to save line items/notes.
+      let mtoId = currentMtoId;
+      if (!mtoId) {
+        if (!project?.project_id) {
+          toast.error("Project ID is missing. Cannot upload files.");
+          return;
+        }
+        if (!selectedLots || selectedLots.length === 0) {
+          toast.warning("Please select at least one lot before uploading files.");
+          return;
+        }
+
+        const draftResponse = await axios.post(
+          "/api/materials_to_order/create",
+          {
+            project_id: project.project_id,
+            lot_ids: selectedLots.map((lot) => lot.lot_id),
+            // Intentionally do NOT include items/notes here:
+            // user should still explicitly Save for those changes.
+            notes: null,
+            items: [],
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!draftResponse.data.status) {
+          toast.error(
+            draftResponse.data.message || "Failed to create draft materials to order."
+          );
+          return;
+        }
+
+        mtoId = draftResponse.data.data.id;
+        setCurrentMtoId(mtoId);
+        setMaterialsToOrderData(draftResponse.data.data);
+        setMediaFiles(draftResponse.data.data?.media || []);
+      }
+
       const formData = new FormData();
 
       files.forEach((file) => {
@@ -1170,7 +1246,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
       });
 
       const response = await axios.post(
-        `/api/uploads/materials-to-order/${currentMtoId}`,
+        `/api/uploads/materials-to-order/${mtoId}`,
         formData,
         {
           headers: {
@@ -1184,7 +1260,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         toast.success(response.data.message || "Files uploaded successfully!");
         // Refresh media files
         const mtoResponse = await axios.get(
-          `/api/materials_to_order/${currentMtoId}`,
+          `/api/materials_to_order/${mtoId}`,
           {
             headers: {
               Authorization: `Bearer ${sessionToken}`,
@@ -1301,40 +1377,43 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                 <Trash className="w-4 h-4" />
                 Delete Materials to Order
               </button>
-              <button
-                onClick={handleExportToExcel}
-                disabled={!hasItems}
-                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-4 h-4" />
-                Export to Excel
-              </button>
-              <button
-                onClick={handleSaveMaterials}
-                disabled={saveStatus === "saving" || !hasItems}
-                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saveStatus === "saving" ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Save
-                  </>
-                )}
-              </button>
             </>
           )}
+
+          <button
+            onClick={handleExportToExcel}
+            disabled={!hasItems}
+            className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            Export to Excel
+          </button>
+          <button
+            onClick={handleSaveMaterials}
+            disabled={saveStatus === "saving" || !canSave}
+            className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saveStatus === "saving" ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save
+              </>
+            )}
+          </button>
+
+
         </div>
       </div>
 
       {/* Lot Selection or Existing MTO Info */}
       {project?.lots && project.lots.length > 0 && (
         <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 mb-6">
-          {!selectedLotHasExistingMto ? (
+          {!selectedLotHasExistingMto || lotsWithSameMtoId.length === 0 ? (
             // Show lot selection for new MTO
             <>
               <h3 className="text-md font-semibold text-slate-700 mb-3">
@@ -2448,279 +2527,277 @@ export default function MaterialsToOrder({ project, selectedLot }) {
       </div>
 
       {/* Media Upload Section */}
-      {currentMtoId && (
-        <div className="mt-6">
-          {/* Display Existing Files First */}
-          {(() => {
-            // Categorize files by type
-            const categorizeFiles = () => {
-              const images = [];
-              const videos = [];
-              const pdfs = [];
-              const others = [];
+      <div className="mt-6">
+        {/* Display Existing Files First */}
+        {(() => {
+          // Categorize files by type
+          const categorizeFiles = () => {
+            const images = [];
+            const videos = [];
+            const pdfs = [];
+            const others = [];
 
-              mediaFiles.forEach((file) => {
-                if (
-                  file.mime_type?.includes("image") ||
-                  file.file_type === "image"
-                ) {
-                  images.push(file);
-                } else if (
-                  file.mime_type?.includes("video") ||
-                  file.file_type === "video"
-                ) {
-                  videos.push(file);
-                } else if (
-                  file.mime_type?.includes("pdf") ||
-                  file.file_type === "pdf" ||
-                  file.extension === "pdf"
-                ) {
-                  pdfs.push(file);
-                } else {
-                  others.push(file);
-                }
-              });
+            mediaFiles.forEach((file) => {
+              if (
+                file.mime_type?.includes("image") ||
+                file.file_type === "image"
+              ) {
+                images.push(file);
+              } else if (
+                file.mime_type?.includes("video") ||
+                file.file_type === "video"
+              ) {
+                videos.push(file);
+              } else if (
+                file.mime_type?.includes("pdf") ||
+                file.file_type === "pdf" ||
+                file.extension === "pdf"
+              ) {
+                pdfs.push(file);
+              } else {
+                others.push(file);
+              }
+            });
 
-              return { images, videos, pdfs, others };
-            };
+            return { images, videos, pdfs, others };
+          };
 
-            const { images, videos, pdfs, others } = categorizeFiles();
+          const { images, videos, pdfs, others } = categorizeFiles();
 
-            const toggleSection = (section) => {
-              setExpandedSections((prev) => ({
-                ...prev,
-                [section]: !prev[section],
-              }));
-            };
+          const toggleSection = (section) => {
+            setExpandedSections((prev) => ({
+              ...prev,
+              [section]: !prev[section],
+            }));
+          };
 
-            // File Category Section Component
-            const FileCategorySection = ({
-              title,
-              files,
-              isSmall = false,
-              sectionKey,
-            }) => {
-              if (files.length === 0) return null;
+          // File Category Section Component
+          const FileCategorySection = ({
+            title,
+            files,
+            isSmall = false,
+            sectionKey,
+          }) => {
+            if (files.length === 0) return null;
 
-              const isExpanded = expandedSections[sectionKey];
-
-              return (
-                <div className="mb-4">
-                  {/* Category Header with Toggle */}
-                  <button
-                    onClick={() => toggleSection(sectionKey)}
-                    className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3 hover:text-slate-900 transition-colors"
-                  >
-                    <span>
-                      {title} ({files.length})
-                    </span>
-                    <div
-                      className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
-                        }`}
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
-                  </button>
-
-                  {/* Collapsible Content */}
-                  {isExpanded && (
-                    <div className="flex flex-wrap gap-3">
-                      {files.map((file) => (
-                        <div
-                          key={file.id}
-                          onClick={() => handleViewExistingFile(file)}
-                          title="Click to view file"
-                          className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
-                            }`}
-                        >
-                          {/* File Preview */}
-                          <div
-                            className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
-                              } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
-                          >
-                            {file.mime_type?.includes("image") ||
-                              file.file_type === "image" ? (
-                              <Image
-                                height={100}
-                                width={100}
-                                src={`/${file.url}`}
-                                alt={file.filename}
-                                className="w-full h-full object-cover rounded-lg"
-                              />
-                            ) : file.mime_type?.includes("video") ||
-                              file.file_type === "video" ? (
-                              <video
-                                src={`/${file.url}`}
-                                className="w-full h-full object-cover rounded-lg"
-                                muted
-                                playsInline
-                              />
-                            ) : (
-                              <div
-                                className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type?.includes("pdf") ||
-                                  file.file_type === "pdf" ||
-                                  file.extension === "pdf"
-                                  ? "bg-red-50"
-                                  : "bg-green-50"
-                                  }`}
-                              >
-                                {file.mime_type?.includes("pdf") ||
-                                  file.file_type === "pdf" ||
-                                  file.extension === "pdf" ? (
-                                  <FileText
-                                    className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
-                                      } text-red-600`}
-                                  />
-                                ) : (
-                                  <File
-                                    className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
-                                      } text-green-600`}
-                                  />
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* File Info */}
-                          <div className="space-y-1">
-                            <p
-                              className="text-xs font-medium text-slate-700 truncate"
-                              title={file.filename}
-                            >
-                              {file.filename}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {formatFileSize(file.size || 0)}
-                            </p>
-                          </div>
-
-                          {/* Delete Button */}
-                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteMedia(file.id);
-                              }}
-                              disabled={deletingMediaId === file.id}
-                              className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
-                              title="Delete file"
-                            >
-                              {deletingMediaId === file.id ? (
-                                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
-                              ) : (
-                                <Trash className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            };
+            const isExpanded = expandedSections[sectionKey];
 
             return (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-slate-700 mb-4">
-                  Uploaded Files
-                </h3>
-
-                {mediaFiles.length > 0 ? (
-                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                    {/* Images Section */}
-                    <FileCategorySection
-                      title="Images"
-                      files={images}
-                      isSmall={false}
-                      sectionKey="images"
-                    />
-
-                    {/* Videos Section */}
-                    <FileCategorySection
-                      title="Videos"
-                      files={videos}
-                      isSmall={false}
-                      sectionKey="videos"
-                    />
-
-                    {/* PDFs Section - Smaller cards */}
-                    <FileCategorySection
-                      title="PDFs"
-                      files={pdfs}
-                      isSmall={true}
-                      sectionKey="pdfs"
-                    />
-
-                    {/* Other Files Section - Smaller cards */}
-                    <FileCategorySection
-                      title="Other Files"
-                      files={others}
-                      isSmall={true}
-                      sectionKey="others"
-                    />
+              <div className="mb-4">
+                {/* Category Header with Toggle */}
+                <button
+                  onClick={() => toggleSection(sectionKey)}
+                  className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3 hover:text-slate-900 transition-colors"
+                >
+                  <span>
+                    {title} ({files.length})
+                  </span>
+                  <div
+                    className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                      }`}
+                  >
+                    <ChevronDown className="w-4 h-4" />
                   </div>
-                ) : (
-                  <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-                    <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                    <p className="text-slate-600">No files uploaded yet</p>
+                </button>
+
+                {/* Collapsible Content */}
+                {isExpanded && (
+                  <div className="flex flex-wrap gap-3">
+                    {files.map((file) => (
+                      <div
+                        key={file.id}
+                        onClick={() => handleViewExistingFile(file)}
+                        title="Click to view file"
+                        className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
+                          }`}
+                      >
+                        {/* File Preview */}
+                        <div
+                          className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
+                            } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                        >
+                          {file.mime_type?.includes("image") ||
+                            file.file_type === "image" ? (
+                            <Image
+                              height={100}
+                              width={100}
+                              src={`/${file.url}`}
+                              alt={file.filename}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          ) : file.mime_type?.includes("video") ||
+                            file.file_type === "video" ? (
+                            <video
+                              src={`/${file.url}`}
+                              className="w-full h-full object-cover rounded-lg"
+                              muted
+                              playsInline
+                            />
+                          ) : (
+                            <div
+                              className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type?.includes("pdf") ||
+                                file.file_type === "pdf" ||
+                                file.extension === "pdf"
+                                ? "bg-red-50"
+                                : "bg-green-50"
+                                }`}
+                            >
+                              {file.mime_type?.includes("pdf") ||
+                                file.file_type === "pdf" ||
+                                file.extension === "pdf" ? (
+                                <FileText
+                                  className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                                    } text-red-600`}
+                                />
+                              ) : (
+                                <File
+                                  className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
+                                    } text-green-600`}
+                                />
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* File Info */}
+                        <div className="space-y-1">
+                          <p
+                            className="text-xs font-medium text-slate-700 truncate"
+                            title={file.filename}
+                          >
+                            {file.filename}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {formatFileSize(file.size || 0)}
+                          </p>
+                        </div>
+
+                        {/* Delete Button */}
+                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMedia(file.id);
+                            }}
+                            disabled={deletingMediaId === file.id}
+                            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                            title="Delete file"
+                          >
+                            {deletingMediaId === file.id ? (
+                              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+                            ) : (
+                              <Trash className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             );
-          })()}
+          };
 
-          {/* Upload New Files Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-700">
-              Upload New Files
-            </h3>
+          return (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-slate-700 mb-4">
+                Uploaded Files
+              </h3>
 
-            {/* File Upload Area */}
-            <div className="relative">
-              <label className="block text-sm font-medium text-slate-600 mb-2">
-                Select Files {uploadingMedia && "(Uploading...)"}
-              </label>
-              <div
-                className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept=".pdf,.dwg,.jpg,.jpeg,.png,.mp4,.mov,.doc,.docx"
-                  onChange={handleFileChange}
-                  disabled={uploadingMedia}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
-                />
-                <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                  {uploadingMedia ? (
-                    <>
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-3"></div>
-                      <p className="text-sm font-medium text-slate-700 mb-1">
-                        Uploading files...
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mb-3">
-                        <FileUp className="w-6 h-6 text-secondary" />
-                      </div>
-                      <p className="text-sm font-medium text-slate-700 mb-1">
-                        Click to upload or drag and drop
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        PDF, DWG, JPG, PNG, MP4, MOV, DOC, or DOCX
-                      </p>
-                    </>
-                  )}
+              {mediaFiles.length > 0 ? (
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                  {/* Images Section */}
+                  <FileCategorySection
+                    title="Images"
+                    files={images}
+                    isSmall={false}
+                    sectionKey="images"
+                  />
+
+                  {/* Videos Section */}
+                  <FileCategorySection
+                    title="Videos"
+                    files={videos}
+                    isSmall={false}
+                    sectionKey="videos"
+                  />
+
+                  {/* PDFs Section - Smaller cards */}
+                  <FileCategorySection
+                    title="PDFs"
+                    files={pdfs}
+                    isSmall={true}
+                    sectionKey="pdfs"
+                  />
+
+                  {/* Other Files Section - Smaller cards */}
+                  <FileCategorySection
+                    title="Other Files"
+                    files={others}
+                    isSmall={true}
+                    sectionKey="others"
+                  />
                 </div>
+              ) : (
+                <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
+                  <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                  <p className="text-slate-600">No files uploaded yet</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Upload New Files Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-slate-700">
+            Upload New Files
+          </h3>
+
+          {/* File Upload Area */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-slate-600 mb-2">
+              Select Files {uploadingMedia && "(Uploading...)"}
+            </label>
+            <div
+              className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.dwg,.jpg,.jpeg,.png,.mp4,.mov,.doc,.docx"
+                onChange={handleFileChange}
+                disabled={uploadingMedia}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
+              />
+              <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                {uploadingMedia ? (
+                  <>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-3"></div>
+                    <p className="text-sm font-medium text-slate-700 mb-1">
+                      Uploading files...
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mb-3">
+                      <FileUp className="w-6 h-6 text-secondary" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-700 mb-1">
+                      Click to upload or drag and drop
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      PDF, DWG, JPG, PNG, MP4, MOV, DOC, or DOCX
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Notes */}
       <div className="mt-6">

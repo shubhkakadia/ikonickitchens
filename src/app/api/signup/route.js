@@ -110,6 +110,7 @@ export async function POST(request) {
             materialstoorder: module_access.materialstoorder,
             purchaseorder: module_access.purchaseorder,
             statements: module_access.statements,
+            site_photos: module_access.site_photos,
           },
         });
       });

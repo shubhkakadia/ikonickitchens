@@ -145,6 +145,11 @@ export default function EmployeeDetailPage() {
       label: "Logs",
       isParent: false,
     },
+    {
+      key: "site_photos",
+      label: "Site Photos",
+      isParent: false,
+    }
   ];
 
   useEffect(() => {

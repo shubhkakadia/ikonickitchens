@@ -49,6 +49,7 @@ export default function page() {
   const [showClientTypeFilterDropdown, setShowClientTypeFilterDropdown] =
     useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const [activeTab, setActiveTab] = useState("active");
 
   // Define all available columns for export
   const availableColumns = [
@@ -64,9 +65,29 @@ export default function page() {
   // Initialize selected columns with all columns
   const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
 
+
   // Filter and sort projects
   const filteredAndSortedProjects = useMemo(() => {
     let filtered = projects.filter((project) => {
+      // Active/Completed tab filter
+      if (activeTab === "active") {
+        // Show projects that have at least one ACTIVE lot, or no lots at all
+        if (!project.lots || project.lots.length === 0) {
+          // Projects with no lots are shown in active
+        } else {
+          // Project must have at least one ACTIVE lot
+          const hasActiveLot = project.lots.some((lot) => lot.status === "ACTIVE");
+          if (!hasActiveLot) return false;
+        }
+      } else if (activeTab === "completed") {
+        // Show projects where ALL lots are COMPLETED (and project has at least one lot)
+        if (!project.lots || project.lots.length === 0) {
+          return false; // Projects with no lots are not shown in completed
+        }
+        const allCompleted = project.lots.every((lot) => lot.status === "COMPLETED");
+        if (!allCompleted) return false;
+      }
+
       // Search filter
       if (search) {
         const searchLower = search.toLowerCase();
@@ -155,6 +176,7 @@ export default function page() {
     return filtered;
   }, [
     projects,
+    activeTab,
     search,
     sortField,
     sortOrder,
@@ -346,10 +368,10 @@ export default function page() {
     setCurrentPage(page);
   };
 
-  // Reset to first page when search or items per page changes
+  // Reset to first page when search, tab, or items per page changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, activeTab]);
 
   // Check if any filters are active (not in default state)
   const isAnyFilterActive = () => {
@@ -773,6 +795,30 @@ export default function page() {
                           </div>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Tabs Section */}
+                    <div className="px-4 shrink-0 border-b border-slate-200">
+                      <nav className="flex space-x-6">
+                        <button
+                          onClick={() => setActiveTab("active")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "active"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                        >
+                          Active
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("completed")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "completed"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                        >
+                          Completed
+                        </button>
+                      </nav>
                     </div>
 
                     {/* Scrollable Table Section */}

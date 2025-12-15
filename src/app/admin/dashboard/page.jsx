@@ -22,6 +22,8 @@ import {
   Calendar,
   Clock,
   RotateCcw,
+  Database,
+  HardDrive,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -213,6 +215,13 @@ export default function page() {
   const [dashboardYearDropdownOpen, setDashboardYearDropdownOpen] = useState(false);
   const [dashboardMonthFilter, setDashboardMonthFilter] = useState("all");
   const [dashboardMonthDropdownOpen, setDashboardMonthDropdownOpen] = useState(false);
+  const [storageUsage, setStorageUsage] = useState(null);
+  const [storageLoading, setStorageLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
   const fetchDashboard = async () => {
     try {
@@ -285,9 +294,25 @@ export default function page() {
     }
   };
 
+  const fetchStorageUsage = async () => {
+    try {
+      setStorageLoading(true);
+      const response = await fetch("/storage-usage.json");
+      if (response.ok) {
+        const data = await response.json();
+        setStorageUsage(data);
+      }
+    } catch (err) {
+      console.error("Storage Usage Error:", err);
+    } finally {
+      setStorageLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     fetchLogs();
+    fetchStorageUsage();
   }, [dashboardYearFilter, dashboardMonthFilter]);
 
   // Close dropdown when clicking outside
@@ -302,6 +327,9 @@ export default function page() {
       if (!event.target.closest(".dashboard-month-dropdown-container")) {
         setDashboardMonthDropdownOpen(false);
       }
+      if (!event.target.closest(".global-search-container")) {
+        setShowSearchDropdown(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -313,6 +341,155 @@ export default function page() {
       setDashboardMonthFilter("all");
     }
   }, [dashboardYearFilter]);
+
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Fetch search results when debounced term changes
+  useEffect(() => {
+    const runSearch = async () => {
+      if (!debouncedSearch) {
+        setSearchResults(null);
+        return;
+      }
+      try {
+        setSearchLoading(true);
+        const token = getToken();
+        const response = await axios.post(
+          "/api/search",
+          { search: debouncedSearch },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (response.data?.status) {
+          setSearchResults(response.data.data);
+          setShowSearchDropdown(true);
+        } else {
+          setSearchResults(null);
+          setShowSearchDropdown(false);
+        }
+      } catch (err) {
+        console.error("Search API Error:", err);
+        setSearchResults(null);
+        setShowSearchDropdown(false);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+    runSearch();
+  }, [debouncedSearch, getToken]);
+
+  const renderSearchSection = () => {
+    const handleSelectResult = (key, item) => {
+      let path = null;
+      switch (key) {
+        case "clients":
+          path = item.client_id ? `/admin/clients/${item.client_id}` : null;
+          break;
+        case "employees":
+          path = item.employee_id ? `/admin/employees/${item.employee_id}` : null;
+          break;
+        case "projects":
+          path = item.project_id ? `/admin/projects/${item.project_id}` : null;
+          break;
+        case "suppliers":
+          path = item.supplier_id ? `/admin/suppliers/${item.supplier_id}` : null;
+          break;
+        case "items":
+          path = item.item_id ? `/admin/inventory/${item.item_id}` : null;
+          break;
+        default:
+          break;
+      }
+      if (path) {
+        setShowSearchDropdown(false);
+        router.push(path);
+      }
+    };
+
+    const groups = [
+      { key: "clients", label: "Clients", fields: ["client_name", "client_type"] },
+      { key: "employees", label: "Employees", fields: ["first_name", "last_name", "role"] },
+      { key: "projects", label: "Projects", fields: ["project_name"] },
+      { key: "suppliers", label: "Suppliers", fields: ["supplier_name"] },
+      { key: "items", label: "Items", fields: ["category", "name", "brand", "color", "type", "sub_category"] },
+    ];
+
+    const hasResults =
+      searchResults &&
+      groups.some((g) => Array.isArray(searchResults[g.key]) && searchResults[g.key].length > 0);
+
+    return (
+      <div className="relative min-w-md global-search-container">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search clients, employees, projects..."
+          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary"
+          onFocus={() => searchResults && setShowSearchDropdown(true)}
+        />
+        {searchLoading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="h-4 w-4 border-2 border-slate-300 border-t-secondary rounded-full animate-spin"></div>
+          </div>
+        )}
+        {showSearchDropdown && hasResults && (
+          <div className="absolute z-20 mt-1 w-full max-h-80 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
+            {groups.map(({ key, label, fields }) => {
+              const list = searchResults?.[key] || [];
+              if (!list.length) return null;
+              return (
+                <div key={key} className="border-b border-slate-100 last:border-b-0">
+                  <div className="px-3 py-2 text-[11px] uppercase tracking-wide text-slate-500 font-semibold bg-slate-50">
+                    {label}
+                  </div>
+                  <ul className="divide-y divide-slate-100">
+                    {list.map((item) => (
+                      <li key={(item.id || item[`${key}_id`]) ?? JSON.stringify(item)}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectResult(key, item)}
+                          className="w-full text-left px-3 py-2 hover:bg-slate-50"
+                        >
+                          <div className="text-sm text-slate-800 font-medium truncate">
+                            {fields
+                              .map((f) => item[f])
+                              .filter(Boolean)
+                              .join(" • ") || "No label"}
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate">
+                            {key === "items"
+                              ? [item.brand, item.color, item.type, item.sub_category].filter(Boolean).join(" • ")
+                              : key === "projects" && typeof item.number_of_lots === "number"
+                                ? `${item.number_of_lots} lots`
+                                : null}
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {showSearchDropdown && !hasResults && debouncedSearch && !searchLoading && (
+          <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-3 text-sm text-slate-500">
+            No results
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Get available years from spending data
   const getAvailableYears = () => {
@@ -396,6 +573,46 @@ export default function page() {
     return date.toLocaleDateString("en-US", {
       month: "short",
       year: "2-digit",
+    });
+  };
+
+  // Format storage size
+  const formatStorageSize = (sizeMB) => {
+    if (sizeMB < 1) {
+      return `${(sizeMB * 1024).toFixed(2)} KB`;
+    }
+    if (sizeMB < 1024) {
+      return `${sizeMB.toFixed(2)} MB`;
+    }
+    return `${(sizeMB / 1024).toFixed(2)} GB`;
+  };
+
+  // Format timestamp
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return "N/A";
+    const date = new Date(timestamp);
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Format timestamp in Adelaide timezone
+  const formatTimestampAdelaide = (timestamp) => {
+    if (!timestamp) return "N/A";
+    const date = new Date(timestamp);
+    return date.toLocaleString("en-AU", {
+      timeZone: "Australia/Adelaide",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
     });
   };
 
@@ -731,6 +948,40 @@ export default function page() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
+                    {renderSearchSection()}
+                    {/* Storage Usage - Compact Display */}
+                    {storageLoading ? (
+                      <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 bg-white border border-slate-200 rounded-lg">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-secondary"></div>
+                        <span>Loading storage...</span>
+                      </div>
+                    ) : storageUsage ? (
+                      <div
+                        className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg cursor-help"
+                        title={`Last updated: ${formatTimestampAdelaide(storageUsage.timestamp)} (Adelaide time)`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Database className="w-4 h-4 text-blue-600" />
+                          <span className="text-xs text-slate-600">
+                            DB: {formatStorageSize(storageUsage.database?.size_mb || 0)}
+                          </span>
+                        </div>
+                        <div className="w-px h-4 bg-slate-300"></div>
+                        <div className="flex items-center gap-2">
+                          <HardDrive className="w-4 h-4 text-emerald-600" />
+                          <span className="text-xs text-slate-600">
+                            Files: {formatStorageSize(storageUsage.uploads?.size_mb || 0)}
+                          </span>
+                        </div>
+                        <div className="w-px h-4 bg-slate-300"></div>
+                        <span className="text-xs font-semibold text-slate-700">
+                          Total: {formatStorageSize(
+                            (storageUsage.database?.size_mb || 0) +
+                            (storageUsage.uploads?.size_mb || 0)
+                          )}
+                        </span>
+                      </div>
+                    ) : null}
                     {/* Reset Filters Button - Only show when filters are applied */}
                     {(dashboardYearFilter !== "all" || dashboardMonthFilter !== "all") && (
                       <button

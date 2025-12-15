@@ -1,0 +1,11 @@
+{
+    "timestamp": "2025-12-15T05:13:54Z",
+    "database": {
+      "path": "/var/lib/mysql/ikonic",
+      "size_mb": 6
+    },
+    "uploads": {
+      "path": "/home/ikonic-server/ikonickitchens/mediauploads",
+      "size_mb": 10
+    }
+  }

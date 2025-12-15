@@ -227,6 +227,12 @@ export function AdminRoute({
   useEffect(() => {
     const fetchModuleAccess = async () => {
       const user = getUserData();
+      // Check if user data exists and has the expected structure
+      if (!user || !user.user || !user.user.id) {
+        setLoading(false);
+        return;
+      }
+      
       const userId = user.user.id;
       try {
         const response = await axios.get(`/api/module_access/${userId}`, {
@@ -244,7 +250,7 @@ export function AdminRoute({
       }
     };
     fetchModuleAccess();
-  }, []);
+  }, [getUserData, getToken]);
 
   const key = siteMap[pathname];
   const access = moduleAccess?.[key];

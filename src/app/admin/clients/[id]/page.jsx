@@ -25,6 +25,7 @@ import {
   ArrowDown,
   RotateCcw,
   ChevronRight,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -60,9 +61,12 @@ export default function page() {
   const [newProject, setNewProject] = useState({
     name: "",
     project_id: "",
+    startDate: "",
   });
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [activeTab, setActiveTab] = useState("ACTIVE");
+  const [numberOfLots, setNumberOfLots] = useState("");
+  const [lots, setLots] = useState([]);
 
   useEffect(() => {
     fetchClient(id);
@@ -458,6 +462,38 @@ export default function page() {
     }
   };
 
+  const handleNumberOfLotsChange = (e) => {
+    const value = e.target.value;
+    const numLots = parseInt(value) || 0;
+
+    setNumberOfLots(value);
+
+    // Create or update lots array
+    if (numLots > 0 && numLots <= 100) {
+      const newLots = Array.from({ length: numLots }, (_, index) => {
+        // Preserve existing lot data if available, otherwise create new with default lotId
+        return lots[index] || {
+          lotId: `lot ${index + 1}`,
+          clientName: "",
+          installationDueDate: "",
+          notes: "",
+        };
+      });
+      setLots(newLots);
+    } else if (numLots === 0 || value === "") {
+      setLots([]);
+    }
+  };
+
+  const handleLotChange = (index, field, value) => {
+    const updatedLots = [...lots];
+    updatedLots[index] = {
+      ...updatedLots[index],
+      [field]: value,
+    };
+    setLots(updatedLots);
+  };
+
   const handleCreateProject = async () => {
     if (!newProject.name || !newProject.project_id) {
       toast.error("Project name and Project ID are required", {
@@ -485,10 +521,29 @@ export default function page() {
           ? client.client_id.trim()
           : null;
 
+      // Prepare lots data - map to API format
+      // Construct full lot_id as "projectid-lotid"
+      const lotsToSend =
+        lots && lots.length > 0
+          ? lots.map((lot) => {
+              const fullLotId = newProject.project_id
+                ? `${newProject.project_id}-${lot.lotId}`
+                : lot.lotId;
+              return {
+                lotId: fullLotId,
+                clientName: lot.clientName,
+                installationDueDate: lot.installationDueDate || null,
+                notes: lot.notes || null,
+              };
+            })
+          : [];
+
       const data = {
         name: newProject.name,
         project_id: newProject.project_id,
         client_id: clientIdToSend,
+        startDate: newProject.startDate || null,
+        lots: lotsToSend,
       };
 
       const response = await axios.post("/api/project/create", data, {
@@ -516,7 +571,10 @@ export default function page() {
       setNewProject({
         name: "",
         project_id: "",
+        startDate: "",
       });
+      setNumberOfLots("");
+      setLots([]);
       setShowAddProjectModal(false);
 
       // Refresh client data to show the new project
@@ -1280,8 +1338,8 @@ export default function page() {
               className="absolute inset-0 bg-slate-900/40"
               onClick={() => setShowAddProjectModal(false)}
             />
-            <div className="relative bg-white w-full max-w-lg mx-4 rounded-xl shadow-xl border border-slate-200">
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div className="relative bg-white w-full max-w-4xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                     <Building className="w-5 h-5" />
@@ -1296,58 +1354,223 @@ export default function page() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowAddProjectModal(false)}
+                  onClick={() => {
+                    setShowAddProjectModal(false);
+                    setNewProject({
+                      name: "",
+                      project_id: "",
+                      startDate: "",
+                    });
+                    setNumberOfLots("");
+                    setLots([]);
+                  }}
                   className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
                 >
                   <X className="w-5 h-5 text-slate-600" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Project Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newProject.name}
-                    onChange={(e) =>
-                      setNewProject({
-                        ...newProject,
-                        name: e.target.value,
-                      })
-                    }
-                    placeholder="Eg. 5 Dundee Ave, Holden Hill SA 5088"
-                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Project ID <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newProject.project_id}
-                    onChange={(e) =>
-                      setNewProject({
-                        ...newProject,
-                        project_id: e.target.value,
-                      })
-                    }
-                    placeholder="Eg. IK001"
-                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                  />
+              <div className="overflow-y-auto flex-1">
+                <div className="p-6 space-y-6">
+                  {/* Project Information Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Building className="w-5 h-5 text-primary" />
+                      <h2 className="text-lg font-bold text-slate-800">
+                        Project Information
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Project Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newProject.name}
+                          onChange={(e) =>
+                            setNewProject({
+                              ...newProject,
+                              name: e.target.value,
+                            })
+                          }
+                          placeholder="Eg. 5 Dundee Ave, Holden Hill SA 5088"
+                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Project ID <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newProject.project_id}
+                          onChange={(e) =>
+                            setNewProject({
+                              ...newProject,
+                              project_id: e.target.value,
+                            })
+                          }
+                          placeholder="Eg. IK001"
+                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Start Date
+                        </label>
+                        <input
+                          type="date"
+                          value={newProject.startDate}
+                          onChange={(e) =>
+                            setNewProject({
+                              ...newProject,
+                              startDate: e.target.value,
+                            })
+                          }
+                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Number of Lots
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={numberOfLots}
+                          onChange={handleNumberOfLotsChange}
+                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                          placeholder="Enter number of lots"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lots Section */}
+                  {lots.length > 0 && (
+                    <div className="space-y-4 border-t pt-6">
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-5 h-5 text-primary" />
+                        <h2 className="text-lg font-bold text-slate-800">
+                          Lot Information
+                        </h2>
+                      </div>
+                      <div className="space-y-4">
+                        {lots.map((lot, index) => (
+                          <div
+                            key={index}
+                            className="bg-slate-50 rounded-lg p-4 border border-slate-200"
+                          >
+                            <h3 className="text-base font-semibold text-slate-700 mb-3">
+                              Lot {index + 1}
+                            </h3>
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Lot ID <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={lot.lotId}
+                                    onChange={(e) =>
+                                      handleLotChange(
+                                        index,
+                                        "lotId",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                    placeholder="Eg. Lot 1"
+                                    required
+                                  />
+                                  <p className="text-xs text-slate-500 mt-1">
+                                    Lot ID will be:{" "}
+                                    {newProject.project_id
+                                      ? `${newProject.project_id}-${lot.lotId || "XXX"}`
+                                      : "PROJECT_ID-XXX"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Client Name{" "}
+                                    <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={lot.clientName}
+                                    onChange={(e) =>
+                                      handleLotChange(
+                                        index,
+                                        "clientName",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                    placeholder="Enter client name"
+                                    required
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                  Installation Due Date
+                                </label>
+                                <input
+                                  type="date"
+                                  value={lot.installationDueDate}
+                                  onChange={(e) =>
+                                    handleLotChange(
+                                      index,
+                                      "installationDueDate",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                  Notes
+                                </label>
+                                <textarea
+                                  value={lot.notes}
+                                  onChange={(e) =>
+                                    handleLotChange(
+                                      index,
+                                      "notes",
+                                      e.target.value
+                                    )
+                                  }
+                                  rows={2}
+                                  className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none resize-none"
+                                  placeholder="Enter any additional notes..."
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
+              <div className="p-4 border-t border-slate-100 flex justify-end gap-2 shrink-0">
                 <button
                   onClick={() => {
                     setShowAddProjectModal(false);
                     setNewProject({
                       name: "",
                       project_id: "",
+                      startDate: "",
                     });
+                    setNumberOfLots("");
+                    setLots([]);
                   }}
                   disabled={isCreatingProject}
                   className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"

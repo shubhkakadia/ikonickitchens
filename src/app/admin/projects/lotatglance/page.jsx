@@ -779,50 +779,43 @@ export default function page() {
                           <table className="min-w-full divide-y divide-slate-200">
                             <thead className="bg-slate-50 sticky top-0 z-10">
                               <tr>
-                                <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider sticky left-0 bg-slate-50 z-20 border-r border-slate-200">
+                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200">
                                   Project Name - Lot Number
                                 </th>
-                                <th className="px-4 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider sticky left-[200px] bg-slate-50 z-20 border-r border-slate-200" style={{ minWidth: '120px', maxWidth: '120px', width: '120px' }}>
+                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[120px] h-[300px] border-r border-slate-200">
                                   Percentage Completed
                                 </th>
-                                {stages.map((stage) => {
-                                  const filterStatus =
-                                    stageFilters[stage] || "ALL";
+                                {stages.map(stage => {
+                                  const filterStatus = stageFilters[stage] || "ALL";
                                   const hasFilter = filterStatus !== "ALL";
 
                                   return (
                                     <th
                                       key={stage}
-                                      className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider"
-                                      style={{ minWidth: '50px', maxWidth: '50px', width: '50px', height: '200px' }}
+                                      className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px]"
                                     >
                                       <div className="flex flex-col items-center justify-end gap-2 h-full">
                                         <span
                                           className="whitespace-nowrap"
                                           style={{
-                                            writingMode: 'vertical-rl',
-                                            textOrientation: 'mixed',
-                                            transform: 'rotate(180deg)'
+                                            writingMode: "vertical-rl",
+                                            textOrientation: "mixed",
+                                            transform: "rotate(180deg)",
                                           }}
                                         >
                                           {stage}
                                         </span>
+
                                         <div className="relative filter-dropdown-container shrink-0">
                                           <button
-                                            ref={(el) =>
-                                              (filterButtonRefs.current[stage] = el)
-                                            }
-                                            onClick={(e) =>
-                                              handleFilterButtonClick(stage, e)
-                                            }
+                                            ref={el => (filterButtonRefs.current[stage] = el)}
+                                            onClick={e => handleFilterButtonClick(stage, e)}
                                             className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${hasFilter ? "bg-primary/20" : ""
                                               }`}
                                             title="Filter by status"
                                           >
                                             <Funnel
-                                              className={`h-3 w-3 ${hasFilter
-                                                ? "text-primary"
-                                                : "text-slate-400"
+                                              className={`h-3 w-3 ${hasFilter ? "text-primary" : "text-slate-400"
                                                 }`}
                                             />
                                           </button>
@@ -831,6 +824,7 @@ export default function page() {
                                     </th>
                                   );
                                 })}
+
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-200">

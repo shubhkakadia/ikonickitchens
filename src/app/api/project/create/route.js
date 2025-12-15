@@ -60,87 +60,87 @@ export async function POST(request) {
           );
         }
       }
+    }
 
-      // Use transaction to create project and lots atomically
-      const result = await prisma.$transaction(async (tx) => {
-        // Create the project
-        const project = await tx.project.create({
-          data: {
-            name,
-            project_id: project_id.toLowerCase(),
-            client_id: normalizedClientId,
-          },
-        });
-
-        // Create lots if provided
-        const createdLots = [];
-        if (lots && Array.isArray(lots) && lots.length > 0) {
-          for (const lot of lots) {
-            const createdLot = await tx.lot.create({
-              data: {
-                lot_id: lot.lotId.toLowerCase(),
-                name: lot.clientName,
-                project_id: project.project_id,
-                startDate: startDate ? processDateTimeField(startDate) : null,
-                installationDueDate: lot.installationDueDate
-                  ? processDateTimeField(lot.installationDueDate)
-                  : null,
-                notes: lot.notes || null,
-                status: "ACTIVE",
-              },
-            });
-            createdLots.push(createdLot);
-          }
-        }
-
-        return { project, createdLots };
+    // Use transaction to create project and lots atomically
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the project
+      const project = await tx.project.create({
+        data: {
+          name,
+          project_id: project_id.toLowerCase(),
+          client_id: normalizedClientId,
+        },
       });
 
-      const { project, createdLots } = result;
+      // Create lots if provided
+      const createdLots = [];
+      if (lots && Array.isArray(lots) && lots.length > 0) {
+        for (const lot of lots) {
+          const createdLot = await tx.lot.create({
+            data: {
+              lot_id: lot.lotId.toLowerCase(),
+              name: lot.clientName,
+              project_id: project.project_id,
+              startDate: startDate ? processDateTimeField(startDate) : null,
+              installationDueDate: lot.installationDueDate
+                ? processDateTimeField(lot.installationDueDate)
+                : null,
+              notes: lot.notes || null,
+              status: "ACTIVE",
+            },
+          });
+          createdLots.push(createdLot);
+        }
+      }
 
-      // Log project creation
-      const logged = await withLogging(
+      return { project, createdLots };
+    });
+
+    const { project, createdLots } = result;
+
+    // Log project creation
+    const logged = await withLogging(
+      request,
+      "project",
+      project.project_id,
+      "CREATE",
+      `Project created successfully: ${project.name}`
+    );
+
+    // Log lot creations
+    for (const lot of createdLots) {
+      await withLogging(
         request,
-        "project",
-        project.project_id,
+        "lot",
+        lot.lot_id,
         "CREATE",
-        `Project created successfully: ${project.name}`
+        `Lot created successfully: ${lot.name} for project: ${project.name}`
       );
-
-      // Log lot creations
-      for (const lot of createdLots) {
-        await withLogging(
-          request,
-          "lot",
-          lot.lot_id,
-          "CREATE",
-          `Lot created successfully: ${lot.name} for project: ${project.name}`
-        );
-      }
-
-      // Prepare response
-      const responseData = {
-        status: true,
-        message: "Project created successfully",
-        data: {
-          ...project,
-          lots: createdLots,
-        },
-      };
-
-      if (!logged) {
-        console.error(
-          `Failed to log project creation: ${project.project_id} - ${project.name}`
-        );
-        responseData.warning = "Note: Creation succeeded but logging failed";
-      }
-
-      return NextResponse.json(responseData, { status: 201 });
     }
+
+    // Prepare response
+    const responseData = {
+      status: true,
+      message: "Project created successfully",
+      data: {
+        ...project,
+        lots: createdLots,
+      },
+    };
+
+    if (!logged) {
+      console.error(
+        `Failed to log project creation: ${project.project_id} - ${project.name}`
+      );
+      responseData.warning = "Note: Creation succeeded but logging failed";
+    }
+
+    return NextResponse.json(responseData, { status: 201 });
   } catch (error) {
     console.error("Error in POST /api/project/create:", error);
     return NextResponse.json(
-      { status: false, message: "Internal server error" },
+      { status: false, message: "Internal server error", error: error.message },
       { status: 500 }
     );
   }

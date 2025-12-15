@@ -1669,7 +1669,7 @@ export default function page() {
                                   <div className="space-y-3">
                                     <div>
                                       <div className="text-xs font-medium text-slate-600">
-                                        Lot name
+                                        Client name
                                       </div>
                                       <div className="mt-1">
                                         {isEditing ? (
@@ -1687,7 +1687,7 @@ export default function page() {
                                               })
                                             }
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
-                                            placeholder="Enter lot name"
+                                            placeholder="Enter client name"
                                           />
                                         ) : (
                                           <p className="text-sm text-slate-900">

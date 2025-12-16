@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Trash2, X, AlertTriangle } from "lucide-react";
+import { deletionWarning } from "./constants";
 
 export default function DeleteConfirmation({
   isOpen,
@@ -11,8 +12,27 @@ export default function DeleteConfirmation({
   comparingName = "",
   isDeleting = false,
   cancelButtonText = "Cancel",
+  entityType = null, // e.g., "employees", "client", "project", etc.
 }) {
   const [confirmationInput, setConfirmationInput] = useState("");
+
+  // Convert snake_case to readable format
+  const formatEntityName = (name) => {
+    return name
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  // Get associated data that will be deleted
+  const getAssociatedData = () => {
+    if (!entityType || !deletionWarning[entityType]) {
+      return [];
+    }
+    return deletionWarning[entityType];
+  };
+
+  const associatedData = getAssociatedData();
 
   // Normalize string for comparison - handles whitespace, null/undefined, and edge cases
   const normalizeString = (str) => {
@@ -63,13 +83,25 @@ export default function DeleteConfirmation({
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-              <div>
+              <div className="flex-1">
                 <h3 className="text-sm font-medium text-red-800">
                   {deleteWithInput
                     ? "This action will permanently delete the item"
                     : "This action will delete the item"}
                 </h3>
                 <div className="text-sm text-red-700 mt-1">{message}</div>
+                {associatedData.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-red-200">
+                    <p className="text-sm font-medium text-red-800 mb-2">
+                      The following data associated with this {heading.toLowerCase()} will also be deleted:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                      {associatedData.map((item, index) => (
+                        <li key={index}>{formatEntityName(item)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </div>

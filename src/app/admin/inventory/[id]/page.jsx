@@ -1613,6 +1613,7 @@ export default function page() {
           message="This will permanently delete this item from inventory. This action cannot be undone."
           comparingName={item ? item.item_id : ""}
           isDeleting={isDeleting}
+          entityType="item"
         />
 
         <ToastContainer />

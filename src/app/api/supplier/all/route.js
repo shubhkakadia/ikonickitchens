@@ -8,6 +8,9 @@ export async function GET(request) {
     if (authError) return authError;
     // include total statements amount for each supplier and number of purchase orders
     const suppliers = await prisma.supplier.findMany({
+      where: {
+        is_deleted: false,
+      },
       select: {
         // Select all supplier fields
         supplier_id: true,

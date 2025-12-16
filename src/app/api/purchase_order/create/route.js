@@ -99,7 +99,6 @@ export async function POST(request) {
             mime_type: uploadResult.mimeType,
             extension: uploadResult.extension,
             size: uploadResult.size,
-            supplier_id,
           },
         });
         invoice_url_id = createdFile.id;

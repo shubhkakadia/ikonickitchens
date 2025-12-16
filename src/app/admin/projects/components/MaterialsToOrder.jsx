@@ -2825,6 +2825,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         heading="Materials to Order"
         comparingName={project?.project_id || ""}
         isDeleting={isDeleting}
+        entityType="materials_to_order"
         message={
           <div>
             {pendingDeleteRow ? (

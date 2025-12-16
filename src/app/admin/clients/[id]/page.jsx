@@ -1329,6 +1329,7 @@ export default function page() {
           message="This will remove the client and all associated contacts. This action cannot be undone."
           comparingName={client?.client_name || ""}
           isDeleting={isDeletingClient}
+          entityType="client"
         />
 
         {/* Add Project Modal */}

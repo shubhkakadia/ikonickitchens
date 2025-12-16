@@ -1929,6 +1929,7 @@ export default function page() {
         heading="Media File"
         message="This will permanently delete the media file. This action cannot be undone."
         isDeleting={deletingMediaId !== null}
+        entityType="media"
       />
 
       {/* Create Materials to Order Modal */}

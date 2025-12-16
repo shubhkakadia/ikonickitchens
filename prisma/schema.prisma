@@ -23,7 +23,7 @@ model users {
   module_access       module_access?
   purchase_order      purchase_order[]     @relation("PurchaseOrderOrderedBy")
   sessions            sessions[]
-  employee            employees?           @relation(fields: [employee_id], references: [employee_id])
+  employee            employees?           @relation(fields: [employee_id], references: [employee_id], onDelete: SetNull)
 
   @@index([employee_id])
 }
@@ -103,6 +103,7 @@ model employees {
   availability            String?          @db.LongText
   notes                   String?
   abn_number              String?
+  is_deleted              Boolean          @default(false)
   image                   media?           @relation(fields: [image_id], references: [id], onDelete: Cascade)
   stages                  stage_employee[]
   user                    users?
@@ -164,6 +165,7 @@ model client {
   client_email   String?
   client_website String?
   client_notes   String?   @db.LongText
+  is_deleted     Boolean   @default(false)
   contacts       contact[]
   projects       project[]
 
@@ -178,10 +180,11 @@ model project {
   updatedAt          DateTime             @updatedAt
   project_id         String               @unique
   client_id          String?
+  is_deleted         Boolean              @default(false)
   lots               lot[]
   material_selection material_selection[]
   materials_to_order materials_to_order[]
-  client             client?              @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  client             client?              @relation(fields: [client_id], references: [client_id], onDelete: SetNull)
 
   @@index([project_id])
   @@index([client_id], map: "project_client_id_fkey")
@@ -198,11 +201,12 @@ model lot {
   startDate              DateTime?
   installationDueDate    DateTime?
   notes                  String?             @db.LongText
-  installer              employees?          @relation(fields: [installer_id], references: [employee_id])
+  installer              employees?          @relation(fields: [installer_id], references: [employee_id], onDelete: SetNull)
   installer_id           String?
   materials_to_orders_id String?
   material_selection_id  String?             @unique
-  materials_to_orders    materials_to_order? @relation(fields: [materials_to_orders_id], references: [id])
+  is_deleted             Boolean             @default(false)
+  materials_to_orders    materials_to_order? @relation(fields: [materials_to_orders_id], references: [id], onDelete: SetNull)
   project                project             @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
   tabs                   lot_tab[]
   material_selection     material_selection?
@@ -239,7 +243,7 @@ model stage_employee {
   assigned_at DateTime  @default(now())
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  employee    employees @relation(fields: [employee_id], references: [employee_id])
+  employee    employees @relation(fields: [employee_id], references: [employee_id], onDelete: Cascade)
   stage       stage     @relation(fields: [stage_id], references: [stage_id], onDelete: Cascade)
 
   @@unique([stage_id, employee_id])
@@ -292,7 +296,7 @@ model maintenance_checklist {
   delivered_to_site      Boolean   @default(false)
   installed              Boolean   @default(false)
   lot_file_id            String?   @unique
-  lot_file               lot_file? @relation(fields: [lot_file_id], references: [id])
+  lot_file               lot_file? @relation(fields: [lot_file_id], references: [id], onDelete: Cascade)
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
@@ -319,11 +323,11 @@ model material_selection {
   current_version_id String?                       @unique
   lot_id             String                        @unique
   updatedAt          DateTime                      @updatedAt
-  createdBy          users?                        @relation(fields: [createdBy_id], references: [id])
-  currentVersion     material_selection_versions?  @relation("CurrentVersion", fields: [current_version_id], references: [id])
+  createdBy          users?                        @relation(fields: [createdBy_id], references: [id], onDelete: SetNull)
+  currentVersion     material_selection_versions?  @relation("CurrentVersion", fields: [current_version_id], references: [id], onDelete: SetNull)
   lot                lot                           @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
   project            project?                      @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
-  quote              quote?                        @relation(fields: [quote_id], references: [quote_id], onDelete: Cascade)
+  quote              quote?                        @relation(fields: [quote_id], references: [quote_id], onDelete: SetNull)
   versions           material_selection_versions[] @relation("AllVersions")
 
   @@index([project_id])
@@ -348,7 +352,7 @@ model material_selection_versions {
   currentFor            material_selection?               @relation("CurrentVersion")
   areas                 material_selection_version_area[]
   material_selection    material_selection                @relation("AllVersions", fields: [material_selection_id], references: [id], onDelete: Cascade)
-  quote                 quote?                            @relation(fields: [quote_id], references: [quote_id], onDelete: Cascade)
+  quote                 quote?                            @relation(fields: [quote_id], references: [quote_id], onDelete: SetNull)
 
   @@unique([material_selection_id, version_number])
   @@index([createdAt])
@@ -400,12 +404,13 @@ model item {
   image_id                 String?                   @unique
   supplier_product_link    String?                   @db.LongText
   supplier_reference       String?
+  is_deleted               Boolean                   @default(false)
   accessory                accessory?
   edging_tape              edging_tape?
   handle                   handle?
   hardware                 hardware?
-  image                    media?                    @relation(fields: [image_id], references: [id], onDelete: Cascade)
-  supplier                 supplier?                 @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+  image                    media?                    @relation(fields: [image_id], references: [id], onDelete: SetNull)
+  supplier                 supplier?                 @relation(fields: [supplier_id], references: [supplier_id], onDelete: SetNull)
   materials_to_order_items materials_to_order_item[]
   purchase_order_item      purchase_order_item[]
   sheet                    sheet?
@@ -483,6 +488,7 @@ model supplier {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   abn_number     String?
+  is_deleted     Boolean              @default(false)
   contacts       contact[]
   items          item[]
   purchase_order purchase_order[]
@@ -492,37 +498,36 @@ model supplier {
 }
 
 model supplier_statement {
-  id               String        @id @default(uuid())
+  id               String         @id @default(uuid())
   month_year       String
-  notes            String?       @db.LongText
-  payment_status   PaymentStatus @default(PENDING)
-  amount           Decimal?      @db.Decimal(10, 2)
+  notes            String?        @db.LongText
+  payment_status   PaymentStatus  @default(PENDING)
+  amount           Decimal?       @db.Decimal(10, 2)
   due_date         DateTime
-  supplier_file_id String
+  supplier_file_id String?        @unique
   supplier_id      String
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  supplier_file    supplier_file @relation(fields: [supplier_file_id], references: [id], onDelete: Cascade)
-  supplier         supplier      @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  supplier_file    supplier_file? @relation(fields: [supplier_file_id], references: [id], onDelete: Cascade)
+  supplier         supplier       @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
 
   @@index([supplier_file_id])
   @@index([supplier_id], map: "supplier_statement_supplier_id_fkey")
 }
 
 model supplier_file {
-  id                 String               @id @default(uuid())
+  id                 String              @id @default(uuid())
   url                String
   filename           String
   file_type          String
   mime_type          String?
   extension          String?
   size               Int?
-  is_deleted         Boolean              @default(false)
-  supplier_id        String
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  is_deleted         Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   purchase_order     purchase_order?
-  supplier_statement supplier_statement[]
+  supplier_statement supplier_statement?
 }
 
 model materials_to_order {
@@ -535,7 +540,7 @@ model materials_to_order {
   updatedAt          DateTime                  @updatedAt
   media_id           String?
   lots               lot[]
-  createdBy          users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id])
+  createdBy          users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id], onDelete: SetNull)
   project            project?                  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
   items              materials_to_order_item[]
   media              media[]
@@ -578,8 +583,8 @@ model purchase_order {
   status             PurchaseOrderStatus   @default(DRAFT)
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
-  invoice_url        supplier_file?        @relation(fields: [invoice_url_id], references: [id], onDelete: Cascade)
-  mto                materials_to_order?   @relation(fields: [mto_id], references: [id])
+  invoice_url        supplier_file?        @relation(fields: [invoice_url_id], references: [id])
+  mto                materials_to_order?   @relation(fields: [mto_id], references: [id], onDelete: SetNull)
   orderedBy          users?                @relation("PurchaseOrderOrderedBy", fields: [orderedBy_id], references: [id])
   supplier           supplier              @relation(fields: [supplier_id], references: [supplier_id])
   items              purchase_order_item[]
@@ -601,8 +606,8 @@ model purchase_order_item {
   notes             String?                  @db.LongText
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
-  item              item                     @relation(fields: [item_id], references: [item_id])
-  mto_item          materials_to_order_item? @relation(fields: [mto_item_id], references: [id])
+  item              item                     @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  mto_item          materials_to_order_item? @relation(fields: [mto_item_id], references: [id], onDelete: SetNull)
   order             purchase_order           @relation(fields: [order_id], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
@@ -621,9 +626,9 @@ model stock_transaction {
   purchase_order_id     String?
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
-  item                  item                 @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
-  materials_to_order    materials_to_order?  @relation(fields: [materials_to_order_id], references: [id])
-  purchase_order        purchase_order?      @relation(fields: [purchase_order_id], references: [id])
+  item                  item                 @relation(fields: [item_id], references: [item_id])
+  materials_to_order    materials_to_order?  @relation(fields: [materials_to_order_id], references: [id], onDelete: SetNull)
+  purchase_order        purchase_order?      @relation(fields: [purchase_order_id], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([item_id])
@@ -639,7 +644,7 @@ model logs {
   action      LogAction
   description String?
   createdAt   DateTime  @default(now())
-  user        users?    @relation(fields: [user_id], references: [id])
+  user        users?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([user_id])

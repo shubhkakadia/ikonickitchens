@@ -8,11 +8,20 @@ export async function GET(request) {
     if (authError) return authError;
 
     const clients = await prisma.client.findMany({
+      where: {
+        is_deleted: false,
+      },
       include: {
         contacts: true,
         projects: {
+          where: {
+            is_deleted: false,
+          },
           include: {
             lots: {
+              where: {
+                is_deleted: false,
+              },
               select: {
                 status: true,
               },

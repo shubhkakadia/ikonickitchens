@@ -8,14 +8,24 @@ export async function GET(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const project = await prisma.project.findUnique({
-      where: { project_id: id },
+    const project = await prisma.project.findFirst({
+      where: {
+        project_id: id,
+        is_deleted: false,
+      },
       include: {
         client: true,
-        lots: true,
+        lots: {
+          where: {
+            is_deleted: false,
+          },
+        },
         materials_to_order: {
           include: {
             lots: {
+              where: {
+                is_deleted: false,
+              },
               include: {
                 project: true,
               },
@@ -36,6 +46,14 @@ export async function GET(request, { params }) {
         },
       },
     });
+
+    if (!project) {
+      return NextResponse.json(
+        { status: false, message: "Project not found" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
       { status: true, message: "Project fetched successfully", data: project },
       { status: 200 }
@@ -82,9 +100,9 @@ export async function PATCH(request, { params }) {
       console.error(`Failed to log project update: ${id} - ${project.name}`);
     }
     return NextResponse.json(
-      { 
-        status: true, 
-        message: "Project updated successfully", 
+      {
+        status: true,
+        message: "Project updated successfully",
         data: project,
         ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
@@ -104,9 +122,32 @@ export async function DELETE(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const project = await prisma.project.delete({
+
+    // Check if project exists and is not already deleted
+    const existingProject = await prisma.project.findUnique({
       where: { project_id: id },
     });
+
+    if (!existingProject) {
+      return NextResponse.json(
+        { status: false, message: "Project not found" },
+        { status: 404 }
+      );
+    }
+
+    if (existingProject.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Project already deleted" },
+        { status: 400 }
+      );
+    }
+
+    // Soft delete the project record (set is_deleted flag)
+    const project = await prisma.project.update({
+      where: { project_id: id },
+      data: { is_deleted: true },
+    });
+
     const logged = await withLogging(
       request,
       "project",
@@ -117,9 +158,9 @@ export async function DELETE(request, { params }) {
     if (!logged) {
       console.error(`Failed to log project deletion: ${id} - ${project.name}`);
       return NextResponse.json(
-        { 
-          status: true, 
-          message: "Project deleted successfully", 
+        {
+          status: true,
+          message: "Project deleted successfully",
           data: project,
           warning: "Note: Deletion succeeded but logging failed"
         },

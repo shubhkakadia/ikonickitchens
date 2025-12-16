@@ -8,9 +8,10 @@ export async function GET(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const supplier = await prisma.supplier.findUnique({
+    const supplier = await prisma.supplier.findFirst({
       where: {
         supplier_id: id,
+        is_deleted: false,
       },
       include: {
         contacts: true,
@@ -89,9 +90,32 @@ export async function DELETE(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const supplier = await prisma.supplier.delete({
+
+    // Check if supplier exists and is not already deleted
+    const existingSupplier = await prisma.supplier.findUnique({
       where: { supplier_id: id },
     });
+
+    if (!existingSupplier) {
+      return NextResponse.json(
+        { status: false, message: "Supplier not found" },
+        { status: 404 }
+      );
+    }
+
+    if (existingSupplier.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Supplier already deleted" },
+        { status: 400 }
+      );
+    }
+
+    // Soft delete the supplier record (set is_deleted flag)
+    const supplier = await prisma.supplier.update({
+      where: { supplier_id: id },
+      data: { is_deleted: true },
+    });
+
     const logged = await withLogging(
       request,
       "supplier",
@@ -102,8 +126,8 @@ export async function DELETE(request, { params }) {
     if (!logged) {
       console.error(`Failed to log supplier deletion: ${id} - ${supplier.name}`);
       return NextResponse.json(
-        { 
-          status: true, 
+        {
+          status: true,
           message: "Supplier deleted successfully",
           data: supplier,
           warning: "Note: Deletion succeeded but logging failed"

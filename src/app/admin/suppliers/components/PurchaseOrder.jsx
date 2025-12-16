@@ -1140,6 +1140,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
         message="This will permanently delete the purchase order and all its associated data. This action cannot be undone."
         comparingName={poPendingDelete?.order_no || ""}
         isDeleting={deletingPOId !== null}
+        entityType="purchase_order"
       />
     </div>
   );

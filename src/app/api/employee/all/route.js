@@ -7,6 +7,9 @@ export async function GET(request) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const employees = await prisma.employees.findMany({
+      where: {
+        is_deleted: false,
+      },
       include: {
         image: true,
       },

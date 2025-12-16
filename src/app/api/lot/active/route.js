@@ -10,6 +10,7 @@ export async function GET(request) {
     const activeLots = await prisma.lot.findMany({
       where: {
         status: "ACTIVE",
+        is_deleted: false,
       },
       include: {
         project: {
@@ -27,6 +28,9 @@ export async function GET(request) {
             startDate: true,
             endDate: true,
             assigned_to: {
+              include: {
+                employee: true,
+              },
               select: {
                 employee_id: true,
               },

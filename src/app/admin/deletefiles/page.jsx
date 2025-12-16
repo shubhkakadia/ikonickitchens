@@ -912,6 +912,7 @@ export default function DeleteFilesPage() {
           }
           comparingName={fileToDelete.bulk ? "" : fileToDelete.filename || ""}
           isDeleting={isDeleting || isBulkDeleting}
+          entityType="media"
         />
       )}
 

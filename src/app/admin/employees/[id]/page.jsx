@@ -2077,6 +2077,7 @@ export default function EmployeeDetailPage() {
             employee ? `${employee.first_name} ${employee.last_name}` : ""
           }
           isDeleting={isUpdating}
+          entityType="users"
         />
 
         {/* Delete Employee Confirmation Modal */}
@@ -2091,6 +2092,7 @@ export default function EmployeeDetailPage() {
             employee ? `${employee.first_name} ${employee.last_name}` : ""
           }
           isDeleting={isDeletingEmployee}
+          entityType="employees"
         />
 
         {/* View Media Modal */}

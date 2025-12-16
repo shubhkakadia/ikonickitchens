@@ -1647,6 +1647,7 @@ export default function StatementsPage() {
                 }. This action cannot be undone.`}
               comparingName={statementToDelete?.month_year || ""}
               isDeleting={isDeletingStatement}
+              entityType="supplier_statement"
             />
 
             {/* Upload Statement Modal */}

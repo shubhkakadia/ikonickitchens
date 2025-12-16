@@ -11,8 +11,11 @@ export async function GET(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const lot = await prisma.lot.findUnique({
-      where: { id: id },
+    const lot = await prisma.lot.findFirst({
+      where: { 
+        id: id,
+        is_deleted: false,
+      },
       include: {
         installer: {
           select: {
@@ -60,6 +63,14 @@ export async function GET(request, { params }) {
         },
       },
     });
+    
+    if (!lot) {
+      return NextResponse.json(
+        { status: false, message: "Lot not found" },
+        { status: 404 }
+      );
+    }
+    
     return NextResponse.json(
       { status: true, message: "Lot fetched successfully", data: lot },
       { status: 200 }
@@ -175,16 +186,35 @@ export async function DELETE(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    // Fetch lot with project before deleting
+    
+    // Fetch lot with project before soft deleting
     const lotToDelete = await prisma.lot.findUnique({
       where: { id: id },
       include: {
         project: true,
       },
     });
-    const lot = await prisma.lot.delete({
+
+    if (!lotToDelete) {
+      return NextResponse.json(
+        { status: false, message: "Lot not found" },
+        { status: 404 }
+      );
+    }
+
+    if (lotToDelete.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Lot already deleted" },
+        { status: 400 }
+      );
+    }
+
+    // Soft delete the lot record (set is_deleted flag)
+    const lot = await prisma.lot.update({
       where: { id: id },
+      data: { is_deleted: true },
     });
+    
     const logged = await withLogging(
       request,
       "lot",

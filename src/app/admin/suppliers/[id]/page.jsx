@@ -1125,6 +1125,7 @@ export default function page() {
           message="This will remove the supplier and all associated contacts. This action cannot be undone."
           comparingName={supplier?.name || ""}
           isDeleting={isDeletingSupplier}
+          entityType="supplier"
         />
 
         <ToastContainer />

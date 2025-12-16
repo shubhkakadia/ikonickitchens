@@ -33,7 +33,10 @@ export async function GET(request, { params }) {
     include[categoryRelationMap[normalizedCategory]] = true;
     
     const items = await prisma.item.findMany({
-      where: { category: normalizedCategory.toUpperCase() },
+      where: { 
+        category: normalizedCategory.toUpperCase(),
+        is_deleted: false,
+      },
       include,
     });
     return NextResponse.json(

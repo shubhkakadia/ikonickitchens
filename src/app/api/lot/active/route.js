@@ -29,10 +29,13 @@ export async function GET(request) {
             endDate: true,
             assigned_to: {
               include: {
-                employee: true,
-              },
-              select: {
-                employee_id: true,
+                employee: {
+                  select: {
+                    employee_id: true,
+                    first_name: true,
+                    last_name: true,
+                  },
+                },
               },
             },
           },

@@ -458,7 +458,7 @@ export default function page() {
                         <button
                           type="button"
                           onClick={() => handleSelectResult(key, item)}
-                          className="w-full text-left px-3 py-2 hover:bg-slate-50"
+                          className="cursor-pointer w-full text-left px-3 py-2 hover:bg-slate-50"
                         >
                           <div className="text-sm text-slate-800 font-medium truncate">
                             {fields

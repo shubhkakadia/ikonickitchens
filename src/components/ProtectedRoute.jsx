@@ -227,6 +227,7 @@ export function AdminRoute({
   useEffect(() => {
     const fetchModuleAccess = async () => {
       const user = getUserData();
+      console.log(user);
       // Check if user data exists and has the expected structure
       if (!user || !user.user || !user.user.id) {
         setLoading(false);

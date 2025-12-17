@@ -51,7 +51,7 @@ export default function page() {
   const [error, setError] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage] = useState(10);
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("project_id");
   const [sortOrder, setSortOrder] = useState("asc");

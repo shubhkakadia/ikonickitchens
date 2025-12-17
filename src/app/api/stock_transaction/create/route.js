@@ -49,40 +49,113 @@ async function handleUsedTransaction(data) {
   // Calculate new quantity_used (increment by quantity)
   const currentUsed = mtoItem.quantity_used || 0;
   const newQuantityUsed = currentUsed + quantity;
+  const totalQuantity = mtoItem.quantity || 0;
+
+  // Prevent quantity_used from exceeding total required quantity
+  if (newQuantityUsed > totalQuantity) {
+    return {
+      status: false,
+      message: `Used quantity cannot exceed total quantity. Total: ${totalQuantity}, Current used: ${currentUsed}, Requested: ${quantity}`,
+      statusCode: 400,
+    };
+  }
 
   // Wrap all database writes in a transaction to ensure atomicity
-  const [updatedMtoItem] = await prisma.$transaction([
-    // Update materials_to_order_item's quantity_used
-    prisma.materials_to_order_item.update({
-      where: { id: mtoItem.id },
-      data: {
-        quantity_used: newQuantityUsed,
-      },
-      include: {
-        item: true,
-        mto: true,
-      },
-    }),
-    // Atomically decrease item inventory quantity
-    prisma.item.update({
-      where: { item_id: item_id },
-      data: {
-        quantity: {
-          decrement: quantity,
+  let updatedMtoItem;
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Atomically decrease inventory (guard against negative)
+      const dec = await tx.item.updateMany({
+        where: {
+          item_id: item_id,
+          quantity: { gte: quantity },
         },
-      },
-    }),
-    // Create stock transaction
-    prisma.stock_transaction.create({
-      data: {
-        item_id: item_id,
-        quantity: quantity,
-        type: "USED",
-        materials_to_order_id: materials_to_order_id,
-        notes: notes || `Used from MTO ${materials_to_order_id}`,
-      },
-    }),
-  ]);
+        data: {
+          quantity: { decrement: quantity },
+        },
+      });
+
+      if (dec.count === 0) {
+        const current = await tx.item.findUnique({
+          where: { item_id: item_id },
+          select: { quantity: true },
+        });
+        const available = current?.quantity ?? 0;
+        throw new Error(
+          `INSUFFICIENT_INVENTORY:${item_id}:${quantity}:${available}`
+        );
+      }
+
+      // Update materials_to_order_item's quantity_used
+      updatedMtoItem = await tx.materials_to_order_item.update({
+        where: { id: mtoItem.id },
+        data: {
+          quantity_used: newQuantityUsed,
+        },
+        include: {
+          item: true,
+          mto: true,
+        },
+      });
+
+      // Create stock transaction
+      await tx.stock_transaction.create({
+        data: {
+          item_id: item_id,
+          quantity: quantity,
+          type: "USED",
+          materials_to_order_id: materials_to_order_id,
+          notes: notes || `Used from MTO ${materials_to_order_id}`,
+        },
+      });
+
+      // If all items are fully used, mark MTO as completed for used material
+      if (materials_to_order_id) {
+        const updatedMto = await tx.materials_to_order.findUnique({
+          where: { id: materials_to_order_id },
+          select: {
+            id: true,
+            used_material_completed: true,
+            items: {
+              select: {
+                quantity: true,
+                quantity_used: true,
+              },
+            },
+          },
+        });
+
+        if (updatedMto) {
+          const allItemsUsed = (updatedMto.items || []).every(
+            (it) => (it.quantity_used || 0) >= it.quantity
+          );
+
+          if (allItemsUsed && !updatedMto.used_material_completed) {
+            await tx.materials_to_order.update({
+              where: { id: materials_to_order_id },
+              data: { used_material_completed: true },
+            });
+          }
+        }
+      }
+    });
+  } catch (err) {
+    const msg = err?.message || "";
+    if (msg.startsWith("INSUFFICIENT_INVENTORY:")) {
+      const [, requested, available] = msg.split(":");
+      return {
+        status: false,
+        message: `Not enough quantity in inventory. Available: ${available}, Requested: ${requested}`,
+        statusCode: 400,
+      };
+    }
+    console.error("Error in handleUsedTransaction:", err);
+    return {
+      status: false,
+      message: "Internal server error",
+      statusCode: 500,
+    };
+  }
 
   return {
     status: true,
@@ -284,33 +357,56 @@ async function handleManualUsedTransaction(data) {
   }
 
   // Wrap all database writes in a transaction to ensure atomicity
-  const [updatedItem, stockTransaction] = await prisma.$transaction([
-    // Atomically decrease item inventory quantity
-    prisma.item.update({
-      where: { item_id: item_id },
-      data: {
-        quantity: {
-          decrement: quantity,
+  let stockTransaction;
+  try {
+    await prisma.$transaction(async (tx) => {
+      const dec = await tx.item.updateMany({
+        where: {
+          item_id: item_id,
+          quantity: { gte: quantity },
         },
-      },
-      include: {
-        sheet: true,
-        handle: true,
-        hardware: true,
-        accessory: true,
-        edging_tape: true,
-      },
-    }),
-    // Create stock transaction
-    prisma.stock_transaction.create({
-      data: {
-        item_id: item_id,
-        quantity: quantity,
-        type: "USED",
-        notes: notes || `Manually recorded used quantity`,
-      },
-    }),
-  ]);
+        data: {
+          quantity: { decrement: quantity },
+        },
+      });
+
+      if (dec.count === 0) {
+        const current = await tx.item.findUnique({
+          where: { item_id: item_id },
+          select: { quantity: true },
+        });
+        const available = current?.quantity ?? 0;
+        throw new Error(
+          `INSUFFICIENT_INVENTORY:${item_id}:${quantity}:${available}`
+        );
+      }
+
+      stockTransaction = await tx.stock_transaction.create({
+        data: {
+          item_id: item_id,
+          quantity: quantity,
+          type: "USED",
+          notes: notes || `Manually recorded used quantity`,
+        },
+      });
+    });
+  } catch (err) {
+    const msg = err?.message || "";
+    if (msg.startsWith("INSUFFICIENT_INVENTORY:")) {
+      const [, failedItemId, requested, available] = msg.split(":");
+      return {
+        status: false,
+        message: `Not enough quantity in inventory for item ${failedItemId}. Available: ${available}, Requested: ${requested}`,
+        statusCode: 400,
+      };
+    }
+    console.error("Error in handleManualUsedTransaction:", err);
+    return {
+      status: false,
+      message: "Internal server error",
+      statusCode: 500,
+    };
+  }
 
   return {
     status: true,
@@ -343,26 +439,55 @@ async function handleWastedTransaction(data) {
   }
 
   // Wrap all database writes in a transaction to ensure atomicity
-  await prisma.$transaction([
-    // Atomically decrease item inventory quantity
-    prisma.item.update({
-      where: { item_id: item_id },
-      data: {
-        quantity: {
-          decrement: quantity,
+  try {
+    await prisma.$transaction(async (tx) => {
+      const dec = await tx.item.updateMany({
+        where: {
+          item_id: item_id,
+          quantity: { gte: quantity },
         },
-      },
-    }),
-    // Create stock transaction
-    prisma.stock_transaction.create({
-      data: {
-        item_id: item_id,
-        quantity: quantity,
-        type: "WASTED",
-        notes: notes || `Wasted item quantity`,
-      },
-    }),
-  ]);
+        data: {
+          quantity: { decrement: quantity },
+        },
+      });
+
+      if (dec.count === 0) {
+        const current = await tx.item.findUnique({
+          where: { item_id: item_id },
+          select: { quantity: true },
+        });
+        const available = current?.quantity ?? 0;
+        throw new Error(
+          `INSUFFICIENT_INVENTORY:${item_id}:${quantity}:${available}`
+        );
+      }
+
+      await tx.stock_transaction.create({
+        data: {
+          item_id: item_id,
+          quantity: quantity,
+          type: "WASTED",
+          notes: notes || `Wasted item quantity`,
+        },
+      });
+    });
+  } catch (err) {
+    const msg = err?.message || "";
+    if (msg.startsWith("INSUFFICIENT_INVENTORY:")) {
+      const [, failedItemId, requested, available] = msg.split(":");
+      return {
+        status: false,
+        message: `Not enough quantity in inventory for item ${failedItemId}. Available: ${available}, Requested: ${requested}`,
+        statusCode: 400,
+      };
+    }
+    console.error("Error in handleWastedTransaction:", err);
+    return {
+      status: false,
+      message: "Internal server error",
+      statusCode: 500,
+    };
+  }
 
   // Fetch updated item for return (after transaction commits)
   const updatedItem = await prisma.item.findUnique({
@@ -475,16 +600,34 @@ export async function POST(request) {
       );
     }
 
-    const logged = await withLogging(
-      request,
-      "stock_transaction",
-      result.data.id,
-      "CREATE",
-      `Stock transaction created successfully: ${type} for item: ${item_id}`
-    );
+    // If handler failed, don't attempt logging (result.data may be undefined)
+    if (!result?.status) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: result?.message || "Request failed",
+          data: result?.data,
+        },
+        { status: result?.statusCode || 400 }
+      );
+    }
 
-    if (!logged) {
-      console.error(`Failed to log stock transaction creation: ${result.data.id}`);
+    const logEntityId = result?.data?.id;
+    let logged = true;
+    if (logEntityId) {
+      logged = await withLogging(
+        request,
+        "stock_transaction",
+        logEntityId,
+        "CREATE",
+        `Stock transaction created successfully: ${type} for item: ${item_id}`
+      );
+
+      if (!logged) {
+        console.error(
+          `Failed to log stock transaction creation: ${logEntityId}`
+        );
+      }
     }
 
     return NextResponse.json(

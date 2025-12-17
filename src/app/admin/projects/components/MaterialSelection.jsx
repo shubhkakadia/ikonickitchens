@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Plus, X, Save, Download } from "lucide-react";
+import { Plus, X, Save, Download, FileText } from "lucide-react";
 import { formData } from "./MaterialSelectionConstants";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBaseUrl } from "@/lib/baseUrl";
 import axios from "axios";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
 
 export default function MaterialSelection({ lot_id, project_id }) {
   const { getToken } = useAuth();
@@ -28,6 +29,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
   const [bedTabs, setBedTabs] = useState({});
   // Custom areas: { areaId: { id, name: string } }
   const [customAreas, setCustomAreas] = useState({});
+  // Lot data for PDF overview
+  const [lotData, setLotData] = useState(null);
 
   // Check if current version is selected (editable)
   const isCurrentVersion = useMemo(() => {
@@ -919,10 +922,48 @@ export default function MaterialSelection({ lot_id, project_id }) {
     }
   };
 
+  // Fetch lot data for PDF overview
+  const fetchLotData = async () => {
+    if (!lot_id) return;
+
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) return;
+
+      // Try to find lot by lot_id string first
+      // The API might accept lot_id as a query parameter or we need to find it differently
+      // For now, we'll try the standard API and handle gracefully if it fails
+      try {
+        const response = await axios.get(
+          `${getBaseUrl()}/api/lot/${lot_id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.data.status && response.data.data) {
+          setLotData(response.data.data);
+          return;
+        }
+      } catch (apiError) {
+        // If API call fails, try to get lot data from material selection data
+        // The material selection already includes lot info, but not startDate
+        // We'll handle missing startDate gracefully in the PDF
+        console.log("Could not fetch lot details via API, will use available data");
+      }
+    } catch (error) {
+      console.error("Error fetching lot data:", error);
+    }
+  };
+
   // Fetch data on component mount and when lot_id changes
   useEffect(() => {
     if (lot_id) {
       fetchMaterialSelection();
+      fetchLotData();
     }
   }, [lot_id]);
 
@@ -1253,6 +1294,437 @@ export default function MaterialSelection({ lot_id, project_id }) {
     }
   };
 
+  // Export to PDF
+  const handleExportToPDF = async () => {
+    if (!selectedVersionId) {
+      toast.error("Please select a version to export", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    try {
+      const versionData = await getSelectedVersionData();
+      if (!versionData) {
+        return;
+      }
+
+      // Get lot data if not already fetched
+      if (!lotData && lot_id) {
+        await fetchLotData();
+      }
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      const contentWidth = pageWidth - 2 * margin;
+      let yPosition = margin;
+
+      // Helper function to add a new page if needed
+      const checkPageBreak = (requiredHeight) => {
+        if (yPosition + requiredHeight > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+          return true;
+        }
+        return false;
+      };
+
+      // Helper function to split text into multiple lines
+      const splitText = (text, maxWidth) => {
+        const words = text.split(" ");
+        const lines = [];
+        let currentLine = "";
+
+        words.forEach((word) => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const testWidth = pdf.getTextWidth(testLine);
+          if (testWidth > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        });
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        return lines;
+      };
+
+      // Page 1: Overview
+      // Add logo at the top
+      try {
+        const logoPath = `${window.location.origin}/logo2.png`;
+        
+        // Load image and convert to canvas for better compatibility
+        const response = await fetch(logoPath);
+        if (!response.ok) throw new Error("Failed to fetch logo");
+        
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        
+        // Create image element to get dimensions and convert to canvas
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = imageUrl;
+          setTimeout(() => reject(new Error("Image load timeout")), 3000);
+        });
+
+        // Convert to canvas for better format compatibility
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const imageDataUrl = canvas.toDataURL("image/png");
+        
+        // Clean up
+        URL.revokeObjectURL(imageUrl);
+
+        // Calculate logo dimensions (max width 50mm, maintain aspect ratio)
+        const maxLogoWidth = 50;
+        const maxLogoHeight = 30;
+        // Convert pixels to mm (assuming standard screen DPI of 96)
+        const pixelsToMm = 25.4 / 96;
+        let logoWidth = img.width * pixelsToMm;
+        let logoHeight = img.height * pixelsToMm;
+        
+        // Scale down if too large
+        if (logoWidth > maxLogoWidth) {
+          const scale = maxLogoWidth / logoWidth;
+          logoWidth = maxLogoWidth;
+          logoHeight = logoHeight * scale;
+        }
+        if (logoHeight > maxLogoHeight) {
+          const scale = maxLogoHeight / logoHeight;
+          logoHeight = maxLogoHeight;
+          logoWidth = logoWidth * scale;
+        }
+
+        // Add logo (left-aligned)
+        pdf.addImage(imageDataUrl, "PNG", margin, yPosition, logoWidth, logoHeight);
+        yPosition += logoHeight + 10;
+      } catch (error) {
+        console.log("Could not load logo, continuing without it:", error);
+        // Continue without logo if it fails to load
+      }
+
+      pdf.setFontSize(18);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Material Selection Overview", margin, yPosition);
+      yPosition += 10;
+
+      // Overview details
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+      const lineHeight = 7;
+
+      const projectName = materialSelectionData?.project?.name || "N/A";
+      const lotId = materialSelectionData?.lot?.lot_id || lot_id || "N/A";
+      const lotName = materialSelectionData?.lot?.name || "N/A";
+      const startDate = lotData?.startDate
+        ? new Date(lotData.startDate).toLocaleDateString()
+        : "N/A";
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Project Name:", margin, yPosition);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(projectName, margin + 45, yPosition);
+      yPosition += lineHeight;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Lot ID:", margin, yPosition);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(lotId, margin + 45, yPosition);
+      yPosition += lineHeight;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Lot Name:", margin, yPosition);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(lotName, margin + 45, yPosition);
+      yPosition += lineHeight;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Start Date:", margin, yPosition);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(startDate, margin + 45, yPosition);
+      yPosition += lineHeight * 1.5;
+
+      // Heights section
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.text("Heights", margin, yPosition);
+      yPosition += lineHeight;
+
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+
+      const ceilingHeight = versionData.ceiling_height || "N/A";
+      const bulkheadHeight = versionData.bulkhead_height || "N/A";
+      const kickerHeight = versionData.kicker_height || "N/A";
+      const cabinetryHeight = versionData.cabinetry_height || "N/A";
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Ceiling Height (mm):", margin, yPosition);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(String(ceilingHeight), margin + 50, yPosition);
+      yPosition += lineHeight;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Bulkhead Height (mm):", margin, yPosition);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(String(bulkheadHeight), margin + 50, yPosition);
+      yPosition += lineHeight;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Kicker Height (mm):", margin, yPosition);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(String(kickerHeight), margin + 50, yPosition);
+      yPosition += lineHeight;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Cabinetry Height (mm):", margin, yPosition);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(String(cabinetryHeight), margin + 50, yPosition);
+      yPosition += lineHeight * 1.5;
+
+      // Terms and Conditions section
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.text("Terms and Conditions", margin, yPosition);
+      yPosition += lineHeight;
+
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      
+      const termsAndConditions = [
+        "1. This material selection document is prepared based on the project requirements and specifications provided.",
+        "2. All measurements and dimensions are subject to site verification and may require adjustments.",
+        "3. Material selections are subject to availability and may be substituted with equivalent alternatives if necessary.",
+        "4. Any changes to the material selection must be approved in writing before implementation.",
+        "5. The client acknowledges that final material selection may vary based on site conditions and availability.",
+        "6. All materials must meet industry standards and building code requirements.",
+        "7. This document serves as a guide and may be updated as the project progresses.",
+        "8. The company reserves the right to make reasonable substitutions for unavailable materials.",
+        "9. All selections are subject to final client approval before ordering.",
+        "10. Any discrepancies should be reported immediately for resolution."
+      ];
+
+      termsAndConditions.forEach((term) => {
+        checkPageBreak(6);
+        const termLines = splitText(term, contentWidth);
+        termLines.forEach((line) => {
+          checkPageBreak(5);
+          pdf.text(line, margin, yPosition);
+          yPosition += 5;
+        });
+        yPosition += 2;
+      });
+
+      // Process areas - only areas with data
+      const areasWithData = (versionData.areas || []).filter((area) => {
+        const hasItems =
+          area.items && Array.isArray(area.items) && area.items.length > 0;
+        const hasAreaNotes =
+          area.notes &&
+          typeof area.notes === "string" &&
+          area.notes.trim() !== "";
+        return hasItems || hasAreaNotes;
+      });
+
+      // Add each area on a separate page (from page 2 onwards)
+      areasWithData.forEach((area, areaIndex) => {
+        // Always add new page for each area (page 1 is overview only)
+        pdf.addPage();
+        yPosition = margin;
+
+        // Area header
+        pdf.setFontSize(16);
+        pdf.setFont("helvetica", "bold");
+        const areaName = area.area_name || "Unnamed Area";
+        pdf.text(areaName, margin, yPosition);
+        yPosition += 10;
+
+        // Bed option if exists
+        if (area.bed_option) {
+          pdf.setFontSize(11);
+          pdf.setFont("helvetica", "normal");
+          pdf.text(`Bed Option: ${area.bed_option}`, margin, yPosition);
+          yPosition += 8;
+        }
+
+        // Area notes if exists
+        if (area.notes && area.notes.trim() !== "") {
+          pdf.setFontSize(11);
+          pdf.setFont("helvetica", "bold");
+          pdf.text("Area Notes:", margin, yPosition);
+          yPosition += 6;
+
+          pdf.setFont("helvetica", "normal");
+          const noteLines = splitText(area.notes, contentWidth);
+          noteLines.forEach((line) => {
+            checkPageBreak(6);
+            pdf.text(line, margin, yPosition);
+            yPosition += 6;
+          });
+          yPosition += 4;
+        }
+
+        // Items table
+        if (area.items && area.items.length > 0) {
+          yPosition += 5;
+          pdf.setFontSize(11);
+          pdf.setFont("helvetica", "bold");
+
+          // Table header
+          checkPageBreak(15);
+          const headerY = yPosition;
+          pdf.setFillColor(240, 240, 240);
+          pdf.rect(margin, headerY - 5, contentWidth, 8, "F");
+          pdf.text("Item Name", margin + 2, headerY);
+          pdf.text("Applicable", margin + 80, headerY);
+          pdf.text("Notes", margin + 110, headerY);
+          
+          // Draw line below header
+          pdf.setDrawColor(200, 200, 200);
+          pdf.setLineWidth(0.2);
+          pdf.line(margin, headerY + 3, margin + contentWidth, headerY + 3);
+          
+          yPosition = headerY + 8;
+
+          // Table rows
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(10);
+
+          area.items.forEach((item, itemIndex) => {
+            const itemName = item.name || "";
+            const isApplicable = item.is_applicable ? "Yes" : "No";
+            const itemNotes = item.item_notes || "";
+
+            // Calculate row height based on content
+            const nameLines = splitText(itemName, 70);
+            const noteLines = itemNotes ? splitText(itemNotes, 70) : [];
+            const maxLines = Math.max(nameLines.length, noteLines.length, 1);
+            const rowHeight = maxLines * 5 + 5; // 5mm per line + 5mm padding
+
+            // Check if we need a new page
+            checkPageBreak(rowHeight + 3);
+
+            // Store starting Y position for this row
+            const rowStartY = yPosition;
+
+            // Item name
+            nameLines.forEach((line, idx) => {
+              pdf.text(line, margin + 2, rowStartY + idx * 5);
+            });
+
+            // Applicable
+            pdf.text(isApplicable, margin + 80, rowStartY);
+
+            // Notes
+            if (itemNotes) {
+              noteLines.forEach((line, idx) => {
+                pdf.text(line, margin + 110, rowStartY + idx * 5);
+              });
+            }
+
+            // Update yPosition to the bottom of the row
+            yPosition = rowStartY + maxLines * 5;
+
+            // Draw line separator at the bottom of the row (spanning full width)
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(0.1);
+            pdf.line(margin, yPosition + 2, margin + contentWidth, yPosition + 2);
+            
+            // Move to next row position
+            yPosition += 5;
+          });
+        }
+      });
+
+      // Add signature page at the end
+      pdf.addPage();
+      yPosition = margin;
+
+      pdf.setFontSize(16);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Approval and Signature", margin, yPosition);
+      yPosition += 15;
+
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("By signing below, I acknowledge that I have reviewed and approved the material selections", margin, yPosition);
+      yPosition += 8;
+      pdf.text("as detailed in this document.", margin, yPosition);
+      yPosition += 15;
+
+      // Signature section
+      const signatureY = pageHeight - 80;
+      const signatureLineY = signatureY + 20;
+      const dateY = signatureY + 30;
+
+      // Name field
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.text("Name:", margin, signatureY);
+      pdf.setFont("helvetica", "normal");
+      pdf.setDrawColor(0, 0, 0);
+      pdf.line(margin + 20, signatureY - 3, margin + 100, signatureY - 3);
+      yPosition = signatureY + 10;
+
+      // Signature field
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Signature:", margin, signatureLineY);
+      pdf.setDrawColor(0, 0, 0);
+      pdf.line(margin + 30, signatureLineY - 3, margin + 120, signatureLineY - 3);
+      pdf.line(margin + 30, signatureLineY - 2, margin + 120, signatureLineY - 2);
+
+      // Date field
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Date:", margin + 130, signatureLineY);
+      pdf.setFont("helvetica", "normal");
+      pdf.setDrawColor(0, 0, 0);
+      pdf.line(margin + 150, signatureLineY - 3, margin + 180, signatureLineY - 3);
+
+      // Get version number for filename
+      const versionNumber =
+        versionsList.find((v) => v.id === selectedVersionId)?.version_number ||
+        "1";
+
+      // Generate filename
+      const filename = `Material_Selection_V${versionNumber}_${new Date()
+        .toISOString()
+        .split("T")[0]}.pdf`;
+
+      // Save PDF
+      pdf.save(filename);
+
+      toast.success("Material selection exported to PDF successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } catch (error) {
+      console.error("Error exporting to PDF:", error);
+      toast.error("Failed to export to PDF. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }
+  };
+
   // Export to Excel
   const handleExportToExcel = async () => {
     if (!selectedVersionId) {
@@ -1439,16 +1911,26 @@ export default function MaterialSelection({ lot_id, project_id }) {
 
         {/* Create/Update Button and Export Button */}
         <div className="flex justify-end gap-3">
-          {/* Export Button - Show when version is selected */}
+          {/* Export Buttons - Show when version is selected */}
           {materialSelectionData && selectedVersionId && (
-            <button
-              onClick={handleExportToExcel}
-              disabled={!selectedVersionId}
-              className="cursor-pointer hover:bg-green-600 flex items-center gap-2 px-6 py-2 bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
-            >
-              <Download className="w-4 h-4" />
-              Export to Excel
-            </button>
+            <>
+              <button
+                onClick={handleExportToPDF}
+                disabled={!selectedVersionId}
+                className="cursor-pointer hover:bg-red-600 flex items-center gap-2 px-6 py-2 bg-red-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
+              >
+                <FileText className="w-4 h-4" />
+                Export to PDF
+              </button>
+              <button
+                onClick={handleExportToExcel}
+                disabled={!selectedVersionId}
+                className="cursor-pointer hover:bg-green-600 flex items-center gap-2 px-6 py-2 bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
+              >
+                <Download className="w-4 h-4" />
+                Export to Excel
+              </button>
+            </>
           )}
           {/* Create/Update Button - Only show for current version or when no material selection exists */}
           {(!materialSelectionData || isCurrentVersion) && (

@@ -531,21 +531,22 @@ model supplier_file {
 }
 
 model materials_to_order {
-  id                 String                    @id @default(uuid())
-  project_id         String?
-  status             MTOStatus                 @default(DRAFT)
-  notes              String?                   @db.LongText
-  createdBy_id       String?
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
-  media_id           String?
-  lots               lot[]
-  createdBy          users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id], onDelete: SetNull)
-  project            project?                  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
-  items              materials_to_order_item[]
-  media              media[]
-  purchase_order     purchase_order[]
-  stock_transactions stock_transaction[]
+  id                      String                    @id @default(uuid())
+  project_id              String?
+  status                  MTOStatus                 @default(DRAFT)
+  notes                   String?                   @db.LongText
+  createdBy_id            String?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  media_id                String?
+  used_material_completed Boolean                   @default(false)
+  lots                    lot[]
+  createdBy               users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id], onDelete: SetNull)
+  project                 project?                  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  items                   materials_to_order_item[]
+  media                   media[]
+  purchase_order          purchase_order[]
+  stock_transactions      stock_transaction[]
 
   @@index([project_id])
   @@index([status])
@@ -553,18 +554,19 @@ model materials_to_order {
 }
 
 model materials_to_order_item {
-  id               String                @id @default(uuid())
-  mto_id           String
-  item_id          String
-  quantity         Int
-  notes            String?               @db.LongText
-  quantity_ordered Int                   @default(0)
-  quantity_used    Int                   @default(0)
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  item             item                  @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
-  mto              materials_to_order    @relation(fields: [mto_id], references: [id], onDelete: Cascade)
-  ordered_items    purchase_order_item[]
+  id                  String                @id @default(uuid())
+  mto_id              String
+  item_id             String
+  quantity            Int
+  notes               String?               @db.LongText
+  quantity_ordered    Int                   @default(0)
+  quantity_ordered_po Int                   @default(0)
+  quantity_used       Int                   @default(0)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  item                item                  @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  mto                 materials_to_order    @relation(fields: [mto_id], references: [id], onDelete: Cascade)
+  ordered_items       purchase_order_item[]
 
   @@index([mto_id])
   @@index([item_id])

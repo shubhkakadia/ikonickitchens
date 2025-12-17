@@ -199,9 +199,25 @@ export default function MaterialsToOrder({ project, selectedLot }) {
 
   // Memoize: Compute lots available for selection: only those without existing MTO
   const selectableLots = useMemo(() => {
-    return (project?.lots || []).filter((lot) => {
+    const availableLots = (project?.lots || []).filter((lot) => {
       // Allow selection only for lots that do not yet have MTO entries
       return !lotsWithExistingMto.has(lot.lot_id);
+    });
+
+    return availableLots.sort((a, b) => {
+      const aNum = Number(a?.lot_id);
+      const bNum = Number(b?.lot_id);
+      const aIsNum = Number.isFinite(aNum);
+      const bIsNum = Number.isFinite(bNum);
+
+      if (aIsNum && bIsNum) return aNum - bNum;
+      if (aIsNum) return -1;
+      if (bIsNum) return 1;
+
+      return String(a?.lot_id ?? "").localeCompare(String(b?.lot_id ?? ""), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
     });
   }, [project?.lots, lotsWithExistingMto]);
 
@@ -225,6 +241,26 @@ export default function MaterialsToOrder({ project, selectedLot }) {
 
     return mtoWithSameId?.lots || [];
   }, [materialsToOrderData, project?.materials_to_order]);
+
+  const sortedLotsWithSameMtoId = useMemo(() => {
+    const lots = [...(lotsWithSameMtoId || [])];
+
+    return lots.sort((a, b) => {
+      const aNum = Number(a?.lot_id);
+      const bNum = Number(b?.lot_id);
+      const aIsNum = Number.isFinite(aNum);
+      const bIsNum = Number.isFinite(bNum);
+
+      if (aIsNum && bIsNum) return aNum - bNum;
+      if (aIsNum) return -1;
+      if (bIsNum) return 1;
+
+      return String(a?.lot_id ?? "").localeCompare(String(b?.lot_id ?? ""), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+    });
+  }, [lotsWithSameMtoId]);
 
   // Initialize selected lots when project data is loaded or selectedLot changes
   useEffect(() => {
@@ -1459,7 +1495,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                   This materials list is already created for the following lots:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {lotsWithSameMtoId.map((lot) => (
+                  {sortedLotsWithSameMtoId.map((lot) => (
                     <div
                       key={lot.lot_id}
                       className="flex items-center space-x-2 p-2 bg-white rounded-md border border-slate-200"
@@ -1477,7 +1513,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                   ))}
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  {lotsWithSameMtoId.length} lot(s) in this materials list
+                  {sortedLotsWithSameMtoId.length} lot(s) in this materials list
                 </p>
               </div>
             </>

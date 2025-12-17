@@ -23,6 +23,7 @@ export async function GET(request) {
             quantity: true,
             quantity_used: true,
             quantity_ordered: true,
+            quantity_ordered_po: true,
             notes: true,
             ordered_items: {
               select: {

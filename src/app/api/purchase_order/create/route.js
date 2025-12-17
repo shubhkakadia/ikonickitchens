@@ -167,7 +167,7 @@ export async function POST(request) {
             id: true,
             item_id: true,
             quantity: true,
-            quantity_ordered: true,
+            quantity_ordered_po: true,
           },
         });
 
@@ -177,7 +177,7 @@ export async function POST(request) {
         for (const poi of createdPO.items) {
           const mtoItem = itemIdToMtoItem.get(poi.item_id);
           if (!mtoItem) continue;
-          const alreadyOrdered = Number(mtoItem.quantity_ordered || 0);
+          const alreadyOrdered = Number(mtoItem.quantity_ordered_po || 0);
           const orderedThisPO = Number(poi.quantity || 0);
           const cappedOrdered = Math.min(
             Number(mtoItem.quantity),
@@ -186,10 +186,10 @@ export async function POST(request) {
           if (cappedOrdered !== alreadyOrdered) {
             await tx.materials_to_order_item.update({
               where: { id: mtoItem.id },
-              data: { quantity_ordered: cappedOrdered },
+              data: { quantity_ordered_po: cappedOrdered },
             });
             // Update local copy for later status calculation
-            mtoItem.quantity_ordered = cappedOrdered;
+            mtoItem.quantity_ordered_po = cappedOrdered;
           }
         }
 
@@ -198,7 +198,7 @@ export async function POST(request) {
           mtoItems.length > 0 &&
           mtoItems.every(
             (mi) =>
-              Number(mi.quantity_ordered || 0) === Number(mi.quantity || 0)
+              Number(mi.quantity_ordered_po || 0) === Number(mi.quantity || 0)
           );
         await tx.materials_to_order.update({
           where: { id: createdPO.mto_id },

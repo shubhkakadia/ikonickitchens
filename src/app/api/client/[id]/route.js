@@ -8,12 +8,21 @@ export async function GET(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const client = await prisma.client.findUnique({
-      where: { client_id: id },
+    const client = await prisma.client.findFirst({
+      where: { 
+        client_id: id,
+        is_deleted: false,
+      },
       include: {
         projects: {
+          where: {
+            is_deleted: false,
+          },
           include: {
             lots: {
+              where: {
+                is_deleted: false,
+              },
               include: {
                 stages: true,
               },
@@ -23,6 +32,14 @@ export async function GET(request, { params }) {
         contacts: true,
       },
     });
+    
+    if (!client) {
+      return NextResponse.json(
+        { status: false, message: "Client not found" },
+        { status: 404 }
+      );
+    }
+    
     return NextResponse.json(
       { status: true, message: "Client fetched successfully", data: client },
       { status: 200 }
@@ -112,9 +129,32 @@ export async function DELETE(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const client = await prisma.client.delete({
+    
+    // Check if client exists and is not already deleted
+    const existingClient = await prisma.client.findUnique({
       where: { client_id: id },
     });
+
+    if (!existingClient) {
+      return NextResponse.json(
+        { status: false, message: "Client not found" },
+        { status: 404 }
+      );
+    }
+
+    if (existingClient.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Client already deleted" },
+        { status: 400 }
+      );
+    }
+
+    // Soft delete the client record (set is_deleted flag)
+    const client = await prisma.client.update({
+      where: { client_id: id },
+      data: { is_deleted: true },
+    });
+    
     const logged = await withLogging(
       request,
       "client",

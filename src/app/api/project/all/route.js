@@ -7,9 +7,16 @@ export async function GET(request) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const projects = await prisma.project.findMany({
+      where: {
+        is_deleted: false,
+      },
       include: {
         client: true,
-        lots: true,
+        lots: {
+          where: {
+            is_deleted: false,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',

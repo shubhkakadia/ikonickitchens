@@ -4,7 +4,6 @@ import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useRouter } from "next/navigation";
 import {
@@ -458,7 +457,7 @@ export default function page() {
                         <button
                           type="button"
                           onClick={() => handleSelectResult(key, item)}
-                          className="w-full text-left px-3 py-2 hover:bg-slate-50"
+                          className="cursor-pointer w-full text-left px-3 py-2 hover:bg-slate-50"
                         >
                           <div className="text-sm text-slate-800 font-medium truncate">
                             {fields
@@ -1494,18 +1493,6 @@ export default function page() {
           </div>
         </div>
       </div>
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
     </AdminRoute>
   );
 }

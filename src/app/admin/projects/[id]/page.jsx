@@ -20,7 +20,7 @@ import {
   SquareArrowOutUpRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import axios from "axios";
 import { useState } from "react";
 import { CiMenuKebab } from "react-icons/ci";
@@ -2797,6 +2797,7 @@ export default function page() {
           message="This will permanently delete the lot and all associated data. This action cannot be undone."
           comparingName={selectedLot ? `${selectedLot.lot_id}` : ""}
           isDeleting={isDeletingLot}
+          entityType="lot"
         />
 
         <DeleteConfirmation
@@ -2808,6 +2809,7 @@ export default function page() {
           message="This will permanently delete the project and all associated data. This action cannot be undone."
           comparingName={project ? `${project.name}` : ""}
           isDeleting={isDeletingProject}
+          entityType="project"
         />
 
         {/* Delete File Confirmation Modal */}
@@ -2833,9 +2835,9 @@ export default function page() {
           message="This will permanently delete this file. This action cannot be undone."
           comparingName={fileToDelete ? fileToDelete.filename : ""}
           isDeleting={isDeletingFile === fileToDelete?.id}
+          entityType="lot_file"
         />
 
-        <ToastContainer />
       </div>
     </AdminRoute>
   );

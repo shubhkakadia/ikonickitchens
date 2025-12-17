@@ -776,13 +776,13 @@ export default function page() {
                         </div>
                       ) : (
                         <div className="min-w-full">
-                          <table className="min-w-full divide-y divide-slate-200">
-                            <thead className="bg-slate-50 sticky top-0 z-10">
+                          <table className="min-w-full divide-y divide-slate-200 table-fixed">
+                            <thead className="bg-slate-50 sticky top-0 z-20">
                               <tr>
-                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200">
+                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[500px] min-w-[500px] max-w-[500px]">
                                   Project Name - Lot Number
                                 </th>
-                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[120px] h-[300px] border-r border-slate-200">
+                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[100px] min-w-[100px] max-w-[100px] h-[300px] border-r border-slate-200 sticky top-0 left-[300px] z-30 bg-slate-50">
                                   Percentage Completed
                                 </th>
                                 {stages.map(stage => {
@@ -859,12 +859,12 @@ export default function page() {
                                   >
                                     <td
                                       onClick={(e) => handleProjectNameClick(lot, e)}
-                                      className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 transition-colors"
+                                      className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[500px] min-w-[500px] max-w-[500px]"
                                       title="Click to open project"
                                     >
                                       {lot.project?.name || "N/A"} - {lot.lot_id}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[200px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap">
+                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[300px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap w-[100px] min-w-[100px] max-w-[100px]">
                                       {getPercentageCompleted(lot)}%
                                     </td>
                                     {stages.map((stage) => {

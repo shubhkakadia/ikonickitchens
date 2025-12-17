@@ -7,6 +7,9 @@ export async function GET(request) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const clients = await prisma.client.findMany({
+      where: {
+        is_deleted: false,
+      },
       select: {
         client_id: true,
         client_name: true,

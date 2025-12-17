@@ -6,7 +6,7 @@ import { AdminRoute } from "@/components/ProtectedRoute";
 import PaginationFooter from "@/components/PaginationFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
@@ -102,9 +102,39 @@ export default function page() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const fileInputRef = useRef(null);
+  const [quantityOrderedDraftById, setQuantityOrderedDraftById] = useState({});
+  const [isSavingQuantityOrderedById, setIsSavingQuantityOrderedById] = useState(
+    {}
+  );
+  const quantityOrderedTimersRef = useRef(new Map());
 
   useEffect(() => {
     fetchMTOs();
+  }, []);
+
+  // Initialize draft values for the editable Qty Ordered inputs (don't clobber what user is typing)
+  useEffect(() => {
+    const mtosArray = Array.isArray(mtos) ? mtos : [];
+    setQuantityOrderedDraftById((prev) => {
+      const next = { ...prev };
+      mtosArray.forEach((mto) => {
+        (mto?.items || []).forEach((it) => {
+          if (it?.id && next[it.id] === undefined) {
+            next[it.id] = String(it.quantity_ordered ?? 0);
+          }
+        });
+      });
+      return next;
+    });
+  }, [mtos]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      const timers = quantityOrderedTimersRef.current;
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
+    };
   }, []);
 
   // Close dropdowns when clicking outside
@@ -149,6 +179,74 @@ export default function page() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyQuantityOrderedToLocalState = (mtoItemId, value) => {
+    setMtos((prev) =>
+      (prev || []).map((mto) => ({
+        ...mto,
+        items: (mto.items || []).map((it) =>
+          it.id === mtoItemId ? { ...it, quantity_ordered: value } : it
+        ),
+      }))
+    );
+  };
+
+  const saveQuantityOrdered = async (mtoItemId, rawValue) => {
+    const sessionToken = getToken();
+    if (!sessionToken) {
+      toast.error("No valid session found. Please login again.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    const parsed =
+      rawValue === "" || rawValue === null || rawValue === undefined
+        ? 0
+        : Math.max(0, parseInt(rawValue, 10) || 0);
+
+    setIsSavingQuantityOrderedById((prev) => ({ ...prev, [mtoItemId]: true }));
+    try {
+      const response = await axios.patch(
+        `/api/materials_to_order_item/${mtoItemId}`,
+        { quantity_ordered: parsed },
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+      if (!response?.data?.status) {
+        throw new Error(
+          response?.data?.message || "Failed to update quantity ordered"
+        );
+      }
+
+      const saved = response?.data?.data?.quantity_ordered ?? parsed;
+      setQuantityOrderedDraftById((prev) => ({
+        ...prev,
+        [mtoItemId]: String(saved),
+      }));
+      applyQuantityOrderedToLocalState(mtoItemId, saved);
+    } catch (err) {
+      console.error("Failed to update quantity_ordered:", err);
+      toast.error(err?.response?.data?.message || err?.message || "Failed to save");
+    } finally {
+      setIsSavingQuantityOrderedById((prev) => ({ ...prev, [mtoItemId]: false }));
+    }
+  };
+
+  const handleQuantityOrderedChange = (mtoItemId, nextValue) => {
+    setQuantityOrderedDraftById((prev) => ({ ...prev, [mtoItemId]: nextValue }));
+
+    const timers = quantityOrderedTimersRef.current;
+    if (timers.has(mtoItemId)) {
+      clearTimeout(timers.get(mtoItemId));
+    }
+    timers.set(
+      mtoItemId,
+      setTimeout(() => {
+        saveQuantityOrdered(mtoItemId, nextValue);
+      }, 800)
+    );
   };
 
   const openCreatePOForSupplier = (supplierName, supplierId, mtoId = null) => {
@@ -199,7 +297,7 @@ export default function page() {
       const itemsCount = mto.items?.length || 0;
       const itemsRemainingCount =
         mto.items?.filter(
-          (it) => (it.quantity_ordered || 0) < (it.quantity || 0)
+            (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0)
         ).length || 0;
       return {
         ...mto,
@@ -359,7 +457,7 @@ export default function page() {
         const itemsRemaining =
           mto.__itemsRemaining ||
           mto.items?.filter(
-            (it) => (it.quantity_ordered || 0) < (it.quantity || 0)
+            (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0)
           ).length ||
           0;
         const createdAtStr = mto.createdAt
@@ -983,7 +1081,7 @@ export default function page() {
                                       {mto.__itemsRemaining ??
                                         (mto.items?.filter(
                                           (it) =>
-                                            (it.quantity_ordered || 0) <
+                                            (it.quantity_ordered_po || 0) <
                                             (it.quantity || 0)
                                         ).length ||
                                           0)}
@@ -1155,6 +1253,7 @@ export default function page() {
                                                               <col className="w-80" />
                                                               <col className="w-32" />
                                                               <col className="w-40" />
+                                                              <col className="w-32" />
                                                               <col className="w-40" />
                                                             </colgroup>
                                                             <thead className="bg-slate-50">
@@ -1173,6 +1272,9 @@ export default function page() {
                                                                 </th>
                                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                   Quantity
+                                                                </th>
+                                                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                  Qty Ordered
                                                                 </th>
                                                                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                   Status
@@ -1551,8 +1653,39 @@ export default function page() {
                                                                         </div>
                                                                       </td>
                                                                       <td className="px-3 py-2 whitespace-nowrap">
-                                                                        {item.quantity_ordered >
-                                                                          0 && (
+                                                                        <input
+                                                                          type="number"
+                                                                          min="0"
+                                                                          value={
+                                                                            quantityOrderedDraftById[item.id] ??
+                                                                            String(item.quantity_ordered ?? 0)
+                                                                          }
+                                                                          onChange={(e) =>
+                                                                            handleQuantityOrderedChange(
+                                                                              item.id,
+                                                                              e.target.value
+                                                                            )
+                                                                          }
+                                                                          onBlur={() => {
+                                                                            const timers =
+                                                                              quantityOrderedTimersRef.current;
+                                                                            if (timers.has(item.id)) {
+                                                                              clearTimeout(timers.get(item.id));
+                                                                              timers.delete(item.id);
+                                                                            }
+                                                                            const v =
+                                                                              quantityOrderedDraftById[item.id] ??
+                                                                              String(item.quantity_ordered ?? 0);
+                                                                            saveQuantityOrdered(item.id, v);
+                                                                          }}
+                                                                          disabled={!!isSavingQuantityOrderedById[item.id]}
+                                                                          className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
+                                                                        />
+                                                                      </td>
+                                                                      <td className="px-3 py-2 whitespace-nowrap">
+                                                                        {Number(item.quantity_ordered_po || 0) >
+                                                                          0 &&
+                                                                          (
                                                                             <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
                                                                               Ordered
                                                                             </span>
@@ -1563,7 +1696,7 @@ export default function page() {
                                                                               Received
                                                                             </span>
                                                                           )}
-                                                                        {item.quantity_ordered ===
+                                                                        {Number(item.quantity_ordered_po || 0) ===
                                                                           0 &&
                                                                           item.quantity_received ===
                                                                           0 && (
@@ -1929,6 +2062,7 @@ export default function page() {
         heading="Media File"
         message="This will permanently delete the media file. This action cannot be undone."
         isDeleting={deletingMediaId !== null}
+        entityType="media"
       />
 
       {/* Create Materials to Order Modal */}
@@ -1942,18 +2076,6 @@ export default function page() {
         />
       )}
 
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
     </AdminRoute>
   );
 }

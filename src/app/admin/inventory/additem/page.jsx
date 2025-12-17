@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronDown, Upload, X, Package } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import React, { useState, useRef, useEffect } from "react";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -933,18 +933,6 @@ export default function page() {
             </div>
           </div>
         </div>
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="light"
-        />
       </AdminRoute>
     </div>
   );

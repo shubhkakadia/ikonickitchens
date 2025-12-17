@@ -22,7 +22,99 @@ import PurchaseOrderForm from "./PurchaseOrderForm";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 
-const GroupedItemsTable = (({ items, mtoId, activeTab, onOpenPO }) => {
+const GroupedItemsTable = (({
+  items,
+  mtoId,
+  activeTab,
+  onOpenPO,
+  onUpdateQuantityOrdered,
+}) => {
+  const { getToken } = useAuth();
+  const [quantityOrderedDraftById, setQuantityOrderedDraftById] = useState({});
+  const [isSavingQuantityOrderedById, setIsSavingQuantityOrderedById] = useState(
+    {}
+  );
+  const quantityOrderedTimersRef = useRef(new Map());
+
+  // Initialize draft values (don't clobber what the user is typing)
+  useEffect(() => {
+    if (!Array.isArray(items)) return;
+    setQuantityOrderedDraftById((prev) => {
+      const next = { ...prev };
+      items.forEach((it) => {
+        if (it?.id && next[it.id] === undefined) {
+          next[it.id] = String(it.quantity_ordered ?? 0);
+        }
+      });
+      return next;
+    });
+  }, [items]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      const timers = quantityOrderedTimersRef.current;
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
+    };
+  }, []);
+
+  const saveQuantityOrdered = async (mtoItemId, rawValue) => {
+    const sessionToken = getToken();
+    if (!sessionToken) {
+      toast.error("No valid session found. Please login again.");
+      return;
+    }
+
+    const parsed =
+      rawValue === "" || rawValue === null || rawValue === undefined
+        ? 0
+        : Math.max(0, parseInt(rawValue, 10) || 0);
+
+    setIsSavingQuantityOrderedById((prev) => ({ ...prev, [mtoItemId]: true }));
+    try {
+      const response = await axios.patch(
+        `/api/materials_to_order_item/${mtoItemId}`,
+        { quantity_ordered: parsed },
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+
+      if (!response?.data?.status) {
+        throw new Error(
+          response?.data?.message || "Failed to update quantity ordered"
+        );
+      }
+
+      const saved = response?.data?.data?.quantity_ordered ?? parsed;
+      setQuantityOrderedDraftById((prev) => ({
+        ...prev,
+        [mtoItemId]: String(saved),
+      }));
+
+      if (onUpdateQuantityOrdered) onUpdateQuantityOrdered(mtoId, mtoItemId, saved);
+    } catch (err) {
+      console.error("Failed to update quantity_ordered:", err);
+      toast.error(err?.response?.data?.message || err?.message || "Failed to save");
+    } finally {
+      setIsSavingQuantityOrderedById((prev) => ({ ...prev, [mtoItemId]: false }));
+    }
+  };
+
+  const handleQuantityOrderedChange = (mtoItemId, nextValue) => {
+    setQuantityOrderedDraftById((prev) => ({ ...prev, [mtoItemId]: nextValue }));
+
+    const timers = quantityOrderedTimersRef.current;
+    if (timers.has(mtoItemId)) {
+      clearTimeout(timers.get(mtoItemId));
+    }
+    timers.set(
+      mtoItemId,
+      setTimeout(() => {
+        saveQuantityOrdered(mtoItemId, nextValue);
+      }, 800)
+    );
+  };
+
   const groupedItems = useMemo(() => {
     if (!items || items.length === 0) return null;
 
@@ -88,6 +180,9 @@ const GroupedItemsTable = (({ items, mtoId, activeTab, onOpenPO }) => {
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Quantity
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Qty Ordered
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -237,9 +332,9 @@ const GroupedItemsTable = (({ items, mtoId, activeTab, onOpenPO }) => {
                             {item.quantity} {item.item?.measurement_unit}
                           </span>
                         </div>
-                        {item.quantity_ordered > 0 && (
+                        {item.quantity_ordered_po > 0 && (
                           <div className="flex items-center gap-1.5 text-blue-600 text-xs">
-                            <span>Ordered: {item.quantity_ordered}</span>
+                            <span>Ordered: {item.quantity_ordered_po}</span>
                           </div>
                         )}
                         {item.quantity_received > 0 && (
@@ -250,7 +345,33 @@ const GroupedItemsTable = (({ items, mtoId, activeTab, onOpenPO }) => {
                       </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      {item.quantity_ordered > 0 && (
+                      <input
+                        type="number"
+                        min="0"
+                        value={
+                          quantityOrderedDraftById[item.id] ??
+                          String(item.quantity_ordered ?? 0)
+                        }
+                        onChange={(e) =>
+                          handleQuantityOrderedChange(item.id, e.target.value)
+                        }
+                        onBlur={() => {
+                          const timers = quantityOrderedTimersRef.current;
+                          if (timers.has(item.id)) {
+                            clearTimeout(timers.get(item.id));
+                            timers.delete(item.id);
+                          }
+                          const v =
+                            quantityOrderedDraftById[item.id] ??
+                            String(item.quantity_ordered ?? 0);
+                          saveQuantityOrdered(item.id, v);
+                        }}
+                        disabled={!!isSavingQuantityOrderedById[item.id]}
+                        className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
+                      />
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {Number(item.quantity_ordered_po || 0) > 0 && (
                         <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
                           Ordered
                         </span>
@@ -260,7 +381,7 @@ const GroupedItemsTable = (({ items, mtoId, activeTab, onOpenPO }) => {
                           Received
                         </span>
                       )}
-                      {item.quantity_ordered === 0 &&
+                      {Number(item.quantity_ordered_po || 0) === 0 &&
                         item.quantity_received === 0 && (
                           <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
                             Pending
@@ -309,6 +430,20 @@ export default function MaterialsToOrder({
   const [selectedFile, setSelectedFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const fileInputRef = useRef(null);
+
+  const handleUpdateQuantityOrdered = (mtoId, mtoItemId, value) => {
+    setMaterialsToOrder((prev) =>
+      (prev || []).map((mto) => {
+        if (!mto || mto.id !== mtoId) return mto;
+        return {
+          ...mto,
+          items: (mto.items || []).map((it) =>
+            it.id === mtoItemId ? { ...it, quantity_ordered: value } : it
+          ),
+        };
+      })
+    );
+  };
 
   const fetchMaterialsToOrder = async () => {
     try {
@@ -402,7 +537,7 @@ export default function MaterialsToOrder({
       const itemsCount = mto.items?.length || 0;
       const itemsRemainingCount =
         mto.items?.filter(
-          (it) => (it.quantity_ordered || 0) < (it.quantity || 0)
+          (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0)
         ).length || 0;
       return {
         ...mto,
@@ -732,7 +867,7 @@ export default function MaterialsToOrder({
                         {mto.__itemsRemaining ??
                           (mto.items?.filter(
                             (it) =>
-                              (it.quantity_ordered || 0) < (it.quantity || 0)
+                              (it.quantity_ordered_po || 0) < (it.quantity || 0)
                           ).length ||
                             0)}
                       </td>
@@ -815,6 +950,7 @@ export default function MaterialsToOrder({
                                 mtoId={mto.id}
                                 activeTab={mtoActiveTab}
                                 onOpenPO={openCreatePOForSupplier}
+                                onUpdateQuantityOrdered={handleUpdateQuantityOrdered}
                               />
                             )}
                           </div>
@@ -1146,6 +1282,7 @@ export default function MaterialsToOrder({
         heading="Media File"
         message="This will permanently delete the media file. This action cannot be undone."
         isDeleting={deletingMediaId !== null}
+        entityType="media"
       />
     </div>
   );

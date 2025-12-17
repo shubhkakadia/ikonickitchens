@@ -26,7 +26,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import TabsController from "@/components/tabscontroller";
 import Image from "next/image";
@@ -93,6 +93,31 @@ export default function page() {
   const supplierDropdownRef = React.useRef(null);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [expandedNotes, setExpandedNotes] = useState(new Set());
+  const stock_tx_item_per_page = 10;
+  const [stockTxCurrentPage, setStockTxCurrentPage] = useState(1);
+
+  const sortedStockTransactions = React.useMemo(() => {
+    const transactions = item?.stock_transactions ?? [];
+    return [...transactions].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+  }, [item?.stock_transactions]);
+
+  const stockTxTotalPages = Math.ceil(
+    sortedStockTransactions.length / stock_tx_item_per_page
+  );
+  const stockTxStartIndex =
+    (stockTxCurrentPage - 1) * stock_tx_item_per_page;
+  const stockTxEndIndex = stockTxStartIndex + stock_tx_item_per_page;
+  const currentStockTransactions = sortedStockTransactions.slice(
+    stockTxStartIndex,
+    stockTxEndIndex
+  );
+
+  const handleStockTxPageChange = (page) => {
+    const safePage = Math.max(1, Math.min(page, stockTxTotalPages || 1));
+    setStockTxCurrentPage(safePage);
+  };
 
   const filteredSubCategories = hardwareSubCategories.filter((subCategory) =>
     subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase())
@@ -102,6 +127,16 @@ export default function page() {
     fetchItem();
     fetchSuppliers();
   }, [id]);
+
+  useEffect(() => {
+    setStockTxCurrentPage(1);
+  }, [id]);
+
+  useEffect(() => {
+    if (stockTxTotalPages > 0 && stockTxCurrentPage > stockTxTotalPages) {
+      setStockTxCurrentPage(stockTxTotalPages);
+    }
+  }, [stockTxCurrentPage, stockTxTotalPages]);
 
   useEffect(() => {
     return () => {
@@ -1350,41 +1385,35 @@ export default function page() {
                           <Package className="w-4 h-4" />
                           Stock Transactions
                         </h3>
-                        {item.stock_transactions &&
-                          item.stock_transactions.length > 0 ? (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-slate-200">
-                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide w-8"></th>
-                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Date
-                                  </th>
-                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Type
-                                  </th>
-                                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Quantity
-                                  </th>
-                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Purchase Order
-                                  </th>
-                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Project Name
-                                  </th>
-                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Lot ID
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {item.stock_transactions
-                                  .sort(
-                                    (a, b) =>
-                                      new Date(b.createdAt) -
-                                      new Date(a.createdAt)
-                                  )
-                                  .map((transaction) => (
+                        {sortedStockTransactions.length > 0 ? (
+                          <>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-slate-200">
+                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide w-8"></th>
+                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                      Date
+                                    </th>
+                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                      Type
+                                    </th>
+                                    <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                      Quantity
+                                    </th>
+                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                      Purchase Order
+                                    </th>
+                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                      Project Name
+                                    </th>
+                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                      Lot ID
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {currentStockTransactions.map((transaction) => (
                                     <React.Fragment key={transaction.id}>
                                       <tr
                                         className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${transaction.notes ? "cursor-pointer" : ""
@@ -1489,9 +1518,69 @@ export default function page() {
                                       )}
                                     </React.Fragment>
                                   ))}
-                              </tbody>
-                            </table>
-                          </div>
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Pagination (same UI as Jobs list) */}
+                            {stockTxTotalPages > 1 && (
+                              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
+                                <div className="text-xs text-slate-500">
+                                  Showing {stockTxStartIndex + 1} to{" "}
+                                  {Math.min(
+                                    stockTxEndIndex,
+                                    sortedStockTransactions.length
+                                  )}{" "}
+                                  of {sortedStockTransactions.length} results
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() =>
+                                      handleStockTxPageChange(
+                                        stockTxCurrentPage - 1
+                                      )
+                                    }
+                                    disabled={stockTxCurrentPage === 1}
+                                    className="cursor-pointer px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    Previous
+                                  </button>
+                                  <div className="flex items-center gap-1">
+                                    {Array.from(
+                                      { length: stockTxTotalPages },
+                                      (_, i) => i + 1
+                                    ).map((page) => (
+                                      <button
+                                        key={page}
+                                        onClick={() =>
+                                          handleStockTxPageChange(page)
+                                        }
+                                        className={`cursor-pointer px-2 py-1 text-xs font-medium rounded ${stockTxCurrentPage === page
+                                          ? "bg-primary text-white"
+                                          : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
+                                          }`}
+                                      >
+                                        {page}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <button
+                                    onClick={() =>
+                                      handleStockTxPageChange(
+                                        stockTxCurrentPage + 1
+                                      )
+                                    }
+                                    disabled={
+                                      stockTxCurrentPage === stockTxTotalPages
+                                    }
+                                    className="cursor-pointer px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    Next
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <div className="text-center py-8 text-slate-500">
                             <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
@@ -1503,7 +1592,7 @@ export default function page() {
 
                     {/* Category-Specific Information - 30% width */}
                     <div className="col-span-3">
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 h-full">
+                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
                         <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
                           <Package className="w-4 h-4" />
                           Details
@@ -1613,9 +1702,9 @@ export default function page() {
           message="This will permanently delete this item from inventory. This action cannot be undone."
           comparingName={item ? item.item_id : ""}
           isDeleting={isDeleting}
+          entityType="item"
         />
 
-        <ToastContainer />
       </div>
     </AdminRoute>
   );

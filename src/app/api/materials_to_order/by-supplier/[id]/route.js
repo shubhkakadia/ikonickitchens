@@ -51,25 +51,22 @@ export async function GET(request, { params }) {
         // Include only items belonging to this supplier
         items: {
           where: {
-            item: { supplier_id: id },
+            item: {
+              supplier_id: id,
+              is_deleted: false,
+            },
           },
           include: {
             // Fetch selected item details and its linked sub-types
             item: {
-              select: {
-                category: true,
+              include: {
                 image: true,
-                quantity: true,
-                measurement_unit: true,
                 sheet: true,
                 handle: true,
                 hardware: true,
                 accessory: true,
                 edging_tape: true,
-                supplier_id: true,
-                supplier: {
-                  select: { supplier_id: true, name: true },
-                },
+                supplier: true,
               },
             },
           },

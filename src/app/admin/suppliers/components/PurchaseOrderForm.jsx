@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { X, FileText, Eye, Trash2, Package, ChevronDown, SquareArrowOutUpRight } from "lucide-react";
@@ -56,7 +56,8 @@ export default function PurchaseOrderForm({
       const items = mto.items
         .map((item) => {
           const mtoQuantity = parseFloat(item.quantity) || 0;
-          const mtoQuantityOrdered = parseFloat(item.quantity_ordered) || 0;
+          const mtoQuantityOrdered =
+            parseFloat(item.quantity_ordered_po) || 0;
           const remaining = Math.max(0, mtoQuantity - mtoQuantityOrdered);
 
           // If MTO is PARTIALLY_ORDERED, only include items with remaining > 0
@@ -416,7 +417,7 @@ export default function PurchaseOrderForm({
                           ? mto.items.some((it) => {
                             const qty = parseFloat(it.quantity) || 0;
                             const ordered =
-                              parseFloat(it.quantity_ordered) || 0;
+                              parseFloat(it.quantity_ordered_po) || 0;
                             return ordered < qty; // remaining to order
                           })
                           : false;
@@ -430,7 +431,8 @@ export default function PurchaseOrderForm({
                         {Array.isArray(mto.items)
                           ? mto.items.filter(
                             (it) =>
-                              (parseFloat(it.quantity_ordered) || 0) <
+                              (
+                                (parseFloat(it.quantity_ordered_po) || 0)) <
                               (parseFloat(it.quantity) || 0)
                           ).length
                           : 0}{" "}

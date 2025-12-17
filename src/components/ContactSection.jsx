@@ -487,19 +487,6 @@ export default function ContactSection({
                             ) : (
                                 // Edit/Create Mode - Use the same grid layout
                                 <div className="grid grid-cols-2 gap-2">
-                                    {!isCreateMode && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                Contact ID
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={selectedContact.id}
-                                                disabled
-                                                className="w-full text-sm text-slate-500 px-4 py-3 border border-slate-300 rounded-lg bg-slate-100"
-                                            />
-                                        </div>
-                                    )}
                                     {isCreateMode && (
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-2">

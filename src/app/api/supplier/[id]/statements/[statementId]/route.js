@@ -132,7 +132,6 @@ export async function PATCH(request, { params }) {
               mime_type: updateData._fileUploadResult.mimeType,
               extension: updateData._fileUploadResult.extension,
               size: updateData._fileUploadResult.size,
-              supplier_id: id,
             },
           });
           updateData.supplier_file_id = newFile.id;
@@ -237,12 +236,15 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Delete file from disk if it exists
-    if (statement.supplier_file) {
-      await deleteFileByRelativePath(statement.supplier_file.url);
+    // Soft delete supplier_file if it exists (before deleting statement)
+    if (statement.supplier_file && !statement.supplier_file.is_deleted) {
+      await prisma.supplier_file.update({
+        where: { id: statement.supplier_file.id },
+        data: { is_deleted: true },
+      });
     }
 
-    // Delete statement (cascade will handle supplier_file deletion)
+    // Delete statement (cascade will handle supplier_file relationship, but file is already soft deleted)
     await prisma.supplier_statement.delete({
       where: { id: statementId },
     });

@@ -7,7 +7,6 @@ import {
   PanelsTopLeft,
   InspectionPanel,
   Warehouse,
-  Landmark,
   LogOut,
   SquareArrowOutUpRight,
   ChevronDown,
@@ -117,78 +116,6 @@ export default function Sidebar() {
     },
   ];
 
-  // const { getUserData, getToken } = useAuth();
-  // const [moduleAccess, setModuleAccess] = useState(null);
-  // const [visibleNavdata, setVisibleNavdata] = useState(navdata);
-  // const [loading, setLoading] = useState(true);
-
-  // const siteMap = {
-  //   "/admin/dashboard": "dashboard",
-  //   "/admin/clients": "all_clients",
-  //   "/admin/clients/addclient": "add_clients",
-  //   "/admin/clients/[id]": "client_details",
-  //   "/admin/employees": "all_employees",
-  //   "/admin/employees/addemployee": "add_employees",
-  //   "/admin/employees/[id]": "employee_details",
-  //   "/admin/projects": "all_projects",
-  //   "/admin/projects/addproject": "add_projects",
-  //   "/admin/projects/[id]": "project_details",
-  //   "/admin/projects/lotatglance": "lotatglance",
-  //   "/admin/suppliers": "all_suppliers",
-  //   "/admin/suppliers/addsupplier": "add_suppliers",
-  //   "/admin/suppliers/[id]": "supplier_details",
-  //   "/admin/suppliers/materialstoorder": "materialstoorder",
-  //   "/admin/suppliers/purchaseorder": "purchaseorder",
-  //   "/admin/suppliers/statements": "statements",
-  //   "/admin/inventory/usedmaterial": "usedmaterial",
-  //   "/admin/logs": "logs",
-  //   "/admin/deletefiles": "deletedmedia",
-  //   "/admin/inventory": "all_items",
-  //   "/admin/inventory/additem": "add_items",
-  //   "/admin/inventory/[id]": "item_details",
-  // };
-
-  // useEffect(() => {
-  //   const fetchModuleAccess = async () => {
-  //     const user = getUserData();
-  //     const userId = user.user.id;
-  //     try {
-  //       const response = await axios.get(`/api/module_access/${userId}`, {
-  //         headers: {
-  //           Authorization: `Bearer ${getToken()}`,
-  //         },
-  //       });
-  //       if (response.data.status) {
-  //         setModuleAccess(response.data.data);
-  //         const allowed = [];
-
-  //         for (const item of navdata) {
-  //           if (response.data.data[siteMap[item.href]]) {
-  //             allowed.push({ ...item, access: response.data.data[siteMap[item.href]] });
-
-  //             for (const sub of item.subtabs ?? []) {
-  //               if (response.data.data[siteMap[sub.href]]) {
-  //                 allowed.push({ ...sub, access: response.data.data[siteMap[sub.href]] });
-  //               }
-  //             }
-  //           }
-  //         }
-  //         setModuleAccess(response.data.data);
-  //         setVisibleNavdata(allowed);
-  //         setLoading(false);
-
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching module access:', error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-  //   fetchModuleAccess();
-  // }, []);
-
-  // const key = siteMap[pathname];
-  // const access = moduleAccess?.[key];
   return (
     <div className="bg-slate-900 w-60 h-screen border-r border-slate-800">
       <div className="flex flex-col h-full px-4 py-4 gap-4">
@@ -206,8 +133,8 @@ export default function Sidebar() {
         <div className="flex flex-col justify-between flex-1 min-h-0 gap-4">
           <div className="flex flex-col overflow-y-auto pr-1 gap-1">
             {navdata.map((item) => {
-              const isActive = activeTab.href === item.href;
-              const isParentActive = activeTab.href.startsWith(item.href);
+              const isActive = pathname === item.href || (item.subtabs.length === 0 && pathname.startsWith(item.href + '/'));
+              const isParentActive = pathname.startsWith(item.href);
 
               if (item.subtabs.length > 0) {
                 // Get dropdown state based on label
@@ -319,7 +246,7 @@ export default function Sidebar() {
                     {dropdownOpen && (
                       <div className="mt-1.5 space-y-1.5 ml-2">
                         {item.subtabs.map((link) => {
-                          const isActiveSub = activeTab.href === link.href;
+                          const isActiveSub = pathname === link.href;
                           return (
                             <button
                               key={link.href}
@@ -447,19 +374,19 @@ export default function Sidebar() {
                   })
                 );
               }}
-              className={`cursor-pointer rounded-lg px-3 py-2.5 border transition-all duration-200 flex items-center gap-2 ${activeTab.href === "/admin/settings"
+              className={`cursor-pointer rounded-lg px-3 py-2.5 border transition-all duration-200 flex items-center gap-2 ${pathname === "/admin/settings"
                 ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                 : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
                 }`}
             >
               <Settings
-                className={`w-4 h-4 ${activeTab.href === "/admin/settings"
+                className={`w-4 h-4 ${pathname === "/admin/settings"
                   ? "text-white"
                   : "text-slate-400 group-hover:text-white"
                   }`}
               />
               <h1
-                className={`text-sm font-medium ${activeTab.href === "/admin/settings"
+                className={`text-sm font-medium ${pathname === "/admin/settings"
                   ? "text-white"
                   : "text-slate-300 group-hover:text-white"
                   }`}

@@ -1618,6 +1618,7 @@ export default function StageTable({
         heading="Stage"
         message="This will permanently delete the stage. This action cannot be undone."
         isDeleting={isDeletingStage}
+        entityType="stage"
       />
     </div>
   );

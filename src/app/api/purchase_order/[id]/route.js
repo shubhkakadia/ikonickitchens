@@ -140,8 +140,6 @@ export async function PATCH(request, { params }) {
         getFileFromFormData(form, "file");
       if (file) {
         const order_no = existing.order_no; // immutable
-        const supplier_id = existing.supplier_id; // needed for supplier_file link
-
         // Upload file with order_no as the filename base
         const uploadResult = await uploadFile(file, {
           uploadDir: "mediauploads",
@@ -158,7 +156,6 @@ export async function PATCH(request, { params }) {
             mime_type: uploadResult.mimeType,
             extension: uploadResult.extension,
             size: uploadResult.size,
-            supplier_id,
           },
         });
         uploadedInvoiceFileId = createdFile.id;

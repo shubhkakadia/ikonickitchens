@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Document, Page, pdfjs } from "react-pdf";
-import { ZoomOut, ZoomIn, Download, X, File } from "lucide-react";
+import { ZoomOut, ZoomIn, Download, X, File as FileIcon } from "lucide-react";
 import { toast } from "react-toastify";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -55,9 +55,10 @@ export default function ViewMedia({
                 width={1000}
                 height={1000}
                 src={
-                  selectedFile.isExisting
-                    ? selectedFile.url
-                    : URL.createObjectURL(selectedFile)
+                  selectedFile.url ||
+                  (selectedFile instanceof File || selectedFile instanceof Blob
+                    ? URL.createObjectURL(selectedFile)
+                    : null)
                 }
                 alt={selectedFile.name}
                 className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
@@ -69,7 +70,10 @@ export default function ViewMedia({
               <div className="w-full flex flex-col items-center gap-4 pb-8">
                 <Document
                   file={
-                    selectedFile.isExisting ? selectedFile.url : selectedFile
+                    selectedFile.url ||
+                    (selectedFile instanceof File || selectedFile instanceof Blob
+                      ? selectedFile
+                      : null)
                   }
                   onLoadSuccess={({ numPages }) => {
                     setNumPages(numPages);
@@ -105,9 +109,10 @@ export default function ViewMedia({
                 controls
                 className="max-w-full max-h-full rounded-lg shadow-lg"
                 src={
-                  selectedFile.isExisting
-                    ? selectedFile.url
-                    : URL.createObjectURL(selectedFile)
+                  selectedFile.url ||
+                  (selectedFile instanceof File || selectedFile instanceof Blob
+                    ? URL.createObjectURL(selectedFile)
+                    : null)
                 }
               >
                 Your browser does not support the video tag.
@@ -115,7 +120,7 @@ export default function ViewMedia({
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-slate-500">
-              <File className="w-16 h-16 mb-4 text-slate-400" />
+              <FileIcon className="w-16 h-16 mb-4 text-slate-400" />
               <p className="text-lg font-medium mb-2">Preview not available</p>
               <p className="text-sm mb-4">
                 This file type cannot be previewed in the browser
@@ -178,13 +183,20 @@ export default function ViewMedia({
                 if (selectedFile.isExisting) {
                   // For existing files, open in new tab or download
                   window.open(selectedFile.url, "_blank");
-                } else {
-                  // For new files, use blob download
+                } else if (selectedFile.url) {
+                  // For new files with object URL, use the provided URL
+                  const a = document.createElement("a");
+                  a.href = selectedFile.url;
+                  a.download = selectedFile.name;
+                  a.click();
+                } else if (selectedFile instanceof File || selectedFile instanceof Blob) {
+                  // For new files that are actual File/Blob objects, create object URL
                   const fileURL = URL.createObjectURL(selectedFile);
                   const a = document.createElement("a");
                   a.href = fileURL;
                   a.download = selectedFile.name;
                   a.click();
+                  URL.revokeObjectURL(fileURL);
                 }
               }}
               className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium shadow-lg pointer-events-auto"

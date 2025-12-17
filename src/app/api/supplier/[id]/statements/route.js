@@ -18,8 +18,11 @@ export async function GET(request, { params }) {
     const { id } = await params;
 
     // Validate supplier exists
-    const supplier = await prisma.supplier.findUnique({
-      where: { supplier_id: id },
+    const supplier = await prisma.supplier.findFirst({
+      where: { 
+        supplier_id: id,
+        is_deleted: false,
+      },
     });
 
     if (!supplier) {
@@ -141,7 +144,6 @@ export async function POST(request, { params }) {
             mime_type: uploadResult.mimeType,
             extension: uploadResult.extension,
             size: uploadResult.size,
-            supplier_id: id,
           },
         });
 

@@ -16,8 +16,11 @@ export async function GET(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const employee = await prisma.employees.findUnique({
-      where: { employee_id: id },
+    const employee = await prisma.employees.findFirst({
+      where: {
+        employee_id: id,
+        is_deleted: false,
+      },
       include: {
         image: true,
         user: {
@@ -27,6 +30,14 @@ export async function GET(request, { params }) {
         },
       },
     });
+
+    if (!employee) {
+      return NextResponse.json(
+        { status: false, message: "Employee not found" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
       {
         status: true,
@@ -270,7 +281,7 @@ export async function DELETE(request, { params }) {
     if (authError) return authError;
     const { id } = await params;
 
-    // Fetch employee with image relation before deleting
+    // Fetch employee with image relation before soft deleting
     const currentEmployee = await prisma.employees.findUnique({
       where: { employee_id: id },
       include: { image: true },
@@ -283,35 +294,32 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Handle image file deletion if exists
+    // Check if already deleted
+    if (currentEmployee.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Employee already deleted" },
+        { status: 400 }
+      );
+    }
+
+    // Handle image file soft deletion if exists
     if (currentEmployee.image_id && currentEmployee.image) {
       try {
-        // Store the image URL and ID before removing the reference
-        const imageUrl = currentEmployee.image.url;
-        const imageId = currentEmployee.image_id;
-
-        // First, update employee to remove image_id (remove foreign key reference)
-        await prisma.employees.update({
-          where: { id: currentEmployee.id },
-          data: { image_id: null },
+        // Soft delete the media record instead of hard deleting
+        await prisma.media.update({
+          where: { id: currentEmployee.image_id },
+          data: { is_deleted: true },
         });
-
-        // Now safe to delete the media record (no foreign key constraint)
-        await prisma.media.delete({
-          where: { id: imageId },
-        });
-
-        // Finally, delete the file from disk
-        await deleteFileByRelativePath(imageUrl);
       } catch (error) {
-        console.error("Error handling image deletion:", error);
-        // Continue with employee deletion even if image deletion fails
+        console.error("Error handling image soft deletion:", error);
+        // Continue with employee soft deletion even if image soft deletion fails
       }
     }
 
-    // Now delete the employee record
-    const employee = await prisma.employees.delete({
+    // Soft delete the employee record (set is_deleted flag)
+    const employee = await prisma.employees.update({
       where: { employee_id: id },
+      data: { is_deleted: true },
     });
 
     const logged = await withLogging(
@@ -324,8 +332,8 @@ export async function DELETE(request, { params }) {
     if (!logged) {
       console.error(`Failed to log employee deletion: ${id} - ${employee.first_name} ${employee.last_name}`);
       return NextResponse.json(
-        { 
-          status: true, 
+        {
+          status: true,
           message: "Employee deleted successfully",
           data: employee,
           warning: "Note: Deletion succeeded but logging failed"

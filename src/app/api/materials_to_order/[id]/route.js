@@ -76,12 +76,15 @@ export async function PATCH(request, { params }) {
 
     const { id } = await params;
     const data = await request.json();
-    const { status, notes, items } = data;
+    const { status, notes, items, used_material_completed } = data;
 
     // Build the update data object
     const updateData = {};
     if (status !== undefined) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
+    if (used_material_completed !== undefined) {
+      updateData.used_material_completed = used_material_completed;
+    }
 
     // Handle items updates
     if (items !== undefined) {
@@ -96,35 +99,121 @@ export async function PATCH(request, { params }) {
       };
     }
 
-    const mto = await prisma.materials_to_order.update({
-      where: { id },
-      data: updateData,
-      include: {
-        lots: {
-          include: {
-            project: true,
-          },
+    const includeMto = {
+      lots: {
+        include: {
+          project: true,
         },
-        items: {
-          include: {
-            item: {
-              include: {
-                sheet: true,
-                handle: true,
-                hardware: true,
-                accessory: true,
-                edging_tape: true,
-                image: true,
-              },
+      },
+      items: {
+        include: {
+          item: {
+            include: {
+              sheet: true,
+              handle: true,
+              hardware: true,
+              accessory: true,
+              edging_tape: true,
+              image: true,
             },
           },
         },
-        project: {
-          include: {
-            lots: true,
-          },
+      },
+      project: {
+        include: {
+          lots: true,
         },
       },
+    };
+
+    let mto;
+    await prisma.$transaction(async (tx) => {
+      const prev = await tx.materials_to_order.findUnique({
+        where: { id },
+        select: { used_material_completed: true },
+      });
+
+      if (!prev) {
+        throw new Error("Materials to order not found");
+      }
+
+      // One-way process: once completed, it cannot be reverted
+      if (used_material_completed === false) {
+        throw new Error("USED_MATERIAL_COMPLETION_CANNOT_BE_REVERTED");
+      }
+
+      // Update MTO (including optional items update)
+      mto = await tx.materials_to_order.update({
+        where: { id },
+        data: updateData,
+        include: includeMto,
+      });
+
+      const turningCompleted =
+        used_material_completed === true && !prev.used_material_completed;
+
+      // When marking completed, create USED stock transactions for remaining qty
+      if (turningCompleted) {
+        const mtoItems = await tx.materials_to_order_item.findMany({
+          where: { mto_id: id },
+          select: {
+            id: true,
+            item_id: true,
+            quantity: true,
+            quantity_used: true,
+          },
+        });
+
+        for (const it of mtoItems) {
+          const used = it.quantity_used || 0;
+          const total = it.quantity || 0;
+          const remaining = total - used;
+          if (remaining <= 0) continue;
+
+          // Decrement inventory for remaining qty (guard against negative)
+          const dec = await tx.item.updateMany({
+            where: {
+              item_id: it.item_id,
+              quantity: { gte: remaining },
+            },
+            data: { quantity: { decrement: remaining } },
+          });
+
+          if (dec.count === 0) {
+            const current = await tx.item.findUnique({
+              where: { item_id: it.item_id },
+              select: { quantity: true },
+            });
+            const available = current?.quantity ?? 0;
+            throw new Error(
+              `INSUFFICIENT_INVENTORY:${it.item_id}:${remaining}:${available}`
+            );
+          }
+
+          // Mark item fully used
+          await tx.materials_to_order_item.update({
+            where: { id: it.id },
+            data: { quantity_used: total },
+          });
+
+          // Create USED stock transaction for remaining qty
+          await tx.stock_transaction.create({
+            data: {
+              item_id: it.item_id,
+              quantity: remaining,
+              type: "USED",
+              materials_to_order_id: id,
+              notes: `Auto USED on marking MTO completed (${id})`,
+            },
+          });
+        }
+
+        // Re-fetch MTO so response shows updated quantity_used values
+        mto = await tx.materials_to_order.findUnique({
+          where: { id },
+          include: includeMto,
+        });
+      }
     });
 
     // Fetch media separately
@@ -141,7 +230,14 @@ export async function PATCH(request, { params }) {
       media: media,
     };
 
-    const logged = await withLogging(request, "materials_to_order", id, "UPDATE", `Materials to order updated successfully for project: ${mto.project.name}`);
+    const projectName = mto.project?.name || "Unknown";
+    const logged = await withLogging(
+      request,
+      "materials_to_order",
+      id,
+      "UPDATE",
+      `Materials to order updated successfully for project: ${projectName}`
+    );
     if (!logged) {
       console.error(`Failed to log materials to order update: ${id}`);
     }
@@ -155,6 +251,36 @@ export async function PATCH(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
+    const msg = error?.message || "";
+    if (msg.startsWith("INSUFFICIENT_INVENTORY:")) {
+      const [, requested, available] = msg.split(":");
+      return NextResponse.json(
+        {
+          status: false,
+          message: `Not enough quantity in inventory. Available: ${available}, Requested: ${requested}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    if (msg === "USED_MATERIAL_COMPLETION_CANNOT_BE_REVERTED") {
+      return NextResponse.json(
+        {
+          status: false,
+          message:
+            "This MTO is already completed for used material and cannot be moved back to active.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (msg === "Materials to order not found") {
+      return NextResponse.json(
+        { status: false, message: msg },
+        { status: 404 }
+      );
+    }
+
     console.error("Error in PATCH /api/materials_to_order/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },

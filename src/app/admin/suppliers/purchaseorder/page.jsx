@@ -6,7 +6,7 @@ import { AdminRoute } from "@/components/ProtectedRoute";
 import PaginationFooter from "@/components/PaginationFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
@@ -2546,6 +2546,7 @@ export default function page() {
         message="This will permanently delete the purchase order and all its associated data. This action cannot be undone."
         comparingName={poPendingDelete?.order_no || ""}
         isDeleting={deletingPOId !== null}
+        entityType="purchase_order"
       />
 
       {showCreatePOModal && (
@@ -2555,18 +2556,6 @@ export default function page() {
         />
       )}
 
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
     </AdminRoute>
   );
 }

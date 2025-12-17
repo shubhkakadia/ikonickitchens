@@ -13,8 +13,11 @@ export async function GET(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const item = await prisma.item.findUnique({
-      where: { item_id: id },
+    const item = await prisma.item.findFirst({
+      where: {
+        item_id: id,
+        is_deleted: false,
+      },
       include: {
         image: true,
         sheet: true,
@@ -427,28 +430,56 @@ export async function DELETE(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
+
     const item = await prisma.item.findUnique({
       where: { item_id: id },
+      include: { image: true },
     });
+
     if (!item) {
       return NextResponse.json(
         { status: false, message: "Item not found" },
         { status: 404 }
       );
     }
-    await prisma.item.delete({
-      where: { item_id: id },
-    });
-    const logged = await withLogging(request, "item", id, "DELETE", `Item deleted successfully: ${item.name}`);
-    if (!logged) {
-      console.error(`Failed to log item deletion: ${id} - ${item.name}`);
+
+    if (item.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Item already deleted" },
+        { status: 400 }
+      );
     }
-    // delete file from storage
+
+    // Handle image file soft deletion if exists
+    if (item.image_id && item.image) {
+      try {
+        // Soft delete the media record instead of hard deleting
+        await prisma.media.update({
+          where: { id: item.image_id },
+          data: { is_deleted: true },
+        });
+      } catch (error) {
+        console.error("Error handling image soft deletion:", error);
+        // Continue with item soft deletion even if image soft deletion fails
+      }
+    }
+
+    // Soft delete the item record (set is_deleted flag)
+    const deletedItem = await prisma.item.update({
+      where: { item_id: id },
+      data: { is_deleted: true },
+    });
+
+    const logged = await withLogging(request, "item", id, "DELETE", `Item deleted successfully: ${item.description || item.item_id}`);
+    if (!logged) {
+      console.error(`Failed to log item deletion: ${id} - ${item.description || item.item_id}`);
+    }
+
     return NextResponse.json(
-      { 
-        status: true, 
-        message: "Item deleted successfully", 
-        data: item,
+      {
+        status: true,
+        message: "Item deleted successfully",
+        data: deletedItem,
         ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" })
       },
       { status: 200 }

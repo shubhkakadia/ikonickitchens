@@ -10,7 +10,10 @@ export async function GET(request, { params }) {
     
     // First, get distinct categories for items with this supplier_id
     const itemsWithCategories = await prisma.item.findMany({
-      where: { supplier_id: id },
+      where: { 
+        supplier_id: id,
+        is_deleted: false,
+      },
       select: { category: true },
     });
     
@@ -40,7 +43,10 @@ export async function GET(request, { params }) {
     });
     
     const items = await prisma.item.findMany({
-      where: { supplier_id: id },
+      where: { 
+        supplier_id: id,
+        is_deleted: false,
+      },
       include,
     });
     return NextResponse.json(

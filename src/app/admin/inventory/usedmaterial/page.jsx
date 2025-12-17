@@ -5,7 +5,7 @@ import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
   ChevronDown,
@@ -1319,7 +1319,6 @@ export default function page() {
           </div>
         </div>
       </div>
-      <ToastContainer />
 
       {/* Manual Add Material Modal */}
       {showManualAddModal && (

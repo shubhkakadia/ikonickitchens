@@ -20,7 +20,7 @@ import {
   SquareArrowOutUpRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import axios from "axios";
 import { useState } from "react";
 import { CiMenuKebab } from "react-icons/ci";
@@ -2838,7 +2838,6 @@ export default function page() {
           entityType="lot_file"
         />
 
-        <ToastContainer />
       </div>
     </AdminRoute>
   );

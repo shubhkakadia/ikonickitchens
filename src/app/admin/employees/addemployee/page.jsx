@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import TabsController from "@/components/tabscontroller";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
@@ -843,7 +843,6 @@ export default function page() {
             </div>
           </div>
         </div>
-        <ToastContainer />
       </AdminRoute>
     </div>
   );

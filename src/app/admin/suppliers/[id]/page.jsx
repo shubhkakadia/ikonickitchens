@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ContactSection from "@/components/ContactSection";
@@ -1128,7 +1128,6 @@ export default function page() {
           entityType="supplier"
         />
 
-        <ToastContainer />
       </div>
     </AdminRoute>
   );

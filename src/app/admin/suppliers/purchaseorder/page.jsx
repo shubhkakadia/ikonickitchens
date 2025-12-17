@@ -6,7 +6,7 @@ import { AdminRoute } from "@/components/ProtectedRoute";
 import PaginationFooter from "@/components/PaginationFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
@@ -2556,18 +2556,6 @@ export default function page() {
         />
       )}
 
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
     </AdminRoute>
   );
 }

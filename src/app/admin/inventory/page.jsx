@@ -29,7 +29,6 @@ import {
   AlertTriangle,
   ClipboardList,
 } from "lucide-react";
-import { ToastContainer } from "react-toastify";
 import StockTally from "@/components/StockTally.jsx";
 import MultiSelectDropdown from "./components/MultiSelectDropdown";
 
@@ -1843,7 +1842,6 @@ export default function page() {
           />
         )}
 
-        <ToastContainer />
       </div>
     </AdminRoute>
   );

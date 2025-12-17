@@ -27,7 +27,7 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { CiMenuKebab } from "react-icons/ci";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
   validateEmail,
@@ -2105,7 +2105,6 @@ export default function EmployeeDetailPage() {
           />
         )}
 
-        <ToastContainer />
       </div>
     </AdminRoute>
   );

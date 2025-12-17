@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { X, FileText, Eye, Trash2, Package, ChevronDown, SquareArrowOutUpRight } from "lucide-react";

@@ -26,7 +26,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import TabsController from "@/components/tabscontroller";
 import Image from "next/image";
@@ -1705,7 +1705,6 @@ export default function page() {
           entityType="item"
         />
 
-        <ToastContainer />
       </div>
     </AdminRoute>
   );

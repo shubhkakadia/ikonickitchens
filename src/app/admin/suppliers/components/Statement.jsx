@@ -17,6 +17,21 @@ import { toast } from "react-toastify";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const formatCurrency = (value) => {
+  if (value === null || value === undefined || value === "") return "-";
+  const num =
+    typeof value === "number"
+      ? value
+      : parseFloat(String(value).replace(/,/g, ""));
+  if (!Number.isFinite(num)) return "-";
+  return `$${currencyFormatter.format(num)}`;
+};
+
 export default function Statement({ supplierId }) {
   const { getToken } = useAuth();
   const [statements, setStatements] = useState([]);
@@ -602,9 +617,7 @@ export default function Statement({ supplierId }) {
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span className="text-xs text-slate-900">
-                        {statement.amount
-                          ? `$${parseFloat(statement.amount).toFixed(2)}`
-                          : "-"}
+                        {formatCurrency(statement.amount)}
                       </span>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">

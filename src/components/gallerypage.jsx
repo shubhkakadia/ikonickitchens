@@ -40,6 +40,21 @@ export default function GalleryPage({ title, description, images }) {
     return () => clearTimeout(timer);
   }, []);
 
+  // Disable body scroll when modal is open
+  useEffect(() => {
+    if (selectedImage) {
+      // Save current overflow value
+      const originalOverflow = document.body.style.overflow;
+      // Disable scrolling
+      document.body.style.overflow = "hidden";
+
+      // Cleanup: restore original overflow when modal closes or component unmounts
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [selectedImage]);
+
   const handleImageClick = (imageSrc) => {
     setSelectedImage(imageSrc);
   };
@@ -56,16 +71,14 @@ export default function GalleryPage({ title, description, images }) {
       <div className="pt-32 pb-16 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <h1
-            className={`text-4xl md:text-6xl font-bold text-gray-900 mb-6 transition-all duration-1000 ${
-              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-            }`}
+            className={`text-4xl md:text-6xl font-bold text-gray-900 mb-6 transition-all duration-1000 ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+              }`}
           >
             Luxury <span className="text-gradient">{title}</span> Designs
           </h1>
           <p
-            className={`text-xl text-gray-600 max-w-3xl mx-auto mb-12 transition-all duration-1000 delay-300 ${
-              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-            }`}
+            className={`text-xl text-gray-600 max-w-3xl mx-auto mb-12 transition-all duration-1000 delay-300 ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+              }`}
           >
             {description}
           </p>
@@ -75,32 +88,32 @@ export default function GalleryPage({ title, description, images }) {
       {/* Image Modal */}
       {selectedImage && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={closeCarousel}
         >
           <div className="relative w-full max-w-7xl h-full flex items-center justify-center">
-            <button
-              onClick={closeCarousel}
-              className="absolute top-4 right-4 z-10 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full transition-all duration-300 hover:scale-110"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
             <div
-              className="relative max-w-full max-h-full"
+              className="shadow-2xl relative max-w-full max-h-full rounded-lg"
               onClick={(e) => e.stopPropagation()}
             >
+              <button
+                onClick={closeCarousel}
+                className="cursor-pointer shadow-2xl border-2 border-white/20 absolute top-4 right-4 z-10 bg-white/20 hover:bg-white/30 text-white p-3 rounded-full transition-all duration-300 hover:scale-110"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
               <Image
                 loading="lazy"
                 src={selectedImage}
@@ -124,11 +137,10 @@ export default function GalleryPage({ title, description, images }) {
                 key={index}
                 ref={(el) => (imageRefs.current[index] = el)}
                 data-index={index}
-                className={`group cursor-pointer transition-all duration-700 ${
-                  visibleImages.includes(index)
-                    ? "opacity-100 translate-y-0 scale-100"
-                    : "opacity-0 translate-y-8 scale-95"
-                }`}
+                className={`group cursor-pointer transition-all duration-700 ${visibleImages.includes(index)
+                  ? "opacity-100 translate-y-0 scale-100"
+                  : "opacity-0 translate-y-8 scale-95"
+                  }`}
                 style={{
                   transitionDelay: `${index * 100}ms`,
                   animationDelay: `${index * 100}ms`,

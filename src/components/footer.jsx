@@ -264,6 +264,17 @@ export default function Footer() {
           <div className="text-gray-400 text-sm mb-2 md:mb-0 text-center">
             © 2025 Ikonic Kitchens | All Rights Reserved
           </div>
+          <div className="text-gray-400 text-sm text-center">
+            Developed by{" "}
+            <Link
+              href="https://shubhkakadia.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#B92F34] hover:text-white transition-colors duration-200"
+            >
+              Shubh Kakadia
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

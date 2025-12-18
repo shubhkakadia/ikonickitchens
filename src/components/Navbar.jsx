@@ -14,6 +14,7 @@ export default function Navbar({ bar }) {
     { label: "BATHROOM", href: "/bathroom" },
     { label: "WARDROBES", href: "/wardrobes" },
     { label: "PORTFOLIO", href: "/portfolio" },
+    { label: "BLOGS", href: "/blogs" },
   ];
 
   const toggleMenu = () => {
@@ -116,6 +117,13 @@ export default function Navbar({ bar }) {
               className="text-white hover:text-[#B92F34] font-light transition-colors duration-200 relative group text-sm xl:text-base"
             >
               PORTFOLIO
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#B92F34] transition-all duration-200 group-hover:w-full"></span>
+            </Link>
+            <Link
+              href={"/blogs"}
+              className="text-white hover:text-[#B92F34] font-light transition-colors duration-200 relative group text-sm xl:text-base"
+            >
+              BLOGS
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#B92F34] transition-all duration-200 group-hover:w-full"></span>
             </Link>
             <Link

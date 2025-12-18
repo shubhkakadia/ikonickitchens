@@ -31,6 +31,21 @@ import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const formatCurrency = (value) => {
+  if (value === null || value === undefined || value === "") return "-";
+  const num =
+    typeof value === "number"
+      ? value
+      : parseFloat(String(value).replace(/,/g, ""));
+  if (!Number.isFinite(num)) return "-";
+  return `$${currencyFormatter.format(num)}`;
+};
+
 export default function StatementsPage() {
   const dispatch = useDispatch();
   const { getToken } = useAuth();
@@ -1449,11 +1464,7 @@ export default function StatementsPage() {
                                     ).toLocaleDateString()}
                                   </td>
                                   <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
-                                    {statement.amount
-                                      ? `$${parseFloat(
-                                        statement.amount
-                                      ).toFixed(2)}`
-                                      : "-"}
+                                    {formatCurrency(statement.amount)}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">
                                     <div

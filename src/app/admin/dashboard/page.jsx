@@ -12,7 +12,6 @@ import {
   Layers,
   ClipboardList,
   ShoppingCart,
-  TrendingUp,
   Package,
   RefreshCcw,
   History,
@@ -23,6 +22,7 @@ import {
   RotateCcw,
   Database,
   HardDrive,
+  Target,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -36,7 +36,7 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { Line, Doughnut } from "react-chartjs-2";
+import { Doughnut } from "react-chartjs-2";
 import Sidebar from "../../../components/sidebar";
 
 // Register Chart.js components
@@ -85,23 +85,23 @@ const KPICard = ({
 }) => (
   <div
     onClick={onClick}
-    className={`bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all duration-300 group ${onClick ? 'cursor-pointer' : ''}`}
+    className={`bg-white rounded-lg border border-slate-200 p-3 shadow-sm hover:shadow-md transition-all duration-300 group ${onClick ? 'cursor-pointer' : ''}`}
   >
     <div className="flex items-start justify-between">
       <div className="flex-1">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
           {title}
         </p>
-        <h3 className="text-2xl font-bold text-slate-800">
+        <h3 className="text-xl font-bold text-slate-800">
           {prefix}
           {typeof value === "number" ? value.toLocaleString() : value}
         </h3>
-        {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+        {subtitle && <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>}
       </div>
       <div
-        className={`p-3 rounded-xl ${color} transition-transform duration-300 group-hover:scale-110`}
+        className={`p-2 rounded-lg ${color} transition-transform duration-300 group-hover:scale-110`}
       >
-        <Icon className="w-5 h-5 text-white" />
+        <Icon className="w-4 h-4 text-white" />
       </div>
     </div>
   </div>
@@ -201,15 +201,13 @@ const getStatusColor = (status) => {
 };
 
 export default function page() {
-  const { getToken } = useAuth();
+  const { getToken, userData } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [logsData, setLogsData] = useState([]);
   const [logsLoading, setLogsLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState("all");
-  const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
   const [dashboardYearFilter, setDashboardYearFilter] = useState("all");
   const [dashboardYearDropdownOpen, setDashboardYearDropdownOpen] = useState(false);
   const [dashboardMonthFilter, setDashboardMonthFilter] = useState("all");
@@ -221,6 +219,9 @@ export default function page() {
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [employeeData, setEmployeeData] = useState(null);
+  const [employeeLoading, setEmployeeLoading] = useState(false);
 
   const fetchDashboard = async () => {
     try {
@@ -308,18 +309,84 @@ export default function page() {
     }
   };
 
+  const fetchEmployeeData = async () => {
+    if (!userData?.user?.employee_id) return;
+
+    try {
+      setEmployeeLoading(true);
+      const sessionToken = getToken();
+      if (!sessionToken) return;
+
+      const response = await axios.get(
+        `/api/employee/${userData.user.employee_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        }
+      );
+
+      if (response.data.status) {
+        setEmployeeData(response.data.data);
+      }
+    } catch (err) {
+      console.error("Employee API Error:", err);
+    } finally {
+      setEmployeeLoading(false);
+    }
+  };
+
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour >= 5 && hour < 12) {
+      return "Good Morning!";
+    } else if (hour >= 12 && hour < 17) {
+      return "Good Afternoon!";
+    } else {
+      return "Good Evening!";
+    }
+  };
+
+  // Format date and time with seconds
+  const formatDateTime = () => {
+    return currentTime.toLocaleString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  };
+
   useEffect(() => {
     fetchDashboard();
     fetchLogs();
     fetchStorageUsage();
   }, [dashboardYearFilter, dashboardMonthFilter]);
 
+  // Real-time clock update
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fetch employee data when userData is available
+  useEffect(() => {
+    if (userData?.user?.employee_id) {
+      fetchEmployeeData();
+    }
+  }, [userData?.user?.employee_id]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest(".year-dropdown-container")) {
-        setYearDropdownOpen(false);
-      }
       if (!event.target.closest(".dashboard-year-dropdown-container")) {
         setDashboardYearDropdownOpen(false);
       }
@@ -490,16 +557,6 @@ export default function page() {
     );
   };
 
-  // Get available years from spending data
-  const getAvailableYears = () => {
-    if (!dashboardData?.totalSpent) return [];
-    const years = new Set();
-    dashboardData.totalSpent.forEach((item) => {
-      const year = item.month_year.split("-")[0];
-      years.add(year);
-    });
-    return Array.from(years).sort((a, b) => b - a);
-  };
 
   // Get all available years from dashboard data (from multiple sources)
   const getAllDashboardYears = () => {
@@ -545,25 +602,6 @@ export default function page() {
     return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   };
 
-  // Get filtered totalSpent for charts (respects dashboard filters)
-  const getFilteredTotalSpentForCharts = () => {
-    if (!dashboardData?.totalSpent) return [];
-
-    let filtered = dashboardData.totalSpent;
-
-    // Filter by dashboard year filter
-    if (dashboardYearFilter !== "all") {
-      filtered = filtered.filter(item => item.month_year.startsWith(dashboardYearFilter));
-    }
-
-    // Filter by dashboard month filter
-    if (dashboardMonthFilter !== "all" && dashboardYearFilter !== "all") {
-      const monthStr = dashboardMonthFilter.padStart(2, "0");
-      filtered = filtered.filter(item => item.month_year === `${dashboardYearFilter}-${monthStr}`);
-    }
-
-    return filtered;
-  };
 
   // Format month_year to readable format
   const formatMonthYear = (monthYear) => {
@@ -615,67 +653,6 @@ export default function page() {
     });
   };
 
-  // Transform totalSpent data for Chart.js line chart
-  const getSupplierLineChartData = () => {
-    // Start with dashboard-filtered data
-    let filteredData = getFilteredTotalSpentForCharts();
-
-    // Apply chart's own year filter on top of dashboard filters
-    if (selectedYear !== "all") {
-      filteredData = filteredData.filter((item) =>
-        item.month_year.startsWith(selectedYear)
-      );
-    }
-
-    if (filteredData.length === 0) return null;
-
-    // Get unique months and suppliers
-    const monthsSet = new Set();
-    const suppliersSet = new Set();
-
-    filteredData.forEach((item) => {
-      monthsSet.add(item.month_year);
-      suppliersSet.add((item.supplier?.name || "other").toLowerCase());
-    });
-
-    const months = Array.from(monthsSet).sort();
-    const suppliers = Array.from(suppliersSet);
-
-    // Build datasets for each supplier
-    const datasets = suppliers.map((supplier, index) => {
-      const data = months.map((month) => {
-        const item = filteredData.find(
-          (d) =>
-            d.month_year === month &&
-            (d.supplier?.name || "other").toLowerCase() === supplier
-        );
-        return item ? parseFloat(item.amount || 0) : 0;
-      });
-
-      const color =
-        SUPPLIER_COLORS[supplier] || CHART_COLORS[index % CHART_COLORS.length];
-
-      return {
-        label: supplier.charAt(0).toUpperCase() + supplier.slice(1),
-        data,
-        borderColor: color,
-        backgroundColor: color + "20",
-        borderWidth: 2,
-        fill: false,
-        tension: 0.4,
-        pointRadius: 4,
-        pointBackgroundColor: "#fff",
-        pointBorderColor: color,
-        pointBorderWidth: 2,
-        pointHoverRadius: 6,
-      };
-    });
-
-    return {
-      labels: months.map(formatMonthYear),
-      datasets,
-    };
-  };
 
   // Transform lotsByStage for Chart.js doughnut chart
   const getLotsByStageChartData = () => {
@@ -749,31 +726,6 @@ export default function page() {
     };
   };
 
-  // Get filtered totalSpent based on year/month filters
-  const getFilteredTotalSpent = () => {
-    if (!dashboardData?.totalSpent) return [];
-
-    let filtered = dashboardData.totalSpent;
-
-    // Filter by year
-    if (dashboardYearFilter !== "all") {
-      filtered = filtered.filter(item => item.month_year.startsWith(dashboardYearFilter));
-    }
-
-    // Filter by month
-    if (dashboardMonthFilter !== "all" && dashboardYearFilter !== "all") {
-      const monthStr = dashboardMonthFilter.padStart(2, "0");
-      filtered = filtered.filter(item => item.month_year === `${dashboardYearFilter}-${monthStr}`);
-    }
-
-    return filtered;
-  };
-
-  // Calculate total spent based on filters
-  const getTotalSpent = () => {
-    const filtered = getFilteredTotalSpent();
-    return filtered.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
-  };
 
   // Get filtered and sorted stages due (by least days left first)
   const getSortedStagesDue = () => {
@@ -810,64 +762,10 @@ export default function page() {
     });
   };
 
-  const supplierChartData = getSupplierLineChartData();
   const lotsByStageChartData = getLotsByStageChartData();
   const mtosByStatusChartData = getMTOsByStatusChartData();
   const posByStatusChartData = getPOsByStatusChartData();
-  const availableYears = getAvailableYears();
   const sortedStagesDue = getSortedStagesDue();
-
-  // Chart.js options for line chart
-  const lineChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "bottom",
-        labels: {
-          usePointStyle: true,
-          padding: 20,
-          font: {
-            size: 12,
-          },
-        },
-      },
-      tooltip: {
-        backgroundColor: "#1e293b",
-        titleFont: { size: 13 },
-        bodyFont: { size: 12 },
-        padding: 12,
-        cornerRadius: 8,
-        callbacks: {
-          label: (context) => {
-            return `${context.dataset.label
-              }: $${context.parsed.y.toLocaleString()}`;
-          },
-        },
-      },
-    },
-    scales: {
-      x: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          color: "#64748b",
-          font: { size: 12 },
-        },
-      },
-      y: {
-        grid: {
-          color: "#e2e8f0",
-        },
-        ticks: {
-          color: "#64748b",
-          font: { size: 12 },
-          callback: (value) => `$${value}`,
-        },
-      },
-    },
-  };
 
   // Chart.js options for doughnut charts
   const doughnutChartOptions = {
@@ -936,15 +834,29 @@ export default function page() {
               </div>
             ) : (
               <div className="p-6 space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
+                {/* Header with Greeting */}
+                <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h1 className="text-2xl font-bold text-slate-800">
-                      Dashboard
-                    </h1>
-                    <p className="text-slate-500 text-sm mt-1">
-                      Overview of your business operations
-                    </p>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div>
+                        <h1 className="text-5xl font-bold text-slate-800">
+                          {getGreeting()}
+                        </h1>
+                        <h1 className="text-5xl font-bold text-slate-800">
+                          {employeeData && (
+                            <span className="ml-3 text-secondary">
+                              {employeeData.first_name}
+                              {employeeData.last_name && ` ${employeeData.last_name}`}
+                            </span>
+                          )}</h1>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-600">
+                      {/* <Calendar className="w-5 h-5" /> */}
+                      <p className="text-base font-medium">
+                        {formatDateTime()}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     {renderSearchSection()}
@@ -1101,7 +1013,7 @@ export default function page() {
                 </div>
 
                 {/* KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
                   <KPICard
                     title="Active Projects"
                     value={dashboardData?.activeProjects || 0}
@@ -1134,13 +1046,18 @@ export default function page() {
                     onClick={() => router.push("/admin/suppliers/purchaseorder")}
                   />
                   <KPICard
-                    title="Total Spent this year"
-                    value={getTotalSpent()}
-                    icon={TrendingUp}
-                    color="bg-linear-to-br from-slate-700 to-slate-800"
-                    subtitle="Across all suppliers"
-                    prefix="$"
-                    onClick={() => router.push("/admin/suppliers/statements")}
+                    title="Projects Completed"
+                    value={dashboardData?.projectsCompletedThisMonth || 0}
+                    icon={Target}
+                    color="bg-linear-to-br from-green-500 to-green-600"
+                    subtitle="This month"
+                  />
+                  <KPICard
+                    title="Avg Project Duration"
+                    value={dashboardData?.averageProjectDuration > 0 ? dashboardData.averageProjectDuration : 0}
+                    icon={Clock}
+                    color="bg-linear-to-br from-rose-500 to-rose-600"
+                    subtitle={dashboardData?.averageProjectDuration > 0 ? `${dashboardData.averageProjectDuration} days` : "No completed projects"}
                   />
                 </div>
 
@@ -1279,71 +1196,6 @@ export default function page() {
                       </div>
                     )}
                   </ChartCard>
-                </div>
-
-                {/* Supplier Spending Line Chart */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-700">
-                      Supplier Spending
-                    </h3>
-                    {/* Year Dropdown */}
-                    <div className="relative year-dropdown-container">
-                      <button
-                        onClick={() => setYearDropdownOpen(!yearDropdownOpen)}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                      >
-                        {selectedYear === "all" ? "All Years" : selectedYear}
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-                      {yearDropdownOpen && (
-                        <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                          <button
-                            onClick={() => {
-                              setSelectedYear("all");
-                              setYearDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${selectedYear === "all"
-                              ? "text-secondary font-medium"
-                              : "text-slate-600"
-                              }`}
-                          >
-                            All Years
-                          </button>
-                          {availableYears.map((year) => (
-                            <button
-                              key={year}
-                              onClick={() => {
-                                setSelectedYear(year);
-                                setYearDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${selectedYear === year
-                                ? "text-secondary font-medium"
-                                : "text-slate-600"
-                                }`}
-                            >
-                              {year}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-5">
-                    {supplierChartData ? (
-                      <div style={{ height: "280px" }}>
-                        <Line
-                          data={supplierChartData}
-                          options={lineChartOptions}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-[280px] flex items-center justify-center text-slate-400 text-sm">
-                        No spending data available
-                        {selectedYear !== "all" && " for " + selectedYear}
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 {/* Top Items and Logs - Side by Side */}

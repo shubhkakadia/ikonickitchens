@@ -156,6 +156,8 @@ export async function POST(request) {
       top10items: {},
       top10itemsCount: {},
       topstagesDue: {},
+      projectsCompletedThisMonth: 0,
+      averageProjectDuration: 0,
     };
 
     // Build all where clauses first (no database calls yet)
@@ -273,6 +275,37 @@ export async function POST(request) {
       }),
     };
 
+    // Projects Completed This Month - projects with at least one completed lot this month
+    const currentMonthStart = new Date();
+    currentMonthStart.setDate(1);
+    currentMonthStart.setHours(0, 0, 0, 0);
+    const currentMonthEnd = new Date();
+    currentMonthEnd.setMonth(currentMonthEnd.getMonth() + 1);
+    currentMonthEnd.setDate(0);
+    currentMonthEnd.setHours(23, 59, 59, 999);
+
+    const projectsCompletedThisMonthWhere = {
+      lots: {
+        some: {
+          status: "COMPLETED",
+          updatedAt: {
+            gte: currentMonthStart,
+            lte: currentMonthEnd,
+          },
+        },
+      },
+    };
+
+    // Average Project Duration - calculate average duration for completed projects
+    // Duration = time from first lot startDate to last lot completion
+    const completedProjectsWhere = {
+      lots: {
+        some: {
+          status: "COMPLETED",
+        },
+      },
+    };
+
     // Execute all independent queries in parallel
     const [
       activeProjects,
@@ -285,6 +318,8 @@ export async function POST(request) {
       purchaseOrdersByStatus,
       allItemsCount,
       topstagesDue,
+      projectsCompletedThisMonth,
+      completedProjects,
     ] = await Promise.all([
       prisma.project.count({ where: activeProjectsWhere }),
       prisma.lot.count({ where: activeLotsWhere }),
@@ -328,6 +363,21 @@ export async function POST(request) {
           endDate: "asc",
         },
       }),
+      prisma.project.count({ where: projectsCompletedThisMonthWhere }),
+      prisma.project.findMany({
+        where: completedProjectsWhere,
+        include: {
+          lots: {
+            where: {
+              status: "COMPLETED",
+            },
+            select: {
+              startDate: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
     ]);
 
     // Assign results to dashboard data
@@ -340,6 +390,44 @@ export async function POST(request) {
     dashboardData.MTOsByStatus = MTOsByStatus;
     dashboardData.purchaseOrdersByStatus = purchaseOrdersByStatus;
     dashboardData.topstagesDue = topstagesDue;
+    dashboardData.projectsCompletedThisMonth = projectsCompletedThisMonth;
+
+    // Calculate average project duration
+    if (completedProjects.length > 0) {
+      const projectDurations = completedProjects
+        .map((project) => {
+          if (!project.lots || project.lots.length === 0) return null;
+          
+          const completedLots = project.lots.filter((lot) => lot.startDate && lot.updatedAt);
+          if (completedLots.length === 0) return null;
+
+          // Find earliest start date and latest completion date
+          const startDates = completedLots
+            .map((lot) => new Date(lot.startDate))
+            .filter((date) => !isNaN(date.getTime()));
+          const completionDates = completedLots
+            .map((lot) => new Date(lot.updatedAt))
+            .filter((date) => !isNaN(date.getTime()));
+
+          if (startDates.length === 0 || completionDates.length === 0) return null;
+
+          const earliestStart = new Date(Math.min(...startDates));
+          const latestCompletion = new Date(Math.max(...completionDates));
+          const durationDays = (latestCompletion - earliestStart) / (1000 * 60 * 60 * 24);
+
+          return durationDays > 0 ? durationDays : null;
+        })
+        .filter((duration) => duration !== null);
+
+      if (projectDurations.length > 0) {
+        const averageDuration = projectDurations.reduce((sum, duration) => sum + duration, 0) / projectDurations.length;
+        dashboardData.averageProjectDuration = Math.round(averageDuration);
+      } else {
+        dashboardData.averageProjectDuration = 0;
+      }
+    } else {
+      dashboardData.averageProjectDuration = 0;
+    }
 
     // Process top 10 items (depends on allItemsCount)
     const top10itemsCount = allItemsCount

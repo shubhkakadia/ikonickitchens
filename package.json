@@ -37,6 +37,7 @@
     "bcrypt": "^6.0.0",
     "chart.js": "^4.5.1",
     "chroma-js": "^3.2.0",
+    "clamscan": "^2.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cookies-next": "^6.1.0",

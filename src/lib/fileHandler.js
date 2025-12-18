@@ -1,6 +1,7 @@
 
 import fs from "fs";
 import path from "path";
+import { scanFile } from "./scanFile";
 
 export async function fileExists(filePath) {
   try {
@@ -143,6 +144,28 @@ export async function uploadFile(file, options = {}) {
 
   // Write file to disk
   await writeFileToDisk(targetPath, file);
+
+  // Scan file for viruses
+  try {
+    const scanResult = await scanFile(targetPath);
+    if (!scanResult.clean) {
+      // File is infected and has been deleted by scanFile
+      throw new Error(
+        `File contains malware: ${scanResult.viruses?.join(", ") || "unknown threat"}`
+      );
+    }
+  } catch (error) {
+    // If scan fails or file is infected, ensure file is deleted
+    try {
+      if (await fileExists(targetPath)) {
+        await deleteFileFromDisk(targetPath);
+      }
+    } catch (deleteError) {
+      console.error("Error deleting infected file:", deleteError);
+    }
+    // Re-throw the error
+    throw error;
+  }
 
   // Get file metadata
   const metadata = await getFileMetadata(targetPath, file);

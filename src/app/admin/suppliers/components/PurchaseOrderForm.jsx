@@ -28,6 +28,8 @@ export default function PurchaseOrderForm({
   const [isCreatingPO, setIsCreatingPO] = useState(false);
   const [poOrderNo, setPoOrderNo] = useState("");
   const [poTotal, setPoTotal] = useState(0);
+  const [poDeliveryCharge, setPoDeliveryCharge] = useState(0);
+  const [poInvoiceDate, setPoInvoiceDate] = useState("");
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [selectedInvoiceFile, setSelectedInvoiceFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -196,6 +198,8 @@ export default function PurchaseOrderForm({
     setPoInvoicePreview(null);
     setPoOrderNo("");
     setPoTotal(0);
+    setPoDeliveryCharge(0);
+    setPoInvoiceDate("");
     setShowInvoicePreview(false);
     setSelectedInvoiceFile(null);
     setPageNumber(1);
@@ -263,6 +267,12 @@ export default function PurchaseOrderForm({
       formData.append("order_no", poOrderNo);
       formData.append("orderedBy_id", userData.user?.id || null);
       formData.append("total_amount", finalTotal.toString());
+      if (poDeliveryCharge > 0) {
+        formData.append("delivery_charge", poDeliveryCharge.toString());
+      }
+      if (poInvoiceDate) {
+        formData.append("invoice_date", poInvoiceDate);
+      }
       formData.append("notes", poNotes);
 
       // Add items as comma-separated JSON objects (not an array)
@@ -394,6 +404,42 @@ export default function PurchaseOrderForm({
               </div>
             </div>
 
+            {/* Delivery Charge and Invoice Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
+                  Delivery Charge (Optional)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-3 text-slate-600 text-sm">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={poDeliveryCharge || ""}
+                    onChange={(e) =>
+                      setPoDeliveryCharge(parseFloat(e.target.value) || 0)
+                    }
+                    placeholder="0.00"
+                    className="w-full text-sm text-slate-800 px-4 py-3 pl-7 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
+                  Invoice Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  value={poInvoiceDate}
+                  onChange={(e) => setPoInvoiceDate(e.target.value)}
+                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                />
+              </div>
+            </div>
+
             {/* Select MTO */}
             <div>
               <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
@@ -489,7 +535,7 @@ export default function PurchaseOrderForm({
                           Quantity
                         </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          Unit Price
+                          Unit Price (including GST)
                         </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                           Total

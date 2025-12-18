@@ -86,7 +86,7 @@ model employees {
   last_name               String?
   image_id                String?          @unique
   role                    String
-  email                   String           @unique
+  email                   String
   phone                   String
   dob                     DateTime?
   join_date               DateTime?
@@ -109,6 +109,7 @@ model employees {
   user                    users?
   lot                     lot[]
 
+  @@unique([employee_id, is_deleted])
   @@index([employee_id])
 }
 
@@ -581,6 +582,8 @@ model purchase_order {
   orderedBy_id       String?
   invoice_url_id     String?               @unique
   total_amount       Decimal?              @db.Decimal(10, 2)
+  delivery_charge    Decimal?              @db.Decimal(10, 2)
+  invoice_date       DateTime?
   notes              String?               @db.LongText
   status             PurchaseOrderStatus   @default(DRAFT)
   createdAt          DateTime              @default(now())

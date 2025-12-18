@@ -32,6 +32,8 @@ import {
   Square,
   X,
   AlertTriangle,
+  RotateCw,
+  Database,
 } from "lucide-react";
 
 // Setup PDF.js worker
@@ -39,9 +41,13 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 
 export default function DeleteFilesPage() {
   const { getToken } = useAuth();
+  const [activeTab, setActiveTab] = useState("media"); // "media" or "records"
   const [deletedMedia, setDeletedMedia] = useState([]);
+  const [deletedRecords, setDeletedRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [recordsLoading, setRecordsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [recordsError, setRecordsError] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [viewFileModal, setViewFileModal] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
@@ -59,11 +65,16 @@ export default function DeleteFilesPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [recoveringRecordId, setRecoveringRecordId] = useState(null);
 
   // Fetch deleted media
   useEffect(() => {
-    fetchDeletedMedia();
-  }, []);
+    if (activeTab === "media") {
+      fetchDeletedMedia();
+    } else if (activeTab === "records") {
+      fetchDeletedRecords();
+    }
+  }, [activeTab]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -109,6 +120,82 @@ export default function DeleteFilesPage() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch deleted records
+  const fetchDeletedRecords = async () => {
+    try {
+      setRecordsLoading(true);
+      setRecordsError(null);
+      const sessionToken = getToken();
+
+      if (!sessionToken) {
+        setRecordsError("No valid session found. Please login again.");
+        return;
+      }
+
+      const response = await axios.get("/api/deletedrecords/all", {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+
+      if (response.data.status) {
+        setDeletedRecords(response.data.data || []);
+      } else {
+        setRecordsError(response.data.message || "Failed to fetch deleted records");
+      }
+    } catch (error) {
+      console.error("Error fetching deleted records:", error);
+      setRecordsError(
+        error.response?.data?.message ||
+        "Failed to fetch deleted records. Please try again."
+      );
+    } finally {
+      setRecordsLoading(false);
+    }
+  };
+
+  // Handle recover record
+  const handleRecoverRecord = async (record) => {
+    try {
+      setRecoveringRecordId(record.id);
+      const sessionToken = getToken();
+
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const response = await axios.patch(
+        "/api/deletedrecords/recover",
+        {
+          id: record.id,
+          entity_type: record.entity_type,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success(`${record.entity_type} recovered successfully`);
+        // Refresh the records list
+        fetchDeletedRecords();
+      } else {
+        toast.error(response.data.message || "Failed to recover record");
+      }
+    } catch (error) {
+      console.error("Error recovering record:", error);
+      toast.error(
+        error.response?.data?.message ||
+        "Failed to recover record. Please try again."
+      );
+    } finally {
+      setRecoveringRecordId(null);
     }
   };
 
@@ -554,15 +641,48 @@ export default function DeleteFilesPage() {
                 <div className="px-4 py-2 shrink-0">
                   <div className="flex justify-between items-center">
                     <h1 className="text-xl font-bold text-slate-700">
-                      Deleted Media
+                      Deleted Files & Records
                     </h1>
                   </div>
                 </div>
 
                 <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
                   <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                    {/* Fixed Header Section */}
-                    <div className="p-4 shrink-0 border-b border-slate-200">
+                    {/* Tabs */}
+                    <div className="flex border-b border-slate-200 shrink-0">
+                      <button
+                        onClick={() => setActiveTab("media")}
+                        className={`px-6 py-3 text-sm font-medium transition-colors ${
+                          activeTab === "media"
+                            ? "text-primary border-b-2 border-primary"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4" />
+                          <span>Media</span>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("records")}
+                        className={`px-6 py-3 text-sm font-medium transition-colors ${
+                          activeTab === "records"
+                            ? "text-primary border-b-2 border-primary"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Database className="w-4 h-4" />
+                          <span>Records</span>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Media Tab Content */}
+                    {activeTab === "media" && (
+                      <>
+                        {/* Fixed Header Section */}
+                        <div className="p-4 shrink-0 border-b border-slate-200">
                       <div className="flex items-center justify-between gap-3 mb-3">
                         {/* Search bar */}
                         <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
@@ -866,6 +986,127 @@ export default function DeleteFilesPage() {
                         </div>
                       )}
                     </div>
+                      </>
+                    )}
+
+                    {/* Records Tab Content */}
+                    {activeTab === "records" && (
+                      <>
+                        <div className="p-4 shrink-0 border-b border-slate-200">
+                          <p className="text-slate-600 text-sm">
+                            View and recover deleted records. Click recover to restore a record.
+                          </p>
+                        </div>
+
+                        {/* Records Table */}
+                        <div className="flex-1 overflow-auto p-4">
+                          {recordsLoading ? (
+                            <div className="flex items-center justify-center min-h-[400px]">
+                              <div className="text-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+                                <p className="text-slate-600">
+                                  Loading deleted records...
+                                </p>
+                              </div>
+                            </div>
+                          ) : recordsError ? (
+                            <div className="flex items-center justify-center min-h-[400px]">
+                              <div className="text-center max-w-md">
+                                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                                <p className="text-red-600 mb-4">{recordsError}</p>
+                                <button
+                                  onClick={fetchDeletedRecords}
+                                  className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
+                                >
+                                  Try Again
+                                </button>
+                              </div>
+                            </div>
+                          ) : deletedRecords.length === 0 ? (
+                            <div className="flex items-center justify-center min-h-[400px]">
+                              <div className="text-center">
+                                <Database className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                                <p className="text-slate-600 text-lg">
+                                  No deleted records found
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                      ID (UUID)
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                      Entity ID
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                      Entity Type
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                      Slug
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                      Deleted At
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                      Actions
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-200">
+                                  {deletedRecords.map((record) => (
+                                    <tr
+                                      key={`${record.entity_type}-${record.id}`}
+                                      className="hover:bg-slate-50 transition-colors"
+                                    >
+                                      <td className="px-4 py-3 text-sm text-slate-900 font-mono">
+                                        {record.id.substring(0, 8)}...
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-700 font-mono">
+                                        {record.entity_id}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 capitalize">
+                                          {record.entity_type}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-700">
+                                        {record.slug}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-500">
+                                        {formatDate(record.updatedAt)}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm">
+                                        <button
+                                          onClick={() => handleRecoverRecord(record)}
+                                          disabled={recoveringRecordId === record.id}
+                                          className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                          {recoveringRecordId === record.id ? (
+                                            <>
+                                              <Loader2 className="w-3 h-3 animate-spin" />
+                                              <span>Recovering...</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <RotateCw className="w-3 h-3" />
+                                              <span>Recover</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </>

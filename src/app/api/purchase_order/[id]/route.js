@@ -88,6 +88,8 @@ export async function PATCH(request, { params }) {
       const status = form.get("status") || undefined;
       const ordered_at = form.get("ordered_at") || undefined;
       const total_amount_raw = form.get("total_amount");
+      const delivery_charge_raw = form.get("delivery_charge");
+      const invoice_date_raw = form.get("invoice_date");
       const notes = form.get("notes") || undefined;
       const invoice_url_raw = form.get("invoice_url");
 
@@ -98,6 +100,18 @@ export async function PATCH(request, { params }) {
         total_amount_raw !== undefined &&
         total_amount_raw !== ""
           ? Number(total_amount_raw)
+          : undefined;
+      body.delivery_charge =
+        delivery_charge_raw !== null &&
+        delivery_charge_raw !== undefined &&
+        delivery_charge_raw !== ""
+          ? Number(delivery_charge_raw)
+          : undefined;
+      body.invoice_date =
+        invoice_date_raw !== null &&
+        invoice_date_raw !== undefined &&
+        invoice_date_raw !== ""
+          ? new Date(invoice_date_raw)
           : undefined;
       body.notes = notes;
       // Handle invoice_url deletion (can be "null" string or null)
@@ -384,6 +398,18 @@ export async function PATCH(request, { params }) {
       body.total_amount !== ""
     )
       updateData.total_amount = Number(body.total_amount);
+    if (
+      body.delivery_charge !== undefined &&
+      body.delivery_charge !== null &&
+      body.delivery_charge !== ""
+    )
+      updateData.delivery_charge = Number(body.delivery_charge);
+    if (
+      body.invoice_date !== undefined &&
+      body.invoice_date !== null &&
+      body.invoice_date !== ""
+    )
+      updateData.invoice_date = new Date(body.invoice_date);
     if (
       body.ordered_at !== undefined &&
       body.ordered_at !== null &&

@@ -60,20 +60,6 @@ export async function POST(request) {
       );
     }
 
-    const existingEmployeeByEmail = await prisma.employees.findUnique({
-      where: { email },
-    });
-
-    if (existingEmployeeByEmail) {
-      return NextResponse.json(
-        {
-          status: false,
-          message: "Employee already exists by this email: " + email,
-        },
-        { status: 409 }
-      );
-    }
-
     // Parse availability JSON string to object for validation, then stringify for Prisma
     let availabilityString = null;
     if (availability !== null && availability !== undefined) {

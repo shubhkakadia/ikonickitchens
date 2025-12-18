@@ -541,7 +541,7 @@ export default function page() {
 
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Price per Unit{" "}
+                            Price per Unit (including GST){" "}
                             <span className="text-slate-400">(Optional)</span>
                           </label>
                           <div className="relative">

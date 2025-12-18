@@ -18,6 +18,8 @@ export default function CreatePurchaseOrderModal({ setShowModal, onSuccess }) {
   // Form States
   const [poOrderNo, setPoOrderNo] = useState("");
   const [poTotal, setPoTotal] = useState("");
+  const [poDeliveryCharge, setPoDeliveryCharge] = useState("");
+  const [poInvoiceDate, setPoInvoiceDate] = useState("");
   const [poNotes, setPoNotes] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
 
@@ -292,6 +294,12 @@ export default function CreatePurchaseOrderModal({ setShowModal, onSuccess }) {
       formData.append("order_no", poOrderNo);
       formData.append("orderedBy_id", userData?.user?.id || "");
       formData.append("total_amount", finalTotal.toString());
+      if (poDeliveryCharge && parseFloat(poDeliveryCharge) > 0) {
+        formData.append("delivery_charge", poDeliveryCharge);
+      }
+      if (poInvoiceDate) {
+        formData.append("invoice_date", poInvoiceDate);
+      }
       formData.append("notes", poNotes);
 
       const itemsData = selectedItems.map(item => ({
@@ -459,6 +467,38 @@ export default function CreatePurchaseOrderModal({ setShowModal, onSuccess }) {
             </div>
           </div>
 
+          {/* Delivery Charge and Invoice Date */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                Delivery Charge (Optional)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-slate-500">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={poDeliveryCharge}
+                  onChange={(e) => setPoDeliveryCharge(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 pl-7 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                Invoice Date (Optional)
+              </label>
+              <input
+                type="date"
+                value={poInvoiceDate}
+                onChange={(e) => setPoInvoiceDate(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              />
+            </div>
+          </div>
+
           <hr className="border-slate-100" />
           {/* Item Selection & List */}
           <div>
@@ -526,7 +566,7 @@ export default function CreatePurchaseOrderModal({ setShowModal, onSuccess }) {
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Details</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Stock</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Quantity</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Unit Price</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Unit Price (including GST)</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Total</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Actions</th>
                   </tr>

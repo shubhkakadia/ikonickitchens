@@ -80,7 +80,7 @@ export default function page() {
     "Accessory Name",
     "Category",
     "Quantity",
-    "Unit Price",
+    "Unit Price (including GST)",
     "Total",
   ];
 
@@ -811,7 +811,7 @@ export default function page() {
         "Accessory Name": 16,
         Category: 12,
         Quantity: 10,
-        "Unit Price": 12,
+        "Unit Price (including GST)": 12,
         Total: 12,
       };
 
@@ -877,7 +877,7 @@ export default function page() {
             "Accessory Name": accName,
             Category: category,
             Quantity: it.quantity ?? "",
-            "Unit Price": it.unit_price ?? "",
+            "Unit Price (including GST)": it.unit_price ?? "",
             Total: (
               parseFloat(it.quantity || 0) * parseFloat(it.unit_price || 0)
             ).toFixed(2),
@@ -921,7 +921,7 @@ export default function page() {
             "Accessory Name": "",
             Category: "",
             Quantity: "",
-            "Unit Price": "",
+            "Unit Price (including GST)": "",
             Total: "",
           };
 
@@ -1371,6 +1371,35 @@ export default function page() {
                                                     </span>
                                                   </div>
                                                 )}
+                                                {po.delivery_charge && (
+                                                  <div className="flex items-center gap-1.5">
+                                                    <FileText className="w-4 h-4" />
+                                                    <span>
+                                                      <span className="font-medium">
+                                                        Delivery Charge:
+                                                      </span>{" "}
+                                                      <span className="font-semibold">
+                                                        $
+                                                        {formatMoney(
+                                                          po.delivery_charge
+                                                        )}
+                                                      </span>
+                                                    </span>
+                                                  </div>
+                                                )}
+                                                {po.invoice_date && (
+                                                  <div className="flex items-center gap-1.5">
+                                                    <Calendar className="w-4 h-4" />
+                                                    <span>
+                                                      <span className="font-medium">
+                                                        Invoice Date:
+                                                      </span>{" "}
+                                                      {new Date(
+                                                        po.invoice_date
+                                                      ).toLocaleDateString()}
+                                                    </span>
+                                                  </div>
+                                                )}
                                                 {po.mto?.project && (
                                                   <span className="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded border border-slate-200">
                                                     Project:{" "}
@@ -1628,7 +1657,7 @@ export default function page() {
                                                       Remaining/Received
                                                     </th>
                                                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                      Unit Price
+                                                      Unit Price (including GST)
                                                     </th>
                                                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                       Total

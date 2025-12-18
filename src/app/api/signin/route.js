@@ -2,9 +2,46 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { rateLimit } from "@/lib/rateLimit";
+
+// Configure rate limiter: 5 attempts per 15 minutes per IP
+const signinRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 requests per window
+  message: "Too many signin attempts, please try again later.",
+  keyGenerator: (request) => {
+    // Use IP address for rate limiting
+    const forwarded = request.headers.get("x-forwarded-for");
+    const ip = forwarded ? forwarded.split(",")[0].trim() :
+      request.headers.get("x-real-ip") ||
+      "unknown";
+    return `signin:${ip}`;
+  },
+});
 
 export async function POST(request) {
   try {
+    // Check rate limit
+    const rateLimitResult = await signinRateLimit(request);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: rateLimitResult.message,
+          retryAfter: rateLimitResult.retryAfter,
+        },
+        {
+          status: rateLimitResult.status,
+          headers: {
+            "Retry-After": rateLimitResult.retryAfter.toString(),
+            "X-RateLimit-Limit": "5",
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
+          },
+        }
+      );
+    }
+
     const { username, password } = await request.json();
 
     // Find user
@@ -19,7 +56,14 @@ export async function POST(request) {
         status: false,
         message: "Invalid username or password",
       },
-      { status: 401 }
+      {
+        status: 401,
+        headers: {
+          "X-RateLimit-Limit": "5",
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
+        },
+      }
     );
 
     // Check if user exists and password is valid
@@ -27,7 +71,7 @@ export async function POST(request) {
     let isValidPassword = false;
     if (user) {
       isValidPassword = await bcrypt.compare(password, user.password);
-      
+
       // Check if user account is active
       if (!user.is_active) {
         return NextResponse.json(
@@ -35,7 +79,14 @@ export async function POST(request) {
             status: false,
             message: "User account is not active",
           },
-          { status: 403 }
+          {
+            status: 403,
+            headers: {
+              "X-RateLimit-Limit": "5",
+              "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+              "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
+            },
+          }
         );
       }
     } else {
@@ -84,7 +135,14 @@ export async function POST(request) {
           sessionId: session.id,
         },
       },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          "X-RateLimit-Limit": "5",
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
+        },
+      }
     );
   } catch (error) {
     console.error("Signin error:", error);

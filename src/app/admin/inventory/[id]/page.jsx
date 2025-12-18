@@ -1132,7 +1132,7 @@ export default function page() {
                                 </div>
                                 <div>
                                   <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                                    Price per Unit
+                                    Price per Unit (including GST)
                                   </label>
                                   {isEditing ? (
                                     <div className="relative">

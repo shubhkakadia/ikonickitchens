@@ -872,7 +872,7 @@ export default function page() {
                                       Details
                                     </th>
                                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                      Price
+                                      Price (including GST)
                                     </th>
                                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                       Quantity

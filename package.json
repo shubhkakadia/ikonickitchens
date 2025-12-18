@@ -44,6 +44,7 @@
     "dayjs": "^1.11.19",
     "emailjs": "^4.0.3",
     "embla-carousel-react": "^8.6.0",
+    "express-rate-limit": "^8.2.1",
     "framer-motion": "^12.23.24",
     "heic2any": "^0.0.4",
     "jsonwebtoken": "^9.0.2",

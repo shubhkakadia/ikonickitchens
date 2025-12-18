@@ -17,6 +17,8 @@ export async function POST(request) {
     let orderedBy_id;
     let invoice_url_id; // may be set if file uploaded
     let total_amount;
+    let delivery_charge;
+    let invoice_date;
     let notes;
     let items;
 
@@ -33,6 +35,18 @@ export async function POST(request) {
       total_amount =
         totalAmountStr !== null && totalAmountStr !== undefined
           ? Number(totalAmountStr)
+          : undefined;
+
+      const deliveryChargeStr = form.get("delivery_charge");
+      delivery_charge =
+        deliveryChargeStr !== null && deliveryChargeStr !== undefined && deliveryChargeStr !== ""
+          ? Number(deliveryChargeStr)
+          : undefined;
+
+      const invoiceDateStr = form.get("invoice_date");
+      invoice_date =
+        invoiceDateStr !== null && invoiceDateStr !== undefined && invoiceDateStr !== ""
+          ? new Date(invoiceDateStr)
           : undefined;
 
       const itemsVal = form.get("items");
@@ -111,6 +125,8 @@ export async function POST(request) {
       orderedBy_id = body.orderedBy_id;
       invoice_url_id = body.invoice_url_id;
       total_amount = body.total_amount;
+      delivery_charge = body.delivery_charge;
+      invoice_date = body.invoice_date ? new Date(body.invoice_date) : undefined;
       notes = body.notes;
       items = body.items;
     }
@@ -139,6 +155,8 @@ export async function POST(request) {
           orderedBy_id,
           invoice_url_id,
           total_amount,
+          delivery_charge,
+          invoice_date,
           notes,
           items:
             Array.isArray(items) && items.length > 0

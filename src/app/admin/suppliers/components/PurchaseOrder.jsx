@@ -604,6 +604,30 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                       </span>
                                     </div>
                                   )}
+                                  {po.delivery_charge && (
+                                    <div className="flex items-center gap-1.5">
+                                      <FileText className="w-4 h-4" />
+                                      <span>
+                                        <span className="font-medium">
+                                          Delivery Charge:
+                                        </span>{" "}
+                                        <span className="font-semibold">
+                                          ${formatMoney(po.delivery_charge)}
+                                        </span>
+                                      </span>
+                                    </div>
+                                  )}
+                                  {po.invoice_date && (
+                                    <div className="flex items-center gap-1.5">
+                                      <Calendar className="w-4 h-4" />
+                                      <span>
+                                        <span className="font-medium">
+                                          Invoice Date:
+                                        </span>{" "}
+                                        {new Date(po.invoice_date).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  )}
                                   {po.mto?.project && (
                                     <span className="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded border border-slate-200">
                                       Project: {po.mto.project.project_id} -{" "}
@@ -825,7 +849,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                         Received
                                       </th>
                                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Unit Price
+                                        Unit Price (including GST)
                                       </th>
                                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Total

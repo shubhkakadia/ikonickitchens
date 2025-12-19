@@ -79,11 +79,25 @@ export async function GET(request, { params }) {
       );
     }
 
+    // Fetch media separately
+    const media = await prisma.media.findMany({
+      where: {
+        material_selection_id: materialSelection.id,
+        is_deleted: false,
+      },
+    });
+
+    // Add media to the response
+    const materialSelectionWithMedia = {
+      ...materialSelection,
+      media: media,
+    };
+
     return NextResponse.json(
       {
         status: true,
         message: "Material selection fetched successfully",
-        data: materialSelection,
+        data: materialSelectionWithMedia,
       },
       { status: 200 }
     );

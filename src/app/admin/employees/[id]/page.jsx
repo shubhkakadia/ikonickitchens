@@ -21,6 +21,7 @@ import {
   Save,
   Trash2,
   Upload,
+  Plus,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
@@ -72,6 +73,14 @@ export default function EmployeeDetailPage() {
   const [imageFile, setImageFile] = useState(null);
   const [removeImage, setRemoveImage] = useState(false);
   const fileInputRef = useRef(null);
+  const [roleOptions, setRoleOptions] = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [roleSearchTerm, setRoleSearchTerm] = useState("");
+  const roleDropdownRef = useRef(null);
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+  const [newRoleValue, setNewRoleValue] = useState("");
+  const [isCreatingRole, setIsCreatingRole] = useState(false);
 
   // Module structure definition
   const moduleStructure = [
@@ -149,12 +158,57 @@ export default function EmployeeDetailPage() {
       key: "site_photos",
       label: "Site Photos",
       isParent: false,
+    },
+    {
+      key: "config",
+      label: "Config",
+      isParent: false,
     }
   ];
 
   useEffect(() => {
     fetchEmployee();
   }, [id]);
+
+  // Fetch roles from config API
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setLoadingRoles(true);
+        const sessionToken = getToken();
+        if (!sessionToken) {
+          console.error("No valid session found");
+          return;
+        }
+
+        const config = {
+          method: "post",
+          maxBodyLength: Infinity,
+          url: `/api/config/read_all_by_category`,
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+          data: { category: "role" },
+        };
+
+        const response = await axios.request(config);
+        if (response.data.status && response.data.data) {
+          // Extract the value field from each config item
+          const roles = response.data.data.map((item) => item.value);
+          setRoleOptions(roles);
+        }
+      } catch (error) {
+        console.error("Error fetching roles:", error);
+        // Fallback to empty array if API fails
+        setRoleOptions([]);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+
+    fetchRoles();
+  }, [getToken]);
 
   // Add this useEffect to clean up memory
   useEffect(() => {
@@ -170,6 +224,12 @@ export default function EmployeeDetailPage() {
     const handleClickOutside = (event) => {
       if (showDropdown && !event.target.closest(".dropdown-container")) {
         setShowDropdown(false);
+      }
+      if (
+        roleDropdownRef.current &&
+        !roleDropdownRef.current.contains(event.target)
+      ) {
+        setIsRoleDropdownOpen(false);
       }
     };
 
@@ -452,6 +512,8 @@ export default function EmployeeDetailPage() {
       setImagePreview(employee.image ? `/${employee.image.url}` : null);
       setImageFile(null);
       setRemoveImage(false);
+      // Initialize role search term
+      setRoleSearchTerm(employee.role || "");
       setIsEditing(true);
     }
   };
@@ -512,6 +574,99 @@ export default function EmployeeDetailPage() {
       [field]: value,
     }));
   };
+
+  // Role dropdown handlers
+  const handleRoleSelect = (role) => {
+    handleInputChange("role", role);
+    setRoleSearchTerm(role);
+    setIsRoleDropdownOpen(false);
+  };
+
+  const handleRoleSearchChange = (e) => {
+    const value = e.target.value;
+    setRoleSearchTerm(value);
+    setIsRoleDropdownOpen(true);
+    handleInputChange("role", value);
+  };
+
+  // Handle create new role
+  const handleCreateNewRole = async () => {
+    if (!newRoleValue || !newRoleValue.trim()) {
+      toast.error("Role value is required");
+      return;
+    }
+
+    try {
+      setIsCreatingRole(true);
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const config = {
+        method: "post",
+        maxBodyLength: Infinity,
+        url: `/api/config/create`,
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          "Content-Type": "application/json",
+        },
+        data: {
+          category: "role",
+          value: newRoleValue.trim(),
+        },
+      };
+
+      const response = await axios.request(config);
+      if (response.data.status) {
+        toast.success("Role created successfully");
+        // Refresh roles list
+        const fetchRoles = async () => {
+          try {
+            const config = {
+              method: "post",
+              maxBodyLength: Infinity,
+              url: `/api/config/read_all_by_category`,
+              headers: {
+                Authorization: `Bearer ${sessionToken}`,
+                "Content-Type": "application/json",
+              },
+              data: { category: "role" },
+            };
+            const response = await axios.request(config);
+            if (response.data.status && response.data.data) {
+              const roles = response.data.data.map((item) => item.value);
+              setRoleOptions(roles);
+            }
+          } catch (error) {
+            console.error("Error fetching roles:", error);
+          }
+        };
+        await fetchRoles();
+        // Set the new role as selected
+        handleInputChange("role", newRoleValue.trim());
+        setRoleSearchTerm(newRoleValue.trim());
+        setShowCreateRoleModal(false);
+        setNewRoleValue("");
+        setIsRoleDropdownOpen(false);
+      } else {
+        toast.error(response.data.message || "Failed to create role");
+      }
+    } catch (error) {
+      console.error("Error creating role:", error);
+      const errorMessage =
+        error.response?.data?.message || "Failed to create role";
+      toast.error(errorMessage);
+    } finally {
+      setIsCreatingRole(false);
+    }
+  };
+
+  // Filter role options based on search term
+  const filteredRoleOptions = roleOptions.filter((role) =>
+    role.toLowerCase().includes(roleSearchTerm.toLowerCase())
+  );
 
   const handleAvailabilityChange = (day, field, value) => {
     setEditData((prev) => ({
@@ -1131,27 +1286,87 @@ export default function EmployeeDetailPage() {
                                   placeholder={employee.last_name}
                                   className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                                 />
-                                <select
-                                  value={editData.role || ""}
-                                  onChange={(e) =>
-                                    handleInputChange("role", e.target.value)
-                                  }
-                                  className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                >
-                                  <option value="">Select Type</option>
-                                  <option value="Administrator">
-                                    Administrator
-                                  </option>
-                                  <option value="Site Manager">
-                                    Site Manager
-                                  </option>
-                                  <option value="Supervisor">Supervisor</option>
-                                  <option value="Employee">Employee</option>
-                                  <option value="Contractor">Contractor</option>
-                                  <option value="CNC Operator">
-                                    CNC Operator
-                                  </option>
-                                </select>
+                                <div className="relative" ref={roleDropdownRef}>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={roleSearchTerm || editData.role || ""}
+                                      onChange={handleRoleSearchChange}
+                                      onFocus={() => setIsRoleDropdownOpen(true)}
+                                      className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full pr-8"
+                                      placeholder="Search or type a role..."
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setIsRoleDropdownOpen(!isRoleDropdownOpen)
+                                      }
+                                      className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                      <ChevronDown
+                                        className={`w-4 h-4 transition-transform ${isRoleDropdownOpen ? "rotate-180" : ""
+                                          }`}
+                                      />
+                                    </button>
+                                  </div>
+
+                                  {isRoleDropdownOpen && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                      {loadingRoles ? (
+                                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                          Loading roles...
+                                        </div>
+                                      ) : filteredRoleOptions.length > 0 ? (
+                                        <>
+                                          {filteredRoleOptions.map((role, index) => (
+                                            <button
+                                              key={index}
+                                              type="button"
+                                              onClick={() => handleRoleSelect(role)}
+                                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                            >
+                                              {role}
+                                            </button>
+                                          ))}
+                                          {roleSearchTerm && !filteredRoleOptions.some(r => r.toLowerCase() === roleSearchTerm.toLowerCase()) && (
+                                            <div className="border-t border-slate-200">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setNewRoleValue(roleSearchTerm);
+                                                  setShowCreateRoleModal(true);
+                                                }}
+                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                              >
+                                                <Plus className="w-4 h-4" />
+                                                Create "{roleSearchTerm}"
+                                              </button>
+                                            </div>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <div className="px-4 py-3">
+                                          <div className="text-sm text-slate-500 mb-2">
+                                            No matching roles found
+                                          </div>
+                                          {roleSearchTerm && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setNewRoleValue(roleSearchTerm);
+                                                setShowCreateRoleModal(true);
+                                              }}
+                                              className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                            >
+                                              <Plus className="w-4 h-4" />
+                                              Create "{roleSearchTerm}"
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                               <p className="text-sm text-slate-500">
                                 Employee ID: {employee.employee_id}
@@ -2103,6 +2318,61 @@ export default function EmployeeDetailPage() {
             setViewFileModal={setViewFileModal}
             setPageNumber={setPageNumber}
           />
+        )}
+
+        {/* Create Role Modal */}
+        {showCreateRoleModal && (
+          <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateRoleModal(false)}>
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <h2 className="text-xl font-bold text-slate-800">
+                  Create New Role
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowCreateRoleModal(false);
+                    setNewRoleValue("");
+                  }}
+                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-600" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Role Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newRoleValue}
+                    onChange={(e) => setNewRoleValue(e.target.value)}
+                    placeholder="Enter role name"
+                    className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowCreateRoleModal(false);
+                      setNewRoleValue("");
+                    }}
+                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateNewRole}
+                    disabled={isCreatingRole || !newRoleValue?.trim()}
+                    className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isCreatingRole ? "Creating..." : "Create Role"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

@@ -13,6 +13,7 @@ import {
   ChevronUp,
   Trash2,
   FileText,
+  Settings2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -114,6 +115,13 @@ export default function Sidebar() {
       subtabs: [],
       access: false,
     },
+    {
+      icon: Settings2,
+      label: "Config",
+      href: "/admin/config",
+      subtabs: [],
+      access: false,
+    }
   ];
 
   return (

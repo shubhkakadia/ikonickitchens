@@ -41,11 +41,12 @@ export default function page() {
 
   // Define all available columns for export
   const availableColumns = useMemo(() => {
-    return ["Project Name", "Lot ID", "Percentage Completed", ...stages];
+    return ["Client Name", "Project Name", "Lot ID", "Percentage Completed", ...stages];
   }, []);
 
   // Initialize selected columns with all columns
   const [selectedColumns, setSelectedColumns] = useState(() => [
+    "Client Name",
     "Project Name",
     "Lot ID",
     "Percentage Completed",
@@ -173,9 +174,11 @@ export default function page() {
         const searchLower = search.toLowerCase();
         const projectName = (lot.project?.name || "").toLowerCase();
         const lotId = (lot.lot_id || "").toLowerCase();
+        const clientName = (lot.project?.client?.client_name || "").toLowerCase();
         if (
           !projectName.includes(searchLower) &&
-          !lotId.includes(searchLower)
+          !lotId.includes(searchLower) &&
+          !clientName.includes(searchLower)
         ) {
           return false;
         }
@@ -291,6 +294,7 @@ export default function page() {
 
       // Map of column names to their data extraction functions
       const columnMap = {
+        "Client Name": (lot) => lot.project?.client?.client_name || "N/A",
         "Project Name": (lot) => lot.project?.name || "N/A",
         "Lot ID": (lot) => lot.lot_id || "",
         "Percentage Completed": (lot) => `${getPercentageCompleted(lot)}%`,
@@ -328,6 +332,7 @@ export default function page() {
 
       // Set column widths for selected columns only
       const colWidths = selectedColumns.map((column) => {
+        if (column === "Client Name") return { wch: 25 };
         if (column === "Project Name") return { wch: 25 };
         if (column === "Lot ID") return { wch: 15 };
         if (column === "Percentage Completed") return { wch: 20 };
@@ -385,6 +390,29 @@ export default function page() {
         id: uuidv4(),
         title: lot.project.name,
         href: projectHref,
+      })
+    );
+  };
+
+  // Handle client name click - navigate to client page
+  const handleClientNameClick = (lot, event) => {
+    event.stopPropagation();
+    if (!lot.project?.client?.client_id) {
+      toast.error("Client ID not found", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+      return;
+    }
+
+    const clientHref = `/admin/clients/${lot.project.client.client_id}`;
+    router.push(clientHref);
+    dispatch(
+      replaceTab({
+        id: uuidv4(),
+        title: lot.project.client.client_name,
+        href: clientHref,
       })
     );
   };
@@ -575,7 +603,7 @@ export default function page() {
                           <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                           <input
                             type="text"
-                            placeholder="Search by project name or lot ID"
+                            placeholder="Search by client name, project name or lot ID"
                             className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -779,10 +807,13 @@ export default function page() {
                           <table className="min-w-full divide-y divide-slate-200 table-fixed">
                             <thead className="bg-slate-50 sticky top-0 z-20">
                               <tr>
-                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[500px] min-w-[500px] max-w-[500px]">
+                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[200px] min-w-[200px] max-w-[200px]">
+                                  Client Name
+                                </th>
+                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-[200px] z-30 bg-slate-50 w-[500px] min-w-[500px] max-w-[500px]">
                                   Project Name - Lot Number
                                 </th>
-                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[100px] min-w-[100px] max-w-[100px] h-[300px] border-r border-slate-200 sticky top-0 left-[300px] z-30 bg-slate-50">
+                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[100px] min-w-[100px] max-w-[100px] h-[300px] border-r border-slate-200 sticky top-0 left-[700px] z-30 bg-slate-50">
                                   Percentage Completed
                                 </th>
                                 {stages.map(stage => {
@@ -831,7 +862,7 @@ export default function page() {
                               {filteredLots.length === 0 ? (
                                 <tr>
                                   <td
-                                    colSpan={stages.length + 2}
+                                    colSpan={stages.length + 3}
                                     className="px-4 py-8 text-center text-sm text-slate-500"
                                   >
                                     <div className="flex flex-col items-center gap-3">
@@ -858,13 +889,22 @@ export default function page() {
                                     className="group hover:bg-slate-50 transition-colors duration-200"
                                   >
                                     <td
+                                      onClick={(e) => handleClientNameClick(lot, e)}
+                                      className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[200px] min-w-[200px] max-w-[200px]"
+                                      title="Click to open client"
+                                    >
+                                      <span>
+                                        {lot.project?.client?.client_name || "N/A"}
+                                      </span>
+                                    </td>
+                                    <td
                                       onClick={(e) => handleProjectNameClick(lot, e)}
-                                      className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[500px] min-w-[500px] max-w-[500px]"
+                                      className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-[200px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[500px] min-w-[500px] max-w-[500px]"
                                       title="Click to open project"
                                     >
                                       {lot.project?.name || "N/A"} - {lot.lot_id}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[300px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap w-[100px] min-w-[100px] max-w-[100px]">
+                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[700px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap w-[100px] min-w-[100px] max-w-[100px]">
                                       {getPercentageCompleted(lot)}%
                                     </td>
                                     {stages.map((stage) => {

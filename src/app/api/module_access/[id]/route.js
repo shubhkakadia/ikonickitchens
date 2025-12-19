@@ -62,6 +62,8 @@ export async function PATCH(request, { params }) {
           materialstoorder: data.materialstoorder,
           purchaseorder: data.purchaseorder,
           statements: data.statements,
+          site_photos: data.site_photos,
+          config: data.config,
         },
       });
     } catch (error) {

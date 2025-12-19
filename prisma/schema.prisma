@@ -54,6 +54,7 @@ model module_access {
   purchaseorder    Boolean  @default(false)
   statements       Boolean  @default(false)
   site_photos      Boolean  @default(false)
+  config           Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   usedmaterial     Boolean  @default(false)
@@ -662,15 +663,15 @@ model logs {
   @@index([action])
 }
 
-// model constants_config {
-//   id        String   @id @default(uuid())
-//   category  String //role, hardwareSubCategories
-//   value     String   @db.LongText
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
+model constants_config {
+  id        String   @id @default(uuid())
+  category  String //role, hardwareSubCategories
+  value     String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-//   @@index([category])
-// }
+  @@index([category])
+}
 
 enum LogAction {
   CREATE

@@ -19,11 +19,13 @@ import {
   ChevronDown,
   Loader2,
   Save,
+  Plus,
 } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ViewMedia from "./ViewMedia";
+import AddItemModal from "@/app/admin/suppliers/purchaseorder/components/AddItemModal";
 
 export default function MaterialsToOrder({ project, selectedLot }) {
   const { getToken, userData } = useAuth();
@@ -74,6 +76,8 @@ export default function MaterialsToOrder({ project, selectedLot }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [saveStatus, setSaveStatus] = useState("idle"); // 'idle', 'saving', 'saved', 'error'
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [addItemModalCategory, setAddItemModalCategory] = useState(null);
   // Local UI override: after deleting an MTO, the parent `project` prop may still contain
   // stale materials_to_order data until it is re-fetched. Track "freed" lots so the UI
   // immediately allows creating a new MTO for those lots.
@@ -1708,12 +1712,24 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                               </button>
                             ))
                           ) : (
-                            <div className="p-4 text-center text-sm text-slate-600">
-                              <div className="mb-2">No results found</div>
-                              <div className="text-xs">
-                                Item may have already been added or does not
-                                exist. Please add it to inventory first.
+                            <div className="p-4 text-center space-y-3">
+                              <div className="text-sm text-slate-600">
+                                <div className="mb-2">No results found</div>
+                                <div className="text-xs">
+                                  Item may have already been added or does not
+                                  exist.
+                                </div>
                               </div>
+                              <button
+                                onClick={() => {
+                                  setAddItemModalCategory("sheet");
+                                  setShowAddItemModal(true);
+                                }}
+                                className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium flex items-center gap-2 mx-auto"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Add Item
+                              </button>
                             </div>
                           )}
                         </div>
@@ -1927,12 +1943,24 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                               )
                             )
                           ) : (
-                            <div className="p-4 text-center text-sm text-slate-600">
-                              <div className="mb-2">No results found</div>
-                              <div className="text-xs">
-                                Item may have already been added or does not
-                                exist. Please add it to inventory first.
+                            <div className="p-4 text-center space-y-3">
+                              <div className="text-sm text-slate-600">
+                                <div className="mb-2">No results found</div>
+                                <div className="text-xs">
+                                  Item may have already been added or does not
+                                  exist.
+                                </div>
                               </div>
+                              <button
+                                onClick={() => {
+                                  setAddItemModalCategory("edging_tape");
+                                  setShowAddItemModal(true);
+                                }}
+                                className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium flex items-center gap-2 mx-auto"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Add Item
+                              </button>
                             </div>
                           )}
                         </div>
@@ -2138,12 +2166,24 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                               </button>
                             ))
                           ) : (
-                            <div className="p-4 text-center text-sm text-slate-600">
-                              <div className="mb-2">No results found</div>
-                              <div className="text-xs">
-                                Item may have already been added or does not
-                                exist. Please add it to inventory first.
+                            <div className="p-4 text-center space-y-3">
+                              <div className="text-sm text-slate-600">
+                                <div className="mb-2">No results found</div>
+                                <div className="text-xs">
+                                  Item may have already been added or does not
+                                  exist.
+                                </div>
                               </div>
+                              <button
+                                onClick={() => {
+                                  setAddItemModalCategory("handle");
+                                  setShowAddItemModal(true);
+                                }}
+                                className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium flex items-center gap-2 mx-auto"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Add Item
+                              </button>
                             </div>
                           )}
                         </div>
@@ -2348,12 +2388,24 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                               </button>
                             ))
                           ) : (
-                            <div className="p-4 text-center text-sm text-slate-600">
-                              <div className="mb-2">No results found</div>
-                              <div className="text-xs">
-                                Item may have already been added or does not
-                                exist. Please add it to inventory first.
+                            <div className="p-4 text-center space-y-3">
+                              <div className="text-sm text-slate-600">
+                                <div className="mb-2">No results found</div>
+                                <div className="text-xs">
+                                  Item may have already been added or does not
+                                  exist.
+                                </div>
                               </div>
+                              <button
+                                onClick={() => {
+                                  setAddItemModalCategory("hardware");
+                                  setShowAddItemModal(true);
+                                }}
+                                className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium flex items-center gap-2 mx-auto"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Add Item
+                              </button>
                             </div>
                           )}
                         </div>
@@ -2544,12 +2596,24 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                               )
                             )
                           ) : (
-                            <div className="p-4 text-center text-sm text-slate-600">
-                              <div className="mb-2">No results found</div>
-                              <div className="text-xs">
-                                Item may have already been added or does not
-                                exist. Please add it to inventory first.
+                            <div className="p-4 text-center space-y-3">
+                              <div className="text-sm text-slate-600">
+                                <div className="mb-2">No results found</div>
+                                <div className="text-xs">
+                                  Item may have already been added or does not
+                                  exist.
+                                </div>
                               </div>
+                              <button
+                                onClick={() => {
+                                  setAddItemModalCategory("accessory");
+                                  setShowAddItemModal(true);
+                                }}
+                                className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium flex items-center gap-2 mx-auto"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Add Item
+                              </button>
                             </div>
                           )}
                         </div>
@@ -2561,6 +2625,48 @@ export default function MaterialsToOrder({ project, selectedLot }) {
           </div>
         </div>
       </div>
+
+      {/* Add Item Modal */}
+      {showAddItemModal && addItemModalCategory && (
+        <AddItemModal
+          setShowModal={setShowAddItemModal}
+          supplierId="" // Materials to Order doesn't require a supplier
+          onItemAdded={() => {
+            // Clear cache and refresh search for the category after item is added
+            const cacheKeys = Object.keys(itemCache).filter(key => 
+              key.startsWith(addItemModalCategory)
+            );
+            const updatedCache = { ...itemCache };
+            cacheKeys.forEach(key => {
+              delete updatedCache[key];
+            });
+            setItemCache(updatedCache);
+            
+            // Refresh search results for the category
+            if (addItemModalCategory) {
+              // Clear search results to force a fresh fetch
+              setSearchResults((prev) => ({
+                ...prev,
+                [addItemModalCategory]: [],
+              }));
+              
+              // If there's an active search term, trigger a new search
+              const activeSearchKeys = Object.keys(searchTerms).filter(key => 
+                key.startsWith(addItemModalCategory)
+              );
+              if (activeSearchKeys.length > 0) {
+                activeSearchKeys.forEach(key => {
+                  const [category, rowIndex] = key.split('-');
+                  const searchTerm = searchTerms[key];
+                  if (searchTerm) {
+                    searchItems(category, searchTerm, parseInt(rowIndex));
+                  }
+                });
+              }
+            }
+          }}
+        />
+      )}
 
       {/* Media Upload Section */}
       <div className="mt-6">

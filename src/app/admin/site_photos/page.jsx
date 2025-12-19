@@ -102,6 +102,16 @@ export default function SitePhotosPage() {
         }
     }, [searchTerm, allLots]);
 
+    // Refetch lots when employee role is determined to be "installer" (for filtering)
+    useEffect(() => {
+        const userData = getUserData();
+        const userType = getUserType();
+        // Only refetch if user is an employee with installer role
+        if (employeeRole?.toLowerCase() === "installer" && userType === "employee" && userData?.user?.employee_id) {
+            fetchActiveLots();
+        }
+    }, [employeeRole]);
+
     // Update active tabs when employee role is loaded
     useEffect(() => {
         if (employeeRole !== null && allLots.length > 0) {
@@ -158,26 +168,32 @@ export default function SitePhotosPage() {
             if (response.data.status) {
                 const lotsData = response.data.data;
                 
-                // Filter lots based on user assignments if user is an employee
+                // Filter lots based on user assignments if user is an installer
                 const userData = getUserData();
                 const userType = getUserType();
                 let filteredLots = lotsData;
                 
+                // Only filter if user is an employee with installer role
                 if (userType === "employee" && userData?.user?.employee_id) {
-                    const employeeId = userData.user.employee_id;
-                    filteredLots = lotsData.filter((lot) => {
-                        // Check if user is the installer
-                        if (lot.installer_id === employeeId) {
-                            return true;
-                        }
-                        // Check if user is assigned to any stage
-                        const isAssignedToStage = lot.stages?.some((stage) =>
-                            stage.assigned_to?.some(
-                                (assignment) => assignment.employee_id === employeeId
-                            )
-                        );
-                        return isAssignedToStage;
-                    });
+                    // Wait for employee role to be fetched before filtering
+                    // If role is installer, filter lots to only show assigned ones
+                    if (employeeRole?.toLowerCase() === "installer") {
+                        const employeeId = userData.user.employee_id;
+                        filteredLots = lotsData.filter((lot) => {
+                            // Check if user is the installer
+                            if (lot.installer_id === employeeId) {
+                                return true;
+                            }
+                            // Check if user is assigned to any stage
+                            const isAssignedToStage = lot.stages?.some((stage) =>
+                                stage.assigned_to?.some(
+                                    (assignment) => assignment.employee_id === employeeId
+                                )
+                            );
+                            return isAssignedToStage;
+                        });
+                    }
+                    // For other employee roles, show all lots
                 }
                 
                 setAllLots(filteredLots); // Store filtered lots
@@ -687,6 +703,14 @@ export default function SitePhotosPage() {
                 {/* Mobile Header */}
                 <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
                     <div className="px-4 py-3 space-y-3">
+                        {/* Welcome Message */}
+                        {getUserData()?.user?.username && (
+                            <div className="pb-2 border-b border-gray-100">
+                                <p className="text-sm text-gray-700">
+                                    Welcome, <span className="font-semibold text-secondary">{getUserData().user.username}</span>!
+                                </p>
+                            </div>
+                        )}
                         {/* Header Row */}
                         <div className="flex items-center justify-between">
                             <div className="flex-1">

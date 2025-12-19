@@ -274,18 +274,12 @@ export function AdminRoute({
     if (pathname === '/admin') {
       const userData = getUserData();
       if (userData !== null) {
-        const userType = getUserType();
-        // Redirect employees to site_photos instead of dashboard
-        if (userType === 'employee') {
-          router.push('/admin/site_photos');
-        } else {
-          router.push('/admin/dashboard');
-        }
+        router.push('/admin/dashboard');
       } else {
         router.push('/admin/login');
       }
     }
-  }, [pathname, router, getUserData, getUserType]);
+  }, [pathname, router, getUserData]);
 
   // Redirect employees to site_photos page
   useEffect(() => {

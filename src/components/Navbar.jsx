@@ -171,7 +171,7 @@ export default function Navbar({ bar }) {
 
           {/* Mobile Menu */}
           <div
-            className={`lg:hidden absolute top-16 right-0 w-full bg-white shadow-2xl border-b transition-all duration-300 ease-in-out transform ${
+            className={`lg:hidden absolute top-16 right-0 w-full shadow-2xl border-b transition-all duration-300 ease-in-out transform ${
               isOpen
                 ? "opacity-100 translate-y-0 scale-100"
                 : "opacity-0 -translate-y-4 scale-95 pointer-events-none"

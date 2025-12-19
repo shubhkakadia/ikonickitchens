@@ -812,22 +812,28 @@ export default function page() {
                               paginatedClients.map((e) => (
                                 <tr
                                   key={e.client_id}
-                                  onClick={() => {
-                                    router.push(
-                                      `/admin/clients/${e.client_id}`
-                                    );
-                                    dispatch(
-                                      replaceTab({
-                                        id: uuidv4(),
-                                        title: e.client_name,
-                                        href: `/admin/clients/${e.client_id}`,
-                                      })
-                                    );
-                                  }}
-                                  className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                                  className="hover:bg-slate-50 transition-colors duration-200"
                                 >
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                    {e.client_name || "-"}
+                                  <td 
+                                    className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      router.push(
+                                        `/admin/clients/${e.client_id}`
+                                      );
+                                      dispatch(
+                                        replaceTab({
+                                          id: uuidv4(),
+                                          title: e.client_name,
+                                          href: `/admin/clients/${e.client_id}`,
+                                        })
+                                      );
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    <span className="text-primary hover:underline">
+                                      {e.client_name || "-"}
+                                    </span>
                                   </td>
                                   <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
                                     {e.client_type || "-"}

@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Upload,
   X,
+  Plus,
 } from "lucide-react";
 import TabsController from "@/components/tabscontroller";
 import axios from "axios";
@@ -24,7 +25,6 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
-import { roleOptions } from "@/components/constants";
 
 export default function page() {
   const formDataInitialState = {
@@ -82,10 +82,55 @@ export default function page() {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [roleSearchTerm, setRoleSearchTerm] = useState("");
   const roleDropdownRef = useRef(null);
+  const [roleOptions, setRoleOptions] = useState([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+  const [newRoleValue, setNewRoleValue] = useState("");
+  const [isCreatingRole, setIsCreatingRole] = useState(false);
 
   // Image upload state
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Fetch roles from config API
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setLoadingRoles(true);
+        const sessionToken = getToken();
+        if (!sessionToken) {
+          console.error("No valid session found");
+          return;
+        }
+
+        const config = {
+          method: "post",
+          maxBodyLength: Infinity,
+          url: `/api/config/read_all_by_category`,
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+          data: { category: "role" },
+        };
+
+        const response = await axios.request(config);
+        if (response.data.status && response.data.data) {
+          // Extract the value field from each config item
+          const roles = response.data.data.map((item) => item.value);
+          setRoleOptions(roles);
+        }
+      } catch (error) {
+        console.error("Error fetching roles:", error);
+        // Fallback to empty array if API fails
+        setRoleOptions([]);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+
+    fetchRoles();
+  }, [getToken]);
 
   // Filter role options based on search term
   const filteredRoleOptions = roleOptions.filter((role) =>
@@ -135,6 +180,83 @@ export default function page() {
       ...prev,
       role: value,
     }));
+  };
+
+  // Handle create new role
+  const handleCreateNewRole = async () => {
+    if (!newRoleValue || !newRoleValue.trim()) {
+      toast.error("Role value is required");
+      return;
+    }
+
+    try {
+      setIsCreatingRole(true);
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const config = {
+        method: "post",
+        maxBodyLength: Infinity,
+        url: `/api/config/create`,
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          "Content-Type": "application/json",
+        },
+        data: {
+          category: "role",
+          value: newRoleValue.trim(),
+        },
+      };
+
+      const response = await axios.request(config);
+      if (response.data.status) {
+        toast.success("Role created successfully");
+        // Refresh roles list
+        const fetchRoles = async () => {
+          try {
+            const config = {
+              method: "post",
+              maxBodyLength: Infinity,
+              url: `/api/config/read_all_by_category`,
+              headers: {
+                Authorization: `Bearer ${sessionToken}`,
+                "Content-Type": "application/json",
+              },
+              data: { category: "role" },
+            };
+            const response = await axios.request(config);
+            if (response.data.status && response.data.data) {
+              const roles = response.data.data.map((item) => item.value);
+              setRoleOptions(roles);
+            }
+          } catch (error) {
+            console.error("Error fetching roles:", error);
+          }
+        };
+        await fetchRoles();
+        // Set the new role as selected
+        setFormData((prev) => ({
+          ...prev,
+          role: newRoleValue.trim(),
+        }));
+        setRoleSearchTerm(newRoleValue.trim());
+        setShowCreateRoleModal(false);
+        setNewRoleValue("");
+        setIsRoleDropdownOpen(false);
+      } else {
+        toast.error(response.data.message || "Failed to create role");
+      }
+    } catch (error) {
+      console.error("Error creating role:", error);
+      const errorMessage =
+        error.response?.data?.message || "Failed to create role";
+      toast.error(errorMessage);
+    } finally {
+      setIsCreatingRole(false);
+    }
   };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -456,21 +578,56 @@ export default function page() {
 
                           {isRoleDropdownOpen && (
                             <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                              {filteredRoleOptions.length > 0 ? (
-                                filteredRoleOptions.map((role, index) => (
-                                  <button
-                                    key={index}
-                                    type="button"
-                                    onClick={() => handleRoleSelect(role)}
-                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                  >
-                                    {role}
-                                  </button>
-                                ))
+                              {loadingRoles ? (
+                                <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                  Loading roles...
+                                </div>
+                              ) : filteredRoleOptions.length > 0 ? (
+                                <>
+                                  {filteredRoleOptions.map((role, index) => (
+                                    <button
+                                      key={index}
+                                      type="button"
+                                      onClick={() => handleRoleSelect(role)}
+                                      className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                    >
+                                      {role}
+                                    </button>
+                                  ))}
+                                  {roleSearchTerm && !filteredRoleOptions.some(r => r.toLowerCase() === roleSearchTerm.toLowerCase()) && (
+                                    <div className="border-t border-slate-200">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setNewRoleValue(roleSearchTerm);
+                                          setShowCreateRoleModal(true);
+                                        }}
+                                        className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                        Create "{roleSearchTerm}"
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
                               ) : (
-                                <div className="px-4 py-3 text-sm text-slate-500">
-                                  No matching roles found - Typed role will be
-                                  saved
+                                <div className="px-4 py-3">
+                                  <div className="text-sm text-slate-500 mb-2">
+                                    No matching roles found
+                                  </div>
+                                  {roleSearchTerm && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setNewRoleValue(roleSearchTerm);
+                                        setShowCreateRoleModal(true);
+                                      }}
+                                      className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                      Create "{roleSearchTerm}"
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -844,6 +1001,61 @@ export default function page() {
           </div>
         </div>
       </AdminRoute>
+
+      {/* Create Role Modal */}
+      {showCreateRoleModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateRoleModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Role
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateRoleModal(false);
+                  setNewRoleValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Role Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newRoleValue}
+                  onChange={(e) => setNewRoleValue(e.target.value)}
+                  placeholder="Enter role name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCreateRoleModal(false);
+                    setNewRoleValue("");
+                  }}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateNewRole}
+                  disabled={isCreatingRole || !newRoleValue?.trim()}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingRole ? "Creating..." : "Create Role"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

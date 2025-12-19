@@ -141,6 +141,7 @@ export async function PATCH(request, { params }) {
           purchaseorder: updateData.module_access.purchaseorder,
           statements: updateData.module_access.statements,
           site_photos: updateData.module_access.site_photos,
+          config: updateData.module_access.config,
         },
       });
       user = {

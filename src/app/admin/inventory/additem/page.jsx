@@ -1,7 +1,7 @@
 "use client";
 import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
-import { ChevronLeft, ChevronDown, Upload, X, Package } from "lucide-react";
+import { ChevronLeft, ChevronDown, Upload, X, Package, Plus } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import React, { useState, useRef, useEffect } from "react";
@@ -63,21 +63,11 @@ export default function page() {
     category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const hardwareSubCategories = [
-    "Legs with plates",
-    "Hinges",
-    "Hinge Plates",
-    "Screws",
-    "Hangin Rode",
-    "Hanging Rode Support & Ends",
-    "Cutlery Tray",
-    "Bin",
-    "Drawer set (Runners)",
-    "Screw Caps (White & Color)",
-    "Plastic Wraps",
-    "Shelf Support",
-    "LED",
-  ];
+  const [hardwareSubCategories, setHardwareSubCategories] = useState([]);
+  const [loadingSubCategories, setLoadingSubCategories] = useState(false);
+  const [showCreateSubCategoryModal, setShowCreateSubCategoryModal] = useState(false);
+  const [newSubCategoryValue, setNewSubCategoryValue] = useState("");
+  const [isCreatingSubCategory, setIsCreatingSubCategory] = useState(false);
 
   const filteredSubCategories = hardwareSubCategories.filter((subCategory) =>
     subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase())
@@ -107,6 +97,46 @@ export default function page() {
 
     fetchSuppliers();
   }, []);
+
+  // Fetch hardware sub categories from config API
+  useEffect(() => {
+    const fetchHardwareSubCategories = async () => {
+      try {
+        setLoadingSubCategories(true);
+        const sessionToken = getToken();
+        if (!sessionToken) {
+          console.error("No valid session found");
+          return;
+        }
+
+        const config = {
+          method: "post",
+          maxBodyLength: Infinity,
+          url: `/api/config/read_all_by_category`,
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+          data: { category: "hardware" },
+        };
+
+        const response = await axios.request(config);
+        if (response.data.status && response.data.data) {
+          // Extract the value field from each config item
+          const subCategories = response.data.data.map((item) => item.value);
+          setHardwareSubCategories(subCategories);
+        }
+      } catch (error) {
+        console.error("Error fetching hardware sub categories:", error);
+        // Fallback to empty array if API fails
+        setHardwareSubCategories([]);
+      } finally {
+        setLoadingSubCategories(false);
+      }
+    };
+
+    fetchHardwareSubCategories();
+  }, [getToken]);
 
   // Filter suppliers based on search term
   useEffect(() => {
@@ -194,6 +224,83 @@ export default function page() {
       ...formData,
       sub_category: e.target.value,
     });
+  };
+
+  // Handle create new hardware sub category
+  const handleCreateNewSubCategory = async () => {
+    if (!newSubCategoryValue || !newSubCategoryValue.trim()) {
+      toast.error("Sub category value is required");
+      return;
+    }
+
+    try {
+      setIsCreatingSubCategory(true);
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const config = {
+        method: "post",
+        maxBodyLength: Infinity,
+        url: `/api/config/create`,
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          "Content-Type": "application/json",
+        },
+        data: {
+          category: "hardware",
+          value: newSubCategoryValue.trim(),
+        },
+      };
+
+      const response = await axios.request(config);
+      if (response.data.status) {
+        toast.success("Hardware sub category created successfully");
+        // Refresh sub categories list
+        const fetchHardwareSubCategories = async () => {
+          try {
+            const config = {
+              method: "post",
+              maxBodyLength: Infinity,
+              url: `/api/config/read_all_by_category`,
+              headers: {
+                Authorization: `Bearer ${sessionToken}`,
+                "Content-Type": "application/json",
+              },
+              data: { category: "hardware" },
+            };
+            const response = await axios.request(config);
+            if (response.data.status && response.data.data) {
+              const subCategories = response.data.data.map((item) => item.value);
+              setHardwareSubCategories(subCategories);
+            }
+          } catch (error) {
+            console.error("Error fetching hardware sub categories:", error);
+          }
+        };
+        await fetchHardwareSubCategories();
+        // Set the new sub category as selected
+        setFormData({
+          ...formData,
+          sub_category: newSubCategoryValue.trim(),
+        });
+        setSubCategorySearchTerm(newSubCategoryValue.trim());
+        setShowCreateSubCategoryModal(false);
+        setNewSubCategoryValue("");
+        setIsSubCategoryDropdownOpen(false);
+      } else {
+        toast.error(response.data.message || "Failed to create sub category");
+      }
+    } catch (error) {
+      console.error("Error creating sub category:", error);
+      const errorMessage =
+        error.response?.data?.message || "Failed to create sub category";
+      toast.error(errorMessage);
+    } finally {
+      setIsCreatingSubCategory(false);
+    }
   };
 
   const handleSupplierSelect = (supplierId, supplierName) => {
@@ -824,26 +931,60 @@ export default function page() {
 
                               {isSubCategoryDropdownOpen && (
                                 <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                  {filteredSubCategories.length > 0 ? (
-                                    filteredSubCategories.map(
-                                      (subCategory, index) => (
-                                        <button
-                                          key={index}
-                                          type="button"
-                                          onClick={() =>
-                                            handleSubCategorySelect(subCategory)
-                                          }
-                                          className="w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                        >
-                                          {subCategory}
-                                        </button>
-                                      )
-                                    )
-                                  ) : (
+                                  {loadingSubCategories ? (
                                     <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                      {subCategorySearchTerm
-                                        ? `No matching sub categories found. Press Enter to use "${subCategorySearchTerm}"`
-                                        : "Type to search or add a custom sub category"}
+                                      Loading sub categories...
+                                    </div>
+                                  ) : filteredSubCategories.length > 0 ? (
+                                    <>
+                                      {filteredSubCategories.map(
+                                        (subCategory, index) => (
+                                          <button
+                                            key={index}
+                                            type="button"
+                                            onClick={() =>
+                                              handleSubCategorySelect(subCategory)
+                                            }
+                                            className="w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                          >
+                                            {subCategory}
+                                          </button>
+                                        )
+                                      )}
+                                      {subCategorySearchTerm && !filteredSubCategories.some(sc => sc.toLowerCase() === subCategorySearchTerm.toLowerCase()) && (
+                                        <div className="border-t border-slate-200">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setNewSubCategoryValue(subCategorySearchTerm);
+                                              setShowCreateSubCategoryModal(true);
+                                            }}
+                                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                          >
+                                            <Plus className="w-4 h-4" />
+                                            Create "{subCategorySearchTerm}"
+                                          </button>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div className="px-4 py-3">
+                                      <div className="text-sm text-slate-500 mb-2 text-center">
+                                        No matching sub categories found
+                                      </div>
+                                      {subCategorySearchTerm && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setNewSubCategoryValue(subCategorySearchTerm);
+                                            setShowCreateSubCategoryModal(true);
+                                          }}
+                                          className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                        >
+                                          <Plus className="w-4 h-4" />
+                                          Create "{subCategorySearchTerm}"
+                                        </button>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -934,6 +1075,61 @@ export default function page() {
           </div>
         </div>
       </AdminRoute>
+
+      {/* Create Hardware Sub Category Modal */}
+      {showCreateSubCategoryModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateSubCategoryModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Hardware Sub Category
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateSubCategoryModal(false);
+                  setNewSubCategoryValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Sub Category Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newSubCategoryValue}
+                  onChange={(e) => setNewSubCategoryValue(e.target.value)}
+                  placeholder="Enter sub category name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCreateSubCategoryModal(false);
+                    setNewSubCategoryValue("");
+                  }}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateNewSubCategory}
+                  disabled={isCreatingSubCategory || !newSubCategoryValue?.trim()}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingSubCategory ? "Creating..." : "Create Sub Category"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

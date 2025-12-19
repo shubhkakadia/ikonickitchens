@@ -17,6 +17,12 @@ export async function GET(request) {
           select: {
             name: true,
             project_id: true,
+            client: {
+              select: {
+                client_id: true,
+                client_name: true,
+              },
+            },
           },
         },
         stages: {

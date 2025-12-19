@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import { X, FileText, Eye, Trash2, Package, Search, Plus } from "lucide-react";
 import Image from "next/image";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
+import AddItemModal from "@/app/admin/suppliers/purchaseorder/components/AddItemModal";
 
 export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess }) {
   const { getToken, userData } = useAuth();
@@ -37,6 +38,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
   const [loading, setLoading] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
   const [showItemSearchResults, setShowItemSearchResults] = useState(false);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
   const searchRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -362,7 +364,16 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                     {loadingItems ? (
                       <div className="p-4 text-center text-slate-500 text-sm">Loading items...</div>
                     ) : filteredItems.length === 0 ? (
-                      <div className="p-4 text-center text-slate-500 text-sm">No items found</div>
+                      <div className="p-4 text-center space-y-3">
+                        <p className="text-slate-500 text-sm">No items found</p>
+                        <button
+                          onClick={() => setShowAddItemModal(true)}
+                          className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium flex items-center gap-2 mx-auto"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Item
+                        </button>
+                      </div>
                     ) : (
                       filteredItems.map(item => (
                         <div
@@ -632,6 +643,20 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
           setSelectedFile={() => { }}
           setViewFileModal={setShowFilePreview}
           setPageNumber={setPageNumber}
+        />
+      )}
+
+      {/* Add Item Modal */}
+      {showAddItemModal && (
+        <AddItemModal
+          setShowModal={setShowAddItemModal}
+          supplierId="" // Materials to Order doesn't require a supplier
+          onItemAdded={() => {
+            // Refresh items for the selected category after item is added
+            if (selectedCategory) {
+              fetchItemsByCategory(selectedCategory);
+            }
+          }}
         />
       )}
     </div>

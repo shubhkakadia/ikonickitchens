@@ -190,7 +190,7 @@ export function AdminRoute({
   redirectTo = "/admin/login",
   fallback,
 }) {
-  const { getUserData, getToken, getUserType } = useAuth();
+  const { getUserData, getToken, getUserType, isAuthenticated, loading: authLoading } = useAuth();
   const [moduleAccess, setModuleAccess] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -225,8 +225,20 @@ export function AdminRoute({
     "/admin/config": "config",
   };
 
+  // Check authentication first - redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push(redirectTo);
+    }
+  }, [isAuthenticated, authLoading, router, redirectTo]);
+
   useEffect(() => {
     const fetchModuleAccess = async () => {
+      // Don't fetch if not authenticated or still loading auth
+      if (!isAuthenticated || authLoading) {
+        return;
+      }
+
       const user = getUserData();
       console.log(user);
       // Check if user data exists and has the expected structure
@@ -252,7 +264,7 @@ export function AdminRoute({
       }
     };
     fetchModuleAccess();
-  }, [getUserData, getToken]);
+  }, [getUserData, getToken, isAuthenticated, authLoading]);
 
   const key = siteMap[pathname];
   const access = moduleAccess?.[key];
@@ -262,12 +274,18 @@ export function AdminRoute({
     if (pathname === '/admin') {
       const userData = getUserData();
       if (userData !== null) {
-        router.push('/admin/dashboard');
+        const userType = getUserType();
+        // Redirect employees to site_photos instead of dashboard
+        if (userType === 'employee') {
+          router.push('/admin/site_photos');
+        } else {
+          router.push('/admin/dashboard');
+        }
       } else {
         router.push('/admin/login');
       }
     }
-  }, [pathname, router, getUserData]);
+  }, [pathname, router, getUserData, getUserType]);
 
   // Redirect employees to site_photos page
   useEffect(() => {
@@ -300,12 +318,17 @@ export function AdminRoute({
     }, 10000);
   }, []);
 
-  // Show loading state
-  if (loading) {
+  // Show loading state while checking auth or module access
+  if (authLoading || loading) {
     return <LoadingAccess />;
   }
 
-  // Show access denied UI
+  // If not authenticated, don't show anything (redirect is happening)
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  // Show access denied UI only for authenticated users without access
   if (!access) {
     return <AccessDenied pathname={pathname} />;
   }

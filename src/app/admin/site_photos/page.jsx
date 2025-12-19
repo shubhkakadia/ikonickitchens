@@ -22,6 +22,9 @@ import {
     Trash2,
     LogOut,
     Search,
+    Phone,
+    MessageSquare,
+    HelpCircle,
 } from "lucide-react";
 
 const TAB_KINDS = {
@@ -53,12 +56,31 @@ export default function SitePhotosPage() {
     const [pendingUploads, setPendingUploads] = useState(null); // { lot, tabKind, files: [{ file, notes, preview }], currentIndex }
     const [searchTerm, setSearchTerm] = useState("");
     const [employeeRole, setEmployeeRole] = useState(null);
+    const [showSupportDropdown, setShowSupportDropdown] = useState(false);
     const fileInputRefs = useRef({});
+    const supportDropdownRef = useRef(null);
 
     useEffect(() => {
         fetchEmployeeRole();
         fetchActiveLots();
     }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (supportDropdownRef.current && !supportDropdownRef.current.contains(event.target)) {
+                setShowSupportDropdown(false);
+            }
+        };
+
+        if (showSupportDropdown) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [showSupportDropdown]);
 
     const fetchEmployeeRole = async () => {
         try {
@@ -139,6 +161,19 @@ export default function SitePhotosPage() {
             console.error("Error logging out:", error);
             toast.error("Failed to logout. Please try again.");
         }
+    };
+
+    const handleCallSupport = () => {
+        window.location.href = "tel:+61452669964";
+        setShowSupportDropdown(false);
+    };
+
+    const handleWhatsAppSupport = () => {
+        // Format phone number for WhatsApp (remove spaces, parentheses, and add country code)
+        const phoneNumber = "61452669964"; // Australian number format
+        const message = encodeURIComponent("Hello, I need support with the site photos application.");
+        window.open(`https://wa.me/${phoneNumber}?text=${message}`, "_blank");
+        setShowSupportDropdown(false);
     };
 
     // Get allowed tabs based on employee role
@@ -716,16 +751,46 @@ export default function SitePhotosPage() {
                             <div className="flex-1">
                                 <h1 className="text-xl font-bold text-gray-900">Site Photos</h1>
                                 <p className="text-sm text-gray-600 mt-1">
-                                    {lots.length} active lot{lots.length !== 1 ? "s" : ""}
+                                    {lots.length} assigned lot{lots.length !== 1 ? "s" : ""}
                                 </p>
                             </div>
-                            <button
-                                onClick={handleLogout}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                title="Logout"
-                            >
-                                <LogOut className="w-5 h-5 text-gray-700" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {/* Contact Support Button */}
+                                <div className="relative" ref={supportDropdownRef}>
+                                    <button
+                                        onClick={() => setShowSupportDropdown(!showSupportDropdown)}
+                                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
+                                        title="Contact Support"
+                                    >
+                                        <HelpCircle className="w-5 h-5 text-gray-700" />
+                                    </button>
+                                    {showSupportDropdown && (
+                                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                                            <button
+                                                onClick={handleCallSupport}
+                                                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                                            >
+                                                <Phone className="w-5 h-5 text-gray-700" />
+                                                <span className="text-sm text-gray-700">Call Support</span>
+                                            </button>
+                                            <button
+                                                onClick={handleWhatsAppSupport}
+                                                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-t border-gray-200"
+                                            >
+                                                <MessageSquare className="w-5 h-5 text-gray-700" />
+                                                <span className="text-sm text-gray-700">WhatsApp</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                    title="Logout"
+                                >
+                                    <LogOut className="w-5 h-5 text-gray-700" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Search Input */}

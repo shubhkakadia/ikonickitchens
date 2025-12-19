@@ -319,6 +319,23 @@ export async function POST(request) {
       };
     });
 
+    // Fetch media separately
+    const media = await prisma.media.findMany({
+      where: {
+        material_selection_id: result.material_selection.id,
+        is_deleted: false,
+      },
+    });
+
+    // Add media to the response
+    const resultWithMedia = {
+      ...result,
+      material_selection: {
+        ...result.material_selection,
+        media: media,
+      },
+    };
+
     const logged = await withLogging(
       request,
       "material_selection",
@@ -332,7 +349,7 @@ export async function POST(request) {
         {
           status: true,
           message: "Material selection and version created successfully",
-          data: result,
+          data: resultWithMedia,
           warning: "Note: Creation succeeded but logging failed",
         },
         { status: 201 }
@@ -342,7 +359,7 @@ export async function POST(request) {
       {
         status: true,
         message: "Material selection and version created successfully",
-        data: result,
+        data: resultWithMedia,
       },
       { status: 201 }
     );

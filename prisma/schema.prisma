@@ -129,10 +129,13 @@ model media {
   item_id              String?
   employee             employees?
   item                 item?
+  material_selection_id String?
   materials_to_order   materials_to_order? @relation(fields: [materials_to_orderId], references: [id], onDelete: Cascade)
+  material_selection   material_selection? @relation(fields: [material_selection_id], references: [id], onDelete: Cascade)
 
   @@index([employee_id])
   @@index([materials_to_orderId], map: "media_materials_to_orderId_fkey")
+  @@index([material_selection_id], map: "media_material_selection_id_fkey")
 }
 
 model contact {
@@ -330,6 +333,7 @@ model material_selection {
   project            project?                      @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
   quote              quote?                        @relation(fields: [quote_id], references: [quote_id], onDelete: SetNull)
   versions           material_selection_versions[] @relation("AllVersions")
+  media              media[]
 
   @@index([project_id])
   @@index([id])

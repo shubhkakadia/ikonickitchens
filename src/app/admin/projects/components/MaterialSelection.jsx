@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { Plus, X, Save, Download, FileText } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Plus, X, Save, Download, FileText, FileUp, Trash, ChevronDown, Eye } from "lucide-react";
 import { formData } from "./MaterialSelectionConstants";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBaseUrl } from "@/lib/baseUrl";
@@ -7,6 +7,8 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
+import Image from "next/image";
+import ViewMedia from "./ViewMedia";
 
 export default function MaterialSelection({ lot_id, project_id }) {
   const { getToken } = useAuth();
@@ -31,6 +33,21 @@ export default function MaterialSelection({ lot_id, project_id }) {
   const [customAreas, setCustomAreas] = useState({});
   // Lot data for PDF overview
   const [lotData, setLotData] = useState(null);
+  
+  // File upload states
+  const [mediaFiles, setMediaFiles] = useState([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [deletingMediaId, setDeletingMediaId] = useState(null);
+  const [expandedSections, setExpandedSections] = useState({
+    images: false,
+    videos: false,
+    pdfs: false,
+    others: false,
+  });
+  const [viewFileModal, setViewFileModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const fileInputRef = useRef(null);
 
   // Check if current version is selected (editable)
   const isCurrentVersion = useMemo(() => {
@@ -643,6 +660,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
       if (response.data.status && response.data.data) {
         const data = response.data.data;
         setMaterialSelectionData(data);
+        setMediaFiles(data?.media || []);
 
         // Set current version as selected by default
         if (data.current_version_id) {
@@ -1861,6 +1879,139 @@ export default function MaterialSelection({ lot_id, project_id }) {
     }
   };
 
+  // Handle file selection - upload immediately
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // Upload files immediately
+    await handleUploadMedia(files);
+
+    // Reset the input so the same file can be selected again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Upload media files
+  const handleUploadMedia = async (filesToUpload = null) => {
+    const files = filesToUpload || [];
+
+    if (!files || files.length === 0) {
+      toast.warning("Please select files to upload.");
+      return;
+    }
+
+    if (!materialSelectionData?.id) {
+      toast.error("Please create or save material selection first before uploading files.");
+      return;
+    }
+
+    setUploadingMedia(true);
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append("files", file);
+      });
+
+      const response = await axios.post(
+        `/api/uploads/material-selection/${materialSelectionData.id}`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success(response.data.message || "Files uploaded successfully!");
+        // Refresh material selection data to get updated media
+        await fetchMaterialSelection();
+      } else {
+        toast.error(response.data.message || "Failed to upload files.");
+      }
+    } catch (error) {
+      console.error("Error uploading media:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to upload files. Please try again.";
+      toast.error(errorMessage);
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  // Delete media file
+  const handleDeleteMedia = async (mediaId) => {
+    if (!materialSelectionData?.id) {
+      toast.error("Cannot delete media. Material selection ID is missing.");
+      return;
+    }
+
+    setDeletingMediaId(mediaId);
+    try {
+      const sessionToken = getToken();
+      const response = await axios.delete(
+        `/api/uploads/material-selection/${materialSelectionData.id}?mediaId=${mediaId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success("File deleted successfully!");
+        // Remove from local state
+        setMediaFiles((prev) => prev.filter((media) => media.id !== mediaId));
+        // Refresh material selection data
+        await fetchMaterialSelection();
+      } else {
+        toast.error(response.data.message || "Failed to delete file.");
+      }
+    } catch (error) {
+      console.error("Error deleting media:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to delete file. Please try again.";
+      toast.error(errorMessage);
+    } finally {
+      setDeletingMediaId(null);
+    }
+  };
+
+  // Format file size
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  };
+
+  // View existing file from server
+  const handleViewExistingFile = (file) => {
+    const fileUrl = `/${file.url}`;
+    setSelectedFile({
+      name: file.filename,
+      type: file.mime_type,
+      size: file.size || 0,
+      url: fileUrl,
+      isExisting: true,
+    });
+    setViewFileModal(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -2835,6 +2986,272 @@ export default function MaterialSelection({ lot_id, project_id }) {
           );
         })}
       </div>
+
+      {/* Media Upload Section */}
+      {materialSelectionData && (
+        <div className="mt-6">
+          {/* Display Existing Files First */}
+          {(() => {
+            // Categorize files by type
+            const categorizeFiles = () => {
+              const images = [];
+              const videos = [];
+              const pdfs = [];
+              const others = [];
+
+              mediaFiles.forEach((file) => {
+                if (
+                  file.mime_type?.includes("image") ||
+                  file.file_type === "image"
+                ) {
+                  images.push(file);
+                } else if (
+                  file.mime_type?.includes("video") ||
+                  file.file_type === "video"
+                ) {
+                  videos.push(file);
+                } else if (
+                  file.mime_type?.includes("pdf") ||
+                  file.file_type === "pdf" ||
+                  file.extension === "pdf"
+                ) {
+                  pdfs.push(file);
+                } else {
+                  others.push(file);
+                }
+              });
+
+              return { images, videos, pdfs, others };
+            };
+
+            const { images, videos, pdfs, others } = categorizeFiles();
+
+            const toggleSection = (section) => {
+              setExpandedSections((prev) => ({
+                ...prev,
+                [section]: !prev[section],
+              }));
+            };
+
+            // File Category Section Component
+            const FileCategorySection = ({
+              title,
+              files,
+              isSmall = false,
+              sectionKey,
+            }) => {
+              if (files.length === 0) return null;
+
+              const isExpanded = expandedSections[sectionKey];
+
+              return (
+                <div className="mb-4">
+                  {/* Category Header with Toggle */}
+                  <button
+                    onClick={() => toggleSection(sectionKey)}
+                    className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3 hover:text-slate-900 transition-colors"
+                  >
+                    <span>
+                      {title} ({files.length})
+                    </span>
+                    <div
+                      className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                        }`}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </div>
+                  </button>
+
+                  {/* Collapsible Content */}
+                  {isExpanded && (
+                    <div className="flex flex-wrap gap-3">
+                      {files.map((file) => (
+                        <div
+                          key={file.id}
+                          onClick={() => handleViewExistingFile(file)}
+                          title="Click to view file"
+                          className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
+                            }`}
+                        >
+                          {/* File Preview */}
+                          <div
+                            className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
+                              } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                          >
+                            {file.mime_type?.includes("image") ||
+                              file.file_type === "image" ? (
+                              <Image
+                                height={100}
+                                width={100}
+                                src={`/${file.url}`}
+                                alt={file.filename}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ) : file.mime_type?.includes("video") ||
+                              file.file_type === "video" ? (
+                              <video
+                                src={`/${file.url}`}
+                                className="w-full h-full object-cover rounded-lg"
+                                muted
+                                playsInline
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <FileText className="w-8 h-8 text-slate-400" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* File Info */}
+                          <div className="space-y-1">
+                            <p
+                              className="text-xs font-medium text-slate-700 truncate"
+                              title={file.filename}
+                            >
+                              {file.filename}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {formatFileSize(file.size || 0)}
+                            </p>
+                          </div>
+
+                          {/* Delete Button */}
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteMedia(file.id);
+                              }}
+                              disabled={deletingMediaId === file.id}
+                              className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                              title="Delete file"
+                            >
+                              {deletingMediaId === file.id ? (
+                                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+                              ) : (
+                                <Trash className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            };
+
+            return (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-slate-700 mb-4">
+                  Uploaded Files
+                </h3>
+
+                {mediaFiles.length > 0 ? (
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    {/* Images Section */}
+                    <FileCategorySection
+                      title="Images"
+                      files={images}
+                      isSmall={false}
+                      sectionKey="images"
+                    />
+
+                    {/* Videos Section */}
+                    <FileCategorySection
+                      title="Videos"
+                      files={videos}
+                      isSmall={false}
+                      sectionKey="videos"
+                    />
+
+                    {/* PDFs Section - Smaller cards */}
+                    <FileCategorySection
+                      title="PDFs"
+                      files={pdfs}
+                      isSmall={true}
+                      sectionKey="pdfs"
+                    />
+
+                    {/* Other Files Section - Smaller cards */}
+                    <FileCategorySection
+                      title="Other Files"
+                      files={others}
+                      isSmall={true}
+                      sectionKey="others"
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
+                    <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                    <p className="text-slate-600">No files uploaded yet</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Upload New Files Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-700">
+              Upload New Files
+            </h3>
+
+            {/* File Upload Area */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-slate-600 mb-2">
+                Select Files {uploadingMedia && "(Uploading...)"}
+              </label>
+              <div
+                className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.dwg,.jpg,.jpeg,.png,.mp4,.mov,.doc,.docx"
+                  onChange={handleFileChange}
+                  disabled={uploadingMedia}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
+                />
+                <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                  {uploadingMedia ? (
+                    <>
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-3"></div>
+                      <p className="text-sm font-medium text-slate-700 mb-1">
+                        Uploading files...
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mb-3">
+                        <FileUp className="w-6 h-6 text-secondary" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-700 mb-1">
+                        Click to upload or drag and drop
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        PDF, DWG, JPG, PNG, MP4, MOV, DOC, or DOCX
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File View Modal */}
+      {viewFileModal && selectedFile && (
+        <ViewMedia
+          selectedFile={selectedFile}
+          setSelectedFile={setSelectedFile}
+          setViewFileModal={setViewFileModal}
+          setPageNumber={setPageNumber}
+        />
+      )}
     </div>
   );
 }

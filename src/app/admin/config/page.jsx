@@ -194,13 +194,7 @@ export default function ConfigPage() {
         },
       };
 
-      console.log("Updating config with:", {
-        id: selectedItem.id,
-        value: formData.value.trim(),
-      });
-
       const response = await axios.request(config);
-      console.log("Update response:", response.data);
       
       if (response.data.status) {
         toast.success("Config updated successfully");

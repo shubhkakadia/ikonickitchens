@@ -700,6 +700,9 @@ export default function page() {
   // Initialize edit form with current item data
   const handleEdit = () => {
     if (item) {
+      // Get category first before using it
+      const category = item.category.toLowerCase();
+      
       const editFormData = {
         description: item.description || "",
         price: item.price || "",
@@ -721,7 +724,6 @@ export default function page() {
       }
 
       // Add category-specific fields based on category
-      const category = item.category.toLowerCase();
       if (category === "sheet" && item.sheet) {
         editFormData.brand = item.sheet?.brand || "";
         editFormData.color = item.sheet?.color || "";

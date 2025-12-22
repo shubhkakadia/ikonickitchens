@@ -23,6 +23,8 @@ export default function ConfigPage() {
   const tabs = [
     { id: "role", label: "Role" },
     { id: "hardware", label: "Hardware" },
+    { id: "measuring_unit", label: "Measuring Unit" },
+    { id: "finish", label: "Finish" },
   ];
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -301,7 +303,7 @@ export default function ConfigPage() {
                   Configuration Management
                 </h1>
                 <p className="text-slate-600">
-                  Manage role and hardware configurations
+                  Manage role, hardware, measuring unit, and finish configurations
                 </p>
               </div>
 
@@ -346,7 +348,7 @@ export default function ConfigPage() {
                       className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm shrink-0"
                     >
                       <Plus className="h-4 w-4" />
-                      Add {activeTab === "role" ? "Role" : "Hardware"}
+                      Add {activeTab === "role" ? "Role" : activeTab === "hardware" ? "Hardware" : activeTab === "measuring_unit" ? "Measuring Unit" : "Finish"}
                     </button>
                   </div>
                 </div>
@@ -509,7 +511,7 @@ export default function ConfigPage() {
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
-                Add {activeTab === "role" ? "Role" : "Hardware"}
+                Add {activeTab === "role" ? "Role" : activeTab === "hardware" ? "Hardware" : activeTab === "measuring_unit" ? "Measuring Unit" : "Finish"}
               </h2>
               <button
                 onClick={closeModals}
@@ -563,7 +565,7 @@ export default function ConfigPage() {
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
-                Edit {activeTab === "role" ? "Role" : "Hardware"}
+                Edit {activeTab === "role" ? "Role" : activeTab === "hardware" ? "Hardware" : activeTab === "measuring_unit" ? "Measuring Unit" : "Finish"}
               </h2>
               <button
                 onClick={closeModals}
@@ -616,7 +618,7 @@ export default function ConfigPage() {
         isOpen={showDeleteModal}
         onClose={closeModals}
         onConfirm={handleDelete}
-        heading={`${activeTab === "role" ? "Role" : "Hardware"}`}
+        heading={`${activeTab === "role" ? "Role" : activeTab === "hardware" ? "Hardware" : activeTab === "measuring_unit" ? "Measuring Unit" : "Finish"}`}
         message={`Are you sure you want to delete "${selectedItem?.value}"? This action cannot be undone.`}
         isDeleting={isDeleting}
       />

@@ -831,7 +831,7 @@ export default function page() {
                                     }}
                                     style={{ cursor: 'pointer' }}
                                   >
-                                    <span className="text-primary hover:underline">
+                                    <span className="text-slate-700">
                                       {e.client_name || "-"}
                                     </span>
                                   </td>

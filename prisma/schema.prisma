@@ -116,24 +116,24 @@ model employees {
 }
 
 model media {
-  id                   String              @id @default(uuid())
-  url                  String
-  filename             String?
-  file_type            String?
-  mime_type            String?
-  extension            String?
-  size                 Int?
-  is_deleted           Boolean             @default(false)
-  employee_id          String?
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  materials_to_orderId String?
-  item_id              String?
-  employee             employees?
-  item                 item?
+  id                    String              @id @default(uuid())
+  url                   String
+  filename              String?
+  file_type             String?
+  mime_type             String?
+  extension             String?
+  size                  Int?
+  is_deleted            Boolean             @default(false)
+  employee_id           String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  materials_to_orderId  String?
+  item_id               String?
+  employee              employees?
+  item                  item?
   material_selection_id String?
-  materials_to_order   materials_to_order? @relation(fields: [materials_to_orderId], references: [id], onDelete: Cascade)
-  material_selection   material_selection? @relation(fields: [material_selection_id], references: [id], onDelete: Cascade)
+  materials_to_order    materials_to_order? @relation(fields: [materials_to_orderId], references: [id], onDelete: Cascade)
+  material_selection    material_selection? @relation(fields: [material_selection_id], references: [id], onDelete: Cascade)
 
   @@index([employee_id])
   @@index([materials_to_orderId], map: "media_materials_to_orderId_fkey")
@@ -666,7 +666,7 @@ model logs {
 
 model constants_config {
   id        String   @id @default(uuid())
-  category  String //role, hardwareSubCategories
+  category  String //role, hardwareSubCategories, measurementUnits
   value     String   @db.LongText
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

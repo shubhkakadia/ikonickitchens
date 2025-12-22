@@ -22,8 +22,12 @@ export async function POST(request) {
           name: name.toLowerCase(),
           status,
           notes,
-          startDate: processDateTimeField(startDate),
-          endDate: processDateTimeField(endDate),
+          startDate: startDate && startDate.trim() !== "" 
+            ? processDateTimeField(startDate) 
+            : null,
+          endDate: endDate && endDate.trim() !== "" 
+            ? processDateTimeField(endDate) 
+            : null,
         },
       });
 

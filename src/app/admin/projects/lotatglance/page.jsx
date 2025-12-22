@@ -434,6 +434,7 @@ export default function page() {
     setStatusDropdownOpen(statusDropdownOpen === dropdownKey ? null : dropdownKey);
   };
 
+
   // Handle stage status update
   const handleStageStatusUpdate = async (lot, stage, newStatus) => {
     try {

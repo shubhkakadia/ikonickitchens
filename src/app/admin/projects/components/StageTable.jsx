@@ -112,15 +112,13 @@ export default function StageTable({
 
     // If stage doesn't exist and it's a predefined stage name, create temporary entry
     if (!existingStage && isPredefinedStageName(stageIdentifier)) {
-      // Get default dates for new stages
-      const defaultDates = getDefaultStageDates();
       const tempStage = {
         stage_id: `temp_${stageIdentifier}`,
         name: stageIdentifier,
         status: "NOT_STARTED",
         notes: "",
-        startDate: defaultDates.startDate,
-        endDate: defaultDates.endDate,
+        startDate: null,
+        endDate: null,
         assigned_to: [],
       };
       setLocalStages((prev) => {
@@ -373,15 +371,13 @@ export default function StageTable({
     if (!stageExists(currentStageForAssignment)) {
       // Stage needs to be created
       if (isPredefinedStageName(currentStageForAssignment)) {
-        // Get default dates if not provided
-        const defaultDates = getDefaultStageDates();
         const stageData = {
           lot_id: selectedLotData.lot_id,
           name: currentStageForAssignment,
           status: existingStage?.status || "NOT_STARTED",
           notes: existingStage?.notes || "",
-          startDate: existingStage?.startDate || defaultDates.startDate,
-          endDate: existingStage?.endDate || defaultDates.endDate,
+          startDate: existingStage?.startDate || null,
+          endDate: existingStage?.endDate || null,
           assigned_to: updatedAssignedIds, // Use updatedAssignedIds directly
         };
         const created = await createStage(stageData, currentStageForAssignment);
@@ -452,10 +448,8 @@ export default function StageTable({
 
   const handleAddStage = async () => {
     if (newStage.name.trim()) {
-      // Get default dates if not provided
-      const defaultDates = getDefaultStageDates();
-      const startDate = newStage.startDate || defaultDates.startDate;
-      const endDate = newStage.endDate || defaultDates.endDate;
+      const startDate = newStage.startDate || null;
+      const endDate = newStage.endDate || null;
 
       // Validate dates against lot dates before creating
       if (
@@ -484,8 +478,8 @@ export default function StageTable({
         name: newStage.name.trim(),
         status: newStage.status,
         notes: newStage.notes,
-        startDate: startDate,
-        endDate: endDate,
+        startDate: startDate || null,
+        endDate: endDate || null,
         assigned_to: [],
       };
 
@@ -567,15 +561,13 @@ export default function StageTable({
     if (!stageExists(stageIdentifier)) {
       // Stage needs to be created (only for predefined stages)
       if (isPredefinedStageName(stageIdentifier)) {
-        // Get default dates if not provided
-        const defaultDates = getDefaultStageDates();
         const stageData = {
           lot_id: selectedLotData.lot_id,
           name: stageIdentifier,
           status: newStatus,
           notes: existingStage?.notes || "",
-          startDate: existingStage?.startDate || defaultDates.startDate,
-          endDate: existingStage?.endDate || defaultDates.endDate,
+          startDate: existingStage?.startDate || null,
+          endDate: existingStage?.endDate || null,
           assigned_to: normalizeAssignedTo(existingStage?.assigned_to || []),
         };
         const created = await createStage(stageData, stageIdentifier);
@@ -608,15 +600,13 @@ export default function StageTable({
     if (!stageExists(stageIdentifier)) {
       // Stage needs to be created (only for predefined stages)
       if (isPredefinedStageName(stageIdentifier)) {
-        // Get default dates if not provided
-        const defaultDates = getDefaultStageDates();
         const stageData = {
           lot_id: selectedLotData.lot_id,
           name: stageIdentifier,
           status: existingStage?.status || "NOT_STARTED",
           notes: notes || "",
-          startDate: existingStage?.startDate || defaultDates.startDate,
-          endDate: existingStage?.endDate || defaultDates.endDate,
+          startDate: existingStage?.startDate || null,
+          endDate: existingStage?.endDate || null,
           assigned_to: normalizeAssignedTo(existingStage?.assigned_to || []),
         };
         const created = await createStage(stageData, stageIdentifier);
@@ -664,15 +654,14 @@ export default function StageTable({
 
     // If stage doesn't exist, create a temporary entry in local state for immediate UI feedback
     if (!existingStage && isPredefinedStageName(stageIdentifier)) {
-      // It's a predefined stage name, add temporary entry to local state with default dates
-      const defaultDates = getDefaultStageDates();
+      // It's a predefined stage name, add temporary entry to local state
       const tempStage = {
         stage_id: `temp_${stageIdentifier}`, // Temporary ID
         name: stageIdentifier,
         status: "NOT_STARTED",
         notes: value,
-        startDate: defaultDates.startDate,
-        endDate: defaultDates.endDate,
+        startDate: null,
+        endDate: null,
         assigned_to: [],
       };
       setLocalStages((prev) => {
@@ -708,58 +697,6 @@ export default function StageTable({
     }, 1000);
   };
 
-  // Helper function to get default dates for new stages
-  const getDefaultStageDates = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day
-
-    const twoWeeksLater = new Date(today);
-    twoWeeksLater.setDate(twoWeeksLater.getDate() + 14);
-
-    const lotStartDate = selectedLotData?.startDate
-      ? new Date(selectedLotData.startDate)
-      : null;
-    const lotEndDate = selectedLotData?.installationDueDate
-      ? new Date(selectedLotData.installationDueDate)
-      : null;
-
-    // If lot has dates, ensure we stay within those bounds
-    let defaultStartDate = today;
-    if (lotStartDate) {
-      // Use the later of today or lot start date
-      defaultStartDate = today > lotStartDate ? today : lotStartDate;
-    }
-
-    // Calculate end date as 2 weeks from start date
-    let defaultEndDate = new Date(defaultStartDate);
-    defaultEndDate.setDate(defaultEndDate.getDate() + 14);
-
-    // If lot has end date, ensure we don't exceed it
-    if (lotEndDate) {
-      if (defaultEndDate > lotEndDate) {
-        defaultEndDate = lotEndDate;
-      }
-      // If start date is after lot end date, use lot dates
-      if (defaultStartDate > lotEndDate) {
-        defaultStartDate = lotStartDate || today;
-        defaultEndDate = lotEndDate;
-      }
-    }
-
-    // Final check: ensure end date is not before start date
-    if (defaultEndDate < defaultStartDate) {
-      defaultEndDate = new Date(defaultStartDate);
-      defaultEndDate.setDate(defaultEndDate.getDate() + 14);
-      if (lotEndDate && defaultEndDate > lotEndDate) {
-        defaultEndDate = lotEndDate;
-      }
-    }
-
-    return {
-      startDate: defaultStartDate.toISOString().split("T")[0],
-      endDate: defaultEndDate.toISOString().split("T")[0],
-    };
-  };
 
   // Helper function to validate stage dates against lot dates
   const validateStageDateAgainstLot = (dateValue, field) => {
@@ -860,8 +797,6 @@ export default function StageTable({
     if (!stageExists(stageIdentifier)) {
       // Stage needs to be created via API
       if (isPredefinedStageName(stageIdentifier)) {
-        // Get default dates if not provided
-        const defaultDates = getDefaultStageDates();
         const stageData = {
           lot_id: selectedLotData.lot_id,
           name: stageIdentifier,
@@ -869,12 +804,12 @@ export default function StageTable({
           notes: existingStage?.notes || "",
           startDate:
             field === "startDate"
-              ? value || defaultDates.startDate
-              : existingStage?.startDate || defaultDates.startDate,
+              ? value || null
+              : existingStage?.startDate || null,
           endDate:
             field === "endDate"
-              ? value || defaultDates.endDate
-              : existingStage?.endDate || defaultDates.endDate,
+              ? value || null
+              : existingStage?.endDate || null,
           assigned_to: normalizeAssignedTo(existingStage?.assigned_to || []),
         };
         const created = await createStage(stageData, stageIdentifier);
@@ -982,10 +917,24 @@ export default function StageTable({
     }
   };
 
+  // Helper function to convert UTC date to Adelaide timezone for display
   const formatDateForInput = (dateString) => {
     if (!dateString) return "";
+
+    // Parse the date string (could be UTC or already local)
     const date = new Date(dateString);
-    return date.toISOString().split("T")[0];
+
+    // Convert UTC date to Adelaide timezone for display
+    // Use Intl.DateTimeFormat to get the date parts in Adelaide timezone
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Australia/Adelaide",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+
+    // Format returns YYYY-MM-DD directly
+    return formatter.format(date);
   };
 
   const handleDeleteStage = (stageId) => {
@@ -1001,13 +950,12 @@ export default function StageTable({
           <h3 className="text-lg font-bold text-slate-800">Project Stages</h3>
           <button
             onClick={() => {
-              const defaultDates = getDefaultStageDates();
               setNewStage({
                 name: "",
                 status: "NOT_STARTED",
                 notes: "",
-                startDate: defaultDates.startDate,
-                endDate: defaultDates.endDate,
+                startDate: "",
+                endDate: "",
                 assigned_to: [],
               });
               setIsAddingStage(true);

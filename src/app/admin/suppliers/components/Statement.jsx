@@ -317,6 +317,11 @@ export default function Statement({ supplierId }) {
       );
 
       if (response.data.status) {
+        toast.success("Statement uploaded successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        });
         completeUpload(1);
         resetForm();
         fetchStatements();
@@ -418,6 +423,11 @@ export default function Statement({ supplierId }) {
       );
 
       if (response.data.status) {
+        toast.success("Statement updated successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        });
         if (hasFile) {
           completeUpload(1);
         } else {

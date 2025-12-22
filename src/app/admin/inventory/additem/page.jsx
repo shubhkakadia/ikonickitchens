@@ -411,6 +411,11 @@ export default function page() {
         }),
       });
       if (response.data.status) {
+        toast.success("Item created successfully", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        });
         if (hasImageFile) {
           completeUpload(1);
         } else {

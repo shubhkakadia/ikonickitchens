@@ -49,6 +49,12 @@ export default function EmployeeDetailPage() {
   const router = useRouter();
   const { id } = useParams();
   const { getToken, isAdmin, isMasterAdmin } = useAuth();
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
   const [employee, setEmployee] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -437,6 +443,14 @@ export default function EmployeeDetailPage() {
         } else if (removeImage) {
           setImagePreview(null);
         }
+        toast.success("Employee updated successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       } else {
         if (imageFile) {
           dismissProgressToast();

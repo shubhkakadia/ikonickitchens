@@ -79,6 +79,12 @@ export default function page() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { getToken } = useAuth();
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
 
   // Role dropdown state
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
@@ -357,6 +363,14 @@ export default function page() {
         }
       );
       if (response.data.status) {
+        toast.success("Employee added successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         if (hasImageFile) {
           completeUpload(1);
         } else {

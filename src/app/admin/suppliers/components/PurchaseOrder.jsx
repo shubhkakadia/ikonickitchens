@@ -160,6 +160,10 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
       );
 
       if (response.data.status) {
+        toast.success("Invoice uploaded successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
         completeUpload(1);
         // Refresh the PO list
         fetchPurchaseOrders();

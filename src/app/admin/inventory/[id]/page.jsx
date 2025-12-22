@@ -504,6 +504,15 @@ export default function page() {
       });
 
       if (response.data.status) {
+        setItem(response.data.data);
+        toast.success("Item updated successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         if (newImage) {
           completeUpload(1);
         } else {

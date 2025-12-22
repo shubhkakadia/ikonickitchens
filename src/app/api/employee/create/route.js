@@ -42,6 +42,7 @@ export async function POST(request) {
       education,
       availability,
       notes,
+      is_active,
     } = body;
 
     // Check if employee_id already exists
@@ -81,6 +82,9 @@ export async function POST(request) {
       }
     }
 
+    // Parse is_active - handle string "true"/"false" or boolean
+    const isActiveValue = is_active === "true" || is_active === true || is_active === undefined || is_active === null ? true : false;
+
     // Create employee first (without image_id)
     const employee = await prisma.employees.create({
       data: {
@@ -105,6 +109,7 @@ export async function POST(request) {
         education,
         availability: availabilityString,
         notes,
+        is_active: isActiveValue,
       },
     });
 

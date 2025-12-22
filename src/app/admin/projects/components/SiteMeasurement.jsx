@@ -7,6 +7,7 @@ import Image from "next/image";
 import TextEditor from "@/components/TextEditor/TextEditor";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 
 export default function SiteMeasurementsSection({
   selectedLotData,
@@ -20,6 +21,12 @@ export default function SiteMeasurementsSection({
 }) {
   const { id } = useParams();
   const { getToken } = useAuth();
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
   // State for site measurements specific uploads
   const [sitePhotosFiles, setSitePhotosFiles] = useState([]);
   const [measurementPhotosFiles, setMeasurementPhotosFiles] = useState([]);
@@ -101,24 +108,31 @@ export default function SiteMeasurementsSection({
       const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${selectedLotData.lot_id
         }/site_measurements`;
 
+      // Show progress toast
+      showProgressToast(files.length);
+
       const response = await axios.post(apiUrl, formData, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "multipart/form-data",
         },
+        onUploadProgress: getUploadProgressHandler(files.length),
       });
 
       if (response.data.status) {
-        toast.success(`${groupName} uploaded successfully`);
+        // Complete upload and auto-dismiss after 5 seconds
+        completeUpload(files.length);
         setFiles([]);
         fetchLotData(true);
       } else {
+        dismissProgressToast();
         toast.error(
           response.data.message || `Failed to upload ${groupName.toLowerCase()}`
         );
       }
     } catch (error) {
       console.error(`Error uploading ${groupName.toLowerCase()}:`, error);
+      dismissProgressToast();
       toast.error(`Failed to upload ${groupName.toLowerCase()}. Please try again.`);
     } finally {
       setIsUploading(false);

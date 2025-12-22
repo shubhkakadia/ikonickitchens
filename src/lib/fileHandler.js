@@ -1,6 +1,7 @@
 
 import fs from "fs";
 import path from "path";
+import sharp from "sharp";
 import { scanFile } from "./scanFile";
 
 export async function fileExists(filePath) {
@@ -17,6 +18,35 @@ export async function writeFileToDisk(targetPath, file) {
   const buffer = Buffer.from(arrayBuffer);
   await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
   await fs.promises.writeFile(targetPath, buffer);
+}
+
+/**
+ * Converts an image file to WebP format using sharp
+ * @param {Buffer} imageBuffer - The image buffer to convert
+ * @param {string} mimeType - The MIME type of the original image
+ * @returns {Promise<Buffer>} - The converted WebP buffer
+ */
+export async function convertImageToWebP(imageBuffer, mimeType) {
+  try {
+    // Convert to WebP with quality optimization
+    const webpBuffer = await sharp(imageBuffer)
+      .webp({ quality: 85, effort: 4 })
+      .toBuffer();
+    return webpBuffer;
+  } catch (error) {
+    console.error("Error converting image to WebP:", error);
+    throw new Error(`Failed to convert image to WebP: ${error.message}`);
+  }
+}
+
+/**
+ * Checks if a file is an image based on MIME type
+ * @param {string} mimeType - The MIME type to check
+ * @returns {boolean} - True if the file is an image
+ */
+export function isImageFile(mimeType) {
+  if (!mimeType) return false;
+  return mimeType.startsWith("image/") && mimeType !== "image/svg+xml"; // Skip SVG as it's vector
 }
 
 export async function getUniqueFilename(targetDir, baseName, extension) {
@@ -121,29 +151,50 @@ export async function uploadFile(file, options = {}) {
   const targetDir = path.join(process.cwd(), ...dirParts);
   await fs.promises.mkdir(targetDir, { recursive: true });
 
+  // Check if file is an image and should be converted to WebP
+  const isImage = isImageFile(file.type);
+  const finalExtension = isImage ? ".webp" : fileExtension;
+
   // Generate filename based on strategy
   let baseName;
   let targetName;
   switch (filenameStrategy) {
     case "id-based":
       baseName = idPrefix || "file";
-      targetName = await getUniqueFilename(targetDir, baseName, fileExtension);
+      targetName = await getUniqueFilename(targetDir, baseName, finalExtension);
       break;
     case "original":
       baseName = path.basename(file.name, fileExtension);
-      targetName = await getUniqueFilename(targetDir, baseName, fileExtension);
+      targetName = await getUniqueFilename(targetDir, baseName, finalExtension);
       break;
     case "unique":
     default:
-      baseName = generateUniqueBaseName(idPrefix);
-      targetName = `${baseName}${fileExtension}`;
+      baseName = await generateUniqueBaseName(idPrefix);
+      targetName = `${baseName}${finalExtension}`;
       break;
   }
 
   const targetPath = path.join(targetDir, targetName);
 
-  // Write file to disk
-  await writeFileToDisk(targetPath, file);
+  // Convert image to WebP if it's an image, otherwise write as-is
+  if (isImage) {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const webpBuffer = await convertImageToWebP(buffer, file.type);
+
+      // Write WebP file to disk
+      await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+      await fs.promises.writeFile(targetPath, webpBuffer);
+    } catch (error) {
+      console.error("Error converting image to WebP:", error);
+      // Fallback to original file if conversion fails
+      await writeFileToDisk(targetPath, file);
+    }
+  } else {
+    // Write non-image file to disk as-is
+    await writeFileToDisk(targetPath, file);
+  }
 
   // Scan file for viruses
   try {
@@ -167,8 +218,19 @@ export async function uploadFile(file, options = {}) {
     throw error;
   }
 
-  // Get file metadata
+  // Get file metadata - update MIME type and extension for converted images
   const metadata = await getFileMetadata(targetPath, file);
+
+  // Update metadata for WebP converted images
+  if (isImage) {
+    metadata.mimeType = "image/webp";
+    metadata.extension = "webp";
+    metadata.fileType = "image";
+    // Update size from the actual saved file
+    const stats = await fs.promises.stat(targetPath);
+    metadata.size = stats.size;
+  }
+
   const relativePath = getRelativePath(targetPath);
 
   return {

@@ -96,6 +96,7 @@ export async function PATCH(request, { params }) {
       education,
       availability,
       notes,
+      is_active,
     } = body;
 
     // Parse availability JSON string to object for validation, then stringify for Prisma
@@ -127,31 +128,40 @@ export async function PATCH(request, { params }) {
       include: { image: true },
     });
 
+    // Build update data object - only include fields that are provided
+    const updateData = {
+      first_name,
+      last_name,
+      role,
+      email,
+      phone,
+      dob: processDateTimeField(dob),
+      join_date: processDateTimeField(join_date),
+      address,
+      emergency_contact_name,
+      emergency_contact_phone,
+      bank_account_name,
+      bank_account_number,
+      bank_account_bsb,
+      supper_account_name,
+      supper_account_number,
+      tfn_number,
+      abn_number,
+      education,
+      availability: availabilityString,
+      notes,
+    };
+
+    // Only include is_active if it's provided
+    if (is_active !== undefined && is_active !== null) {
+      // Parse is_active - handle string "true"/"false" or boolean
+      updateData.is_active = is_active === "true" || is_active === true;
+    }
+
     // Update employee first (without image_id)
     const employee = await prisma.employees.update({
       where: { employee_id: id },
-      data: {
-        first_name,
-        last_name,
-        role,
-        email,
-        phone,
-        dob: processDateTimeField(dob),
-        join_date: processDateTimeField(join_date),
-        address,
-        emergency_contact_name,
-        emergency_contact_phone,
-        bank_account_name,
-        bank_account_number,
-        bank_account_bsb,
-        supper_account_name,
-        supper_account_number,
-        tfn_number,
-        abn_number,
-        education,
-        availability: availabilityString,
-        notes,
-      },
+      data: updateData,
     });
 
     // Handle image removal if requested

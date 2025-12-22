@@ -43,6 +43,7 @@ import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import Image from "next/image";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useRouter } from "next/navigation";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 
 export default function EmployeeDetailPage() {
   const router = useRouter();
@@ -349,6 +350,9 @@ export default function EmployeeDetailPage() {
         if (key === "availability") {
           // Convert availability to JSON string
           formDataToSend.append(key, JSON.stringify(updatedData[key]));
+        } else if (key === "is_active") {
+          // Convert boolean to string for FormData
+          formDataToSend.append(key, updatedData[key] ? "true" : "false");
         } else {
           formDataToSend.append(key, updatedData[key] || "");
         }
@@ -380,14 +384,27 @@ export default function EmployeeDetailPage() {
         ? "multipart/form-data"
         : "application/json";
 
+      // Show progress toast only if there's an image file
+      if (imageFile) {
+        showProgressToast(1);
+      }
+
       const response = await axios.patch(`/api/employee/${id}`, dataToSend, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": contentType,
         },
+        ...(imageFile && {
+          onUploadProgress: getUploadProgressHandler(1),
+        }),
       });
 
       if (response.data.status) {
+        if (imageFile) {
+          completeUpload(1);
+        } else {
+          toast.success("Employee updated successfully");
+        }
         const employeeData = response.data.data;
         // Parse availability if it's a JSON string
         if (
@@ -420,15 +437,10 @@ export default function EmployeeDetailPage() {
         } else if (removeImage) {
           setImagePreview(null);
         }
-        toast.success("Employee updated successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        });
       } else {
+        if (imageFile) {
+          dismissProgressToast();
+        }
         toast.error(response.data.message, {
           position: "top-right",
           autoClose: 3000,
@@ -507,6 +519,7 @@ export default function EmployeeDetailPage() {
         education: employee.education || "",
         availability: formattedAvailability,
         notes: employee.notes || "",
+        is_active: employee.is_active !== undefined ? employee.is_active : true,
       });
       // Reset image state
       setImagePreview(employee.image ? `/${employee.image.url}` : null);
@@ -1889,6 +1902,40 @@ export default function EmployeeDetailPage() {
                       ) : (
                         <div className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
                           {formatValue(employee.notes)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Active Status */}
+                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                      <h3 className="text-sm font-bold text-slate-800 mb-3">
+                        Status
+                      </h3>
+                      {isEditing ? (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editData.is_active !== undefined ? editData.is_active : true}
+                            onChange={(e) =>
+                              handleInputChange("is_active", e.target.checked)
+                            }
+                            className="w-4 h-4 text-primary focus:ring-primary border-slate-300 rounded"
+                          />
+                          <span className="text-sm font-medium text-slate-700">
+                            Active Employee
+                          </span>
+                        </label>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-3 py-1 text-xs font-medium rounded-full ${
+                              employee.is_active !== false
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {employee.is_active !== false ? "Active" : "Inactive"}
+                          </span>
                         </div>
                       )}
                     </div>

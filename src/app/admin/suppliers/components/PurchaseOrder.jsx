@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { useAuth } from "@/contexts/AuthContext";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 import {
   Package,
   PackagePlus,
@@ -32,6 +33,12 @@ const formatMoney = (value) => {
 
 export default function PurchaseOrder({ supplierId, onCountChange }) {
   const { getToken } = useAuth();
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [loadingPO, setLoadingPO] = useState(false);
   const [poActiveTab, setPoActiveTab] = useState("active");
@@ -138,6 +145,9 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
       const formData = new FormData();
       formData.append("invoice", file);
 
+      // Show progress toast
+      showProgressToast(1);
+
       const response = await axios.patch(
         `/api/purchase_order/${poId}`,
         formData,
@@ -145,23 +155,23 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
+          onUploadProgress: getUploadProgressHandler(1),
         }
       );
 
       if (response.data.status) {
-        toast.success("Invoice uploaded successfully", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        completeUpload(1);
         // Refresh the PO list
         fetchPurchaseOrders();
       } else {
+        dismissProgressToast();
         toast.error(response.data.message || "Failed to upload invoice", {
           position: "top-right",
           autoClose: 3000,
         });
       }
     } catch (err) {
+      dismissProgressToast();
       toast.error(err?.response?.data?.message || "Failed to upload invoice", {
         position: "top-right",
         autoClose: 3000,

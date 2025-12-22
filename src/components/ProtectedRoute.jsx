@@ -246,7 +246,7 @@ export function AdminRoute({
         setLoading(false);
         return;
       }
-      
+
       const userId = user.user.id;
       try {
         const response = await axios.get(`/api/module_access/${userId}`, {
@@ -326,17 +326,17 @@ export function AdminRoute({
   if (!access) {
     return <AccessDenied pathname={pathname} />;
   }
-
-  // User has access - render protected content
-  return (
-    <ProtectedRoute
-      requiredUserType={["admin", "master-admin", "manager", "employee"]}
-      redirectTo={redirectTo}
-      fallback={fallback}
-    >
-      {children}
-    </ProtectedRoute>
-  );
+  else {
+    return (
+      <ProtectedRoute
+        requiredUserType={["admin", "master-admin", "manager", "employee"]}
+        redirectTo={redirectTo}
+        fallback={fallback}
+      >
+        {children}
+      </ProtectedRoute>
+    );
+  }
 }
 
 export function MasterAdminRoute({

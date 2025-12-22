@@ -26,9 +26,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ViewMedia from "./ViewMedia";
 import AddItemModal from "@/app/admin/suppliers/purchaseorder/components/AddItemModal";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 
 export default function MaterialsToOrder({ project, selectedLot }) {
   const { getToken, userData } = useAuth();
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
 
   const [categoryItems, setCategoryItems] = useState({
     sheet: [{}],
@@ -1285,6 +1292,9 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         formData.append("files", file);
       });
 
+      // Show progress toast
+      showProgressToast(files.length);
+
       const response = await axios.post(
         `/api/uploads/materials-to-order/${mtoId}`,
         formData,
@@ -1293,11 +1303,12 @@ export default function MaterialsToOrder({ project, selectedLot }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
+          onUploadProgress: getUploadProgressHandler(files.length),
         }
       );
 
       if (response.data.status) {
-        toast.success(response.data.message || "Files uploaded successfully!");
+        completeUpload(files.length);
         // Refresh media files
         const mtoResponse = await axios.get(
           `/api/materials_to_order/${mtoId}`,
@@ -1313,10 +1324,12 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         }
         setSelectedFiles([]);
       } else {
+        dismissProgressToast();
         toast.error(response.data.message || "Failed to upload files.");
       }
     } catch (error) {
       console.error("Error uploading media:", error);
+      dismissProgressToast();
       const errorMessage =
         error.response?.data?.message ||
         error.message ||

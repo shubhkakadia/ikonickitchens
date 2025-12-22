@@ -16,6 +16,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -34,6 +35,12 @@ const formatCurrency = (value) => {
 
 export default function Statement({ supplierId }) {
   const { getToken } = useAuth();
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
   const [statements, setStatements] = useState([]);
   const [loadingStatements, setLoadingStatements] = useState(false);
   const [showUploadStatementModal, setShowUploadStatementModal] =
@@ -294,6 +301,9 @@ export default function Statement({ supplierId }) {
       formData.append("payment_status", statementForm.payment_status);
       formData.append("notes", statementForm.notes || "");
 
+      // Show progress toast
+      showProgressToast(1);
+
       const response = await axios.post(
         `/api/supplier/${supplierId}/statements`,
         formData,
@@ -302,30 +312,27 @@ export default function Statement({ supplierId }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
+          onUploadProgress: getUploadProgressHandler(1),
         }
       );
 
       if (response.data.status) {
-        toast.success("Statement uploaded successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        completeUpload(1);
         resetForm();
         fetchStatements();
       } else {
+        dismissProgressToast();
         toast.error(response.data.message || "Failed to upload statement", {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
         });
       }
     } catch (err) {
       console.error("Error uploading statement:", err);
+      dismissProgressToast();
       toast.error(err.response?.data?.message || "Failed to upload statement", {
         position: "top-right",
         autoClose: 3000,
-        hideProgressBar: false,
       });
     } finally {
       setIsUploadingStatement(false);
@@ -381,6 +388,7 @@ export default function Statement({ supplierId }) {
       }
 
       const formData = new FormData();
+      const hasFile = statementForm.file !== null;
       if (statementForm.file) {
         formData.append("file", statementForm.file);
       }
@@ -390,6 +398,11 @@ export default function Statement({ supplierId }) {
       formData.append("payment_status", statementForm.payment_status);
       formData.append("notes", statementForm.notes || "");
 
+      // Show progress toast only if there's a file
+      if (hasFile) {
+        showProgressToast(1);
+      }
+
       const response = await axios.patch(
         `/api/supplier/${supplierId}/statements/${editingStatement.id}`,
         formData,
@@ -398,15 +411,21 @@ export default function Statement({ supplierId }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
+          ...(hasFile && {
+            onUploadProgress: getUploadProgressHandler(1),
+          }),
         }
       );
 
       if (response.data.status) {
-        toast.success("Statement updated successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        if (hasFile) {
+          completeUpload(1);
+        } else {
+          toast.success("Statement updated successfully!", {
+            position: "top-right",
+            autoClose: 3000,
+          });
+        }
         resetForm();
         fetchStatements();
       } else {

@@ -9,7 +9,7 @@ export async function GET(request) {
     const employees = await prisma.employees.findMany({
       where: {
         is_deleted: false,
-        is_active: true,
+        is_active: false,
       },
       include: {
         image: true,
@@ -24,7 +24,7 @@ export async function GET(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error in GET /api/employee/all:", error);
+    console.error("Error in GET /api/employee/all_inactive:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 }

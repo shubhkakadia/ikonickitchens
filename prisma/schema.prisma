@@ -104,6 +104,7 @@ model employees {
   availability            String?          @db.LongText
   notes                   String?
   abn_number              String?
+  is_active               Boolean          @default(true)
   is_deleted              Boolean          @default(false)
   image                   media?           @relation(fields: [image_id], references: [id], onDelete: Cascade)
   stages                  stage_employee[]

@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { useState } from "react";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 import { CiMenuKebab } from "react-icons/ci";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -92,6 +93,12 @@ export default function page() {
   const [isDeletingFile, setIsDeletingFile] = useState(null);
   const [uploadNotes, setUploadNotes] = useState("");
   const [isSavingUpload, setIsSavingUpload] = useState(false);
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
 
   // ViewMedia modal state (for SiteMeasurementsSection)
   const [viewFileModal, setViewFileModal] = useState(false);
@@ -1069,24 +1076,34 @@ export default function page() {
       const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${selectedLotData.lot_id
         }/${categorySlug}`;
 
+      // Show progress toast
+      showProgressToast(files.length);
+
       const response = await axios.post(apiUrl, formData, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "multipart/form-data",
         },
+        onUploadProgress: getUploadProgressHandler(files.length),
       });
 
       if (response.data.status) {
-        toast.success(`Files uploaded successfully`);
+        // Complete upload and auto-dismiss after 5 seconds
+        completeUpload(files.length);
+
         setUploadedFiles([]);
         setUploadNotes("");
         // Refresh lot data to get updated files
         fetchLotData(true);
       } else {
+        // Dismiss progress toast and show error
+        dismissProgressToast();
         toast.error(response.data.message || `Failed to upload files`);
       }
     } catch (error) {
       console.error("Error uploading files:", error);
+      // Dismiss progress toast and show error
+      dismissProgressToast();
       toast.error("Failed to upload files. Please try again.");
     } finally {
       setIsSavingUpload(false);

@@ -48,7 +48,10 @@ export async function POST(request) {
                     { first_name: { contains: searchTerm } },
                     { last_name: { contains: searchTerm } },
                     { role: { contains: searchTerm } }
-                ]
+                ],
+                is_active: {
+                    not: false, // Only return active employees (is_active !== false, defaults to true)
+                },
             },
             select: {
                 employee_id: true,

@@ -34,6 +34,7 @@ import Image from "next/image";
 import { CiMenuKebab } from "react-icons/ci";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import { AdminRoute } from "@/components/ProtectedRoute";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 
 // InfoField component - defined outside to prevent recreation and focus loss
 const InfoField = ({
@@ -70,6 +71,12 @@ export default function page() {
   const { id } = useParams();
   const router = useRouter();
   const { getToken } = useAuth();
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [item, setItem] = useState(null);
@@ -481,11 +488,19 @@ export default function page() {
         formDataToSend.append("image", "");
       }
 
+      // Show progress toast only if there's a new image file
+      if (newImage) {
+        showProgressToast(1);
+      }
+
       const response = await axios.patch(`/api/item/${id}`, formDataToSend, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "multipart/form-data",
         },
+        ...(newImage && {
+          onUploadProgress: getUploadProgressHandler(1),
+        }),
       });
 
       if (response.data.status) {
@@ -498,19 +513,33 @@ export default function page() {
           pauseOnHover: true,
           draggable: true,
         });
+        if (newImage) {
+          completeUpload(1);
+        } else {
+          toast.success("Item updated successfully!", {
+            position: "top-right",
+            autoClose: 3000,
+          });
+        }
+        setItem(response.data.data);
         setIsEditing(false);
         setNewImage(null);
         setImagePreview(null);
         setDeleteImage(false);
       } else {
+        if (newImage) {
+          dismissProgressToast();
+        }
         toast.error(response.data.message || "Failed to update item", {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
         });
       }
     } catch (error) {
       console.error("Error updating item:", error);
+      if (newImage) {
+        dismissProgressToast();
+      }
       toast.error(
         error.response?.data?.message ||
         "Failed to update item. Please try again.",

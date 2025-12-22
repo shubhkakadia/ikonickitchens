@@ -10,9 +10,16 @@ import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import Image from "next/image";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 
 export default function page() {
   const { getToken } = useAuth();
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -371,6 +378,7 @@ export default function page() {
         return;
       }
       const data = new FormData();
+      const hasImageFile = formData.image instanceof File;
       Object.entries(formData).forEach(([key, value]) => {
         // Skip image field here - handle it separately
         if (key === "image") {
@@ -387,11 +395,20 @@ export default function page() {
           data.append(key, value);
         }
       });
+      
+      // Show progress toast only if there's an image file
+      if (hasImageFile) {
+        showProgressToast(1);
+      }
+      
       const response = await axios.post("/api/item/create", data, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "multipart/form-data",
         },
+        ...(hasImageFile && {
+          onUploadProgress: getUploadProgressHandler(1),
+        }),
       });
       if (response.data.status) {
         toast.success("Item created successfully", {
@@ -399,11 +416,21 @@ export default function page() {
           autoClose: 3000,
           hideProgressBar: false,
         });
+        if (hasImageFile) {
+          completeUpload(1);
+        } else {
+          toast.success("Item created successfully", {
+            position: "top-right",
+            autoClose: 3000,
+          });
+        }
       } else {
+        if (hasImageFile) {
+          dismissProgressToast();
+        }
         toast.error(response.data.message, {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
         });
         return;
       }
@@ -441,10 +468,13 @@ export default function page() {
       faceAutoSetRef.current = false;
     } catch (error) {
       console.error(error);
-      toast.error(error.response.data.message, {
+      const hasImageFile = formData.image instanceof File;
+      if (hasImageFile) {
+        dismissProgressToast();
+      }
+      toast.error(error.response?.data?.message || "Failed to create item. Please try again.", {
         position: "top-right",
         autoClose: 3000,
-        hideProgressBar: false,
       });
     } finally {
       setIsSubmitting(false);

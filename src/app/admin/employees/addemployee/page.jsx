@@ -25,6 +25,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 
 export default function page() {
   const formDataInitialState = {
@@ -49,6 +50,7 @@ export default function page() {
     education: "",
     availability: "",
     notes: "",
+    is_active: true,
     image: null,
   }
 
@@ -77,6 +79,12 @@ export default function page() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { getToken } = useAuth();
+  const {
+    showProgressToast,
+    completeUpload,
+    dismissProgressToast,
+    getUploadProgressHandler,
+  } = useUploadProgress();
 
   // Role dropdown state
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
@@ -316,6 +324,7 @@ export default function page() {
       }
 
       const formDataToSend = new FormData();
+      const hasImageFile = formData.image !== null;
 
       // Append all form data
       Object.keys(formData).forEach((key) => {
@@ -327,10 +336,18 @@ export default function page() {
           if (formData[key]) {
             formDataToSend.append(key, formData[key]);
           }
+        } else if (key === "is_active") {
+          // Convert boolean to string for FormData
+          formDataToSend.append(key, formData[key] ? "true" : "false");
         } else {
           formDataToSend.append(key, formData[key] || "");
         }
       });
+
+      // Show progress toast only if there's an image file
+      if (hasImageFile) {
+        showProgressToast(1);
+      }
 
       const response = await axios.post(
         "/api/employee/create",
@@ -340,6 +357,9 @@ export default function page() {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
+          ...(hasImageFile && {
+            onUploadProgress: getUploadProgressHandler(1),
+          }),
         }
       );
       if (response.data.status) {
@@ -351,11 +371,21 @@ export default function page() {
           pauseOnHover: true,
           draggable: true,
         });
+        if (hasImageFile) {
+          completeUpload(1);
+        } else {
+          toast.success("Employee added successfully!", {
+            position: "top-right",
+            autoClose: 3000,
+          });
+        }
       } else {
+        if (hasImageFile) {
+          dismissProgressToast();
+        }
         toast.error(response.data.message, {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
         });
         return;
       }
@@ -372,6 +402,10 @@ export default function page() {
       }
     } catch (error) {
       console.error("Error adding employee:", error);
+      const hasImageFile = formData.image !== null;
+      if (hasImageFile) {
+        dismissProgressToast();
+      }
       toast.error(
         error.response?.data?.message ||
         "Failed to add employee. Please try again.",
@@ -975,6 +1009,24 @@ export default function page() {
                           <p className="text-xs text-slate-500 mt-1">
                             These notes are for admin reference only and will
                             not be visible to the employee.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              name="is_active"
+                              checked={formData.is_active}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, is_active: e.target.checked }))}
+                              className="w-4 h-4 text-primary focus:ring-primary border-slate-300 rounded"
+                            />
+                            <span className="text-sm font-medium text-slate-700">
+                              Active Employee
+                            </span>
+                          </label>
+                          <p className="text-xs text-slate-500 mt-1 ml-6">
+                            Uncheck to mark this employee as inactive
                           </p>
                         </div>
                       </div>

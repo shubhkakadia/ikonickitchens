@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "react-toastify";
 import heic2any from "heic2any";
+import { useUploadProgress } from "@/hooks/useUploadProgress";
 import {
     ChevronDown,
     ChevronUp,
@@ -42,6 +43,12 @@ const TAB_LABELS = {
 export default function SitePhotosPage() {
     const { getToken, logout, getUserData, getUserType } = useAuth();
     const router = useRouter();
+    const {
+        showProgressToast,
+        completeUpload,
+        dismissProgressToast,
+        getUploadProgressHandler,
+    } = useUploadProgress();
     const [lots, setLots] = useState([]);
     const [allLots, setAllLots] = useState([]); // Store all lots for filtering
     const [loading, setLoading] = useState(true);
@@ -451,10 +458,14 @@ export default function SitePhotosPage() {
 
             const apiUrl = `/api/uploads/lots/${lot.project.project_id.toUpperCase()}/${lot.lot_id}/${tabKind}`;
 
+            // Show progress toast
+            showProgressToast(files.length);
+
             const response = await axios.post(apiUrl, formData, {
                 headers: {
                     Authorization: `Bearer ${sessionToken}`,
                 },
+                onUploadProgress: getUploadProgressHandler(files.length),
             });
 
             if (response.data.status) {
@@ -489,17 +500,18 @@ export default function SitePhotosPage() {
                     );
                 }
 
-                toast.success(
-                    `${files.length} file(s) uploaded successfully to ${TAB_LABELS[tabKind]}`
-                );
+                // Complete upload and auto-dismiss after 5 seconds
+                completeUpload(files.length);
                 await fetchLotDetails(lot.id);
             } else {
+                dismissProgressToast();
                 toast.error(
                     response.data.message || "Failed to upload files. Please try again."
                 );
             }
         } catch (error) {
             console.error("Error uploading files:", error);
+            dismissProgressToast();
             toast.error("Failed to upload files. Please try again.");
         } finally {
             setUploading((prev) => ({ ...prev, [uploadKey]: false }));

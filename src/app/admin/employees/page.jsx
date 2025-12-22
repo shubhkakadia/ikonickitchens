@@ -46,6 +46,7 @@ export default function page() {
   const [hasInitializedRoles, setHasInitializedRoles] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const [activeTab, setActiveTab] = useState("active");
 
   // Define all available columns for export
   const availableColumns = [
@@ -318,10 +319,10 @@ export default function page() {
     endIndex
   );
 
-  // Reset to first page when search or items per page changes
+  // Reset to first page when search, tab, or items per page changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, activeTab]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -413,10 +414,11 @@ export default function page() {
 
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [activeTab]);
 
   const fetchEmployees = async () => {
     try {
+      setLoading(true);
       // Get the session token when needed
       const sessionToken = getToken();
 
@@ -428,10 +430,16 @@ export default function page() {
         });
         return;
       }
+      
+      // Use different endpoint based on active tab
+      const endpoint = activeTab === "inactive" 
+        ? "/api/employee/all_inactive" 
+        : "/api/employee/all";
+      
       let config = {
         method: "get",
         maxBodyLength: Infinity,
-        url: "/api/employee/all",
+        url: endpoint,
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           ...{},
@@ -452,11 +460,10 @@ export default function page() {
         .catch((error) => {
           setLoading(false);
           console.error("Error fetching employees:", error);
-          setError(error.response.data.message);
+          setError(error.response?.data?.message || "Failed to fetch employees");
         });
     } catch (error) {
       console.error("Error fetching employees:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -701,6 +708,32 @@ export default function page() {
                       </div>
                     </div>
 
+                    {/* Tabs Section */}
+                    <div className="px-4 shrink-0 border-b border-slate-200">
+                      <nav className="flex space-x-6">
+                        <button
+                          onClick={() => setActiveTab("active")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "active"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          Active
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("inactive")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "inactive"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          Inactive
+                        </button>
+                      </nav>
+                    </div>
+
                     {/* Scrollable Table Section */}
                     <div className="flex-1 overflow-auto">
                       <div className="min-w-full">
@@ -783,7 +816,9 @@ export default function page() {
                                     ? "No employees found matching your search"
                                     : selectedRoles.length === 0
                                       ? "No employees found - please select at least one role to view employees"
-                                      : "No employees found"}
+                                      : activeTab === "active"
+                                        ? "No active employees found"
+                                        : "No inactive employees found"}
                                 </td>
                               </tr>
                             ) : (

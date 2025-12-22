@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
+import { useExcelExport } from "@/hooks/useExcelExport";
 
 export default function page() {
   const router = useRouter();
@@ -33,7 +34,6 @@ export default function page() {
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
@@ -291,131 +291,56 @@ export default function page() {
     return null;
   };
 
-  const handleExportToExcel = async () => {
-    if (filteredAndSortedSuppliers.length === 0) {
-      toast.warning(
-        "No data to export. Please adjust your filters or add suppliers.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-      return;
-    }
+  // Column mapping for Excel export
+  const columnMap = useMemo(() => ({
+    "Supplier Name": (supplier) => supplier.name || "",
+    Email: (supplier) => supplier.email || "",
+    Phone: (supplier) => supplier.phone || "",
+    Address: (supplier) => supplier.address || "",
+    Website: (supplier) => supplier.website || "",
+    Notes: (supplier) => supplier.notes || "",
+    "Total Statement Due": (supplier) => {
+      const totalStatementDue =
+        supplier.statements && Array.isArray(supplier.statements)
+          ? supplier.statements.reduce((sum, statement) => {
+            const amount = parseFloat(statement.amount) || 0;
+            return sum + amount;
+          }, 0)
+          : 0;
+      return totalStatementDue > 0
+        ? totalStatementDue.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+        : "0.00";
+    },
+    "Active PO Count": (supplier) => {
+      const activePOCount =
+        supplier.purchase_order && Array.isArray(supplier.purchase_order)
+          ? supplier.purchase_order.length
+          : 0;
+      return activePOCount || 0;
+    },
+    "Created At": (supplier) =>
+      supplier.createdAt
+        ? new Date(supplier.createdAt).toLocaleDateString()
+        : "",
+    "Updated At": (supplier) =>
+      supplier.updatedAt
+        ? new Date(supplier.updatedAt).toLocaleDateString()
+        : "",
+  }), []);
 
-    setIsExporting(true);
+  // Initialize Excel export hook
+  const { exportToExcel, isExporting } = useExcelExport({
+    columnMap,
+    filenamePrefix: "suppliers_export",
+    sheetName: "Suppliers",
+    selectedColumns,
+  });
 
-    try {
-      // Dynamic import of xlsx to avoid SSR issues
-      const XLSX = await import("xlsx");
-
-      // Map of column names to their data extraction functions
-      const columnMap = {
-        "Supplier Name": (supplier) => supplier.name || "",
-        Email: (supplier) => supplier.email || "",
-        Phone: (supplier) => supplier.phone || "",
-        Address: (supplier) => supplier.address || "",
-        Website: (supplier) => supplier.website || "",
-        Notes: (supplier) => supplier.notes || "",
-        "Total Statement Due": (supplier) => {
-          const totalStatementDue =
-            supplier.statements && Array.isArray(supplier.statements)
-              ? supplier.statements.reduce((sum, statement) => {
-                const amount = parseFloat(statement.amount) || 0;
-                return sum + amount;
-              }, 0)
-              : 0;
-          return totalStatementDue > 0
-            ? totalStatementDue.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })
-            : "0.00";
-        },
-        "Active PO Count": (supplier) => {
-          const activePOCount =
-            supplier.purchase_order && Array.isArray(supplier.purchase_order)
-              ? supplier.purchase_order.length
-              : 0;
-          return activePOCount || 0;
-        },
-        "Created At": (supplier) =>
-          supplier.createdAt
-            ? new Date(supplier.createdAt).toLocaleDateString()
-            : "",
-        "Updated At": (supplier) =>
-          supplier.updatedAt
-            ? new Date(supplier.updatedAt).toLocaleDateString()
-            : "",
-      };
-
-      // Column width map
-      const columnWidthMap = {
-        "Supplier Name": 20,
-        Email: 25,
-        Phone: 15,
-        Address: 30,
-        Website: 20,
-        Notes: 30,
-        "Total Statement Due": 20,
-        "Active PO Count": 15,
-        "Created At": 12,
-        "Updated At": 12,
-      };
-
-      // Prepare data for export - only include selected columns
-      const exportData = filteredAndSortedSuppliers.map((supplier) => {
-        const row = {};
-        selectedColumns.forEach((column) => {
-          if (columnMap[column]) {
-            row[column] = columnMap[column](supplier);
-          }
-        });
-        return row;
-      });
-
-      // Create a new workbook
-      const wb = XLSX.utils.book_new();
-
-      // Create a worksheet from the data
-      const ws = XLSX.utils.json_to_sheet(exportData);
-
-      // Set column widths for selected columns only
-      const colWidths = selectedColumns.map((column) => ({
-        wch: columnWidthMap[column] || 15,
-      }));
-      ws["!cols"] = colWidths;
-
-      // Add the worksheet to the workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Suppliers");
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split("T")[0];
-      const filename = `suppliers_export_${currentDate}.xlsx`;
-
-      // Save the file
-      XLSX.writeFile(wb, filename);
-
-      // Show success message
-      toast.success(
-        `Successfully exported ${exportData.length} suppliers to ${filename}`,
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-    } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      toast.error("Failed to export data to Excel. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
-    } finally {
-      setIsExporting(false);
-    }
+  const handleExportToExcel = () => {
+    exportToExcel(filteredAndSortedSuppliers);
   };
 
   return (

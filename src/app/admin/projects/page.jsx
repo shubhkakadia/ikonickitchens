@@ -25,6 +25,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
+import { useExcelExport } from "@/hooks/useExcelExport";
 
 export default function page() {
   const router = useRouter();
@@ -34,7 +35,6 @@ export default function page() {
   const [sortField, setSortField] = useState("project_id");
   const [sortOrder, setSortOrder] = useState("asc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [projects, setProjects] = useState([]);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
@@ -402,106 +402,34 @@ export default function page() {
     return null; // No icon for relevance
   };
 
-  const handleExportToExcel = async () => {
-    if (filteredAndSortedProjects.length === 0) {
-      toast.warning(
-        "No data to export. Please adjust your filters or add projects.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-      return;
-    }
+  // Column mapping for Excel export
+  const columnMap = useMemo(() => ({
+    "Project ID": (project) => project.project_id || "",
+    "Project Name": (project) => project.name || "",
+    "Number of Lots": (project) => (project.lots ? project.lots.length : 0),
+    Client: (project) =>
+      project.client?.client_name || "No client assigned",
+    "Client Type": (project) => project.client?.client_type || "",
+    "Created At": (project) =>
+      project.createdAt
+        ? new Date(project.createdAt).toLocaleDateString()
+        : "",
+    "Updated At": (project) =>
+      project.updatedAt
+        ? new Date(project.updatedAt).toLocaleDateString()
+        : "",
+  }), []);
 
-    setIsExporting(true);
+  // Initialize Excel export hook
+  const { exportToExcel, isExporting } = useExcelExport({
+    columnMap,
+    filenamePrefix: "projects_export",
+    sheetName: "Projects",
+    selectedColumns,
+  });
 
-    try {
-      // Dynamic import of xlsx to avoid SSR issues
-      const XLSX = await import("xlsx");
-
-      // Map of column names to their data extraction functions
-      const columnMap = {
-        "Project ID": (project) => project.project_id || "",
-        "Project Name": (project) => project.name || "",
-        "Number of Lots": (project) => (project.lots ? project.lots.length : 0),
-        Client: (project) =>
-          project.client?.client_name || "No client assigned",
-        "Client Type": (project) => project.client?.client_type || "",
-        "Created At": (project) =>
-          project.createdAt
-            ? new Date(project.createdAt).toLocaleDateString()
-            : "",
-        "Updated At": (project) =>
-          project.updatedAt
-            ? new Date(project.updatedAt).toLocaleDateString()
-            : "",
-      };
-
-      // Column width map
-      const columnWidthMap = {
-        "Project ID": 12,
-        "Project Name": 20,
-        "Number of Lots": 15,
-        Client: 25,
-        "Client Type": 15,
-        "Created At": 12,
-        "Updated At": 12,
-      };
-
-      // Prepare data for export - only include selected columns
-      const exportData = filteredAndSortedProjects.map((project) => {
-        const row = {};
-        selectedColumns.forEach((column) => {
-          if (columnMap[column]) {
-            row[column] = columnMap[column](project);
-          }
-        });
-        return row;
-      });
-
-      // Create a new workbook
-      const wb = XLSX.utils.book_new();
-
-      // Create a worksheet from the data
-      const ws = XLSX.utils.json_to_sheet(exportData);
-
-      // Set column widths for selected columns only
-      const colWidths = selectedColumns.map((column) => ({
-        wch: columnWidthMap[column] || 15,
-      }));
-      ws["!cols"] = colWidths;
-
-      // Add the worksheet to the workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Projects");
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split("T")[0];
-      const filename = `projects_export_${currentDate}.xlsx`;
-
-      // Save the file
-      XLSX.writeFile(wb, filename);
-
-      // Show success message
-      toast.success(
-        `Successfully exported ${exportData.length} projects to ${filename}`,
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-    } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      toast.error("Failed to export data to Excel. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
-    } finally {
-      setIsExporting(false);
-    }
+  const handleExportToExcel = () => {
+    exportToExcel(filteredAndSortedProjects);
   };
   // Helper function to get client name from project
   const getClientName = (project) => {

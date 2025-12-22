@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
+import { useExcelExport } from "@/hooks/useExcelExport";
 import {
   Plus,
   Search,
@@ -57,7 +58,6 @@ export default function page() {
   const [showCategoryFilterDropdown, setShowCategoryFilterDropdown] =
     useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [isExporting, setIsExporting] = useState(false);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
@@ -729,188 +729,72 @@ export default function page() {
     return null; // No icon for relevance
   };
 
-  const handleExportToExcel = async () => {
-    if (filteredAndSortedData.length === 0) {
-      toast.warning(
-        "No data to export. Please adjust your filters or add items.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-      return;
-    }
+  // Column mapping for Excel export - dynamic based on activeTab
+  const columnMap = useMemo(() => {
+    const baseMap = {
+      Quantity: (item) => item.quantity || 0,
+      Description: (item) => item.description || "",
+      Category: (item) => item.category || "",
+      "Price (including GST)": (item) => item.price || 0,
+      CreatedAt: (item) =>
+        item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "",
+      UpdatedAt: (item) =>
+        item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : "",
+    };
 
-    setIsExporting(true);
-
-    try {
-      // Dynamic import of xlsx to avoid SSR issues
-      const XLSX = await import("xlsx");
-
-      // Column width map
-      const columnWidthMap = {
-        Brand: 20,
-        Color: 15,
-        Finish: 15,
-        Dimensions: 18,
-        Quantity: 12,
-        Description: 30,
-        Category: 15,
-        "Price (including GST)": 12,
-        Face: 12,
-        IsSunmica: 12,
-        Type: 15,
-        Material: 15,
-        Name: 20,
-        CreatedAt: 20,
-        UpdatedAt: 20,
+    if (activeTab === "sheet" || activeTab === "sunmica") {
+      return {
+        ...baseMap,
+        Brand: (item) => item.sheet?.brand || "",
+        Color: (item) => item.sheet?.color || "",
+        Finish: (item) => item.sheet?.finish || "",
+        Dimensions: (item) => item.sheet?.dimensions || "",
+        Face: (item) => item.sheet?.face || "",
+        IsSunmica: (item) => (item.sheet?.is_sunmica ? "Yes" : "No"),
       };
-
-      // Prepare data for export based on active tab
-      let fullExportData = [];
-      if (activeTab === "sheet" || activeTab === "sunmica") {
-        fullExportData = filteredAndSortedData.map((item) => ({
-          Brand: item.sheet?.brand || "",
-          Color: item.sheet?.color || "",
-          Finish: item.sheet?.finish || "",
-          Dimensions: item.sheet?.dimensions || "",
-          Quantity: item.quantity || 0,
-          Description: item.description || "",
-          Category: item.category || "",
-          "Price (including GST)": item.price || 0,
-          Face: item.sheet?.face || "",
-          IsSunmica: item.sheet?.is_sunmica ? "Yes" : "No",
-          CreatedAt: item.createdAt
-            ? new Date(item.createdAt).toLocaleDateString()
-            : "",
-          UpdatedAt: item.updatedAt
-            ? new Date(item.updatedAt).toLocaleDateString()
-            : "",
-        }));
-      } else if (activeTab === "handle") {
-        fullExportData = filteredAndSortedData.map((item) => ({
-          Brand: item.handle?.brand || "",
-          Color: item.handle?.color || "",
-          Type: item.handle?.type || "",
-          Material: item.handle?.material || "",
-          Dimensions: item.handle?.dimensions || "",
-          Quantity: item.quantity || 0,
-          Description: item.description || "",
-          Category: item.category || "",
-          "Price (including GST)": item.price || 0,
-          CreatedAt: item.createdAt
-            ? new Date(item.createdAt).toLocaleDateString()
-            : "",
-          UpdatedAt: item.updatedAt
-            ? new Date(item.updatedAt).toLocaleDateString()
-            : "",
-        }));
-      } else if (activeTab === "hardware") {
-        fullExportData = filteredAndSortedData.map((item) => ({
-          Quantity: item.quantity || 0,
-          Description: item.description || "",
-          Category: item.category || "",
-          "Price (including GST)": item.price || 0,
-          Name: item.hardware?.name || "",
-          Type: item.hardware?.type || "",
-          Dimensions: item.hardware?.dimensions || "",
-          CreatedAt: item.createdAt
-            ? new Date(item.createdAt).toLocaleDateString()
-            : "",
-          UpdatedAt: item.updatedAt
-            ? new Date(item.updatedAt).toLocaleDateString()
-            : "",
-        }));
-      } else if (activeTab === "accessory") {
-        fullExportData = filteredAndSortedData.map((item) => ({
-          Quantity: item.quantity || 0,
-          Description: item.description || "",
-          Category: item.category || "",
-          "Price (including GST)": item.price || 0,
-          Name: item.accessory?.name || "",
-          CreatedAt: item.createdAt
-            ? new Date(item.createdAt).toLocaleDateString()
-            : "",
-          UpdatedAt: item.updatedAt
-            ? new Date(item.updatedAt).toLocaleDateString()
-            : "",
-        }));
-      } else if (activeTab === "edging_tape") {
-        fullExportData = filteredAndSortedData.map((item) => ({
-          Quantity: item.quantity || 0,
-          Description: item.description || "",
-          Category: item.category || "",
-          "Price (including GST)": item.price || 0,
-          Brand: item.edging_tape?.brand || "",
-          Color: item.edging_tape?.color || "",
-          Finish: item.edging_tape?.finish || "",
-          Dimensions: item.edging_tape?.dimensions || "",
-          CreatedAt: item.createdAt
-            ? new Date(item.createdAt).toLocaleDateString()
-            : "",
-          UpdatedAt: item.updatedAt
-            ? new Date(item.updatedAt).toLocaleDateString()
-            : "",
-        }));
-      }
-
-      // Filter to only selected columns
-      const exportData = fullExportData.map((row) => {
-        const filteredRow = {};
-        selectedColumns.forEach((column) => {
-          if (row.hasOwnProperty(column)) {
-            filteredRow[column] = row[column];
-          }
-        });
-        return filteredRow;
-      });
-
-      // Create a new workbook
-      const wb = XLSX.utils.book_new();
-
-      // Create a worksheet from the data
-      const ws = XLSX.utils.json_to_sheet(exportData);
-
-      // Set column widths for selected columns only
-      const colWidths = selectedColumns.map((column) => ({
-        wch: columnWidthMap[column] || 15,
-      }));
-      ws["!cols"] = colWidths;
-
-      // Add the worksheet to the workbook
-      XLSX.utils.book_append_sheet(
-        wb,
-        ws,
-        `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Inventory`
-      );
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split("T")[0];
-      const filename = `${activeTab}_inventory_export_${currentDate}.xlsx`;
-
-      // Save the file
-      XLSX.writeFile(wb, filename);
-
-      // Show success message
-      toast.success(
-        `Successfully exported ${exportData.length} ${activeTab} items to ${filename}`,
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-    } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      toast.error("Failed to export data to Excel. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
-    } finally {
-      setIsExporting(false);
+    } else if (activeTab === "handle") {
+      return {
+        ...baseMap,
+        Brand: (item) => item.handle?.brand || "",
+        Color: (item) => item.handle?.color || "",
+        Type: (item) => item.handle?.type || "",
+        Material: (item) => item.handle?.material || "",
+        Dimensions: (item) => item.handle?.dimensions || "",
+      };
+    } else if (activeTab === "hardware") {
+      return {
+        ...baseMap,
+        Name: (item) => item.hardware?.name || "",
+        Type: (item) => item.hardware?.type || "",
+        Dimensions: (item) => item.hardware?.dimensions || "",
+      };
+    } else if (activeTab === "accessory") {
+      return {
+        ...baseMap,
+        Name: (item) => item.accessory?.name || "",
+      };
+    } else if (activeTab === "edging_tape") {
+      return {
+        ...baseMap,
+        Brand: (item) => item.edging_tape?.brand || "",
+        Color: (item) => item.edging_tape?.color || "",
+        Finish: (item) => item.edging_tape?.finish || "",
+        Dimensions: (item) => item.edging_tape?.dimensions || "",
+      };
     }
+    return baseMap;
+  }, [activeTab]);
+
+  // Initialize Excel export hook
+  const { exportToExcel, isExporting } = useExcelExport({
+    columnMap,
+    filenamePrefix: `${activeTab}_inventory_export`,
+    sheetName: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Inventory`,
+    selectedColumns,
+  });
+
+  const handleExportToExcel = () => {
+    exportToExcel(filteredAndSortedData);
   };
 
   // Stock Tally Functions

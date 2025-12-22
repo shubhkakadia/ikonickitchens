@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useEffect, useMemo, useState } from "react";
+import { useExcelExport } from "@/hooks/useExcelExport";
 
 export default function page() {
   const [logs, setLogs] = useState([]);
@@ -42,7 +43,6 @@ export default function page() {
   const [selectedEntityTypes, setSelectedEntityTypes] = useState([]);
   const [selectedActions, setSelectedActions] = useState([]);
   const [hasInitializedFilters, setHasInitializedFilters] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const { getToken } = useAuth();
 
@@ -78,100 +78,28 @@ export default function page() {
     };
   }, []);
 
-  const handleExportToExcel = async () => {
-    if (filteredAndSortedLogs.length === 0) {
-      toast.warning(
-        "No data to export. Please adjust your filters or wait for logs to load.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-      return;
-    }
+  // Column mapping for Excel export
+  const columnMap = useMemo(() => ({
+    "Date/Time": (log) =>
+      log.createdAt ? formatDateTime(log.createdAt) : "",
+    "Entity Type": (log) => log.entity_type || "",
+    Action: (log) => log.action || "",
+    Description: (log) => log.description || "",
+    "Entity ID": (log) => log.entity_id || "",
+    Username: (log) => log.user?.username || "",
+    ID: (log) => log.id || "",
+  }), []);
 
-    setIsExporting(true);
+  // Initialize Excel export hook
+  const { exportToExcel, isExporting } = useExcelExport({
+    columnMap,
+    filenamePrefix: "logs_export",
+    sheetName: "Logs",
+    selectedColumns,
+  });
 
-    try {
-      // Dynamic import of xlsx to avoid SSR issues
-      const XLSX = await import("xlsx");
-
-      // Map of column names to their data extraction functions
-      const columnMap = {
-        "Date/Time": (log) =>
-          log.createdAt ? formatDateTime(log.createdAt) : "",
-        "Entity Type": (log) => log.entity_type || "",
-        Action: (log) => log.action || "",
-        Description: (log) => log.description || "",
-        "Entity ID": (log) => log.entity_id || "",
-        Username: (log) => log.user?.username || "",
-        ID: (log) => log.id || "",
-      };
-
-      // Column width map
-      const columnWidthMap = {
-        "Date/Time": 20,
-        "Entity Type": 20,
-        Action: 12,
-        Description: 60,
-        "Entity ID": 40,
-        Username: 20,
-        ID: 40,
-      };
-
-      // Prepare data for export - only include selected columns
-      const exportData = filteredAndSortedLogs.map((log) => {
-        const row = {};
-        selectedColumns.forEach((column) => {
-          if (columnMap[column]) {
-            row[column] = columnMap[column](log);
-          }
-        });
-        return row;
-      });
-
-      // Create a new workbook
-      const wb = XLSX.utils.book_new();
-
-      // Create a worksheet from the data
-      const ws = XLSX.utils.json_to_sheet(exportData);
-
-      // Set column widths for selected columns only
-      const colWidths = selectedColumns.map((column) => ({
-        wch: columnWidthMap[column] || 15,
-      }));
-      ws["!cols"] = colWidths;
-
-      // Add the worksheet to the workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Logs");
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split("T")[0];
-      const filename = `logs_export_${currentDate}.xlsx`;
-
-      // Save the file
-      XLSX.writeFile(wb, filename);
-
-      // Show success message
-      toast.success(
-        `Successfully exported ${exportData.length} logs to ${filename}`,
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-    } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      toast.error("Failed to export data to Excel. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
-    } finally {
-      setIsExporting(false);
-    }
+  const handleExportToExcel = () => {
+    exportToExcel(filteredAndSortedLogs);
   };
 
   // Get distinct entity types from logs data

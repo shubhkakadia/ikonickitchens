@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
+import { useExcelExport } from "@/hooks/useExcelExport";
 
 export default function page() {
   const router = useRouter();
@@ -44,7 +45,6 @@ export default function page() {
   const [showRoleFilterDropdown, setShowRoleFilterDropdown] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [hasInitializedRoles, setHasInitializedRoles] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const [activeTab, setActiveTab] = useState("active");
 
@@ -92,152 +92,56 @@ export default function page() {
     };
   }, []);
 
-  const handleExportToExcel = async () => {
-    if (filteredAndSortedEmployees.length === 0) {
-      toast.warning(
-        "No data to export. Please adjust your filters or add employees.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-      return;
-    }
+  // Column mapping for Excel export
+  const columnMap = useMemo(() => ({
+    "Employee ID": (employee) => employee.employee_id || "",
+    "First Name": (employee) => employee.first_name || "",
+    "Last Name": (employee) => employee.last_name || "",
+    Email: (employee) => employee.email || "",
+    Phone: (employee) => employee.phone || "",
+    Role: (employee) => employee.role || "",
+    "Date of Birth": (employee) =>
+      employee.dob ? new Date(employee.dob).toLocaleDateString() : "",
+    "Join Date": (employee) =>
+      employee.join_date
+        ? new Date(employee.join_date).toLocaleDateString()
+        : "",
+    Address: (employee) => employee.address || "",
+    "Emergency Contact Name": (employee) =>
+      employee.emergency_contact_name || "",
+    "Emergency Contact Phone": (employee) =>
+      employee.emergency_contact_phone || "",
+    "Bank Account Name": (employee) => employee.bank_account_name || "",
+    "Bank Account Number": (employee) => employee.bank_account_number || "",
+    "Bank Account BSB": (employee) => employee.bank_account_bsb || "",
+    "Super Account Name": (employee) => employee.supper_account_name || "",
+    "Super Account Number": (employee) =>
+      employee.supper_account_number || "",
+    "TFN Number": (employee) => employee.tfn_number || "",
+    Education: (employee) => employee.education || "",
+    Availability: (employee) =>
+      employee.availability ? JSON.stringify(employee.availability) : "",
+    Notes: (employee) => employee.notes || "",
+    "Created At": (employee) =>
+      employee.createdAt
+        ? new Date(employee.createdAt).toLocaleDateString()
+        : "",
+    "Updated At": (employee) =>
+      employee.updatedAt
+        ? new Date(employee.updatedAt).toLocaleDateString()
+        : "",
+  }), []);
 
-    if (selectedColumns.length === 0) {
-      toast.warning("Please select at least one column to export.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
-      return;
-    }
+  // Initialize Excel export hook
+  const { exportToExcel, isExporting } = useExcelExport({
+    columnMap,
+    filenamePrefix: "employees_export",
+    sheetName: "Employees",
+    selectedColumns,
+  });
 
-    setIsExporting(true);
-
-    try {
-      // Dynamic import of xlsx to avoid SSR issues
-      const XLSX = await import("xlsx");
-
-      // Map of column names to their data extraction functions
-      const columnMap = {
-        "Employee ID": (employee) => employee.employee_id || "",
-        "First Name": (employee) => employee.first_name || "",
-        "Last Name": (employee) => employee.last_name || "",
-        Email: (employee) => employee.email || "",
-        Phone: (employee) => employee.phone || "",
-        Role: (employee) => employee.role || "",
-        "Date of Birth": (employee) =>
-          employee.dob ? new Date(employee.dob).toLocaleDateString() : "",
-        "Join Date": (employee) =>
-          employee.join_date
-            ? new Date(employee.join_date).toLocaleDateString()
-            : "",
-        Address: (employee) => employee.address || "",
-        "Emergency Contact Name": (employee) =>
-          employee.emergency_contact_name || "",
-        "Emergency Contact Phone": (employee) =>
-          employee.emergency_contact_phone || "",
-        "Bank Account Name": (employee) => employee.bank_account_name || "",
-        "Bank Account Number": (employee) => employee.bank_account_number || "",
-        "Bank Account BSB": (employee) => employee.bank_account_bsb || "",
-        "Super Account Name": (employee) => employee.supper_account_name || "",
-        "Super Account Number": (employee) =>
-          employee.supper_account_number || "",
-        "TFN Number": (employee) => employee.tfn_number || "",
-        Education: (employee) => employee.education || "",
-        Availability: (employee) =>
-          employee.availability ? JSON.stringify(employee.availability) : "",
-        Notes: (employee) => employee.notes || "",
-        "Created At": (employee) =>
-          employee.createdAt
-            ? new Date(employee.createdAt).toLocaleDateString()
-            : "",
-        "Updated At": (employee) =>
-          employee.updatedAt
-            ? new Date(employee.updatedAt).toLocaleDateString()
-            : "",
-      };
-
-      // Column width map
-      const columnWidthMap = {
-        "Employee ID": 12,
-        "First Name": 15,
-        "Last Name": 15,
-        Email: 25,
-        Phone: 15,
-        Role: 15,
-        "Date of Birth": 12,
-        "Join Date": 12,
-        Address: 30,
-        "Emergency Contact Name": 20,
-        "Emergency Contact Phone": 18,
-        "Bank Account Name": 20,
-        "Bank Account Number": 18,
-        "Bank Account BSB": 12,
-        "Super Account Name": 20,
-        "Super Account Number": 18,
-        "TFN Number": 12,
-        Education: 25,
-        Availability: 40,
-        Notes: 30,
-        "Created At": 12,
-        "Updated At": 12,
-      };
-
-      // Prepare data for export - only include selected columns
-      const exportData = filteredAndSortedEmployees.map((employee) => {
-        const row = {};
-        selectedColumns.forEach((column) => {
-          if (columnMap[column]) {
-            row[column] = columnMap[column](employee);
-          }
-        });
-        return row;
-      });
-
-      // Create a new workbook
-      const wb = XLSX.utils.book_new();
-
-      // Create a worksheet from the data
-      const ws = XLSX.utils.json_to_sheet(exportData);
-
-      // Set column widths for selected columns only
-      const colWidths = selectedColumns.map((column) => ({
-        wch: columnWidthMap[column] || 15,
-      }));
-      ws["!cols"] = colWidths;
-
-      // Add the worksheet to the workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Employees");
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split("T")[0];
-      const filename = `employees_export_${currentDate}.xlsx`;
-
-      // Save the file
-      XLSX.writeFile(wb, filename);
-
-      // Show success message
-      toast.success(
-        `Successfully exported ${exportData.length} employees to ${filename}`,
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-    } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      toast.error("Failed to export data to Excel. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
-    } finally {
-      setIsExporting(false);
-    }
+  const handleExportToExcel = () => {
+    exportToExcel(filteredAndSortedEmployees);
   };
 
   // Get distinct roles from employees data
@@ -719,7 +623,7 @@ export default function page() {
                               : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                           }`}
                         >
-                          Active
+                          Current
                         </button>
                         <button
                           onClick={() => setActiveTab("inactive")}
@@ -729,7 +633,7 @@ export default function page() {
                               : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                           }`}
                         >
-                          Inactive
+                          Former
                         </button>
                       </nav>
                     </div>
@@ -817,8 +721,8 @@ export default function page() {
                                     : selectedRoles.length === 0
                                       ? "No employees found - please select at least one role to view employees"
                                       : activeTab === "active"
-                                        ? "No active employees found"
-                                        : "No inactive employees found"}
+                                        ? "No current employees found"
+                                        : "No former employees found"}
                                 </td>
                               </tr>
                             ) : (

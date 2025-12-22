@@ -25,6 +25,7 @@ import TabsController from "@/components/tabscontroller";
 import PaginationFooter from "@/components/PaginationFooter";
 import { replaceTab } from "@/state/reducer/tabs";
 import "react-toastify/dist/ReactToastify.css";
+import { useExcelExport } from "@/hooks/useExcelExport";
 
 export default function page() {
   const router = useRouter();
@@ -49,7 +50,6 @@ export default function page() {
     useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
 
   // Flags
   const [error, setError] = useState(null);
@@ -253,131 +253,42 @@ export default function page() {
     }
   };
 
-  const handleExportToExcel = async () => {
-    if (filteredAndSortedClients.length === 0) {
-      toast.warning(
-        "No data to export. Please adjust your filters or add clients.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-      return;
-    }
+  // Column mapping for Excel export
+  const columnMap = useMemo(() => ({
+    "Client ID": (client) => client.client_id || "",
+    "Client Name": (client) => client.client_name || "",
+    "Client Email": (client) => client.client_email || "",
+    "Client Phone": (client) => client.client_phone || "",
+    "Client Type": (client) => client.client_type || "",
+    "Number of Projects": (client) =>
+      client.projects ? client.projects.length : 0,
+    "Client Address": (client) => client.client_address || "",
+    "Client Website": (client) => client.client_website || "",
+    "Client Notes": (client) => client.client_notes || "",
+    "Contact Name": (client) => client.contacts[0]?.first_name || "",
+    "Contact Email": (client) => client.contacts[0]?.email || "",
+    "Contact Phone": (client) => client.contacts[0]?.phone || "",
+    "Contact Notes": (client) => client.contacts[0]?.notes || "",
+    "Client Created At": (client) =>
+      client.createdAt
+        ? new Date(client.createdAt).toLocaleDateString()
+        : "",
+    "Client Updated At": (client) =>
+      client.updatedAt
+        ? new Date(client.updatedAt).toLocaleDateString()
+        : "",
+  }), []);
 
-    if (selectedColumns.length === 0) {
-      toast.warning("Please select at least one column to export.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
-      return;
-    }
+  // Initialize Excel export hook
+  const { exportToExcel, isExporting } = useExcelExport({
+    columnMap,
+    filenamePrefix: "clients_export",
+    sheetName: "Clients",
+    selectedColumns,
+  });
 
-    setIsExporting(true);
-
-    try {
-      // Dynamic import of xlsx to avoid SSR issues
-      const XLSX = await import("xlsx");
-
-      // Map of column names to their data extraction functions
-      const columnMap = {
-        "Client ID": (client) => client.client_id || "",
-        "Client Name": (client) => client.client_name || "",
-        "Client Email": (client) => client.client_email || "",
-        "Client Phone": (client) => client.client_phone || "",
-        "Client Type": (client) => client.client_type || "",
-        "Number of Projects": (client) =>
-          client.projects ? client.projects.length : 0,
-        "Client Address": (client) => client.client_address || "",
-        "Client Website": (client) => client.client_website || "",
-        "Client Notes": (client) => client.client_notes || "",
-        "Contact Name": (client) => client.contacts[0]?.first_name || "",
-        "Contact Email": (client) => client.contacts[0]?.email || "",
-        "Contact Phone": (client) => client.contacts[0]?.phone || "",
-        "Contact Notes": (client) => client.contacts[0]?.notes || "",
-        "Client Created At": (client) =>
-          client.createdAt
-            ? new Date(client.createdAt).toLocaleDateString()
-            : "",
-        "Client Updated At": (client) =>
-          client.updatedAt
-            ? new Date(client.updatedAt).toLocaleDateString()
-            : "",
-      };
-
-      // Column width map
-      const columnWidthMap = {
-        "Client ID": 12,
-        "Client Name": 15,
-        "Client Email": 15,
-        "Client Phone": 25,
-        "Client Type": 15,
-        "Number of Projects": 15,
-        "Client Address": 30,
-        "Client Website": 20,
-        "Client Notes": 18,
-        "Contact Name": 20,
-        "Contact Email": 18,
-        "Contact Phone": 12,
-        "Contact Notes": 20,
-        "Client Created At": 12,
-        "Client Updated At": 12,
-      };
-
-      // Prepare data for export - only include selected columns
-      const exportData = filteredAndSortedClients.map((client) => {
-        const row = {};
-        selectedColumns.forEach((column) => {
-          if (columnMap[column]) {
-            row[column] = columnMap[column](client);
-          }
-        });
-        return row;
-      });
-
-      // Create a new workbook
-      const wb = XLSX.utils.book_new();
-
-      // Create a worksheet from the data
-      const ws = XLSX.utils.json_to_sheet(exportData);
-
-      // Set column widths for selected columns only
-      const colWidths = selectedColumns.map((column) => ({
-        wch: columnWidthMap[column] || 15,
-      }));
-      ws["!cols"] = colWidths;
-
-      // Add the worksheet to the workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Clients");
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split("T")[0];
-      const filename = `clients_export_${currentDate}.xlsx`;
-
-      // Save the file
-      XLSX.writeFile(wb, filename);
-
-      // Show success message
-      toast.success(
-        `Successfully exported ${exportData.length} clients to ${filename}`,
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        }
-      );
-    } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      toast.error("Failed to export data to Excel. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
-    } finally {
-      setIsExporting(false);
-    }
+  const handleExportToExcel = () => {
+    exportToExcel(filteredAndSortedClients);
   };
 
   // Handlers (handleChange, handleSubmit)

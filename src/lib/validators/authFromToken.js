@@ -39,11 +39,12 @@ export async function isAdmin(req) {
 
 // Helper function to convert empty strings to null for DateTime fields
 export const processDateTimeField = (value) => {
-  if (value === "" || value === undefined) return new Date("2000-01-01");
+  // Return null for null, empty string, or undefined
+  if (value === null || value === "" || value === undefined) return null;
   // If it's already a valid date string, return it
   if (value instanceof Date || !isNaN(Date.parse(value)))
     return new Date(value);
-  return new Date("2000-01-01");
+  return null;
 };
 
 // Helper function to check if session is expired

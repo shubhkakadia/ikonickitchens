@@ -26,14 +26,30 @@ export default function page() {
   const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] =
     useState(false);
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
+  const [isMeasuringUnitDropdownOpen, setIsMeasuringUnitDropdownOpen] = useState(false);
+  const [isFinishDropdownOpen, setIsFinishDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("Sheet");
   const [subCategorySearchTerm, setSubCategorySearchTerm] = useState("");
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
+  const [measuringUnitSearchTerm, setMeasuringUnitSearchTerm] = useState("");
+  const [finishSearchTerm, setFinishSearchTerm] = useState("");
   const [suppliers, setSuppliers] = useState([]);
   const [filteredSuppliers, setFilteredSuppliers] = useState([]);
+  const [measuringUnitOptions, setMeasuringUnitOptions] = useState([]);
+  const [loadingMeasuringUnits, setLoadingMeasuringUnits] = useState(false);
+  const [showCreateMeasuringUnitModal, setShowCreateMeasuringUnitModal] = useState(false);
+  const [newMeasuringUnitValue, setNewMeasuringUnitValue] = useState("");
+  const [isCreatingMeasuringUnit, setIsCreatingMeasuringUnit] = useState(false);
+  const [finishOptions, setFinishOptions] = useState([]);
+  const [loadingFinishes, setLoadingFinishes] = useState(false);
+  const [showCreateFinishModal, setShowCreateFinishModal] = useState(false);
+  const [newFinishValue, setNewFinishValue] = useState("");
+  const [isCreatingFinish, setIsCreatingFinish] = useState(false);
   const dropdownRef = useRef(null);
   const subCategoryDropdownRef = useRef(null);
   const supplierDropdownRef = useRef(null);
+  const measuringUnitDropdownRef = useRef(null);
+  const finishDropdownRef = useRef(null);
   const fileInputRef = useRef(null);
   const faceAutoSetRef = useRef(false);
   const [selectedCategory, setSelectedCategory] = useState("Sheet");
@@ -145,6 +161,86 @@ export default function page() {
     fetchHardwareSubCategories();
   }, [getToken]);
 
+  // Fetch measuring units from config API
+  useEffect(() => {
+    const fetchMeasuringUnits = async () => {
+      try {
+        setLoadingMeasuringUnits(true);
+        const sessionToken = getToken();
+        if (!sessionToken) {
+          console.error("No valid session found");
+          return;
+        }
+
+        const config = {
+          method: "post",
+          maxBodyLength: Infinity,
+          url: `/api/config/read_all_by_category`,
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+          data: { category: "measuring_unit" },
+        };
+
+        const response = await axios.request(config);
+        if (response.data.status && response.data.data) {
+          // Extract the value field from each config item
+          const units = response.data.data.map((item) => item.value);
+          setMeasuringUnitOptions(units);
+        }
+      } catch (error) {
+        console.error("Error fetching measuring units:", error);
+        // Fallback to empty array if API fails
+        setMeasuringUnitOptions([]);
+      } finally {
+        setLoadingMeasuringUnits(false);
+      }
+    };
+
+    fetchMeasuringUnits();
+  }, [getToken]);
+
+  // Fetch finishes from config API
+  useEffect(() => {
+    const fetchFinishes = async () => {
+      try {
+        setLoadingFinishes(true);
+        const sessionToken = getToken();
+        if (!sessionToken) {
+          console.error("No valid session found");
+          return;
+        }
+
+        const config = {
+          method: "post",
+          maxBodyLength: Infinity,
+          url: `/api/config/read_all_by_category`,
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+          data: { category: "finish" },
+        };
+
+        const response = await axios.request(config);
+        if (response.data.status && response.data.data) {
+          // Extract the value field from each config item
+          const finishes = response.data.data.map((item) => item.value);
+          setFinishOptions(finishes);
+        }
+      } catch (error) {
+        console.error("Error fetching finishes:", error);
+        // Fallback to empty array if API fails
+        setFinishOptions([]);
+      } finally {
+        setLoadingFinishes(false);
+      }
+    };
+
+    fetchFinishes();
+  }, [getToken]);
+
   // Filter suppliers based on search term
   useEffect(() => {
     if (supplierSearchTerm === "") {
@@ -164,6 +260,8 @@ export default function page() {
         { ref: dropdownRef, setIsOpen: setIsDropdownOpen },
         { ref: subCategoryDropdownRef, setIsOpen: setIsSubCategoryDropdownOpen },
         { ref: supplierDropdownRef, setIsOpen: setIsSupplierDropdownOpen },
+        { ref: measuringUnitDropdownRef, setIsOpen: setIsMeasuringUnitDropdownOpen },
+        { ref: finishDropdownRef, setIsOpen: setIsFinishDropdownOpen },
       ];
 
       dropdowns.forEach(({ ref, setIsOpen }) => {
@@ -324,6 +422,208 @@ export default function page() {
     setIsSupplierDropdownOpen(true);
   };
 
+  // Measuring unit handlers
+  const filteredMeasuringUnits = measuringUnitOptions.filter((unit) =>
+    unit.toLowerCase().includes(measuringUnitSearchTerm.toLowerCase())
+  );
+
+  const handleMeasuringUnitSelect = (unit) => {
+    setFormData({
+      ...formData,
+      measurement_unit: unit,
+    });
+    setMeasuringUnitSearchTerm(unit);
+    setIsMeasuringUnitDropdownOpen(false);
+  };
+
+  const handleMeasuringUnitSearchChange = (e) => {
+    const value = e.target.value;
+    setMeasuringUnitSearchTerm(value);
+    setIsMeasuringUnitDropdownOpen(true);
+    setFormData({
+      ...formData,
+      measurement_unit: value,
+    });
+  };
+
+  // Finish handlers
+  const filteredFinishes = finishOptions.filter((finish) =>
+    finish.toLowerCase().includes(finishSearchTerm.toLowerCase())
+  );
+
+  const handleFinishSelect = (finish) => {
+    setFormData({
+      ...formData,
+      finish: finish,
+    });
+    setFinishSearchTerm(finish);
+    setIsFinishDropdownOpen(false);
+  };
+
+  const handleFinishSearchChange = (e) => {
+    const value = e.target.value;
+    setFinishSearchTerm(value);
+    setIsFinishDropdownOpen(true);
+    setFormData({
+      ...formData,
+      finish: value,
+    });
+  };
+
+  // Handle create new finish
+  const handleCreateNewFinish = async () => {
+    if (!newFinishValue || !newFinishValue.trim()) {
+      toast.error("Finish value is required");
+      return;
+    }
+
+    try {
+      setIsCreatingFinish(true);
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const config = {
+        method: "post",
+        maxBodyLength: Infinity,
+        url: `/api/config/create`,
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          "Content-Type": "application/json",
+        },
+        data: {
+          category: "finish",
+          value: newFinishValue.trim(),
+        },
+      };
+
+      const response = await axios.request(config);
+      if (response.data.status) {
+        toast.success("Finish created successfully");
+        // Refresh finishes list
+        const fetchFinishes = async () => {
+          try {
+            const config = {
+              method: "post",
+              maxBodyLength: Infinity,
+              url: `/api/config/read_all_by_category`,
+              headers: {
+                Authorization: `Bearer ${sessionToken}`,
+                "Content-Type": "application/json",
+              },
+              data: { category: "finish" },
+            };
+            const response = await axios.request(config);
+            if (response.data.status && response.data.data) {
+              const finishes = response.data.data.map((item) => item.value);
+              setFinishOptions(finishes);
+            }
+          } catch (error) {
+            console.error("Error fetching finishes:", error);
+          }
+        };
+        await fetchFinishes();
+        // Set the new finish as selected
+        setFormData({
+          ...formData,
+          finish: newFinishValue.trim(),
+        });
+        setFinishSearchTerm(newFinishValue.trim());
+        setShowCreateFinishModal(false);
+        setNewFinishValue("");
+        setIsFinishDropdownOpen(false);
+      } else {
+        toast.error(response.data.message || "Failed to create finish");
+      }
+    } catch (error) {
+      console.error("Error creating finish:", error);
+      const errorMessage =
+        error.response?.data?.message || "Failed to create finish";
+      toast.error(errorMessage);
+    } finally {
+      setIsCreatingFinish(false);
+    }
+  };
+
+  // Handle create new measuring unit
+  const handleCreateNewMeasuringUnit = async () => {
+    if (!newMeasuringUnitValue || !newMeasuringUnitValue.trim()) {
+      toast.error("Measuring unit value is required");
+      return;
+    }
+
+    try {
+      setIsCreatingMeasuringUnit(true);
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const config = {
+        method: "post",
+        maxBodyLength: Infinity,
+        url: `/api/config/create`,
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          "Content-Type": "application/json",
+        },
+        data: {
+          category: "measuring_unit",
+          value: newMeasuringUnitValue.trim(),
+        },
+      };
+
+      const response = await axios.request(config);
+      if (response.data.status) {
+        toast.success("Measuring unit created successfully");
+        // Refresh measuring units list
+        const fetchMeasuringUnits = async () => {
+          try {
+            const config = {
+              method: "post",
+              maxBodyLength: Infinity,
+              url: `/api/config/read_all_by_category`,
+              headers: {
+                Authorization: `Bearer ${sessionToken}`,
+                "Content-Type": "application/json",
+              },
+              data: { category: "measuring_unit" },
+            };
+            const response = await axios.request(config);
+            if (response.data.status && response.data.data) {
+              const units = response.data.data.map((item) => item.value);
+              setMeasuringUnitOptions(units);
+            }
+          } catch (error) {
+            console.error("Error fetching measuring units:", error);
+          }
+        };
+        await fetchMeasuringUnits();
+        // Set the new measuring unit as selected
+        setFormData({
+          ...formData,
+          measurement_unit: newMeasuringUnitValue.trim(),
+        });
+        setMeasuringUnitSearchTerm(newMeasuringUnitValue.trim());
+        setShowCreateMeasuringUnitModal(false);
+        setNewMeasuringUnitValue("");
+        setIsMeasuringUnitDropdownOpen(false);
+      } else {
+        toast.error(response.data.message || "Failed to create measuring unit");
+      }
+    } catch (error) {
+      console.error("Error creating measuring unit:", error);
+      const errorMessage =
+        error.response?.data?.message || "Failed to create measuring unit";
+      toast.error(errorMessage);
+    } finally {
+      setIsCreatingMeasuringUnit(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const inputValue = type === "checkbox" ? checked : value;
@@ -411,11 +711,6 @@ export default function page() {
         }),
       });
       if (response.data.status) {
-        toast.success("Item created successfully", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
         if (hasImageFile) {
           completeUpload(1);
         } else {
@@ -760,19 +1055,90 @@ export default function page() {
                             </div>
                           )}
                         </div>
-                        <div>
+                        <div className="relative" ref={measuringUnitDropdownRef}>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
                             Measurement Unit{" "}
                             <span className="text-slate-400">(Optional)</span>
                           </label>
-                          <input
-                            type="text"
-                            name="measurement_unit"
-                            value={formData.measurement_unit}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                            placeholder="Eg. sheet, meter, pcs, set, kit, etc."
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={measuringUnitSearchTerm || formData.measurement_unit}
+                              onChange={handleMeasuringUnitSearchChange}
+                              onFocus={() => setIsMeasuringUnitDropdownOpen(true)}
+                              className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                              placeholder="Search or type a measuring unit..."
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setIsMeasuringUnitDropdownOpen(!isMeasuringUnitDropdownOpen)
+                              }
+                              className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                              <ChevronDown
+                                className={`w-5 h-5 transition-transform ${isMeasuringUnitDropdownOpen ? "rotate-180" : ""
+                                  }`}
+                              />
+                            </button>
+                          </div>
+
+                          {isMeasuringUnitDropdownOpen && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                              {loadingMeasuringUnits ? (
+                                <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                  Loading measuring units...
+                                </div>
+                              ) : filteredMeasuringUnits.length > 0 ? (
+                                <>
+                                  {filteredMeasuringUnits.map((unit, index) => (
+                                    <button
+                                      key={index}
+                                      type="button"
+                                      onClick={() => handleMeasuringUnitSelect(unit)}
+                                      className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                    >
+                                      {unit}
+                                    </button>
+                                  ))}
+                                  {measuringUnitSearchTerm && !filteredMeasuringUnits.some(u => u.toLowerCase() === measuringUnitSearchTerm.toLowerCase()) && (
+                                    <div className="border-t border-slate-200">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setNewMeasuringUnitValue(measuringUnitSearchTerm);
+                                          setShowCreateMeasuringUnitModal(true);
+                                        }}
+                                        className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                        Create "{measuringUnitSearchTerm}"
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="px-4 py-3">
+                                  <div className="text-sm text-slate-500 mb-2">
+                                    No matching measuring units found
+                                  </div>
+                                  {measuringUnitSearchTerm && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setNewMeasuringUnitValue(measuringUnitSearchTerm);
+                                        setShowCreateMeasuringUnitModal(true);
+                                      }}
+                                      className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                      Create "{measuringUnitSearchTerm}"
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -845,23 +1211,112 @@ export default function page() {
                                 "dimensions",
                               ].map((field) => (
                                 <div key={field}>
-                                  <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                    {field}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    name={field}
-                                    value={formData[field]}
-                                    onChange={handleInputChange}
-                                    disabled={
-                                      field === "face" && formData.is_sunmica
-                                    }
-                                    className={`w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${field === "face" && formData.is_sunmica
-                                      ? "bg-slate-100 cursor-not-allowed"
-                                      : ""
-                                      }`}
-                                    placeholder={`Enter ${field}`}
-                                  />
+                                  {field === "finish" ? (
+                                    <div className="relative" ref={finishDropdownRef}>
+                                      <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                        {field}
+                                      </label>
+                                      <div className="relative">
+                                        <input
+                                          type="text"
+                                          value={finishSearchTerm || formData.finish}
+                                          onChange={handleFinishSearchChange}
+                                          onFocus={() => setIsFinishDropdownOpen(true)}
+                                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                          placeholder="Search or type a finish..."
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setIsFinishDropdownOpen(!isFinishDropdownOpen)
+                                          }
+                                          className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                        >
+                                          <ChevronDown
+                                            className={`w-5 h-5 transition-transform ${isFinishDropdownOpen ? "rotate-180" : ""
+                                              }`}
+                                          />
+                                        </button>
+                                      </div>
+
+                                      {isFinishDropdownOpen && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                          {loadingFinishes ? (
+                                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                              Loading finishes...
+                                            </div>
+                                          ) : filteredFinishes.length > 0 ? (
+                                            <>
+                                              {filteredFinishes.map((finish, index) => (
+                                                <button
+                                                  key={index}
+                                                  type="button"
+                                                  onClick={() => handleFinishSelect(finish)}
+                                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                                >
+                                                  {finish}
+                                                </button>
+                                              ))}
+                                              {finishSearchTerm && !filteredFinishes.some(f => f.toLowerCase() === finishSearchTerm.toLowerCase()) && (
+                                                <div className="border-t border-slate-200">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      setNewFinishValue(finishSearchTerm);
+                                                      setShowCreateFinishModal(true);
+                                                    }}
+                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                  >
+                                                    <Plus className="w-4 h-4" />
+                                                    Create "{finishSearchTerm}"
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </>
+                                          ) : (
+                                            <div className="px-4 py-3">
+                                              <div className="text-sm text-slate-500 mb-2">
+                                                No matching finishes found
+                                              </div>
+                                              {finishSearchTerm && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setNewFinishValue(finishSearchTerm);
+                                                    setShowCreateFinishModal(true);
+                                                  }}
+                                                  className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                  <Plus className="w-4 h-4" />
+                                                  Create "{finishSearchTerm}"
+                                                </button>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                        {field}
+                                      </label>
+                                      <input
+                                        type="text"
+                                        name={field}
+                                        value={formData[field]}
+                                        onChange={handleInputChange}
+                                        disabled={
+                                          field === "face" && formData.is_sunmica
+                                        }
+                                        className={`w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${field === "face" && formData.is_sunmica
+                                          ? "bg-slate-100 cursor-not-allowed"
+                                          : ""
+                                          }`}
+                                        placeholder={`Enter ${field}`}
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -1066,17 +1521,106 @@ export default function page() {
                             {["brand", "color", "finish", "dimensions"].map(
                               (field) => (
                                 <div key={field}>
-                                  <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                    {field}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    name={field}
-                                    value={formData[field]}
-                                    onChange={handleInputChange}
-                                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                    placeholder={`Enter ${field}`}
-                                  />
+                                  {field === "finish" ? (
+                                    <div className="relative" ref={finishDropdownRef}>
+                                      <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                        {field}
+                                      </label>
+                                      <div className="relative">
+                                        <input
+                                          type="text"
+                                          value={finishSearchTerm || formData.finish}
+                                          onChange={handleFinishSearchChange}
+                                          onFocus={() => setIsFinishDropdownOpen(true)}
+                                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                          placeholder="Search or type a finish..."
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setIsFinishDropdownOpen(!isFinishDropdownOpen)
+                                          }
+                                          className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                        >
+                                          <ChevronDown
+                                            className={`w-5 h-5 transition-transform ${isFinishDropdownOpen ? "rotate-180" : ""
+                                              }`}
+                                          />
+                                        </button>
+                                      </div>
+
+                                      {isFinishDropdownOpen && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                          {loadingFinishes ? (
+                                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                              Loading finishes...
+                                            </div>
+                                          ) : filteredFinishes.length > 0 ? (
+                                            <>
+                                              {filteredFinishes.map((finish, index) => (
+                                                <button
+                                                  key={index}
+                                                  type="button"
+                                                  onClick={() => handleFinishSelect(finish)}
+                                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                                >
+                                                  {finish}
+                                                </button>
+                                              ))}
+                                              {finishSearchTerm && !filteredFinishes.some(f => f.toLowerCase() === finishSearchTerm.toLowerCase()) && (
+                                                <div className="border-t border-slate-200">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      setNewFinishValue(finishSearchTerm);
+                                                      setShowCreateFinishModal(true);
+                                                    }}
+                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                  >
+                                                    <Plus className="w-4 h-4" />
+                                                    Create "{finishSearchTerm}"
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </>
+                                          ) : (
+                                            <div className="px-4 py-3">
+                                              <div className="text-sm text-slate-500 mb-2">
+                                                No matching finishes found
+                                              </div>
+                                              {finishSearchTerm && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setNewFinishValue(finishSearchTerm);
+                                                    setShowCreateFinishModal(true);
+                                                  }}
+                                                  className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                  <Plus className="w-4 h-4" />
+                                                  Create "{finishSearchTerm}"
+                                                </button>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                        {field}
+                                      </label>
+                                      <input
+                                        type="text"
+                                        name={field}
+                                        value={formData[field]}
+                                        onChange={handleInputChange}
+                                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                        placeholder={`Enter ${field}`}
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               )
                             )}
@@ -1154,6 +1698,116 @@ export default function page() {
                   className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isCreatingSubCategory ? "Creating..." : "Create Sub Category"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Finish Modal */}
+      {showCreateFinishModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateFinishModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Finish
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateFinishModal(false);
+                  setNewFinishValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Finish Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newFinishValue}
+                  onChange={(e) => setNewFinishValue(e.target.value)}
+                  placeholder="Enter finish name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCreateFinishModal(false);
+                    setNewFinishValue("");
+                  }}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateNewFinish}
+                  disabled={isCreatingFinish || !newFinishValue?.trim()}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingFinish ? "Creating..." : "Create Finish"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Measuring Unit Modal */}
+      {showCreateMeasuringUnitModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateMeasuringUnitModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Measuring Unit
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateMeasuringUnitModal(false);
+                  setNewMeasuringUnitValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Measuring Unit Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newMeasuringUnitValue}
+                  onChange={(e) => setNewMeasuringUnitValue(e.target.value)}
+                  placeholder="Enter measuring unit name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCreateMeasuringUnitModal(false);
+                    setNewMeasuringUnitValue("");
+                  }}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateNewMeasuringUnit}
+                  disabled={isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingMeasuringUnit ? "Creating..." : "Create Measuring Unit"}
                 </button>
               </div>
             </div>

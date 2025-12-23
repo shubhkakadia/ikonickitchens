@@ -26,6 +26,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "@/contexts/AuthContext";
 import Image from "next/image";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
+import { validatePhone, formatPhoneToNational } from "@/components/validators";
 
 export default function page() {
   const formDataInitialState = {
@@ -306,11 +307,33 @@ export default function page() {
     }
   };
 
+  const formatPhone = (phone) => {
+    return phone ? formatPhoneToNational(phone) : phone;
+  }
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      // Validate phone numbers
+      if (formData.phone && !validatePhone(formData.phone)) {
+        toast.error("Please enter a valid Australian phone number", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (formData.emergency_contact_phone && !validatePhone(formData.emergency_contact_phone)) {
+        toast.error("Please enter a valid Australian phone number", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // Get the session token when needed
       const sessionToken = getToken();
 
@@ -339,6 +362,12 @@ export default function page() {
         } else if (key === "is_active") {
           // Convert boolean to string for FormData
           formDataToSend.append(key, formData[key] ? "true" : "false");
+        } else if (key === "phone") {
+          // Use formatted phone number
+          formDataToSend.append(key, formatPhone(formData[key]));
+        } else if (key === "emergency_contact_phone") {
+          // Use formatted emergency contact phone number
+          formDataToSend.append(key, formatPhone(formData[key]));
         } else {
           formDataToSend.append(key, formData[key] || "");
         }
@@ -363,14 +392,6 @@ export default function page() {
         }
       );
       if (response.data.status) {
-        toast.success("Employee added successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        });
         if (hasImageFile) {
           completeUpload(1);
         } else {
@@ -698,10 +719,18 @@ export default function page() {
                             name="phone"
                             value={formData.phone}
                             onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. 0400000000"
+                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formData.phone && !validatePhone(formData.phone)
+                                ? "border-red-500"
+                                : "border-slate-300"
+                              }`}
+                            placeholder="Eg. 0400 123 456 or +61 400 123 456"
                             required
                           />
+                          {formData.phone && !validatePhone(formData.phone) && (
+                            <p className="mt-1 text-xs text-red-500">
+                              Please enter a valid Australian phone number
+                            </p>
+                          )}
                         </div>
 
                         <div>
@@ -790,9 +819,17 @@ export default function page() {
                             name="emergency_contact_phone"
                             value={formData.emergency_contact_phone}
                             onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. 0400000000"
+                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formData.emergency_contact_phone && !validatePhone(formData.emergency_contact_phone)
+                                ? "border-red-500"
+                                : "border-slate-300"
+                              }`}
+                            placeholder="Eg. 0400 123 456 or +61 400 123 456"
                           />
+                          {formData.emergency_contact_phone && !validatePhone(formData.emergency_contact_phone) && (
+                            <p className="mt-1 text-xs text-red-500">
+                              Please enter a valid Australian phone number
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

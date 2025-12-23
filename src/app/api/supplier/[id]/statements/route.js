@@ -19,7 +19,7 @@ export async function GET(request, { params }) {
 
     // Validate supplier exists
     const supplier = await prisma.supplier.findFirst({
-      where: { 
+      where: {
         supplier_id: id,
         is_deleted: false,
       },

@@ -20,9 +20,9 @@ export function rateLimit(options = {}) {
     keyGenerator = (request) => {
       // Default: use IP address
       const forwarded = request.headers.get("x-forwarded-for");
-      const ip = forwarded ? forwarded.split(",")[0].trim() : 
-                 request.headers.get("x-real-ip") || 
-                 "unknown";
+      const ip = forwarded ? forwarded.split(",")[0].trim() :
+        request.headers.get("x-real-ip") ||
+        "unknown";
       return ip;
     },
   } = options;
@@ -30,10 +30,10 @@ export function rateLimit(options = {}) {
   return async (request) => {
     const key = keyGenerator(request);
     const now = Date.now();
-    
+
     // Get or create rate limit entry
     let entry = rateLimitStore.get(key);
-    
+
     if (!entry || now - entry.resetTime > windowMs) {
       // Create new entry or reset expired entry
       entry = {
@@ -41,10 +41,10 @@ export function rateLimit(options = {}) {
         resetTime: now + windowMs,
       };
     }
-    
+
     entry.count += 1;
     rateLimitStore.set(key, entry);
-    
+
     // Clean up old entries periodically (every 5 minutes)
     if (Math.random() < 0.01) { // 1% chance on each request
       const cutoff = now - windowMs;
@@ -54,7 +54,7 @@ export function rateLimit(options = {}) {
         }
       }
     }
-    
+
     // Check if limit exceeded
     if (entry.count > max) {
       const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
@@ -66,7 +66,7 @@ export function rateLimit(options = {}) {
         resetTime: entry.resetTime,
       };
     }
-    
+
     return {
       success: true,
       remaining: max - entry.count,

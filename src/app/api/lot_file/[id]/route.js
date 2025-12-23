@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  validateAdminAuth,
+    validateAdminAuth,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 
@@ -26,9 +26,9 @@ export async function PATCH(request, { params }) {
             console.error(`Failed to log lot file update: ${id}`);
         }
         return NextResponse.json(
-            { 
-                status: true, 
-                message: "Lot file updated successfully", 
+            {
+                status: true,
+                message: "Lot file updated successfully",
                 data: lotFile,
                 ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
             },

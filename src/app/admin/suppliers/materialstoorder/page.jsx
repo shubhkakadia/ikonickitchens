@@ -297,7 +297,7 @@ export default function page() {
       const itemsCount = mto.items?.length || 0;
       const itemsRemainingCount =
         mto.items?.filter(
-            (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0)
+          (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0)
         ).length || 0;
       return {
         ...mto,

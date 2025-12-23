@@ -33,7 +33,7 @@ export default function BlogPage() {
               </svg>
               <span className="font-medium">Back to Blogs</span>
             </Link>
-            
+
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               How Long Does It Take to Build and Install a Custom Kitchen?
             </h1>

@@ -32,7 +32,7 @@ export default function page() {
     });
   };
 
-  const handleFileChange = (e) => {};
+  const handleFileChange = (e) => { };
 
   const removeImage = (index) => {
     const updatedFiles = selectedFiles.filter((_, i) => i !== index);

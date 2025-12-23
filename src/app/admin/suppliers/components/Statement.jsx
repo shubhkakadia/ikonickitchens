@@ -65,14 +65,14 @@ export default function Statement({ supplierId }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [expandedNotes, setExpandedNotes] = useState(new Set());
-  
+
   // File upload states
   const [filePreview, setFilePreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showFilePreview, setShowFilePreview] = useState(false);
   const [fileObjectURL, setFileObjectURL] = useState(null);
   const fileObjectURLRef = useRef(null);
-  
+
   // Due In dropdown state
   const [dueIn, setDueIn] = useState("custom");
 
@@ -352,7 +352,7 @@ export default function Statement({ supplierId }) {
     const dueDate = statement.due_date
       ? new Date(statement.due_date).toISOString().split("T")[0]
       : "";
-    
+
     setEditingStatement(statement);
     setStatementForm({
       month_year: monthYearDate,

@@ -7,18 +7,18 @@ export async function GET(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    
+
     // First, get distinct categories for items with this supplier_id
     const itemsWithCategories = await prisma.item.findMany({
-      where: { 
+      where: {
         supplier_id: id,
         is_deleted: false,
       },
       select: { category: true },
     });
-    
+
     const uniqueCategories = [...new Set(itemsWithCategories.map(item => item.category.toLowerCase()))];
-    
+
     // Map category enum values to relation names
     const categoryRelationMap = {
       sheet: "sheet",
@@ -27,13 +27,13 @@ export async function GET(request, { params }) {
       accessory: "accessory",
       edging_tape: "edging_tape",
     };
-    
+
     // Dynamically construct include object based on categories present
     const include = {
       supplier: true,
       image: true, // Always include image relation
     };
-    
+
     // Only include relations for categories that actually exist
     uniqueCategories.forEach(category => {
       const relation = categoryRelationMap[category];
@@ -41,9 +41,9 @@ export async function GET(request, { params }) {
         include[relation] = true;
       }
     });
-    
+
     const items = await prisma.item.findMany({
-      where: { 
+      where: {
         supplier_id: id,
         is_deleted: false,
       },

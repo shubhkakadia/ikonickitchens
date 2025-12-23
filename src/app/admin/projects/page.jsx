@@ -32,7 +32,7 @@ export default function page() {
   const dispatch = useDispatch();
   const { getToken } = useAuth();
   const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("project_id");
+  const [sortField, setSortField] = useState("client_name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [projects, setProjects] = useState([]);
@@ -148,6 +148,12 @@ export default function page() {
       if (sortField === "number_of_lots") {
         aValue = a.lots ? a.lots.length : 0;
         bValue = b.lots ? b.lots.length : 0;
+      }
+
+      // Handle client_name sorting
+      if (sortField === "client_name") {
+        aValue = a.client?.client_name || "";
+        bValue = b.client?.client_name || "";
       }
 
       // Handle relevance sorting (by search match)
@@ -379,14 +385,14 @@ export default function page() {
       search !== "" || // Search is not empty
       selectedClientType.length !== distinctClientType.length || // Role filter is not showing all roles
       selectedClientName.length !== distinctClientName.length || // Client name filter is not showing all client names
-      sortField !== "project_id" || // Sort field is not default
+      sortField !== "client_name" || // Sort field is not default
       sortOrder !== "asc" // Sort order is not default
     );
   };
 
   const handleReset = () => {
     setSearch("");
-    setSortField("project_id");
+    setSortField("client_name");
     setSortOrder("asc");
     setSelectedClientName([...distinctClientName]); // Reset to all client names selected (including "Unassigned" if present)
     setSelectedClientType([...distinctClientType]); // Reset to all roles selected
@@ -649,6 +655,12 @@ export default function page() {
                                     Number of Lots{" "}
                                     {getSortIcon("number_of_lots")}
                                   </button>
+                                  <button
+                                    onClick={() => handleSort("client_name")}
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Client {getSortIcon("client_name")}
+                                  </button>
                                 </div>
                               </div>
                             )}
@@ -782,8 +794,14 @@ export default function page() {
                                   {getSortIcon("number_of_lots")}
                                 </div>
                               </th>
-                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                Client
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("client_name")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Client
+                                  {getSortIcon("client_name")}
+                                </div>
                               </th>
                             </tr>
                           </thead>

@@ -1122,15 +1122,47 @@ export default function page() {
     e.target.value = "";
   };
 
+  // Sort files by type: images, videos, PDFs, others
+  const sortFilesByType = (files) => {
+    const images = [];
+    const videos = [];
+    const pdfs = [];
+    const others = [];
+
+    files.forEach((file) => {
+      const mimeType = file.mime_type || file.type || "";
+      const filename = file.filename || file.name || "";
+
+      if (mimeType.includes("image") || filename.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) {
+        images.push(file);
+      } else if (mimeType.includes("video") || filename.match(/\.(mp4|webm|ogg|mov|avi)$/i)) {
+        videos.push(file);
+      } else if (mimeType.includes("pdf") || filename.endsWith(".pdf")) {
+        pdfs.push(file);
+      } else {
+        others.push(file);
+      }
+    });
+
+    return [...images, ...videos, ...pdfs, ...others];
+  };
+
   // View existing file from server (for SiteMeasurementsSection)
   const handleViewExistingFile = (file) => {
     const fileUrl = `/${file.url}`;
+    const allFiles = getCurrentTabFiles();
+    const sortedFiles = sortFilesByType(allFiles);
+    const currentIndex = sortedFiles.findIndex((f) => f.id === file.id || f.filename === file.filename);
+
     setSelectedFile({
       name: file.filename,
       type: file.mime_type,
       size: file.size,
       url: fileUrl,
       isExisting: true,
+      id: file.id,
+      allFiles: sortedFiles,
+      currentIndex: currentIndex >= 0 ? currentIndex : 0,
     });
     setViewFileModal(true);
   };
@@ -2837,6 +2869,8 @@ export default function page() {
             setSelectedFile={setSelectedFile}
             setViewFileModal={setViewFileModal}
             setPageNumber={setPageNumber}
+            allFiles={selectedFile.allFiles || []}
+            currentIndex={selectedFile.currentIndex || 0}
           />
         )}
 

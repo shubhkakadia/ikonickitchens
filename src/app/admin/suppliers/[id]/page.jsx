@@ -36,6 +36,7 @@ import PurchaseOrder from "../components/PurchaseOrder";
 import Statement from "../components/Statement";
 import Image from "next/image";
 import { AdminRoute } from "@/components/ProtectedRoute";
+import { validatePhone, formatPhoneToNational } from "@/components/validators";
 
 export default function page() {
   const { id } = useParams();
@@ -185,7 +186,16 @@ export default function page() {
         return;
       }
 
-      const response = await axios.patch(`/api/supplier/${id}`, editData, {
+      const formatPhone = (phone) => {
+        return phone ? formatPhoneToNational(phone) : phone;
+      }
+
+      const dataToSend = {
+        ...editData,
+        phone: formatPhone(editData.phone),
+      };
+
+      const response = await axios.patch(`/api/supplier/${id}`, dataToSend, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -492,15 +502,25 @@ export default function page() {
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Phone className="w-4 h-4 text-slate-600" />
-                                    <input
-                                      type="tel"
-                                      value={editData.phone || ""}
-                                      onChange={(e) =>
-                                        handleInputChange("phone", e.target.value)
-                                      }
-                                      placeholder={supplier.phone || "Phone"}
-                                      className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
-                                    />
+                                    <div className="flex-1">
+                                      <input
+                                        type="tel"
+                                        value={editData.phone || ""}
+                                        onChange={(e) =>
+                                          handleInputChange("phone", e.target.value)
+                                        }
+                                        placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                                        className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${editData.phone && !validatePhone(editData.phone)
+                                            ? "border-red-500"
+                                            : "border-slate-300"
+                                          }`}
+                                      />
+                                      {editData.phone && !validatePhone(editData.phone) && (
+                                        <p className="mt-1 text-xs text-red-500">
+                                          Please enter a valid Australian phone number
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Link2 className="w-4 h-4 text-slate-600" />

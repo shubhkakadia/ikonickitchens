@@ -7,7 +7,7 @@ export async function GET(request, { params }) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    
+
     const { id } = await params;
     const config = await prisma.constants_config.findUnique({
       where: { id },
@@ -37,7 +37,7 @@ export async function PATCH(request, { params }) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    
+
     const { id } = await params;
     const { category, value } = await request.json();
 
@@ -111,7 +111,7 @@ export async function DELETE(request, { params }) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    
+
     const { id } = await params;
 
     // Check if config exists

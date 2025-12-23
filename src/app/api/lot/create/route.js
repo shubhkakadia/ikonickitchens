@@ -50,9 +50,9 @@ export async function POST(request) {
     if (!logged) {
       console.error(`Failed to log lot creation: ${lot.lot_id} - ${lot.name}`);
       return NextResponse.json(
-        { 
-          status: true, 
-          message: "Lot created successfully", 
+        {
+          status: true,
+          message: "Lot created successfully",
           data: lot,
           warning: "Note: Creation succeeded but logging failed"
         },

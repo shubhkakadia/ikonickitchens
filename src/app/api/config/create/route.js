@@ -7,7 +7,7 @@ export async function POST(request) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    
+
     const { category, value } = await request.json();
 
     // Validate required fields

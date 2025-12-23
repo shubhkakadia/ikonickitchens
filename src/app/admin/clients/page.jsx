@@ -725,7 +725,7 @@ export default function page() {
                                   key={e.client_id}
                                   className="hover:bg-slate-50 transition-colors duration-200"
                                 >
-                                  <td 
+                                  <td
                                     className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium"
                                     onClick={(event) => {
                                       event.stopPropagation();

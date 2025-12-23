@@ -366,7 +366,7 @@ export default function StockTally({
       console.error("Error saving stock tally:", error);
       toast.error(
         error.response?.data?.message ||
-          "Failed to save stock tally. Please try again.",
+        "Failed to save stock tally. Please try again.",
         {
           position: "top-right",
           autoClose: 3000,
@@ -417,11 +417,10 @@ export default function StockTally({
             <div className="flex items-center justify-center mb-6">
               <div className="flex items-center gap-2">
                 <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                    stockTallyStep === "download"
+                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${stockTallyStep === "download"
                       ? "bg-secondary text-white"
                       : "bg-green-500 text-white"
-                  }`}
+                    }`}
                 >
                   {stockTallyStep === "download" ? (
                     "1"
@@ -430,23 +429,21 @@ export default function StockTally({
                   )}
                 </div>
                 <span
-                  className={`text-sm font-medium ${
-                    stockTallyStep === "download"
+                  className={`text-sm font-medium ${stockTallyStep === "download"
                       ? "text-secondary"
                       : "text-green-600"
-                  }`}
+                    }`}
                 >
                   Download
                 </span>
                 <div className="w-12 h-0.5 bg-slate-200 mx-2" />
                 <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                    stockTallyStep === "upload"
+                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${stockTallyStep === "upload"
                       ? "bg-secondary text-white"
                       : stockTallyStep === "preview"
-                      ? "bg-green-500 text-white"
-                      : "bg-slate-200 text-slate-500"
-                  }`}
+                        ? "bg-green-500 text-white"
+                        : "bg-slate-200 text-slate-500"
+                    }`}
                 >
                   {stockTallyStep === "preview" ? (
                     <Check className="h-4 w-4" />
@@ -455,32 +452,29 @@ export default function StockTally({
                   )}
                 </div>
                 <span
-                  className={`text-sm font-medium ${
-                    stockTallyStep === "upload"
+                  className={`text-sm font-medium ${stockTallyStep === "upload"
                       ? "text-secondary"
                       : stockTallyStep === "preview"
-                      ? "text-green-600"
-                      : "text-slate-400"
-                  }`}
+                        ? "text-green-600"
+                        : "text-slate-400"
+                    }`}
                 >
                   Upload
                 </span>
                 <div className="w-12 h-0.5 bg-slate-200 mx-2" />
                 <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                    stockTallyStep === "preview"
+                  className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${stockTallyStep === "preview"
                       ? "bg-secondary text-white"
                       : "bg-slate-200 text-slate-500"
-                  }`}
+                    }`}
                 >
                   3
                 </div>
                 <span
-                  className={`text-sm font-medium ${
-                    stockTallyStep === "preview"
+                  className={`text-sm font-medium ${stockTallyStep === "preview"
                       ? "text-secondary"
                       : "text-slate-400"
-                  }`}
+                    }`}
                 >
                   Preview & Save
                 </span>
@@ -537,11 +531,10 @@ export default function StockTally({
                   <button
                     onClick={handleDownloadStockTallyTemplate}
                     disabled={isProcessingStockTally}
-                    className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-                      isProcessingStockTally
+                    className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${isProcessingStockTally
                         ? "bg-slate-200 text-slate-500 cursor-not-allowed"
                         : "bg-secondary text-white hover:bg-secondary/90 cursor-pointer"
-                    }`}
+                      }`}
                   >
                     {isProcessingStockTally ? (
                       <>
@@ -576,11 +569,10 @@ export default function StockTally({
 
                   {/* File Upload Area */}
                   <div
-                    className={`border-2 border-dashed rounded-lg p-8 mb-4 transition-colors ${
-                      stockTallyFile
+                    className={`border-2 border-dashed rounded-lg p-8 mb-4 transition-colors ${stockTallyFile
                         ? "border-green-400 bg-green-50"
                         : "border-slate-300 hover:border-secondary"
-                    }`}
+                      }`}
                   >
                     <input
                       type="file"
@@ -642,11 +634,10 @@ export default function StockTally({
                     <button
                       onClick={handleProcessStockTallyFile}
                       disabled={!stockTallyFile || isProcessingStockTally}
-                      className={`inline-flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${
-                        !stockTallyFile || isProcessingStockTally
+                      className={`inline-flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${!stockTallyFile || isProcessingStockTally
                           ? "bg-slate-200 text-slate-500 cursor-not-allowed"
                           : "bg-secondary text-white hover:bg-secondary/90 cursor-pointer"
-                      }`}
+                        }`}
                     >
                       {isProcessingStockTally ? (
                         <>
@@ -741,11 +732,10 @@ export default function StockTally({
                             </td>
                             <td className="px-4 py-3 text-center">
                               <span
-                                className={`inline-flex items-center gap-1 font-medium ${
-                                  item.difference > 0
+                                className={`inline-flex items-center gap-1 font-medium ${item.difference > 0
                                     ? "text-green-600"
                                     : "text-red-600"
-                                }`}
+                                  }`}
                               >
                                 {item.difference > 0 ? (
                                   <ArrowUp className="h-3 w-3" />
@@ -758,11 +748,10 @@ export default function StockTally({
                             </td>
                             <td className="px-4 py-3 text-center">
                               <span
-                                className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                  item.type === "ADDED"
+                                className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${item.type === "ADDED"
                                     ? "bg-green-100 text-green-700"
                                     : "bg-red-100 text-red-700"
-                                }`}
+                                  }`}
                               >
                                 {item.type}
                               </span>
@@ -824,11 +813,10 @@ export default function StockTally({
               <button
                 onClick={handleSaveStockTally}
                 disabled={isProcessingStockTally}
-                className={`inline-flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${
-                  isProcessingStockTally
+                className={`inline-flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${isProcessingStockTally
                     ? "bg-slate-200 text-slate-500 cursor-not-allowed"
                     : "bg-primary text-white hover:bg-primary/90 cursor-pointer"
-                }`}
+                  }`}
               >
                 {isProcessingStockTally ? (
                   <>

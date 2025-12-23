@@ -33,7 +33,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
   const [customAreas, setCustomAreas] = useState({});
   // Lot data for PDF overview
   const [lotData, setLotData] = useState(null);
-  
+
   // File upload states
   const [mediaFiles, setMediaFiles] = useState([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -1382,18 +1382,18 @@ export default function MaterialSelection({ lot_id, project_id }) {
       // Add logo at the top
       try {
         const logoPath = `${window.location.origin}/logo2.png`;
-        
+
         // Load image and convert to canvas for better compatibility
         const response = await fetch(logoPath);
         if (!response.ok) throw new Error("Failed to fetch logo");
-        
+
         const blob = await response.blob();
         const imageUrl = URL.createObjectURL(blob);
-        
+
         // Create image element to get dimensions and convert to canvas
         const img = new Image();
         img.crossOrigin = "anonymous";
-        
+
         await new Promise((resolve, reject) => {
           img.onload = resolve;
           img.onerror = reject;
@@ -1408,7 +1408,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0);
         const imageDataUrl = canvas.toDataURL("image/png");
-        
+
         // Clean up
         URL.revokeObjectURL(imageUrl);
 
@@ -1419,7 +1419,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
         const pixelsToMm = 25.4 / 96;
         let logoWidth = img.width * pixelsToMm;
         let logoHeight = img.height * pixelsToMm;
-        
+
         // Scale down if too large
         if (logoWidth > maxLogoWidth) {
           const scale = maxLogoWidth / logoWidth;
@@ -1527,7 +1527,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
 
       pdf.setFontSize(9);
       pdf.setFont("helvetica", "normal");
-      
+
       const termsAndConditions = [
         "1. This material selection document is prepared based on the project requirements and specifications provided.",
         "2. All measurements and dimensions are subject to site verification and may require adjustments.",
@@ -1615,12 +1615,12 @@ export default function MaterialSelection({ lot_id, project_id }) {
           pdf.text("Item Name", margin + 2, headerY);
           pdf.text("Applicable", margin + 80, headerY);
           pdf.text("Notes", margin + 110, headerY);
-          
+
           // Draw line below header
           pdf.setDrawColor(200, 200, 200);
           pdf.setLineWidth(0.2);
           pdf.line(margin, headerY + 3, margin + contentWidth, headerY + 3);
-          
+
           yPosition = headerY + 8;
 
           // Table rows
@@ -1666,7 +1666,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
             pdf.setDrawColor(200, 200, 200);
             pdf.setLineWidth(0.1);
             pdf.line(margin, yPosition + 2, margin + contentWidth, yPosition + 2);
-            
+
             // Move to next row position
             yPosition += 5;
           });

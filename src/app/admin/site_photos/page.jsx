@@ -209,12 +209,12 @@ export default function SitePhotosPage() {
 
             if (response.data.status) {
                 const lotsData = response.data.data;
-                
+
                 // Filter lots based on user assignments if user is an installer
                 const userData = getUserData();
                 const userType = getUserType();
                 let filteredLots = lotsData;
-                
+
                 // Only filter if user is an employee with installer role
                 if (userType === "employee" && userData?.user?.employee_id) {
                     // Wait for employee role to be fetched before filtering
@@ -237,7 +237,7 @@ export default function SitePhotosPage() {
                     }
                     // For other employee roles, show all lots
                 }
-                
+
                 setAllLots(filteredLots); // Store filtered lots
                 setLots(filteredLots); // Initially show filtered lots
 

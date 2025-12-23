@@ -26,8 +26,8 @@ export async function POST(request) {
     if (!logged) {
       console.error(`Failed to log lot tab notes creation: ${lotTab.id}`);
       return NextResponse.json(
-        { 
-          status: true, 
+        {
+          status: true,
           message: "Lot tab notes saved successfully",
           data: lotTab,
           warning: "Note: Creation succeeded but logging failed"

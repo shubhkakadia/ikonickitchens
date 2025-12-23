@@ -9,6 +9,7 @@ import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { validatePhone, formatPhoneToNational } from "@/components/validators";
 
 export default function page() {
   const [formData, setFormData] = useState({
@@ -76,10 +77,14 @@ export default function page() {
           }))
           : [];
 
+      const formatPhone = (phone) => {
+        return phone ? formatPhoneToNational(phone) : phone;
+      }
+
       const data = {
         name: formData.name,
         email: formData.email,
-        phone: formData.phone,
+        phone: formatPhone(formData.phone),
         address: formData.address,
         notes: formData.notes,
         website: formData.website,
@@ -180,6 +185,9 @@ export default function page() {
     }
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email is invalid";
+    }
+    if (formData.phone && !validatePhone(formData.phone)) {
+      newErrors.phone = "Please enter a valid Australian phone number";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -395,9 +403,17 @@ export default function page() {
                           name="phone"
                           value={formData.phone}
                           onChange={handleInputChange}
-                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                          placeholder="Eg. +61 8000 0000"
+                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${formData.phone && !validatePhone(formData.phone)
+                              ? "border-red-500"
+                              : "border-slate-300"
+                            }`}
+                          placeholder="Eg. 0400 123 456 or +61 400 123 456"
                         />
+                        {formData.phone && !validatePhone(formData.phone) && (
+                          <p className="mt-1 text-xs text-red-500">
+                            {errors.phone || "Please enter a valid Australian phone number"}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">

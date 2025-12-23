@@ -426,15 +426,47 @@ export default function FileUploadSection({
   // Carousel state for Finished Site Photos
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // Sort files by type: images, videos, PDFs, others
+  const sortFilesByType = (files) => {
+    const images = [];
+    const videos = [];
+    const pdfs = [];
+    const others = [];
+
+    files.forEach((file) => {
+      const mimeType = file.mime_type || file.type || "";
+      const filename = file.filename || file.name || "";
+
+      if (mimeType.includes("image") || filename.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) {
+        images.push(file);
+      } else if (mimeType.includes("video") || filename.match(/\.(mp4|webm|ogg|mov|avi)$/i)) {
+        videos.push(file);
+      } else if (mimeType.includes("pdf") || filename.endsWith(".pdf")) {
+        pdfs.push(file);
+      } else {
+        others.push(file);
+      }
+    });
+
+    return [...images, ...videos, ...pdfs, ...others];
+  };
+
   // Handle viewing existing file
   const handleViewExistingFile = (file) => {
     const fileUrl = `/${file.url}`;
+    const filteredFiles = getFilteredFiles();
+    const sortedFiles = sortFilesByType(filteredFiles);
+    const currentIndex = sortedFiles.findIndex((f) => f.id === file.id || f.filename === file.filename);
+
     setSelectedFile({
       name: file.filename,
       type: file.mime_type,
       size: file.size,
       url: fileUrl,
       isExisting: true,
+      id: file.id,
+      allFiles: sortedFiles,
+      currentIndex: currentIndex >= 0 ? currentIndex : 0,
     });
     setViewFileModal(true);
   };
@@ -648,8 +680,8 @@ export default function FileUploadSection({
                 <div
                   key={file.id}
                   className={`m-2 relative shrink-0 w-24 h-24 rounded-lg overflow-hidden cursor-pointer border-2 transition-all group ${index === currentImageIndex
-                      ? "border-secondary shadow-lg scale-105"
-                      : "border-slate-300 hover:border-slate-400"
+                    ? "border-secondary shadow-lg scale-105"
+                    : "border-slate-300 hover:border-slate-400"
                     }`}
                   onClick={() => goToImage(index)}
                 >
@@ -797,6 +829,8 @@ export default function FileUploadSection({
           setSelectedFile={setSelectedFile}
           setViewFileModal={setViewFileModal}
           setPageNumber={setPageNumber}
+          allFiles={selectedFile.allFiles || []}
+          currentIndex={selectedFile.currentIndex || 0}
         />
       )}
     </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { formatPhoneToNational } from "@/components/validators";
 
 export async function POST(request) {
   try {
@@ -38,11 +39,15 @@ export async function POST(request) {
       }
     }
 
+    const formatPhone = (phone) => {
+      return phone ? formatPhoneToNational(phone) : phone;
+    }
+
     // Use transaction to create supplier and contacts atomically
     const result = await prisma.$transaction(async (tx) => {
       // Create the supplier
       const supplier = await tx.supplier.create({
-        data: { name, email, phone, address, notes, website, abn_number },
+        data: { name, email, phone: formatPhone(phone), address, notes, website, abn_number },
       });
 
       // Create contacts if provided

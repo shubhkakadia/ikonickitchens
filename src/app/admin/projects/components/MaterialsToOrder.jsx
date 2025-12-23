@@ -2646,7 +2646,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
           supplierId="" // Materials to Order doesn't require a supplier
           onItemAdded={() => {
             // Clear cache and refresh search for the category after item is added
-            const cacheKeys = Object.keys(itemCache).filter(key => 
+            const cacheKeys = Object.keys(itemCache).filter(key =>
               key.startsWith(addItemModalCategory)
             );
             const updatedCache = { ...itemCache };
@@ -2654,7 +2654,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
               delete updatedCache[key];
             });
             setItemCache(updatedCache);
-            
+
             // Refresh search results for the category
             if (addItemModalCategory) {
               // Clear search results to force a fresh fetch
@@ -2664,7 +2664,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
               }));
               
               // If there's an active search term, trigger a new search
-              const activeSearchKeys = Object.keys(searchTerms).filter(key => 
+              const activeSearchKeys = Object.keys(searchTerms).filter(key =>
                 key.startsWith(addItemModalCategory)
               );
               if (activeSearchKeys.length > 0) {

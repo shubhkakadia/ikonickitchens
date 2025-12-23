@@ -50,7 +50,7 @@ export default function page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("quantity");
+  const [sortField, setSortField] = useState("brand");
   const [sortOrder, setSortOrder] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -298,6 +298,12 @@ export default function page() {
   useEffect(() => {
     fetchData(activeTab);
     setSelectedCategories([activeTab]); // Initialize with current active tab
+    // Set default sort field based on active tab
+    if (activeTab === "accessory") {
+      setSortField("name");
+    } else {
+      setSortField("brand");
+    }
   }, [activeTab]);
 
   // Filter and sort data
@@ -619,10 +625,11 @@ export default function page() {
       }
       return Array.isArray(value) ? value.length > 0 : value !== "";
     });
+    const defaultSortField = activeTab === "accessory" ? "name" : "brand";
     return (
       search !== "" || // Search is not empty
       selectedCategories.length !== 1 || // Category filter is not showing current tab only
-      sortField !== "quantity" || // Sort field is not default
+      sortField !== defaultSortField || // Sort field is not default
       sortOrder !== "asc" || // Sort order is not default
       hasActiveFilters // Any filter is active
     );
@@ -630,7 +637,9 @@ export default function page() {
 
   const handleReset = () => {
     setSearch("");
-    setSortField("quantity");
+    // Set default sort field based on active tab
+    const defaultSortField = activeTab === "accessory" ? "name" : "brand";
+    setSortField(defaultSortField);
     setSortOrder("asc");
     setSelectedCategories([activeTab]); // Reset to current active tab
     setCurrentPage(1);

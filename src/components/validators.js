@@ -1,3 +1,5 @@
+import { parsePhoneNumber, isValidPhoneNumber } from "libphonenumber-js";
+
 /**
  * Reusable validation functions for form inputs
  * Each function takes a value and returns true if valid, false if invalid
@@ -10,12 +12,32 @@ export const validateEmail = (email) => {
   return emailRegex.test(email.trim());
 };
 
-// Phone number validation (allows numbers, spaces, hyphens, plus signs, parentheses)
+// Phone number validation for Australian numbers using libphonenumber-js
 export const validatePhone = (phone) => {
-  if (!phone || typeof phone !== "string") return true; // Allow empty values
-  const phoneRegex = /^[0-9\s\-\+\(\)]+$/;
-  const numericDigits = phone.replace(/\D/g, "");
-  return phoneRegex.test(phone) && numericDigits.length >= 8;
+  if (!phone || typeof phone !== "string" || phone.trim() === "") return true; // Allow empty values
+  try {
+    // Try to parse as Australian number
+    return isValidPhoneNumber(phone.trim(), "AU");
+  } catch (error) {
+    return false;
+  }
+};
+
+// Format phone number to Australian national format for storage
+export const formatPhoneToNational = (phone) => {
+  if (!phone || typeof phone !== "string" || phone.trim() === "") return phone; // Return as-is if empty
+  try {
+    const phoneNumber = parsePhoneNumber(phone.trim(), "AU");
+    if (phoneNumber && phoneNumber.isValid()) {
+      // Return in national format (e.g., "0400 123 456")
+      return phoneNumber.formatNational();
+    }
+    // If parsing fails, return original value
+    return phone.trim();
+  } catch (error) {
+    // If parsing fails, return original value
+    return phone.trim();
+  }
 };
 
 // Name validation (letters and spaces only)
@@ -39,13 +61,6 @@ export const validateEmergencyName = (name) => {
   return nameRegex.test(name) && name.trim().length > 0;
 };
 
-// Emergency contact phone validation (numbers only, minimum 8 digits)
-export const validateEmergencyPhone = (phone) => {
-  if (!phone || typeof phone !== "string") return true; // Allow empty values
-  const phoneRegex = /^[0-9\s\-\+\(\)]+$/;
-  const numericDigits = phone.replace(/\D/g, "");
-  return phoneRegex.test(phone) && numericDigits.length >= 8;
-};
 
 // Bank account number validation (numbers and spaces only)
 export const validateBankAccountNumber = (accountNumber) => {

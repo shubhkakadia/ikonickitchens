@@ -695,12 +695,12 @@ export default function page() {
           data.append(key, value);
         }
       });
-      
+
       // Show progress toast only if there's an image file
       if (hasImageFile) {
         showProgressToast(1);
       }
-      
+
       const response = await axios.post("/api/item/create", data, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,

@@ -33,7 +33,7 @@ export default function BlogPage() {
               </svg>
               <span className="font-medium">Back to Blogs</span>
             </Link>
-            
+
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               What Is the Difference Between Custom Cabinets and Modular Cabinets?
             </h1>
@@ -107,7 +107,7 @@ export default function BlogPage() {
                 <h3 className="text-2xl font-semibold text-gray-900 mb-4">
                   1. Design Flexibility
                 </h3>
-                
+
                 <div className="mb-4">
                   <h4 className="text-xl font-semibold text-gray-800 mb-3">Custom cabinets</h4>
                   <p className="text-gray-700 text-lg leading-relaxed mb-4">
@@ -142,7 +142,7 @@ export default function BlogPage() {
                 <h3 className="text-2xl font-semibold text-gray-900 mb-4">
                   2. Quality and Durability
                 </h3>
-                
+
                 <div className="mb-4">
                   <h4 className="text-xl font-semibold text-gray-800 mb-3">Custom cabinets</h4>
                   <p className="text-gray-700 text-lg leading-relaxed mb-4">
@@ -169,7 +169,7 @@ export default function BlogPage() {
                 <h3 className="text-2xl font-semibold text-gray-900 mb-4">
                   3. Storage and Functionality
                 </h3>
-                
+
                 <div className="mb-4">
                   <h4 className="text-xl font-semibold text-gray-800 mb-3">Custom cabinets</h4>
                   <p className="text-gray-700 text-lg leading-relaxed mb-4">
@@ -202,7 +202,7 @@ export default function BlogPage() {
                 <h3 className="text-2xl font-semibold text-gray-900 mb-4">
                   4. Fit and Finish
                 </h3>
-                
+
                 <div className="mb-4">
                   <h4 className="text-xl font-semibold text-gray-800 mb-3">Custom cabinets</h4>
                   <p className="text-gray-700 text-lg leading-relaxed">
@@ -223,7 +223,7 @@ export default function BlogPage() {
                 <h3 className="text-2xl font-semibold text-gray-900 mb-4">
                   5. Cost Comparison
                 </h3>
-                
+
                 <div className="mb-4">
                   <h4 className="text-xl font-semibold text-gray-800 mb-3">Custom cabinets</h4>
                   <p className="text-gray-700 text-lg leading-relaxed mb-4">
@@ -260,7 +260,7 @@ export default function BlogPage() {
                 <h3 className="text-2xl font-semibold text-gray-900 mb-4">
                   6. Installation Process
                 </h3>
-                
+
                 <div className="mb-4">
                   <h4 className="text-xl font-semibold text-gray-800 mb-3">Custom cabinets</h4>
                   <p className="text-gray-700 text-lg leading-relaxed">
@@ -282,7 +282,7 @@ export default function BlogPage() {
               <h2 className="text-3xl font-bold text-gray-900 mb-6 border-b-2 border-gray-300 pb-3">
                 Which Option Is Right for You?
               </h2>
-              
+
               <div className="grid md:grid-cols-2 gap-6 mb-6">
                 <div className="bg-blue-50 p-6 rounded-lg">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">Custom cabinets are ideal if:</h3>

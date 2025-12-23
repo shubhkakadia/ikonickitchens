@@ -10,6 +10,7 @@ import {
   getFileFromFormData,
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
+import { formatPhoneToNational } from "@/components/validators";
 
 export async function POST(request) {
   try {
@@ -85,6 +86,16 @@ export async function POST(request) {
     // Parse is_active - handle string "true"/"false" or boolean
     const isActiveValue = is_active === "true" || is_active === true || is_active === undefined || is_active === null ? true : false;
 
+    // Format phone numbers to national format before saving
+    const formattedPhone = phone ? formatPhoneToNational(phone) : phone;
+    const formattedEmergencyPhone = emergency_contact_phone
+      ? formatPhoneToNational(emergency_contact_phone)
+      : emergency_contact_phone;
+
+    const formatPhone = (phone) => {
+      return phone ? formatPhoneToNational(phone) : phone;
+    }
+
     // Create employee first (without image_id)
     const employee = await prisma.employees.create({
       data: {
@@ -93,12 +104,12 @@ export async function POST(request) {
         last_name,
         role,
         email,
-        phone,
+        phone: formatPhone(phone),
         dob: processDateTimeField(dob),
         join_date: processDateTimeField(join_date),
         address,
         emergency_contact_name,
-        emergency_contact_phone,
+        emergency_contact_phone: formatPhone(emergency_contact_phone),
         bank_account_name,
         bank_account_number,
         bank_account_bsb,

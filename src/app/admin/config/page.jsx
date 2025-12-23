@@ -195,7 +195,7 @@ export default function ConfigPage() {
       };
 
       const response = await axios.request(config);
-      
+
       if (response.data.status) {
         toast.success("Config updated successfully");
         setShowEditModal(false);
@@ -309,11 +309,10 @@ export default function ConfigPage() {
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                          activeTab === tab.id
+                        className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
                             ? "border-secondary text-secondary"
                             : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                        }`}
+                          }`}
                       >
                         {tab.label}
                       </button>
@@ -472,11 +471,10 @@ export default function ConfigPage() {
                             <button
                               key={page}
                               onClick={() => setCurrentPage(page)}
-                              className={`cursor-pointer px-3 py-1 text-sm font-medium rounded ${
-                                currentPage === page
+                              className={`cursor-pointer px-3 py-1 text-sm font-medium rounded ${currentPage === page
                                   ? "bg-primary text-white"
                                   : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
-                              }`}
+                                }`}
                             >
                               {page}
                             </button>

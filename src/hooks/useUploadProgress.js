@@ -18,7 +18,7 @@ export const useUploadProgress = () => {
    */
   const showProgressToast = (fileCount) => {
     uploadProgressRef.current = 0;
-    
+
     uploadProgressToastId.current = toast(
       ({ closeToast, isPaused }) => (
         <UploadProgressBar
@@ -65,7 +65,7 @@ export const useUploadProgress = () => {
     uploadProgressRef.current = 100;
     if (uploadProgressToastId.current) {
       const toastId = uploadProgressToastId.current;
-      
+
       toast.update(toastId, {
         render: ({ closeToast, isPaused }) => (
           <UploadProgressBar
@@ -79,7 +79,7 @@ export const useUploadProgress = () => {
         pauseOnHover: false,
         pauseOnFocusLoss: false,
       });
-      
+
       // Backup: Also manually dismiss after 5 seconds to ensure it closes
       setTimeout(() => {
         if (uploadProgressToastId.current === toastId) {

@@ -47,9 +47,9 @@ export async function POST(request) {
     if (!logged) {
       console.error(`Failed to log contact creation: ${contact.id} - ${contact.first_name} ${contact.last_name}`);
       return NextResponse.json(
-        { 
-          status: true, 
-          message: "Contact created successfully", 
+        {
+          status: true,
+          message: "Contact created successfully",
           data: contact,
           warning: "Note: Creation succeeded but logging failed"
         },

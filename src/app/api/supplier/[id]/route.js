@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { formatPhoneToNational } from "@/components/validators";
 
 export async function GET(request, { params }) {
   try {
@@ -52,9 +53,13 @@ export async function PATCH(request, { params }) {
     const { id } = await params;
     const { name, email, phone, address, notes, website, abn_number } =
       await request.json();
+    const formatPhone = (phone) => {
+      return phone ? formatPhoneToNational(phone) : phone;
+    }
+
     const supplier = await prisma.supplier.update({
       where: { supplier_id: id },
-      data: { name, email, phone, address, notes, website, abn_number },
+      data: { name, email, phone: formatPhone(phone), address, notes, website, abn_number },
     });
 
     const logged = await withLogging(

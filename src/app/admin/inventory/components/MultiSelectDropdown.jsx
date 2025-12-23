@@ -128,15 +128,15 @@ export default function MultiSelectDropdown({
                   key={option}
                   onClick={() => handleToggle(option)}
                   className={`cursor-pointer w-full text-left px-3 py-2 text-sm hover:bg-slate-100 flex items-center ${selectedValues.includes(option)
-                      ? "bg-primary/10 text-primary"
-                      : "text-slate-700"
+                    ? "bg-primary/10 text-primary"
+                    : "text-slate-700"
                     }`}
                 >
                   <div className="flex items-center">
                     <div
                       className={`w-4 h-4 border border-slate-300 rounded mr-2 flex items-center justify-center ${selectedValues.includes(option)
-                          ? "bg-primary border-primary"
-                          : ""
+                        ? "bg-primary border-primary"
+                        : ""
                         }`}
                     >
                       {selectedValues.includes(option) && (

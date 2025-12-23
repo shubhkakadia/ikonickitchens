@@ -800,8 +800,8 @@ export default function page() {
                             <button
                               onClick={() => setMtoTab("active")}
                               className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${mtoTab === "active"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                 }`}
                             >
                               Active ({activeMtos.length})
@@ -809,8 +809,8 @@ export default function page() {
                             <button
                               onClick={() => setMtoTab("completed")}
                               className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${mtoTab === "completed"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                 }`}
                             >
                               Completed ({completedMtos.length})

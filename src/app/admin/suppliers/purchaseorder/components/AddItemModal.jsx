@@ -661,9 +661,8 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                             value={formData[field]}
                             onChange={handleInputChange}
                             disabled={field === "face" && formData.is_sunmica}
-                            className={`w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
-                              field === "face" && formData.is_sunmica ? "bg-slate-100 cursor-not-allowed" : ""
-                            }`}
+                            className={`w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${field === "face" && formData.is_sunmica ? "bg-slate-100 cursor-not-allowed" : ""
+                              }`}
                             placeholder={`Enter ${field}`}
                           />
                         </div>
@@ -736,9 +735,8 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                         >
                           <ChevronDown
-                            className={`w-5 h-5 transition-transform duration-200 ${
-                              isSubCategoryDropdownOpen ? "rotate-180" : ""
-                            }`}
+                            className={`w-5 h-5 transition-transform duration-200 ${isSubCategoryDropdownOpen ? "rotate-180" : ""
+                              }`}
                           />
                         </button>
                       </div>
@@ -838,11 +836,10 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`cursor-pointer px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-                  isSubmitting
+                className={`cursor-pointer px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${isSubmitting
                     ? "bg-slate-300 text-slate-500 cursor-not-allowed"
                     : "bg-primary text-white hover:bg-primary/90"
-                }`}
+                  }`}
               >
                 {isSubmitting ? "Adding Item..." : "Add Item"}
               </button>

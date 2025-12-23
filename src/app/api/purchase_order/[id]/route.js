@@ -97,20 +97,20 @@ export async function PATCH(request, { params }) {
       body.ordered_at = ordered_at;
       body.total_amount =
         total_amount_raw !== null &&
-        total_amount_raw !== undefined &&
-        total_amount_raw !== ""
+          total_amount_raw !== undefined &&
+          total_amount_raw !== ""
           ? Number(total_amount_raw)
           : undefined;
       body.delivery_charge =
         delivery_charge_raw !== null &&
-        delivery_charge_raw !== undefined &&
-        delivery_charge_raw !== ""
+          delivery_charge_raw !== undefined &&
+          delivery_charge_raw !== ""
           ? Number(delivery_charge_raw)
           : undefined;
       body.invoice_date =
         invoice_date_raw !== null &&
-        invoice_date_raw !== undefined &&
-        invoice_date_raw !== ""
+          invoice_date_raw !== undefined &&
+          invoice_date_raw !== ""
           ? new Date(invoice_date_raw)
           : undefined;
       body.notes = notes;
@@ -446,8 +446,8 @@ export async function PATCH(request, { params }) {
               notes: item.notes || null,
               unit_price:
                 item.unit_price !== undefined &&
-                item.unit_price !== null &&
-                item.unit_price !== ""
+                  item.unit_price !== null &&
+                  item.unit_price !== ""
                   ? Number(item.unit_price)
                   : null,
             };
@@ -589,8 +589,8 @@ export async function DELETE(request, { params }) {
     if (!logged) {
       console.error(`Failed to log purchase order deletion: ${id}`);
       return NextResponse.json(
-        { 
-          status: true, 
+        {
+          status: true,
           message: "Purchase order deleted successfully",
           data: po,
           warning: "Note: Deletion succeeded but logging failed"

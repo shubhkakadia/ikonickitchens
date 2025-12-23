@@ -731,14 +731,17 @@ export default function page() {
   const getSortedStagesDue = () => {
     if (!dashboardData?.topstagesDue) return [];
 
-    let filtered = [...dashboardData.topstagesDue];
+    // First, filter out stages without endDate
+    let filtered = dashboardData.topstagesDue.filter((stage) => {
+      if (!stage.endDate) return false;
+      const date = new Date(stage.endDate);
+      return !isNaN(date.getTime());
+    });
 
     // Filter by year
     if (dashboardYearFilter !== "all") {
       filtered = filtered.filter((stage) => {
-        if (!stage.endDate) return false;
         const date = new Date(stage.endDate);
-        if (isNaN(date.getTime())) return false;
         return date.getFullYear().toString() === dashboardYearFilter;
       });
     }
@@ -746,9 +749,7 @@ export default function page() {
     // Filter by month
     if (dashboardMonthFilter !== "all" && dashboardYearFilter !== "all") {
       filtered = filtered.filter((stage) => {
-        if (!stage.endDate) return false;
         const date = new Date(stage.endDate);
-        if (isNaN(date.getTime())) return false;
         return date.getMonth() + 1 === parseInt(dashboardMonthFilter);
       });
     }
@@ -1072,7 +1073,7 @@ export default function page() {
                               Stage
                             </th>
                             <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                              Lot
+                              Project / Lot
                             </th>
                             <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                               Status
@@ -1103,7 +1104,15 @@ export default function page() {
                                   </span>
                                 </td>
                                 <td className="py-3 px-3 text-sm text-slate-600">
-                                  {stage.lot_id}
+                                  {stage.lot?.project?.name ? (
+                                    <span>
+                                      <span className="font-medium">{stage.lot.project.name}</span>
+                                      <span className="text-slate-400 mx-1">/</span>
+                                      <span>{stage.lot_id}</span>
+                                    </span>
+                                  ) : (
+                                    stage.lot_id
+                                  )}
                                 </td>
                                 <td className="py-3 px-3">
                                   <span

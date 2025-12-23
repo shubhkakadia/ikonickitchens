@@ -88,7 +88,7 @@ export default function GalleryPage({ title, description, images }) {
       {/* Image Modal */}
       {selectedImage && (
         <div
-          className="fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 backdrop-blur-xs bg-black/50 flex items-center justify-center p-4"
           onClick={closeCarousel}
         >
           <div className="relative w-full max-w-7xl h-full flex items-center justify-center">

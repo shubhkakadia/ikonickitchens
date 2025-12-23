@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
+import { validatePhone, formatPhoneToNational } from "@/components/validators";
 
 export default function ContactSection({
     contacts = [],
@@ -228,12 +229,27 @@ export default function ContactSection({
     };
 
     const handleSaveContact = async () => {
+        // Validate phone number if provided
+        if (contactDraft.phone && !validatePhone(contactDraft.phone)) {
+            toast.error("Please enter a valid Australian phone number", {
+                position: "top-right",
+                autoClose: 3000,
+                hideProgressBar: false,
+            });
+            return;
+        }
+
         if (isCreateMode) {
             // Create new contact
             if (!parentId) return;
             setIsSavingContact(true);
             try {
-                await handleCreateContact(contactDraft);
+                // Format phone number before saving
+                const formattedContact = {
+                    ...contactDraft,
+                    phone: contactDraft.phone ? formatPhoneToNational(contactDraft.phone) : contactDraft.phone,
+                };
+                await handleCreateContact(formattedContact);
                 setContactDraft({
                     first_name: "",
                     last_name: "",
@@ -254,7 +270,12 @@ export default function ContactSection({
             if (!selectedContact) return;
             setIsSavingContact(true);
             try {
-                await saveEditContact(contactDraft, selectedContact.id);
+                // Format phone number before saving
+                const formattedContact = {
+                    ...contactDraft,
+                    phone: contactDraft.phone ? formatPhoneToNational(contactDraft.phone) : contactDraft.phone,
+                };
+                await saveEditContact(formattedContact, selectedContact.id);
                 setIsEditingContact(false);
             } catch (err) {
                 console.error("Save contact failed", err);
@@ -363,7 +384,7 @@ export default function ContactSection({
 
             {/* Contact Detail Modal */}
             {isContactModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
+                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
                     <div
                         className="absolute inset-0 bg-slate-900/40"
                         onClick={handleCloseContactModal}
@@ -564,9 +585,17 @@ export default function ContactSection({
                                                     phone: e.target.value,
                                                 })
                                             }
-                                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${contactDraft.phone && !validatePhone(contactDraft.phone)
+                                                ? "border-red-500"
+                                                : "border-slate-300"
+                                              }`}
                                             placeholder="e.g. +61 434 888 999"
                                         />
+                                        {contactDraft.phone && !validatePhone(contactDraft.phone) && (
+                                            <p className="mt-1 text-xs text-red-500">
+                                                Please enter a valid Australian phone number
+                                            </p>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-2">

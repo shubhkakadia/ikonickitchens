@@ -18,6 +18,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import CreatePurchaseOrderModal from "@/app/admin/suppliers/purchaseorder/components/CreatePurchaseOrderModal";
@@ -327,6 +328,59 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
     setPoPendingDelete(null);
   };
 
+  const handlePOCancel = async (poId) => {
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      const response = await axios.patch(
+        `/api/purchase_order/${poId}`,
+        { status: "CANCELLED" },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success("Purchase order cancelled successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        // Refresh the PO list
+        fetchPurchaseOrders();
+        // Close accordion if it was open
+        if (openAccordionId === poId) {
+          setOpenAccordionId(null);
+        }
+      } else {
+        toast.error(
+          response.data.message || "Failed to cancel purchase order",
+          {
+            position: "top-right",
+            autoClose: 3000,
+          }
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message || "Failed to cancel purchase order",
+        {
+          position: "top-right",
+          autoClose: 3000,
+        }
+      );
+    }
+  };
+
   const handleSort = (field) => {
     if (sortField === field) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -354,9 +408,12 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
           po.status === "ORDERED" ||
           po.status === "PARTIALLY_RECEIVED"
         );
-      } else {
-        return po.status === "FULLY_RECEIVED" || po.status === "CANCELLED";
+      } else if (poActiveTab === "completed") {
+        return po.status === "FULLY_RECEIVED";
+      } else if (poActiveTab === "cancelled") {
+        return po.status === "CANCELLED";
       }
+      return false;
     });
 
     const withCounts = list.map((po) => {
@@ -428,6 +485,15 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
               }`}
           >
             Completed
+          </button>
+          <button
+            onClick={() => setPoActiveTab("cancelled")}
+            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${poActiveTab === "cancelled"
+              ? "border-primary text-primary"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+          >
+            Cancelled
           </button>
         </nav>
         <button
@@ -661,29 +727,43 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                     </div>
                                   )}
                                 </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePODelete(po.id);
-                                  }}
-                                  disabled={deletingPOId === po.id}
-                                  className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${deletingPOId === po.id
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : ""
-                                    }`}
-                                >
-                                  {deletingPOId === po.id ? (
-                                    <>
-                                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
-                                      <span>Deleting...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Trash2 className="w-3 h-3" />
-                                      <span>Delete PO</span>
-                                    </>
+                                <div className="flex items-center gap-2">
+                                  {po.status !== "CANCELLED" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePOCancel(po.id);
+                                      }}
+                                      className="cursor-pointer px-2 py-1 border border-orange-300 rounded-lg hover:bg-orange-50 text-xs text-orange-700 flex items-center gap-1.5"
+                                    >
+                                      <X className="w-3 h-3" />
+                                      <span>Cancel PO</span>
+                                    </button>
                                   )}
-                                </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePODelete(po.id);
+                                    }}
+                                    disabled={deletingPOId === po.id}
+                                    className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${deletingPOId === po.id
+                                      ? "opacity-50 cursor-not-allowed"
+                                      : ""
+                                      }`}
+                                  >
+                                    {deletingPOId === po.id ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
+                                        <span>Deleting...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Trash2 className="w-3 h-3" />
+                                        <span>Delete PO</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
                               </div>
                               {po.notes && (
                                 <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">

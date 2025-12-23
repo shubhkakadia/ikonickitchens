@@ -118,6 +118,9 @@ export default function page() {
   const [isFinishDropdownOpen, setIsFinishDropdownOpen] = useState(false);
   const [finishSearchTerm, setFinishSearchTerm] = useState("");
   const finishDropdownRef = React.useRef(null);
+  const [isFaceDropdownOpen, setIsFaceDropdownOpen] = useState(false);
+  const [faceSearchTerm, setFaceSearchTerm] = useState("");
+  const faceDropdownRef = React.useRef(null);
   const [finishOptions, setFinishOptions] = useState([]);
   const [loadingFinishes, setLoadingFinishes] = useState(false);
   const [showCreateFinishModal, setShowCreateFinishModal] = useState(false);
@@ -152,6 +155,12 @@ export default function page() {
 
   const filteredSubCategories = hardwareSubCategories.filter((subCategory) =>
     subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase())
+  );
+
+  // Face options
+  const faceOptions = ["single side", "double side"];
+  const filteredFaces = faceOptions.filter((face) =>
+    face.toLowerCase().includes(faceSearchTerm.toLowerCase())
   );
 
   // Fetch hardware sub categories from config API
@@ -327,13 +336,19 @@ export default function page() {
       ) {
         setIsFinishDropdownOpen(false);
       }
+      if (
+        faceDropdownRef.current &&
+        !faceDropdownRef.current.contains(event.target)
+      ) {
+        setIsFaceDropdownOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showDropdown, isSubCategoryDropdownOpen, isSupplierDropdownOpen, isMeasuringUnitDropdownOpen, isFinishDropdownOpen]);
+  }, [showDropdown, isSubCategoryDropdownOpen, isSupplierDropdownOpen, isMeasuringUnitDropdownOpen, isFinishDropdownOpen, isFaceDropdownOpen]);
 
   const fetchItem = async () => {
     try {
@@ -539,6 +554,20 @@ export default function page() {
     handleInputChange("finish", value);
   };
 
+  // Face handlers
+  const handleFaceSelect = (face) => {
+    handleInputChange("face", face);
+    setFaceSearchTerm(face);
+    setIsFaceDropdownOpen(false);
+  };
+
+  const handleFaceSearchChange = (e) => {
+    const value = e.target.value;
+    setFaceSearchTerm(value);
+    setIsFaceDropdownOpen(true);
+    handleInputChange("face", value);
+  };
+
   // Handle create new finish
   const handleCreateNewFinish = async () => {
     if (!newFinishValue || !newFinishValue.trim()) {
@@ -731,9 +760,13 @@ export default function page() {
         editFormData.brand = item.sheet?.brand || "";
         editFormData.color = item.sheet?.color || "";
         editFormData.finish = item.sheet?.finish || "";
-        editFormData.face = item.sheet?.face || "";
+        // Map "1" to "single side" for backward compatibility
+        const faceValue = item.sheet?.face === "1" ? "single side" : (item.sheet?.face || "");
+        editFormData.face = faceValue;
         editFormData.dimensions = item.sheet?.dimensions || "";
         editFormData.is_sunmica = item.sheet?.is_sunmica || false;
+        // Initialize face search term
+        setFaceSearchTerm(faceValue);
       } else if (category === "handle" && item.handle) {
         editFormData.brand = item.handle?.brand || "";
         editFormData.color = item.handle?.color || "";
@@ -882,6 +915,13 @@ export default function page() {
       setFinishSearchTerm("");
     }
     setIsFinishDropdownOpen(false);
+    // Reset face search term
+    if (category === "sheet" && item?.sheet?.face) {
+      setFaceSearchTerm(item.sheet.face);
+    } else {
+      setFaceSearchTerm("");
+    }
+    setIsFaceDropdownOpen(false);
   };
 
   const handleInputChange = (field, value) => {
@@ -1123,27 +1163,68 @@ export default function page() {
               formatValue={formatValue}
             />
           )}
-          <div>
-            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-              <Box className="w-3.5 h-3.5" />
-              Face
-            </label>
-            {isEditing ? (
-              <input
-                type="text"
-                value={formData.face || ""}
-                onChange={(e) => handleInputChange("face", e.target.value)}
-                placeholder={formatValue(item.sheet.face)}
-                disabled={formData.is_sunmica}
-                className={`w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${formData.is_sunmica ? "bg-slate-100 cursor-not-allowed" : ""
-                  }`}
-              />
-            ) : (
+          {isEditing ? (
+            <div className="relative" ref={faceDropdownRef}>
+              <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                <Box className="w-3.5 h-3.5" />
+                Face
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={faceSearchTerm || formData.face || ""}
+                  onChange={handleFaceSearchChange}
+                  onFocus={() => setIsFaceDropdownOpen(true)}
+                  placeholder={formatValue(item.sheet.face)}
+                  disabled={formData.is_sunmica}
+                  className={`w-full text-sm text-slate-800 px-2 py-1 pr-8 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${formData.is_sunmica ? "bg-slate-100 cursor-not-allowed border-slate-300" : "border-slate-300"
+                    }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsFaceDropdownOpen(!isFaceDropdownOpen)}
+                  disabled={formData.is_sunmica}
+                  className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${isFaceDropdownOpen ? "rotate-180" : ""
+                      }`}
+                  />
+                </button>
+              </div>
+
+              {isFaceDropdownOpen && !formData.is_sunmica && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                  {filteredFaces.length > 0 ? (
+                    filteredFaces.map((face, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleFaceSelect(face)}
+                        className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                      >
+                        {face}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-xs text-slate-500 text-center">
+                      No matching options found
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                <Box className="w-3.5 h-3.5" />
+                Face
+              </label>
               <p className="text-sm text-slate-800">
                 {formatValue(item.sheet.face)}
               </p>
-            )}
-          </div>
+            </div>
+          )}
           <InfoField
             label="Dimensions"
             value={item.sheet.dimensions}
@@ -1167,15 +1248,19 @@ export default function page() {
                   checked={formData.is_sunmica || false}
                   onChange={(e) => {
                     handleInputChange("is_sunmica", e.target.checked);
-                    // If is_sunmica is checked, set face to "1" and disable it
+                    // If is_sunmica is checked, set face to "single side" and disable it
                     if (e.target.checked) {
-                      handleInputChange("face", "1");
+                      handleInputChange("face", "single side");
+                      setFaceSearchTerm("single side");
                     } else if (
+                      formData.face === "single side" ||
+                      item.sheet?.face === "single side" ||
                       formData.face === "1" ||
                       item.sheet?.face === "1"
                     ) {
-                      // If is_sunmica is unchecked and face was "1", clear it
+                      // If is_sunmica is unchecked and face was "single side" or "1", clear it
                       handleInputChange("face", "");
+                      setFaceSearchTerm("");
                     }
                   }}
                   className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-2 focus:ring-primary cursor-pointer"
@@ -1191,7 +1276,7 @@ export default function page() {
             )}
             {isEditing && formData.is_sunmica && (
               <p className="mt-1 text-xs text-slate-500">
-                Face field is automatically set to "1" for sunmica items
+                Face field is automatically set to "single side" for sunmica items
               </p>
             )}
           </div>
@@ -2372,14 +2457,14 @@ export default function page() {
             allFiles={
               item?.image
                 ? [
-                    {
-                      url: item.image.url.startsWith('/') ? item.image.url : `/${item.image.url}`,
-                      filename: item.image.filename || item.item_id || "item-image",
-                      mime_type: "image",
-                      size: item.image.size || 0,
-                      id: item.image.id || item.item_id,
-                    },
-                  ]
+                  {
+                    url: item.image.url.startsWith('/') ? item.image.url : `/${item.image.url}`,
+                    filename: item.image.filename || item.item_id || "item-image",
+                    mime_type: "image",
+                    size: item.image.size || 0,
+                    id: item.image.id || item.item_id,
+                  },
+                ]
                 : []
             }
             currentIndex={0}
@@ -2401,7 +2486,7 @@ export default function page() {
 
         {/* Create Finish Modal */}
         {showCreateFinishModal && (
-          <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateFinishModal(false)}>
+          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateFinishModal(false)}>
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
                 <h2 className="text-xl font-bold text-slate-800">
@@ -2456,7 +2541,7 @@ export default function page() {
 
         {/* Create Measuring Unit Modal */}
         {showCreateMeasuringUnitModal && (
-          <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateMeasuringUnitModal(false)}>
+          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateMeasuringUnitModal(false)}>
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
                 <h2 className="text-xl font-bold text-slate-800">
@@ -2511,7 +2596,7 @@ export default function page() {
 
         {/* Create Hardware Sub Category Modal */}
         {showCreateSubCategoryModal && (
-          <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCreateSubCategoryModal(false)}>
+          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateSubCategoryModal(false)}>
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
                 <h2 className="text-xl font-bold text-slate-800">

@@ -166,9 +166,9 @@ export default function page() {
     }
   };
 
-  // Filter lots based on search and stage filters
+  // Filter and sort lots based on search and stage filters
   const filteredLots = useMemo(() => {
-    return activeLots.filter((lot) => {
+    const filtered = activeLots.filter((lot) => {
       // Search filter
       if (search) {
         const searchLower = search.toLowerCase();
@@ -199,6 +199,52 @@ export default function page() {
         }
       }
       return true;
+    });
+
+    // Sort by client name > project name > lot number
+    return filtered.sort((a, b) => {
+      // 1. Sort by client name
+      const clientNameA = (a.project?.client?.client_name || "").toLowerCase();
+      const clientNameB = (b.project?.client?.client_name || "").toLowerCase();
+      if (clientNameA !== clientNameB) {
+        return clientNameA.localeCompare(clientNameB);
+      }
+
+      // 2. Sort by project name
+      const projectNameA = (a.project?.name || "").toLowerCase();
+      const projectNameB = (b.project?.name || "").toLowerCase();
+      if (projectNameA !== projectNameB) {
+        return projectNameA.localeCompare(projectNameB);
+      }
+
+      // 3. Sort by lot number (extract numeric part from lot_id for proper numeric sorting)
+      const lotIdA = a.lot_id || "";
+      const lotIdB = b.lot_id || "";
+
+      // Extract lot number from lot_id (e.g., "IK001-lot 1" -> "1")
+      const extractLotNumber = (lotId) => {
+        const match = lotId.match(/lot\s*(\d+)/i);
+        if (match) {
+          return parseInt(match[1], 10);
+        }
+        // If no numeric lot number found, try to extract any number at the end
+        const numMatch = lotId.match(/(\d+)$/);
+        if (numMatch) {
+          return parseInt(numMatch[1], 10);
+        }
+        // Fallback to string comparison
+        return lotId;
+      };
+
+      const lotNumA = extractLotNumber(lotIdA);
+      const lotNumB = extractLotNumber(lotIdB);
+
+      if (typeof lotNumA === "number" && typeof lotNumB === "number") {
+        return lotNumA - lotNumB;
+      }
+
+      // Fallback to string comparison if numbers couldn't be extracted
+      return lotIdA.localeCompare(lotIdB);
     });
   }, [activeLots, search, stageFilters]);
 

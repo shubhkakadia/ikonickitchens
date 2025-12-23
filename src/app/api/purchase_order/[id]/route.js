@@ -390,7 +390,17 @@ export async function PATCH(request, { params }) {
         { status: 200 }
       );
     }
-    if (body.status !== undefined) updateData.status = body.status;
+    if (body.status !== undefined) {
+      // Validate status value
+      const validStatuses = ["DRAFT", "ORDERED", "PARTIALLY_RECEIVED", "FULLY_RECEIVED", "CANCELLED"];
+      if (!validStatuses.includes(body.status)) {
+        return NextResponse.json(
+          { status: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` },
+          { status: 400 }
+        );
+      }
+      updateData.status = body.status;
+    }
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (
       body.total_amount !== undefined &&

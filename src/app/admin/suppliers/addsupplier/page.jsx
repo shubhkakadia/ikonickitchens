@@ -70,7 +70,7 @@ export default function page() {
             first_name: contact.first_name,
             last_name: contact.last_name,
             email: contact.email || null,
-            phone: contact.phone || null,
+            phone: contact.phone ? formatPhoneToNational(contact.phone) : null,
             role: contact.role || null,
             preferred_contact_method: contact.preferred_contact_method || null,
             notes: contact.notes || null,
@@ -247,13 +247,29 @@ export default function page() {
       return;
     }
 
+    // Validate phone number if provided
+    if (contactDraft.phone && !validatePhone(contactDraft.phone)) {
+      toast.error("Please enter a valid Australian phone number", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+      });
+      return;
+    }
+
     setIsSavingContact(true);
     try {
+      // Format phone number before saving
+      const formattedContact = {
+        ...contactDraft,
+        phone: contactDraft.phone ? formatPhoneToNational(contactDraft.phone) : contactDraft.phone,
+      };
+
       if (editingContactIndex !== null) {
         // Update existing contact
         const updatedContacts = [...contacts];
         updatedContacts[editingContactIndex] = {
-          ...contactDraft,
+          ...formattedContact,
           id: contacts[editingContactIndex].id, // Keep the same ID
         };
         setContacts(updatedContacts);
@@ -266,7 +282,7 @@ export default function page() {
       } else {
         // Add new contact
         const newContact = {
-          ...contactDraft,
+          ...formattedContact,
           id: `temp-${Date.now()}`, // Temporary ID for display
         };
         setContacts([...contacts, newContact]);
@@ -598,7 +614,7 @@ export default function page() {
 
       {/* Contact Modal */}
       {isContactModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
           <div
             className="absolute inset-0 bg-slate-900/40"
             onClick={handleCloseContactModal}
@@ -691,9 +707,17 @@ export default function page() {
                         phone: e.target.value,
                       })
                     }
-                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                    className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${contactDraft.phone && !validatePhone(contactDraft.phone)
+                        ? "border-red-500"
+                        : "border-slate-300"
+                      }`}
                     placeholder="e.g. +61 434 888 999"
                   />
+                  {contactDraft.phone && !validatePhone(contactDraft.phone) && (
+                    <p className="mt-1 text-xs text-red-500">
+                      Please enter a valid Australian phone number
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">

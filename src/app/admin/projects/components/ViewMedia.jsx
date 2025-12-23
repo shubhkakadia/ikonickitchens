@@ -147,7 +147,7 @@ export default function ViewMedia({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[95vh] flex flex-col relative">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col relative">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-3 border-b border-slate-200">
           <div className="flex-1 min-w-0">

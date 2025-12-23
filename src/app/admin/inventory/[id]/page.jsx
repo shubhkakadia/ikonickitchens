@@ -35,6 +35,7 @@ import { CiMenuKebab } from "react-icons/ci";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
+import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 
 // InfoField component - defined outside to prevent recreation and focus loss
 const InfoField = ({
@@ -86,6 +87,8 @@ export default function page() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [viewFileModal, setViewFileModal] = useState(false);
+  const [pageNumber, setPageNumber] = useState(1);
   const [formData, setFormData] = useState({});
   const [newImage, setNewImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -1689,10 +1692,27 @@ export default function page() {
                               </div>
                             ) : item.image?.url || imagePreview ? (
                               <button
-                                onClick={() =>
-                                  (item.image?.url || imagePreview) &&
-                                  setSelectedFile(true)
-                                }
+                                onClick={() => {
+                                  if (imagePreview) {
+                                    // New image preview (blob URL)
+                                    setSelectedFile({
+                                      name: item.item_id || "item-image",
+                                      type: "image",
+                                      url: imagePreview,
+                                      isExisting: false,
+                                    });
+                                  } else if (item.image?.url) {
+                                    // Existing image
+                                    setSelectedFile({
+                                      name: item.image.filename || item.item_id || "item-image",
+                                      type: "image",
+                                      url: item.image.url.startsWith('/') ? item.image.url : `/${item.image.url}`,
+                                      size: item.image.size || 0,
+                                      isExisting: true,
+                                    });
+                                  }
+                                  setViewFileModal(true);
+                                }}
                               >
                                 <Image
                                   src={imagePreview || `/${item.image.url}`}
@@ -2343,87 +2363,27 @@ export default function page() {
           </div>
         </div>
 
-        {selectedFile === true && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
-            <div
-              className="absolute inset-0 bg-slate-900/40"
-              onClick={() => setSelectedFile(false)}
-            />
-            <div className="relative bg-white w-full max-w-5xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
-              {/* Modal Header */}
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold text-slate-800 truncate">
-                    {getItemTitle()}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    {imagePreview ? "New image" : item.image?.url || "-"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedFile(false);
-                  }}
-                  className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
-                >
-                  <X className="w-5 h-5 text-slate-600" />
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="relative flex-1 overflow-auto p-6 bg-slate-50">
-                <div className="flex items-center justify-center h-full">
-                  {imagePreview ? (
-                    <Image
-                      loading="lazy"
-                      src={imagePreview}
-                      alt={item.item_id}
-                      width={1000}
-                      height={1000}
-                      className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                    />
-                  ) : item.image?.url ? (
-                    <Image
-                      loading="lazy"
-                      src={`/${item.image.url}`}
-                      alt={item.item_id}
-                      width={1000}
-                      height={1000}
-                      className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-slate-500">
-                      No image available
-                    </div>
-                  )}
-                </div>
-
-                {/* Floating Info and Download Button */}
-                <div className="sticky bottom-4 left-4 right-4 flex items-center justify-between gap-4 z-50 pointer-events-auto">
-                  <button
-                    onClick={() => {
-                      // Check if image URL exists
-                      if (item.image?.url) {
-                        // For existing files (URL string like /upload/item/item.jpeg)
-                        const a = document.createElement("a");
-                        a.href = `/${item.image.url}`;
-                        a.download =
-                          item.image.filename || item.item_id || "download";
-                        a.target = "_blank";
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                      }
-                    }}
-                    className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium pointer-events-auto"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+        {viewFileModal && selectedFile && (
+          <ViewMedia
+            selectedFile={selectedFile}
+            setSelectedFile={setSelectedFile}
+            setViewFileModal={setViewFileModal}
+            setPageNumber={setPageNumber}
+            allFiles={
+              item?.image
+                ? [
+                    {
+                      url: item.image.url.startsWith('/') ? item.image.url : `/${item.image.url}`,
+                      filename: item.image.filename || item.item_id || "item-image",
+                      mime_type: "image",
+                      size: item.image.size || 0,
+                      id: item.image.id || item.item_id,
+                    },
+                  ]
+                : []
+            }
+            currentIndex={0}
+          />
         )}
 
         {/* Delete Confirmation Modal */}

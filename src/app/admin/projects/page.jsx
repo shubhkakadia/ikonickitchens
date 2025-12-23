@@ -86,6 +86,13 @@ export default function page() {
         }
         const allCompleted = project.lots.every((lot) => lot.status === "COMPLETED");
         if (!allCompleted) return false;
+      } else if (activeTab === "cancelled") {
+        // Show projects where ALL lots are CANCELLED (and project has at least one lot)
+        if (!project.lots || project.lots.length === 0) {
+          return false; // Projects with no lots are not shown in cancelled
+        }
+        const allCancelled = project.lots.every((lot) => lot.status === "CANCELLED");
+        if (!allCancelled) return false;
       }
 
       // Search filter
@@ -757,6 +764,15 @@ export default function page() {
                             }`}
                         >
                           Completed
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("cancelled")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "cancelled"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                        >
+                          Cancelled
                         </button>
                       </nav>
                     </div>

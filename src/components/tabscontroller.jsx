@@ -9,7 +9,7 @@ export default function TabsController({ href, title, children }) {
   return (
     <button
       onClick={() => {
-        router.push(href);
+        router.back();
         dispatch(replaceTab({ id: uuidv4(), title: title, href: href }));
       }}
     >

@@ -114,6 +114,14 @@ export async function PATCH(request, { params }) {
     }
 
     if (status !== undefined) {
+      // Validate status value
+      const validStatuses = ["ACTIVE", "COMPLETED", "CANCELLED"];
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json(
+          { status: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` },
+          { status: 400 }
+        );
+      }
       updateData.status = status;
     }
 

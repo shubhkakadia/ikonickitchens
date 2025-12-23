@@ -161,13 +161,20 @@ export default function page() {
   };
 
   const filteredAndSortedPOs = useMemo(() => {
-    let list = (pos || []).filter((po) =>
-      activeTab === "active"
-        ? po.status === "DRAFT" ||
-        po.status === "ORDERED" ||
-        po.status === "PARTIALLY_RECEIVED"
-        : po.status === "FULLY_RECEIVED" || po.status === "CANCELLED"
-    );
+    let list = (pos || []).filter((po) => {
+      if (activeTab === "active") {
+        return (
+          po.status === "DRAFT" ||
+          po.status === "ORDERED" ||
+          po.status === "PARTIALLY_RECEIVED"
+        );
+      } else if (activeTab === "completed") {
+        return po.status === "FULLY_RECEIVED";
+      } else if (activeTab === "cancelled") {
+        return po.status === "CANCELLED";
+      }
+      return false;
+    });
 
     if (search) {
       const q = search.toLowerCase();
@@ -261,15 +268,16 @@ export default function page() {
     setCurrentPage(page);
   };
 
-  // Reset to first page when search or items per page changes
+  // Reset to first page when search, items per page, or activeTab changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, activeTab]);
 
   const handleReset = () => {
     setSearch("");
     setSortField("date");
     setSortOrder("desc");
+    setActiveTab("active");
     setCurrentPage(1);
   };
 
@@ -761,6 +769,59 @@ export default function page() {
     setPoPendingDelete(null);
   };
 
+  const handlePOCancel = async (poId) => {
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      const response = await axios.patch(
+        `/api/purchase_order/${poId}`,
+        { status: "CANCELLED" },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success("Purchase order cancelled successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        // Refresh the PO list
+        fetchPOs();
+        // Close accordion if it was open
+        if (openAccordionId === poId) {
+          setOpenAccordionId(null);
+        }
+      } else {
+        toast.error(
+          response.data.message || "Failed to cancel purchase order",
+          {
+            position: "top-right",
+            autoClose: 3000,
+          }
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message || "Failed to cancel purchase order",
+        {
+          position: "top-right",
+          autoClose: 3000,
+        }
+      );
+    }
+  };
+
   const handleCloseMaterialsReceivedModal = () => {
     setShowMaterialsReceivedModal(false);
     setSelectedPOId("");
@@ -1027,7 +1088,8 @@ export default function page() {
                         <div className="flex items-center gap-2">
                           {(search !== "" ||
                             sortField !== "date" ||
-                            sortOrder !== "desc") && (
+                            sortOrder !== "desc" ||
+                            activeTab !== "active") && (
                               <button
                                 onClick={handleReset}
                                 className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
@@ -1172,6 +1234,15 @@ export default function page() {
                             }`}
                         >
                           Completed
+                        </button>
+                        <button
+                          onClick={() => setActiveTab("cancelled")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "cancelled"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                        >
+                          Cancelled
                         </button>
                       </nav>
                     </div>
@@ -1426,31 +1497,45 @@ export default function page() {
                                                   </div>
                                                 )}
                                               </div>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handlePODelete(po.id);
-                                                }}
-                                                disabled={
-                                                  deletingPOId === po.id
-                                                }
-                                                className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${deletingPOId === po.id
-                                                  ? "opacity-50 cursor-not-allowed"
-                                                  : ""
-                                                  }`}
-                                              >
-                                                {deletingPOId === po.id ? (
-                                                  <>
-                                                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
-                                                    <span>Deleting...</span>
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <Trash2 className="w-3 h-3" />
-                                                    <span>Delete PO</span>
-                                                  </>
+                                              <div className="flex items-center gap-2">
+                                                {po.status !== "CANCELLED" && (
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handlePOCancel(po.id);
+                                                    }}
+                                                    className="cursor-pointer px-2 py-1 border border-orange-300 rounded-lg hover:bg-orange-50 text-xs text-orange-700 flex items-center gap-1.5"
+                                                  >
+                                                    <X className="w-3 h-3" />
+                                                    <span>Cancel PO</span>
+                                                  </button>
                                                 )}
-                                              </button>
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handlePODelete(po.id);
+                                                  }}
+                                                  disabled={
+                                                    deletingPOId === po.id
+                                                  }
+                                                  className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${deletingPOId === po.id
+                                                    ? "opacity-50 cursor-not-allowed"
+                                                    : ""
+                                                    }`}
+                                                >
+                                                  {deletingPOId === po.id ? (
+                                                    <>
+                                                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
+                                                      <span>Deleting...</span>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <Trash2 className="w-3 h-3" />
+                                                      <span>Delete PO</span>
+                                                    </>
+                                                  )}
+                                                </button>
+                                              </div>
                                             </div>
                                             {po.notes && (
                                               <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
@@ -2077,7 +2162,7 @@ export default function page() {
       {/* Materials Received Modal */}
       {showMaterialsReceivedModal && (
         <div
-          className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50"
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
           onClick={handleCloseMaterialsReceivedModal}
         >
           <div

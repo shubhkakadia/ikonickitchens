@@ -23,6 +23,7 @@ import {
   Plus,
   FileUp,
   Trash,
+  Trash2,
   X,
   File,
   AlertTriangle,
@@ -107,6 +108,10 @@ export default function page() {
     {}
   );
   const quantityOrderedTimersRef = useRef(new Map());
+  // Delete MTO state
+  const [showDeleteMTOModal, setShowDeleteMTOModal] = useState(false);
+  const [mtoPendingDelete, setMtoPendingDelete] = useState(null);
+  const [deletingMTOId, setDeletingMTOId] = useState(null);
 
   useEffect(() => {
     fetchMTOs();
@@ -759,6 +764,77 @@ export default function page() {
     setPendingDeleteMediaId(null);
   };
 
+  const handleMTODelete = (mtoId) => {
+    const mto = mtos.find((m) => m.id === mtoId);
+    if (mto) {
+      setMtoPendingDelete(mto);
+      setShowDeleteMTOModal(true);
+    }
+  };
+
+  const handleMTODeleteConfirm = async () => {
+    if (!mtoPendingDelete) return;
+
+    setDeletingMTOId(mtoPendingDelete.id);
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      const response = await axios.delete(
+        `/api/materials_to_order/${mtoPendingDelete.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        }
+      );
+
+      if (response.data.status) {
+        toast.success("Materials to order deleted successfully", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        // Refresh the MTO list
+        fetchMTOs();
+        setShowDeleteMTOModal(false);
+        setMtoPendingDelete(null);
+        // Close accordion if it was open
+        if (openAccordionId === mtoPendingDelete.id) {
+          setOpenAccordionId(null);
+        }
+      } else {
+        toast.error(
+          response.data.message || "Failed to delete materials to order",
+          {
+            position: "top-right",
+            autoClose: 3000,
+          }
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message || "Failed to delete materials to order",
+        {
+          position: "top-right",
+          autoClose: 3000,
+        }
+      );
+    } finally {
+      setDeletingMTOId(null);
+    }
+  };
+
+  const handleMTODeleteCancel = () => {
+    setShowDeleteMTOModal(false);
+    setMtoPendingDelete(null);
+  };
+
   const handleViewExistingFile = (file) => {
     setSelectedFile({
       name: file.filename || "File",
@@ -1122,46 +1198,73 @@ export default function page() {
                                           className="mt-2"
                                         >
                                           <div className="mb-2 p-2 bg-slate-50 rounded-lg">
-                                            <div className="flex items-center gap-4 text-xs text-gray-600">
-                                              <div className="flex items-center gap-1.5">
-                                                <Calendar className="w-4 h-4" />
-                                                <span>
-                                                  <span className="font-medium">
-                                                    Created:
-                                                  </span>{" "}
-                                                  {mto.createdAt
-                                                    ? new Date(
-                                                      mto.createdAt
-                                                    ).toLocaleString()
-                                                    : "No date"}
-                                                </span>
-                                              </div>
-                                              {mto.notes && (
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-4 text-xs text-gray-600">
                                                 <div className="flex items-center gap-1.5">
-                                                  <FileText className="w-4 h-4" />
+                                                  <Calendar className="w-4 h-4" />
                                                   <span>
                                                     <span className="font-medium">
-                                                      Notes:
+                                                      Created:
                                                     </span>{" "}
-                                                    {mto.notes}
+                                                    {mto.createdAt
+                                                      ? new Date(
+                                                        mto.createdAt
+                                                      ).toLocaleString()
+                                                      : "No date"}
                                                   </span>
                                                 </div>
-                                              )}
-                                              <div className="flex items-center gap-1.5">
-                                                <FileText className="w-4 h-4" />
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleOpenMediaModal(mto);
-                                                  }}
-                                                  className="cursor-pointer text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
-                                                >
-                                                  <span>Media Files:</span>
-                                                  <span className="px-2 py-0.5 bg-primary/10 text-primary rounded">
-                                                    {(mto.media || []).length}
-                                                  </span>
-                                                </button>
+                                                {mto.notes && (
+                                                  <div className="flex items-center gap-1.5">
+                                                    <FileText className="w-4 h-4" />
+                                                    <span>
+                                                      <span className="font-medium">
+                                                        Notes:
+                                                      </span>{" "}
+                                                      {mto.notes}
+                                                    </span>
+                                                  </div>
+                                                )}
+                                                <div className="flex items-center gap-1.5">
+                                                  <FileText className="w-4 h-4" />
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleOpenMediaModal(mto);
+                                                    }}
+                                                    className="cursor-pointer text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+                                                  >
+                                                    <span>Media Files:</span>
+                                                    <span className="px-2 py-0.5 bg-primary/10 text-primary rounded">
+                                                      {(mto.media || []).length}
+                                                    </span>
+                                                  </button>
+                                                </div>
                                               </div>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleMTODelete(mto.id);
+                                                }}
+                                                disabled={
+                                                  deletingMTOId === mto.id
+                                                }
+                                                className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${deletingMTOId === mto.id
+                                                  ? "opacity-50 cursor-not-allowed"
+                                                  : ""
+                                                  }`}
+                                              >
+                                                {deletingMTOId === mto.id ? (
+                                                  <>
+                                                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
+                                                    <span>Deleting...</span>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <Trash2 className="w-3 h-3" />
+                                                    <span>Delete MTO</span>
+                                                  </>
+                                                )}
+                                              </button>
                                             </div>
                                           </div>
 
@@ -1760,7 +1863,7 @@ export default function page() {
 
       {/* Media Files Modal */}
       {showMediaModal && selectedMtoForMedia && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col relative z-50">
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -2063,6 +2166,19 @@ export default function page() {
         message="This will permanently delete the media file. This action cannot be undone."
         isDeleting={deletingMediaId !== null}
         entityType="media"
+      />
+
+      {/* Delete Materials to Order Confirmation Modal */}
+      <DeleteConfirmation
+        isOpen={showDeleteMTOModal}
+        onClose={handleMTODeleteCancel}
+        onConfirm={handleMTODeleteConfirm}
+        deleteWithInput={true}
+        heading="Materials to Order"
+        message="This will permanently delete the materials to order and all associated items. This action cannot be undone."
+        comparingName={mtoPendingDelete?.project?.name || mtoPendingDelete?.id || ""}
+        isDeleting={deletingMTOId !== null}
+        entityType="materials_to_order"
       />
 
       {/* Create Materials to Order Modal */}

@@ -1460,7 +1460,7 @@ export default function StageTable({
       </div>
       {/* Employee Assignment Dropdown */}
       {showEmployeeDropdown && (
-        <div className="fixed inset-0 backdrop-blur-xs border-2 bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 backdrop-blur-xs border-2 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4 border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">

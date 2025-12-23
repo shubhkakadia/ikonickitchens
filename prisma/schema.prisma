@@ -694,6 +694,7 @@ enum StageStatus {
 enum LotStatus {
   ACTIVE
   COMPLETED
+  CANCELLED
 }
 
 enum TabKind {

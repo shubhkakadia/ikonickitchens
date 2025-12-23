@@ -1661,14 +1661,19 @@ export default function page() {
                                           onClick={() =>
                                             setShowStatusDropdown(!showStatusDropdown)
                                           }
-                                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${selectedLotData.status === "COMPLETED"
-                                            ? "bg-green-50 text-green-800 border-green-200 hover:bg-green-100"
-                                            : "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
+                                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                                            selectedLotData.status === "COMPLETED"
+                                              ? "bg-green-50 text-green-800 border-green-200 hover:bg-green-100"
+                                              : selectedLotData.status === "CANCELLED"
+                                              ? "bg-red-50 text-red-800 border-red-200 hover:bg-red-100"
+                                              : "bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
                                             }`}
                                         >
                                           <span>
                                             {selectedLotData.status === "COMPLETED"
                                               ? "Completed"
+                                              : selectedLotData.status === "CANCELLED"
+                                              ? "Cancelled"
                                               : "Active"}
                                           </span>
                                           <ChevronDown
@@ -1680,7 +1685,7 @@ export default function page() {
                                           <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[140px] overflow-hidden">
                                             <button
                                               onClick={() => handleStatusUpdate("ACTIVE")}
-                                              className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status === "ACTIVE"
+                                              className={`cursor-pointer w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status === "ACTIVE"
                                                 ? "bg-blue-50 text-blue-800"
                                                 : "text-slate-700"
                                                 }`}
@@ -1691,25 +1696,41 @@ export default function page() {
                                               onClick={() =>
                                                 handleStatusUpdate("COMPLETED")
                                               }
-                                              className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status === "COMPLETED"
+                                              className={`cursor-pointer w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status === "COMPLETED"
                                                 ? "bg-green-50 text-green-800"
                                                 : "text-slate-700"
                                                 }`}
                                             >
                                               Completed
                                             </button>
+                                            <button
+                                              onClick={() =>
+                                                handleStatusUpdate("CANCELLED")
+                                              }
+                                              className={`cursor-pointer w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 transition-colors ${selectedLotData.status === "CANCELLED"
+                                                ? "bg-red-50 text-red-800"
+                                                : "text-slate-700"
+                                                }`}
+                                            >
+                                              Cancelled
+                                            </button>
                                           </div>
                                         )}
                                       </div>
                                     ) : (
                                       <span
-                                        className={`px-2.5 py-1.5 rounded-full text-xs font-medium border ${selectedLotData.status === "COMPLETED"
-                                          ? "bg-green-50 text-green-800 border-green-200"
-                                          : "bg-blue-50 text-blue-800 border-blue-200"
+                                        className={`px-2.5 py-1.5 rounded-full text-xs font-medium border ${
+                                          selectedLotData.status === "COMPLETED"
+                                            ? "bg-green-50 text-green-800 border-green-200"
+                                            : selectedLotData.status === "CANCELLED"
+                                            ? "bg-red-50 text-red-800 border-red-200"
+                                            : "bg-blue-50 text-blue-800 border-blue-200"
                                           }`}
                                       >
                                         {selectedLotData.status === "COMPLETED"
                                           ? "Completed"
+                                          : selectedLotData.status === "CANCELLED"
+                                          ? "Cancelled"
                                           : "Active"}
                                       </span>
                                     )}
@@ -2525,7 +2546,7 @@ export default function page() {
 
         {/* Client Assignment Dropdown */}
         {showClientDropdown && (
-          <div className="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
             <div className="client-dropdown bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-800">
@@ -2595,7 +2616,7 @@ export default function page() {
 
         {/* Installer Assignment Dropdown */}
         {showInstallerDropdown && (
-          <div className="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
             <div className="installer-dropdown bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-800">
@@ -2691,7 +2712,7 @@ export default function page() {
 
         {/* Add Lot Form Modal */}
         {showAddLotForm && (
-          <div className="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
             <div className="client-dropdown bg-white rounded-lg shadow-xl p-6 w-full max-w-lg mx-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-800">

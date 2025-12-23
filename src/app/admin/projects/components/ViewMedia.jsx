@@ -146,7 +146,7 @@ export default function ViewMedia({
   const canNavigateNext = allFiles.length > 0 && currentFileIndex < allFiles.length - 1;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col relative">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-3 border-b border-slate-200">
@@ -179,7 +179,7 @@ export default function ViewMedia({
             <button
               onClick={handlePrevious}
               disabled={!canNavigatePrevious}
-              className="absolute left-6 top-1/2 -translate-y-1/2 z-50 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-slate-200 hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="absolute left-6 top-1/2 -translate-y-1/2 z-50 p-3 bg-white/90 backdrop-blur-xs rounded-full shadow-lg border border-slate-200 hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               title="Previous (←)"
             >
               <ChevronLeft className="w-6 h-6 text-slate-700" />
@@ -187,7 +187,7 @@ export default function ViewMedia({
             <button
               onClick={handleNext}
               disabled={!canNavigateNext}
-              className="absolute right-6 top-1/2 -translate-y-1/2 z-50 p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-slate-200 hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="absolute right-6 top-1/2 -translate-y-1/2 z-50 p-3 bg-white/90 backdrop-blur-xs rounded-full shadow-lg border border-slate-200 hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               title="Next (→)"
             >
               <ChevronRight className="w-6 h-6 text-slate-700" />
@@ -289,7 +289,7 @@ export default function ViewMedia({
         </div>
 
         <div className="flex items-center justify-between p-2 border-t border-slate-200 sticky bottom-4 left-4 right-4">
-          <div className="text-sm text-slate-700 font-medium bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
+          <div className="text-sm text-slate-700 font-medium bg-white/90 backdrop-blur-xs rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
             {selectedFile.type?.includes("image")
               ? "Image"
               : selectedFile.type?.includes("pdf")
@@ -301,7 +301,7 @@ export default function ViewMedia({
 
           {/* Image Zoom Controls */}
           {selectedFile.type?.includes("image") && (
-            <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
+            <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
               <button
                 onClick={() =>
                   setImageScale((prev) => Math.max(prev - 0.25, 0.5))
@@ -331,7 +331,7 @@ export default function ViewMedia({
           {/* PDF Controls */}
           {(selectedFile.type?.includes("pdf") ||
             selectedFile.name?.endsWith(".pdf")) && (
-              <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
+              <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
                 <button
                   onClick={() =>
                     setPdfScale((prev) => Math.max(prev - 0.25, 0.5))

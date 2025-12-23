@@ -356,7 +356,7 @@ export default function CreatePurchaseOrderModal({ setShowModal, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
       <div className="absolute inset-0 bg-slate-900/40" onClick={() => setShowModal(false)} />
 
       <div className="relative bg-white w-full max-w-6xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">

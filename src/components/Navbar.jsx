@@ -158,7 +158,7 @@ export default function Navbar({ bar }) {
 
           {/* Mobile Menu Backdrop */}
           <div
-            className={`lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+            className={`lg:hidden fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
             onClick={() => setIsOpen(false)}
             style={{ top: "73px" }} // Adjust based on your navbar height

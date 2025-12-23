@@ -1431,7 +1431,7 @@ export default function page() {
 
         {/* Filter Popup Modal */}
         {showFilterPopup && (
-          <div className="fixed inset-0 backdrop-blur-xs bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
             <div className="filter-popup bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] m-4 flex flex-col">
               <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-slate-800">

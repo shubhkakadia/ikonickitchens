@@ -359,6 +359,18 @@ export async function POST(request) {
       }),
       prisma.stage.findMany({
         where: topstagesDueWhere,
+        include: {
+          lot: {
+            include: {
+              project: {
+                select: {
+                  name: true,
+                  project_id: true,
+                },
+              },
+            },
+          },
+        },
         orderBy: {
           endDate: "asc",
         },

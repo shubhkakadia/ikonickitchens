@@ -513,14 +513,14 @@ export default function page() {
 
       // Handle nested object sorting
       if (sortField === "brand") {
-        aValue = a.sheet?.brand || a.handle?.brand || a.hardware?.brand || "";
-        bValue = b.sheet?.brand || b.handle?.brand || b.hardware?.brand || "";
+        aValue = a.sheet?.brand || a.handle?.brand || a.hardware?.brand || a.edging_tape?.brand || "";
+        bValue = b.sheet?.brand || b.handle?.brand || b.hardware?.brand || b.edging_tape?.brand || "";
       } else if (sortField === "color") {
-        aValue = a.sheet?.color || a.handle?.color || "";
-        bValue = b.sheet?.color || b.handle?.color || "";
+        aValue = a.sheet?.color || a.handle?.color || a.edging_tape?.color || "";
+        bValue = b.sheet?.color || b.handle?.color || b.edging_tape?.color || "";
       } else if (sortField === "finish") {
-        aValue = a.sheet?.finish || "";
-        bValue = b.sheet?.finish || "";
+        aValue = a.sheet?.finish || a.edging_tape?.finish || "";
+        bValue = b.sheet?.finish || b.edging_tape?.finish || "";
       } else if (sortField === "type") {
         aValue = a.handle?.type || a.hardware?.type || "";
         bValue = b.handle?.type || b.hardware?.type || "";
@@ -533,18 +533,9 @@ export default function page() {
       } else if (sortField === "sub_category") {
         aValue = a.hardware?.sub_category || "";
         bValue = b.hardware?.sub_category || "";
-      } else if (sortField === "brand") {
-        aValue = a.edging_tape?.brand || "";
-        bValue = b.edging_tape?.brand || "";
-      } else if (sortField === "color") {
-        aValue = a.edging_tape?.color || "";
-        bValue = b.edging_tape?.color || "";
-      } else if (sortField === "finish") {
-        aValue = a.edging_tape?.finish || "";
-        bValue = b.edging_tape?.finish || "";
       } else if (sortField === "dimensions") {
-        aValue = a.edging_tape?.dimensions || "";
-        bValue = b.edging_tape?.dimensions || "";
+        aValue = a.sheet?.dimensions || a.handle?.dimensions || a.hardware?.dimensions || a.edging_tape?.dimensions || "";
+        bValue = b.sheet?.dimensions || b.handle?.dimensions || b.hardware?.dimensions || b.edging_tape?.dimensions || "";
       }
 
       // Handle relevance sorting (by search match)

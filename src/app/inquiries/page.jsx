@@ -63,7 +63,7 @@ export default function page() {
             <div className="flex flex-col lg:flex-row lg:items-start gap-6 sm:gap-8 lg:gap-12">
               {/* Map and Contact Info Section */}
               <div className="w-full lg:w-1/2 flex flex-col">
-                <div className="w-full h-64 sm:h-80 md:h-96 lg:h-[30rem] overflow-hidden rounded-lg shadow-md">
+                <div className="w-full h-64 sm:h-80 md:h-96 lg:h-120 overflow-hidden rounded-lg shadow-md">
                   <iframe
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d6547.987404224774!2d138.6569056755532!3d-34.856385572864795!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6ab0b593fc6cf361%3A0x3adbca0303e8b578!2sIkonic%20Kitchens%20%26%20Cabinets!5e0!3m2!1sen!2sau!4v1757402982480!5m2!1sen!2sau"
                     width="100%"
@@ -101,7 +101,7 @@ export default function page() {
                     <div className="shrink-0">
                       <Mail size={20} />
                     </div>
-                    <p className="break-words">info@ikonickitchens.com.au</p>
+                    <p className="wrap-break-words">info@ikonickitchens.com.au</p>
                   </a>
 
                   <div
@@ -147,7 +147,7 @@ export default function page() {
                           required
                           className="peer block w-full px-4 py-3 text-sm text-gray-900 bg-white border-2 border-gray-200 rounded-lg appearance-none focus:outline-none focus:ring-0 focus:border-[#B92F34] transition-colors duration-200"
                         />
-                        <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
+                        <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-left bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
                           First Name *
                         </label>
                       </div>
@@ -162,7 +162,7 @@ export default function page() {
                           required
                           className="peer block w-full px-4 py-3 text-sm text-gray-900 bg-white border-2 border-gray-200 rounded-lg appearance-none focus:outline-none focus:ring-0 focus:border-[#B92F34] transition-colors duration-200"
                         />
-                        <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
+                        <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-left bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
                           Last Name *
                         </label>
                       </div>
@@ -178,7 +178,7 @@ export default function page() {
                         required
                         className="peer block w-full px-4 py-3 text-sm text-gray-900 bg-white border-2 border-gray-200 rounded-lg appearance-none focus:outline-none focus:ring-0 focus:border-[#B92F34] transition-colors duration-200"
                       />
-                      <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
+                      <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-left bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
                         Phone Number *
                       </label>
                     </div>
@@ -193,7 +193,7 @@ export default function page() {
                         required
                         className="peer block w-full px-4 py-3 text-sm text-gray-900 bg-white border-2 border-gray-200 rounded-lg appearance-none focus:outline-none focus:ring-0 focus:border-[#B92F34] transition-colors duration-200"
                       />
-                      <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
+                      <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-left bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
                         Email *
                       </label>
                     </div>
@@ -208,7 +208,7 @@ export default function page() {
                         required
                         className="peer block w-full px-4 py-3 text-sm text-gray-900 bg-white border-2 border-gray-200 rounded-lg appearance-none focus:outline-none focus:ring-0 focus:border-[#B92F34] transition-colors duration-200 resize-none"
                       />
-                      <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-[0] bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
+                      <label className="absolute mx-2 rounded text-sm text-gray-500 duration-300 transform -translate-y-3 scale-75 top-2 z-10 origin-left bg-white px-2 peer-focus:px-2 peer-focus:text-[#B92F34] peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-3">
                         Message *
                       </label>
                     </div>

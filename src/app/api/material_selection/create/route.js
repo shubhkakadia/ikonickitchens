@@ -263,26 +263,26 @@ export async function POST(request) {
         // Handle Decimal fields - convert empty strings to null, otherwise use the value
         ceiling_height:
           ceiling_height !== undefined &&
-          ceiling_height !== null &&
-          ceiling_height !== ""
+            ceiling_height !== null &&
+            ceiling_height !== ""
             ? ceiling_height
             : null,
         bulkhead_height:
           bulkhead_height !== undefined &&
-          bulkhead_height !== null &&
-          bulkhead_height !== ""
+            bulkhead_height !== null &&
+            bulkhead_height !== ""
             ? bulkhead_height
             : null,
         kicker_height:
           kicker_height !== undefined &&
-          kicker_height !== null &&
-          kicker_height !== ""
+            kicker_height !== null &&
+            kicker_height !== ""
             ? kicker_height
             : null,
         cabinetry_height:
           cabinetry_height !== undefined &&
-          cabinetry_height !== null &&
-          cabinetry_height !== ""
+            cabinetry_height !== null &&
+            cabinetry_height !== ""
             ? cabinetry_height
             : null,
         // Add nested areas if provided

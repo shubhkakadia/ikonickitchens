@@ -19,7 +19,9 @@ export async function GET(request) {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        client: {
+          client_name: 'asc',
+        },
       },
     });
     return NextResponse.json(

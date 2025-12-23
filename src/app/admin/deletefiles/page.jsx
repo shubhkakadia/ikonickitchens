@@ -652,11 +652,10 @@ export default function DeleteFilesPage() {
                     <div className="flex border-b border-slate-200 shrink-0">
                       <button
                         onClick={() => setActiveTab("media")}
-                        className={`px-6 py-3 text-sm font-medium transition-colors ${
-                          activeTab === "media"
+                        className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "media"
                             ? "text-primary border-b-2 border-primary"
                             : "text-slate-600 hover:text-slate-900"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <ImageIcon className="w-4 h-4" />
@@ -665,11 +664,10 @@ export default function DeleteFilesPage() {
                       </button>
                       <button
                         onClick={() => setActiveTab("records")}
-                        className={`px-6 py-3 text-sm font-medium transition-colors ${
-                          activeTab === "records"
+                        className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "records"
                             ? "text-primary border-b-2 border-primary"
                             : "text-slate-600 hover:text-slate-900"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <Database className="w-4 h-4" />
@@ -683,309 +681,309 @@ export default function DeleteFilesPage() {
                       <>
                         {/* Fixed Header Section */}
                         <div className="p-4 shrink-0 border-b border-slate-200">
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        {/* Search bar */}
-                        <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                          <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                          <input
-                            type="text"
-                            placeholder="Search by filename..."
-                            className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                          />
-                        </div>
-                        {/* Stats */}
-                        <div className="flex items-center gap-4 px-4">
-                          <div className="text-right">
-                            <p className="text-xs text-slate-500">
-                              Total Files
-                            </p>
-                            <p className="text-sm font-semibold text-slate-900">
-                              {stats.totalFiles}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-slate-500">
-                              Total Space
-                            </p>
-                            <p className="text-sm font-semibold text-slate-900">
-                              {formatFileSize(stats.totalSpace)}
-                            </p>
-                          </div>
-                        </div>
-                        {/* Filter and Reset buttons */}
-                        <div className="flex items-center gap-2">
-                          {isAnyFilterActive() && (
-                            <button
-                              onClick={handleReset}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                              <span>Reset</span>
-                            </button>
-                          )}
-
-                          <button
-                            onClick={toggleSelectionMode}
-                            className={`flex items-center gap-2 cursor-pointer transition-all duration-200 border px-3 py-2 rounded-lg text-sm font-medium ${selectionMode
-                              ? "bg-primary text-white border-primary hover:bg-primary/90"
-                              : "text-slate-700 border-slate-300 hover:bg-slate-100"
-                              }`}
-                          >
-                            {selectionMode ? (
-                              <>
-                                <X className="h-4 w-4" />
-                                <span>Cancel Selection</span>
-                              </>
-                            ) : (
-                              <>
-                                <CheckSquare className="h-4 w-4" />
-                                <span>Select Files</span>
-                              </>
-                            )}
-                          </button>
-
-                          <div className="relative dropdown-container">
-                            <button
-                              onClick={() =>
-                                setShowFilterDropdown(!showFilterDropdown)
-                              }
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              <Funnel className="h-4 w-4" />
-                              <span>Filter by Type</span>
-                              {mediaTypes.length - selectedMediaTypes.length >
-                                0 && (
-                                  <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                    {mediaTypes.length -
-                                      selectedMediaTypes.length}
-                                  </span>
-                                )}
-                              <ChevronDown className="h-4 w-4" />
-                            </button>
-                            {showFilterDropdown && (
-                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                                <div className="py-1">
-                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedMediaTypes.length === mediaTypes.length}
-                                      onChange={() => handleMediaTypeToggle("Select All")}
-                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                    />
-                                  </label>
-                                  {mediaTypes.map((type) => (
-                                    <label
-                                      key={type}
-                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                    >
-                                      <span>{type}</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedMediaTypes.includes(type)}
-                                        onChange={() => handleMediaTypeToggle(type)}
-                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                      />
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-slate-600 text-sm py-2">
-                          View and manage deleted media files. You can download
-                          or permanently delete them.
-                        </p>
-                        {/* Bulk Actions */}
-                        {selectionMode && selectedFiles.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-slate-600">
-                              {selectedFiles.length} selected
-                            </span>
-                            <button
-                              onClick={handleBulkDownload}
-                              className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-sm font-medium"
-                            >
-                              <Download className="w-4 h-4" />
-                              Download ({selectedFiles.length})
-                            </button>
-                            <button
-                              onClick={() => {
-                                setFileToDelete({
-                                  bulk: true,
-                                  files: selectedFiles,
-                                });
-                                setShowDeleteModal(true);
-                              }}
-                              disabled={isBulkDeleting}
-                              className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              {isBulkDeleting
-                                ? "Deleting..."
-                                : `Delete (${selectedFiles.length})`}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Scrollable Content Section */}
-                    <div className="flex-1 overflow-auto p-4">
-                      {loading ? (
-                        <div className="flex items-center justify-center min-h-[400px]">
-                          <div className="text-center">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-                            <p className="text-slate-600">
-                              Loading deleted media...
-                            </p>
-                          </div>
-                        </div>
-                      ) : error ? (
-                        <div className="flex items-center justify-center min-h-[400px]">
-                          <div className="text-center max-w-md">
-                            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                            <p className="text-red-600 mb-4">{error}</p>
-                            <button
-                              onClick={fetchDeletedMedia}
-                              className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
-                            >
-                              Try Again
-                            </button>
-                          </div>
-                        </div>
-                      ) : filteredMedia.length === 0 ? (
-                        <div className="flex items-center justify-center min-h-[400px]">
-                          <div className="text-center">
-                            <File className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                            <p className="text-slate-600 text-lg">
-                              {search ||
-                                selectedMediaTypes.length !== mediaTypes.length
-                                ? "No media found matching your filters"
-                                : "No deleted media found"}
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                          {/* Select All Checkbox (when in selection mode) */}
-                          {selectionMode && filteredMedia.length > 0 && (
-                            <div className="col-span-full mb-2">
-                              <button
-                                onClick={handleSelectAll}
-                                className="cursor-pointer flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900"
-                              >
-                                {selectedFiles.length ===
-                                  filteredMedia.length ? (
-                                  <CheckSquare className="w-4 h-4 text-primary" />
-                                ) : (
-                                  <Square className="w-4 h-4 text-slate-400" />
-                                )}
-                                <span>
-                                  {selectedFiles.length === filteredMedia.length
-                                    ? "Deselect All"
-                                    : "Select All"}
-                                </span>
-                              </button>
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            {/* Search bar */}
+                            <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
+                              <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                              <input
+                                type="text"
+                                placeholder="Search by filename..."
+                                className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                              />
                             </div>
-                          )}
-                          {filteredMedia.map((file) => {
-                            const isSelected = selectedFiles.some(
-                              (f) => f.id === file.id
-                            );
-                            return (
-                              <div
-                                key={file.id}
-                                className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border ${isSelected
-                                  ? "border-primary ring-2 ring-primary"
-                                  : "border-slate-200"
+                            {/* Stats */}
+                            <div className="flex items-center gap-4 px-4">
+                              <div className="text-right">
+                                <p className="text-xs text-slate-500">
+                                  Total Files
+                                </p>
+                                <p className="text-sm font-semibold text-slate-900">
+                                  {stats.totalFiles}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-slate-500">
+                                  Total Space
+                                </p>
+                                <p className="text-sm font-semibold text-slate-900">
+                                  {formatFileSize(stats.totalSpace)}
+                                </p>
+                              </div>
+                            </div>
+                            {/* Filter and Reset buttons */}
+                            <div className="flex items-center gap-2">
+                              {isAnyFilterActive() && (
+                                <button
+                                  onClick={handleReset}
+                                  className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                  <span>Reset</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={toggleSelectionMode}
+                                className={`flex items-center gap-2 cursor-pointer transition-all duration-200 border px-3 py-2 rounded-lg text-sm font-medium ${selectionMode
+                                  ? "bg-primary text-white border-primary hover:bg-primary/90"
+                                  : "text-slate-700 border-slate-300 hover:bg-slate-100"
                                   }`}
                               >
-                                {/* File Preview */}
-                                <div
-                                  onClick={() => {
-                                    if (!selectionMode) {
-                                      handleViewFile(file);
-                                    } else {
-                                      handleFileSelect(file);
-                                    }
-                                  }}
-                                  className={`relative w-full aspect-square ${selectionMode
-                                    ? "cursor-pointer"
-                                    : "cursor-pointer"
-                                    } bg-slate-100 overflow-hidden group`}
+                                {selectionMode ? (
+                                  <>
+                                    <X className="h-4 w-4" />
+                                    <span>Cancel Selection</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckSquare className="h-4 w-4" />
+                                    <span>Select Files</span>
+                                  </>
+                                )}
+                              </button>
+
+                              <div className="relative dropdown-container">
+                                <button
+                                  onClick={() =>
+                                    setShowFilterDropdown(!showFilterDropdown)
+                                  }
+                                  className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                                 >
-                                  {getFilePreview(file)}
-                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <ImageIcon className="w-6 h-6 text-white" />
+                                  <Funnel className="h-4 w-4" />
+                                  <span>Filter by Type</span>
+                                  {mediaTypes.length - selectedMediaTypes.length >
+                                    0 && (
+                                      <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                        {mediaTypes.length -
+                                          selectedMediaTypes.length}
+                                      </span>
+                                    )}
+                                  <ChevronDown className="h-4 w-4" />
+                                </button>
+                                {showFilterDropdown && (
+                                  <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                    <div className="py-1">
+                                      <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                        <span className="font-semibold">Select All</span>
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedMediaTypes.length === mediaTypes.length}
+                                          onChange={() => handleMediaTypeToggle("Select All")}
+                                          className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                        />
+                                      </label>
+                                      {mediaTypes.map((type) => (
+                                        <label
+                                          key={type}
+                                          className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                        >
+                                          <span>{type}</span>
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedMediaTypes.includes(type)}
+                                            onChange={() => handleMediaTypeToggle(type)}
+                                            className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                          />
+                                        </label>
+                                      ))}
                                     </div>
                                   </div>
-                                </div>
-
-                                {/* File Details */}
-                                <div className="p-2.5">
-                                  <div className="mb-2">
-                                    <p
-                                      className="text-xs font-semibold text-slate-900 truncate mb-0.5"
-                                      title={file.filename || "Unknown"}
-                                    >
-                                      {file.filename || "Unknown"}
-                                    </p>
-                                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                                      <span>{getFileTypeLabel(file)}</span>
-                                      <span>•</span>
-                                      <span>{formatFileSize(file.size)}</span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                                      {getSourceInfo(file)}
-                                    </p>
-                                    <p className="text-[10px] text-slate-400 mt-0.5">
-                                      Deleted: {formatDate(file.updatedAt)}
-                                    </p>
-                                  </div>
-
-                                  {/* Action Buttons */}
-                                  {!selectionMode && (
-                                    <div className="flex gap-1.5">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDownloadFile(file);
-                                        }}
-                                        className="cursor-pointer flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors text-[10px] font-medium"
-                                      >
-                                        <Download className="w-3 h-3" />
-                                        <span className="hidden sm:inline">
-                                          Download
-                                        </span>
-                                      </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDeleteClick(file);
-                                        }}
-                                        className="cursor-pointer flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors text-[10px] font-medium"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                        <span className="hidden sm:inline">
-                                          Delete
-                                        </span>
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
+                                )}
                               </div>
-                            );
-                          })}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-slate-600 text-sm py-2">
+                              View and manage deleted media files. You can download
+                              or permanently delete them.
+                            </p>
+                            {/* Bulk Actions */}
+                            {selectionMode && selectedFiles.length > 0 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-slate-600">
+                                  {selectedFiles.length} selected
+                                </span>
+                                <button
+                                  onClick={handleBulkDownload}
+                                  className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-sm font-medium"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  Download ({selectedFiles.length})
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setFileToDelete({
+                                      bulk: true,
+                                      files: selectedFiles,
+                                    });
+                                    setShowDeleteModal(true);
+                                  }}
+                                  disabled={isBulkDeleting}
+                                  className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  {isBulkDeleting
+                                    ? "Deleting..."
+                                    : `Delete (${selectedFiles.length})`}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
+
+                        {/* Scrollable Content Section */}
+                        <div className="flex-1 overflow-auto p-4">
+                          {loading ? (
+                            <div className="flex items-center justify-center min-h-[400px]">
+                              <div className="text-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+                                <p className="text-slate-600">
+                                  Loading deleted media...
+                                </p>
+                              </div>
+                            </div>
+                          ) : error ? (
+                            <div className="flex items-center justify-center min-h-[400px]">
+                              <div className="text-center max-w-md">
+                                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                                <p className="text-red-600 mb-4">{error}</p>
+                                <button
+                                  onClick={fetchDeletedMedia}
+                                  className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
+                                >
+                                  Try Again
+                                </button>
+                              </div>
+                            </div>
+                          ) : filteredMedia.length === 0 ? (
+                            <div className="flex items-center justify-center min-h-[400px]">
+                              <div className="text-center">
+                                <File className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                                <p className="text-slate-600 text-lg">
+                                  {search ||
+                                    selectedMediaTypes.length !== mediaTypes.length
+                                    ? "No media found matching your filters"
+                                    : "No deleted media found"}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                              {/* Select All Checkbox (when in selection mode) */}
+                              {selectionMode && filteredMedia.length > 0 && (
+                                <div className="col-span-full mb-2">
+                                  <button
+                                    onClick={handleSelectAll}
+                                    className="cursor-pointer flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900"
+                                  >
+                                    {selectedFiles.length ===
+                                      filteredMedia.length ? (
+                                      <CheckSquare className="w-4 h-4 text-primary" />
+                                    ) : (
+                                      <Square className="w-4 h-4 text-slate-400" />
+                                    )}
+                                    <span>
+                                      {selectedFiles.length === filteredMedia.length
+                                        ? "Deselect All"
+                                        : "Select All"}
+                                    </span>
+                                  </button>
+                                </div>
+                              )}
+                              {filteredMedia.map((file) => {
+                                const isSelected = selectedFiles.some(
+                                  (f) => f.id === file.id
+                                );
+                                return (
+                                  <div
+                                    key={file.id}
+                                    className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border ${isSelected
+                                      ? "border-primary ring-2 ring-primary"
+                                      : "border-slate-200"
+                                      }`}
+                                  >
+                                    {/* File Preview */}
+                                    <div
+                                      onClick={() => {
+                                        if (!selectionMode) {
+                                          handleViewFile(file);
+                                        } else {
+                                          handleFileSelect(file);
+                                        }
+                                      }}
+                                      className={`relative w-full aspect-square ${selectionMode
+                                        ? "cursor-pointer"
+                                        : "cursor-pointer"
+                                        } bg-slate-100 overflow-hidden group`}
+                                    >
+                                      {getFilePreview(file)}
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <ImageIcon className="w-6 h-6 text-white" />
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* File Details */}
+                                    <div className="p-2.5">
+                                      <div className="mb-2">
+                                        <p
+                                          className="text-xs font-semibold text-slate-900 truncate mb-0.5"
+                                          title={file.filename || "Unknown"}
+                                        >
+                                          {file.filename || "Unknown"}
+                                        </p>
+                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                                          <span>{getFileTypeLabel(file)}</span>
+                                          <span>•</span>
+                                          <span>{formatFileSize(file.size)}</span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                                          {getSourceInfo(file)}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 mt-0.5">
+                                          Deleted: {formatDate(file.updatedAt)}
+                                        </p>
+                                      </div>
+
+                                      {/* Action Buttons */}
+                                      {!selectionMode && (
+                                        <div className="flex gap-1.5">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDownloadFile(file);
+                                            }}
+                                            className="cursor-pointer flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors text-[10px] font-medium"
+                                          >
+                                            <Download className="w-3 h-3" />
+                                            <span className="hidden sm:inline">
+                                              Download
+                                            </span>
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteClick(file);
+                                            }}
+                                            className="cursor-pointer flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors text-[10px] font-medium"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                            <span className="hidden sm:inline">
+                                              Delete
+                                            </span>
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </>
                     )}
 

@@ -160,7 +160,7 @@ export async function GET(request) {
     // Items
     deletedItems.forEach((item) => {
       let slugParts = [item.category];
-      
+
       if (item.sheet) {
         const parts = [
           item.sheet.brand,
@@ -192,9 +192,9 @@ export async function GET(request) {
         ].filter(Boolean);
         if (parts.length > 0) slugParts.push(...parts);
       }
-      
+
       if (item.description) slugParts.push(item.description);
-      
+
       allDeletedRecords.push({
         id: item.item_id,
         entity_id: item.item_id,

@@ -130,9 +130,9 @@ export async function DELETE(request, { params }) {
     if (!logged) {
       console.error(`Failed to log stage deletion: ${id} - ${stage.name}`);
       return NextResponse.json(
-        { 
-          status: true, 
-          message: "Stage deleted successfully", 
+        {
+          status: true,
+          message: "Stage deleted successfully",
           data: stage,
           warning: "Note: Deletion succeeded but logging failed"
         },

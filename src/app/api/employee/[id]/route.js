@@ -10,6 +10,7 @@ import {
   getFileFromFormData,
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
+import { formatPhoneToNational } from "@/components/validators";
 
 export async function GET(request, { params }) {
   try {
@@ -128,18 +129,22 @@ export async function PATCH(request, { params }) {
       include: { image: true },
     });
 
+    const formatPhone = (phone) => {
+      return phone ? formatPhoneToNational(phone) : phone;
+    }
+
     // Build update data object - only include fields that are provided
     const updateData = {
       first_name,
       last_name,
       role,
       email,
-      phone,
+      phone: formatPhone(phone),
       dob: processDateTimeField(dob),
       join_date: processDateTimeField(join_date),
       address,
       emergency_contact_name,
-      emergency_contact_phone,
+      emergency_contact_phone: formatPhone(emergency_contact_phone),
       bank_account_name,
       bank_account_number,
       bank_account_bsb,

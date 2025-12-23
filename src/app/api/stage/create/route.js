@@ -22,11 +22,11 @@ export async function POST(request) {
           name: name.toLowerCase(),
           status,
           notes,
-          startDate: startDate && startDate.trim() !== "" 
-            ? processDateTimeField(startDate) 
+          startDate: startDate && startDate.trim() !== ""
+            ? processDateTimeField(startDate)
             : null,
-          endDate: endDate && endDate.trim() !== "" 
-            ? processDateTimeField(endDate) 
+          endDate: endDate && endDate.trim() !== ""
+            ? processDateTimeField(endDate)
             : null,
         },
       });
@@ -79,9 +79,9 @@ export async function POST(request) {
     if (!logged) {
       console.error(`Failed to log stage creation: ${stage.stage_id} - ${stage.name}`);
       return NextResponse.json(
-        { 
-          status: true, 
-          message: "Stage created successfully", 
+        {
+          status: true,
+          message: "Stage created successfully",
           data: stage,
           warning: "Note: Creation succeeded but logging failed"
         },

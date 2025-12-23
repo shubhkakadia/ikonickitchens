@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { formatPhoneToNational } from "@/components/validators";
 
 export async function POST(request) {
   try {
@@ -47,6 +48,10 @@ export async function POST(request) {
       }
     }
 
+    const formatPhone = (phone) => {
+      return phone ? formatPhoneToNational(phone) : phone;
+    }
+
     // Use transaction to create client and contacts atomically
     const result = await prisma.$transaction(async (tx) => {
       // Create the client
@@ -55,7 +60,7 @@ export async function POST(request) {
           client_type,
           client_name,
           client_address,
-          client_phone,
+          client_phone: formatPhone(client_phone),
           client_email,
           client_website,
           client_notes,

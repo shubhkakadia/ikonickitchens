@@ -66,9 +66,9 @@ export async function PATCH(request, { params }) {
       console.error(`Failed to log contact update: ${id} - ${contact.first_name} ${contact.last_name}`);
     }
     return NextResponse.json(
-      { 
-        status: true, 
-        message: "Contact updated successfully", 
+      {
+        status: true,
+        message: "Contact updated successfully",
         data: contact,
         ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
@@ -101,8 +101,8 @@ export async function DELETE(request, { params }) {
     if (!logged) {
       console.error(`Failed to log contact deletion: ${id} - ${contact.first_name} ${contact.last_name}`);
       return NextResponse.json(
-        { 
-          status: true, 
+        {
+          status: true,
           message: "Contact deleted successfully",
           warning: "Note: Deletion succeeded but logging failed"
         },

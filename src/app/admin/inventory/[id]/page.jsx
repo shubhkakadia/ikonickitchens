@@ -702,7 +702,7 @@ export default function page() {
     if (item) {
       // Get category first before using it
       const category = item.category.toLowerCase();
-      
+
       const editFormData = {
         description: item.description || "",
         price: item.price || "",
@@ -1291,62 +1291,62 @@ export default function page() {
                   />
                 </button>
 
-                  {isSubCategoryDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                      {loadingSubCategories ? (
-                        <div className="px-3 py-2 text-xs text-slate-500 text-center">
-                          Loading sub categories...
-                        </div>
-                      ) : filteredSubCategories.length > 0 ? (
-                        <>
-                          {filteredSubCategories.map((subCategory, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => handleSubCategorySelect(subCategory)}
-                              className="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                            >
-                              {subCategory}
-                            </button>
-                          ))}
-                          {subCategorySearchTerm && !filteredSubCategories.some(sc => sc.toLowerCase() === subCategorySearchTerm.toLowerCase()) && (
-                            <div className="border-t border-slate-200">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setNewSubCategoryValue(subCategorySearchTerm);
-                                  setShowCreateSubCategoryModal(true);
-                                }}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                                Create "{subCategorySearchTerm}"
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="px-3 py-2">
-                          <div className="text-xs text-slate-500 mb-2 text-center">
-                            No matching sub categories found
-                          </div>
-                          {subCategorySearchTerm && (
+                {isSubCategoryDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {loadingSubCategories ? (
+                      <div className="px-3 py-2 text-xs text-slate-500 text-center">
+                        Loading sub categories...
+                      </div>
+                    ) : filteredSubCategories.length > 0 ? (
+                      <>
+                        {filteredSubCategories.map((subCategory, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => handleSubCategorySelect(subCategory)}
+                            className="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                          >
+                            {subCategory}
+                          </button>
+                        ))}
+                        {subCategorySearchTerm && !filteredSubCategories.some(sc => sc.toLowerCase() === subCategorySearchTerm.toLowerCase()) && (
+                          <div className="border-t border-slate-200">
                             <button
                               type="button"
                               onClick={() => {
                                 setNewSubCategoryValue(subCategorySearchTerm);
                                 setShowCreateSubCategoryModal(true);
                               }}
-                              className="cursor-pointer w-full px-3 py-2 text-xs text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                              className="cursor-pointer w-full text-left px-3 py-2 text-xs text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
                             >
                               <Plus className="w-3.5 h-3.5" />
                               Create "{subCategorySearchTerm}"
                             </button>
-                          )}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="px-3 py-2">
+                        <div className="text-xs text-slate-500 mb-2 text-center">
+                          No matching sub categories found
                         </div>
-                      )}
-                    </div>
-                  )}
+                        {subCategorySearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewSubCategoryValue(subCategorySearchTerm);
+                              setShowCreateSubCategoryModal(true);
+                            }}
+                            className="cursor-pointer w-full px-3 py-2 text-xs text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Create "{subCategorySearchTerm}"
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-sm text-slate-800">

@@ -397,7 +397,7 @@ export async function POST(request) {
       const projectDurations = completedProjects
         .map((project) => {
           if (!project.lots || project.lots.length === 0) return null;
-          
+
           const completedLots = project.lots.filter((lot) => lot.startDate && lot.updatedAt);
           if (completedLots.length === 0) return null;
 

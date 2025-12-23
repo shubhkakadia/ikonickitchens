@@ -161,16 +161,16 @@ export async function POST(request) {
           items:
             Array.isArray(items) && items.length > 0
               ? {
-                  create: items.map((item) => ({
-                    item_id: item.item_id,
-                    quantity: Number(item.quantity),
-                    notes: item.notes,
-                    unit_price:
-                      item.unit_price !== undefined
-                        ? Number(item.unit_price)
-                        : undefined,
-                  })),
-                }
+                create: items.map((item) => ({
+                  item_id: item.item_id,
+                  quantity: Number(item.quantity),
+                  notes: item.notes,
+                  unit_price:
+                    item.unit_price !== undefined
+                      ? Number(item.unit_price)
+                      : undefined,
+                })),
+              }
               : undefined,
         },
         include: { items: true },
@@ -239,8 +239,8 @@ export async function POST(request) {
     if (!logged) {
       console.error(`Failed to log purchase order creation: ${result.id}`);
       return NextResponse.json(
-        { 
-          status: true, 
+        {
+          status: true,
           message: "Purchase order created successfully",
           data: result,
           warning: "Note: Creation succeeded but logging failed"

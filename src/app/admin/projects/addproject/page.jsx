@@ -178,16 +178,16 @@ export default function page() {
       const lotsToSend =
         lots && lots.length > 0
           ? lots.map((lot) => {
-              const fullLotId = formData.project_id
-                ? `${formData.project_id}-${lot.lotId}`
-                : lot.lotId;
-              return {
-                lotId: fullLotId,
-                clientName: lot.clientName,
-                installationDueDate: lot.installationDueDate || null,
-                notes: lot.notes || null,
-              };
-            })
+            const fullLotId = formData.project_id
+              ? `${formData.project_id}-${lot.lotId}`
+              : lot.lotId;
+            return {
+              lotId: fullLotId,
+              clientName: lot.clientName,
+              installationDueDate: lot.installationDueDate || null,
+              notes: lot.notes || null,
+            };
+          })
           : [];
 
       const data = {

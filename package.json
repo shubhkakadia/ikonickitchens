@@ -51,6 +51,7 @@
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.4",
     "jszip": "^3.10.1",
+    "libphonenumber-js": "^1.12.33",
     "lodash.throttle": "^4.1.1",
     "lucide-react": "^0.543.0",
     "next": "15.5.9",

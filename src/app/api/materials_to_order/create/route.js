@@ -32,12 +32,12 @@ export async function POST(request) {
           items:
             items && items.length > 0
               ? {
-                  create: items.map((item) => ({
-                    item_id: item.item_id,
-                    quantity: item.quantity,
-                    notes: item.notes,
-                  })),
-                }
+                create: items.map((item) => ({
+                  item_id: item.item_id,
+                  quantity: item.quantity,
+                  notes: item.notes,
+                })),
+              }
               : undefined,
         },
       });
@@ -106,8 +106,8 @@ export async function POST(request) {
     if (!logged) {
       console.error(`Failed to log materials to order creation: ${mto.id}`);
       return NextResponse.json(
-        { 
-          status: true, 
+        {
+          status: true,
           message: "Materials to order created successfully",
           data: mtoWithMedia,
           warning: "Note: Creation succeeded but logging failed"

@@ -36,7 +36,7 @@ import {
   validateName,
   validateTFN,
   validateEmergencyName,
-  validateEmergencyPhone,
+  formatPhoneToNational,
 } from "@/components/validators";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
@@ -348,19 +348,28 @@ export default function EmployeeDetailPage() {
         return;
       }
 
+      // Format phone numbers to national format before sending
+      const formattedData = { ...updatedData };
+      if (formattedData.phone) {
+        formattedData.phone = formatPhoneToNational(formattedData.phone);
+      }
+      if (formattedData.emergency_contact_phone) {
+        formattedData.emergency_contact_phone = formatPhoneToNational(formattedData.emergency_contact_phone);
+      }
+
       // If there's an image file, use FormData; otherwise use JSON
       const formDataToSend = new FormData();
 
       // Append all form data
-      Object.keys(updatedData).forEach((key) => {
+      Object.keys(formattedData).forEach((key) => {
         if (key === "availability") {
           // Convert availability to JSON string
-          formDataToSend.append(key, JSON.stringify(updatedData[key]));
+          formDataToSend.append(key, JSON.stringify(formattedData[key]));
         } else if (key === "is_active") {
           // Convert boolean to string for FormData
-          formDataToSend.append(key, updatedData[key] ? "true" : "false");
+          formDataToSend.append(key, formattedData[key] ? "true" : "false");
         } else {
-          formDataToSend.append(key, updatedData[key] || "");
+          formDataToSend.append(key, formattedData[key] || "");
         }
       });
 
@@ -376,13 +385,13 @@ export default function EmployeeDetailPage() {
 
       // Determine content type and data to send
       const isFormData = imageFile !== null || removeImage;
-      let dataToSend = isFormData ? formDataToSend : updatedData;
+      let dataToSend = isFormData ? formDataToSend : formattedData;
 
       // If sending JSON, ensure availability is stringified
-      if (!isFormData && updatedData.availability) {
+      if (!isFormData && formattedData.availability) {
         dataToSend = {
-          ...updatedData,
-          availability: JSON.stringify(updatedData.availability),
+          ...formattedData,
+          availability: JSON.stringify(formattedData.availability),
         };
       }
 
@@ -443,14 +452,6 @@ export default function EmployeeDetailPage() {
         } else if (removeImage) {
           setImagePreview(null);
         }
-        toast.success("Employee updated successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        });
       } else {
         if (imageFile) {
           dismissProgressToast();
@@ -1001,7 +1002,7 @@ export default function EmployeeDetailPage() {
     // Phone validation
     if (editData.phone && !validatePhone(editData.phone)) {
       errors.push(
-        "Phone number should contain only numbers and be at least 8 digits"
+        "Phone number should be a valid Australian phone number"
       );
     }
 
@@ -1031,10 +1032,10 @@ export default function EmployeeDetailPage() {
 
     if (
       editData.emergency_contact_phone &&
-      !validateEmergencyPhone(editData.emergency_contact_phone)
+      !validatePhone(editData.emergency_contact_phone)
     ) {
       errors.push(
-        "Emergency contact phone should contain only numbers and be at least 8 digits"
+        "Emergency contact phone should be a valid Australian phone number"
       );
     }
 
@@ -1414,15 +1415,25 @@ export default function EmployeeDetailPage() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Phone className="w-4 h-4 text-slate-600" />
-                                  <input
-                                    type="tel"
-                                    value={editData.phone || ""}
-                                    onChange={(e) =>
-                                      handleInputChange("phone", e.target.value)
-                                    }
-                                    placeholder={employee.phone || "Phone"}
-                                    className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
-                                  />
+                                  <div className="flex-1">
+                                    <input
+                                      type="tel"
+                                      value={editData.phone || ""}
+                                      onChange={(e) =>
+                                        handleInputChange("phone", e.target.value)
+                                      }
+                                      placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                                      className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${editData.phone && !validatePhone(editData.phone)
+                                          ? "border-red-500"
+                                          : "border-slate-300"
+                                        }`}
+                                    />
+                                    {editData.phone && !validatePhone(editData.phone) && (
+                                      <p className="mt-1 text-xs text-red-500">
+                                        Please enter a valid Australian phone number
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <MapPin className="w-4 h-4 text-slate-600" />
@@ -1630,20 +1641,28 @@ export default function EmployeeDetailPage() {
                             Contact Phone
                           </label>
                           {isEditing ? (
-                            <input
-                              type="tel"
-                              value={editData.emergency_contact_phone || ""}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "emergency_contact_phone",
-                                  e.target.value
-                                )
-                              }
-                              placeholder={formatValue(
-                                employee.emergency_contact_phone
+                            <div>
+                              <input
+                                type="tel"
+                                value={editData.emergency_contact_phone || ""}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "emergency_contact_phone",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                                className={`w-full text-sm text-slate-800 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${editData.emergency_contact_phone && !validatePhone(editData.emergency_contact_phone)
+                                    ? "border-red-500"
+                                    : "border-slate-300"
+                                  }`}
+                              />
+                              {editData.emergency_contact_phone && !validatePhone(editData.emergency_contact_phone) && (
+                                <p className="mt-1 text-xs text-red-500">
+                                  Please enter a valid Australian phone number
+                                </p>
                               )}
-                              className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                            />
+                            </div>
                           ) : (
                             <p className="text-sm text-slate-700">
                               {formatValue(employee.emergency_contact_phone)}
@@ -1936,19 +1955,18 @@ export default function EmployeeDetailPage() {
                             className="w-4 h-4 text-primary focus:ring-primary border-slate-300 rounded"
                           />
                           <span className="text-sm font-medium text-slate-700">
-                            Active Employee
+                            Current Employee
                           </span>
                         </label>
                       ) : (
                         <div className="flex items-center gap-2">
                           <span
-                            className={`px-3 py-1 text-xs font-medium rounded-full ${
-                              employee.is_active !== false
+                            className={`px-3 py-1 text-xs font-medium rounded-full ${employee.is_active !== false
                                 ? "bg-emerald-100 text-emerald-800"
                                 : "bg-red-100 text-red-800"
-                            }`}
+                              }`}
                           >
-                            {employee.is_active !== false ? "Active" : "Inactive"}
+                            {employee.is_active !== false ? "Current Employee" : "Former Employee"}
                           </span>
                         </div>
                       )}

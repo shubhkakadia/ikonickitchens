@@ -65,7 +65,7 @@ export async function POST(request) {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     // Use transaction to ensure atomicity - both user and module_access must succeed or both fail
     let newUser;
     let moduleAccess;
@@ -136,8 +136,8 @@ export async function POST(request) {
     if (!logged) {
       console.error(`Failed to log user creation: ${newUser.id} - ${newUser.username}`);
       return NextResponse.json(
-        { 
-          status: true, 
+        {
+          status: true,
           message: "User created successfully",
           data: { user: newUser, module_access: moduleAccess },
           warning: "Note: Creation succeeded but logging failed"

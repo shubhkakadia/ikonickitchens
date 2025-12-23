@@ -6,7 +6,7 @@ export async function GET(request, { params }) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    
+
     // Filter statements where supplier is not deleted
     const statements = await prisma.supplier_statement.findMany({
       where: {

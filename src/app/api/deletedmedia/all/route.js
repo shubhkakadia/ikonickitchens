@@ -150,8 +150,8 @@ export async function DELETE(request) {
           tableName === "lot_file"
             ? "lot_file"
             : tableName === "media"
-            ? "media"
-            : "supplier_file";
+              ? "media"
+              : "supplier_file";
 
         // Log the deletion
         const logged = await withLogging(

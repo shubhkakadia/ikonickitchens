@@ -152,13 +152,16 @@ export default function page() {
     return roles.sort();
   }, [employees]);
 
-  // Initialize selectedRoles with all roles when distinctRoles changes (only once)
+  // Initialize selectedRoles with all roles when distinctRoles changes
   useEffect(() => {
-    if (distinctRoles.length > 0 && !hasInitializedRoles) {
+    if (distinctRoles.length > 0) {
+      // Update selectedRoles to match distinctRoles when they change (e.g., when switching tabs)
       setSelectedRoles([...distinctRoles]);
-      setHasInitializedRoles(true);
+    } else {
+      // If no roles, clear selectedRoles
+      setSelectedRoles([]);
     }
-  }, [distinctRoles, hasInitializedRoles]);
+  }, [distinctRoles]);
 
   // Filter and sort employees
   const filteredAndSortedEmployees = useMemo(() => {
@@ -176,11 +179,11 @@ export default function page() {
         if (!matchesSearch) return false;
       }
 
-      // Role filter
+      // Role filter - if no roles are selected, show all employees
       if (selectedRoles.length > 0) {
         return selectedRoles.includes(employee.role);
       }
-      return false;
+      return true;
     });
 
     // Sort employees
@@ -334,12 +337,12 @@ export default function page() {
         });
         return;
       }
-      
+
       // Use different endpoint based on active tab
-      const endpoint = activeTab === "inactive" 
-        ? "/api/employee/all_inactive" 
+      const endpoint = activeTab === "inactive"
+        ? "/api/employee/all_inactive"
         : "/api/employee/all";
-      
+
       let config = {
         method: "get",
         maxBodyLength: Infinity,
@@ -617,21 +620,19 @@ export default function page() {
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("active")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "active"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "active"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
                         >
                           Current
                         </button>
                         <button
                           onClick={() => setActiveTab("inactive")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "inactive"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "inactive"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
                         >
                           Former
                         </button>
@@ -719,7 +720,7 @@ export default function page() {
                                   {search
                                     ? "No employees found matching your search"
                                     : selectedRoles.length === 0
-                                      ? "No employees found - please select at least one role to view employees"
+                                      ? "No employees found"
                                       : activeTab === "active"
                                         ? "No current employees found"
                                         : "No former employees found"}

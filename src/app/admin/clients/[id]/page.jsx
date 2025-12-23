@@ -35,6 +35,7 @@ import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ContactSection from "@/components/ContactSection";
 import { CiMenuKebab } from "react-icons/ci";
 import { AdminRoute } from "@/components/ProtectedRoute";
+import { validatePhone, formatPhoneToNational } from "@/components/validators";
 
 export default function page() {
   const { id } = useParams();
@@ -156,7 +157,16 @@ export default function page() {
         return;
       }
 
-      const response = await axios.patch(`/api/client/${id}`, editData, {
+      const formatPhone = (phone) => {
+        return phone ? formatPhoneToNational(phone) : phone;
+      }
+
+      const dataToSend = {
+        ...editData,
+        client_phone: formatPhone(editData.client_phone),
+      };
+
+      const response = await axios.patch(`/api/client/${id}`, dataToSend, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -526,16 +536,16 @@ export default function page() {
       const lotsToSend =
         lots && lots.length > 0
           ? lots.map((lot) => {
-              const fullLotId = newProject.project_id
-                ? `${newProject.project_id}-${lot.lotId}`
-                : lot.lotId;
-              return {
-                lotId: fullLotId,
-                clientName: lot.clientName,
-                installationDueDate: lot.installationDueDate || null,
-                notes: lot.notes || null,
-              };
-            })
+            const fullLotId = newProject.project_id
+              ? `${newProject.project_id}-${lot.lotId}`
+              : lot.lotId;
+            return {
+              lotId: fullLotId,
+              clientName: lot.clientName,
+              installationDueDate: lot.installationDueDate || null,
+              notes: lot.notes || null,
+            };
+          })
           : [];
 
       const data = {
@@ -767,20 +777,28 @@ export default function page() {
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Phone className="w-4 h-4 text-slate-600" />
-                                    <input
-                                      type="tel"
-                                      value={editData.client_phone || ""}
-                                      onChange={(e) =>
-                                        handleInputChange(
-                                          "client_phone",
-                                          e.target.value
-                                        )
-                                      }
-                                      placeholder={
-                                        client.client_phone || "Phone"
-                                      }
-                                      className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
-                                    />
+                                    <div className="flex-1">
+                                      <input
+                                        type="tel"
+                                        value={editData.client_phone || ""}
+                                        onChange={(e) =>
+                                          handleInputChange(
+                                            "client_phone",
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                                        className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${editData.client_phone && !validatePhone(editData.client_phone)
+                                            ? "border-red-500"
+                                            : "border-slate-300"
+                                          }`}
+                                      />
+                                      {editData.client_phone && !validatePhone(editData.client_phone) && (
+                                        <p className="mt-1 text-xs text-red-500">
+                                          Please enter a valid Australian phone number
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Link2 className="w-4 h-4 text-slate-600" />

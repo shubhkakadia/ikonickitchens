@@ -15,12 +15,12 @@ export async function GET(request, { params }) {
         { status: 400 }
       );
     }
-    
+
     // Dynamically construct include object based on category
     const include = {
       image: true, // Always include image relation
     };
-    
+
     // Map category to its corresponding relation
     const categoryRelationMap = {
       sheet: "sheet",
@@ -29,11 +29,11 @@ export async function GET(request, { params }) {
       accessory: "accessory",
       edging_tape: "edging_tape",
     };
-    
+
     include[categoryRelationMap[normalizedCategory]] = true;
-    
+
     const items = await prisma.item.findMany({
-      where: { 
+      where: {
         category: normalizedCategory.toUpperCase(),
         is_deleted: false,
       },

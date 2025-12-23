@@ -93,7 +93,7 @@ export default function BlogsPage() {
                       <h2 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-[#B92F34] transition-colors duration-300 line-clamp-2">
                         {blog.title}
                       </h2>
-                      
+
                       <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-1">
                         {blog.subtitle}
                       </p>
@@ -104,10 +104,10 @@ export default function BlogsPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          {blog.date.toLocaleDateString('en-AU', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
+                          {blog.date.toLocaleDateString('en-AU', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
                           })}
                         </span>
                         <span className="flex items-center gap-2">

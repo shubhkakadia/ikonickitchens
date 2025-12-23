@@ -9,6 +9,7 @@ import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { validatePhone, formatPhoneToNational } from "@/components/validators";
 
 export default function page() {
   const [formData, setFormData] = useState({
@@ -119,11 +120,15 @@ export default function page() {
           }))
           : [];
 
+      const formatPhone = (phone) => {
+        return phone ? formatPhoneToNational(phone) : phone;
+      }
+
       const data = {
         client_type: formData.client_type.toLowerCase(),
         client_name: formData.client_name,
         client_address: formData.client_address,
-        client_phone: formData.client_phone,
+        client_phone: formatPhone(formData.client_phone),
         client_email: formData.client_email,
         client_website: formData.client_website,
         client_notes: formData.client_notes,
@@ -224,6 +229,9 @@ export default function page() {
     }
     if (!formData.client_type) {
       newErrors.client_type = "Client Type is required";
+    }
+    if (formData.client_phone && !validatePhone(formData.client_phone)) {
+      newErrors.client_phone = "Please enter a valid Australian phone number";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -467,9 +475,17 @@ export default function page() {
                           name="client_phone"
                           value={formData.client_phone}
                           onChange={handleInputChange}
-                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                          placeholder="Eg. +61 400 000 000"
+                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${formData.client_phone && !validatePhone(formData.client_phone)
+                              ? "border-red-500"
+                              : "border-slate-300"
+                            }`}
+                          placeholder="Eg. 0400 123 456 or +61 400 123 456"
                         />
+                        {formData.client_phone && !validatePhone(formData.client_phone) && (
+                          <p className="mt-1 text-xs text-red-500">
+                            {errors.client_phone || "Please enter a valid Australian phone number"}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">

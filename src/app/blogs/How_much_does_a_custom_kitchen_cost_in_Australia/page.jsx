@@ -33,7 +33,7 @@ export default function BlogPage() {
               </svg>
               <span className="font-medium">Back to Blogs</span>
             </Link>
-            
+
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               How Much Does a Custom Kitchen Cost in Australia?
             </h1>
@@ -201,7 +201,7 @@ export default function BlogPage() {
               <p className="text-gray-700 text-lg leading-relaxed mb-6">
                 Flat-pack kitchens may seem cheaper initially, often starting around $10,000–$15,000, but they come with limitations.
               </p>
-              
+
               <div className="grid md:grid-cols-2 gap-6 mb-6">
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">Flat-pack kitchens:</h3>
@@ -222,7 +222,7 @@ export default function BlogPage() {
                   </ul>
                 </div>
               </div>
-              
+
               <p className="text-gray-700 text-lg leading-relaxed">
                 Over time, custom kitchens often provide better value due to durability and reduced need for repairs or replacements.
               </p>

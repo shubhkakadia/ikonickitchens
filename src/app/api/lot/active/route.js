@@ -48,7 +48,11 @@ export async function GET(request) {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        project: {
+          client: {
+            client_name: "asc",
+          },
+        },
       },
     });
 

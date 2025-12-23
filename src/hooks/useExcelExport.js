@@ -45,7 +45,7 @@ export const useExcelExport = ({
 
     // Determine which columns to export
     const columnsToExport = options.customSelectedColumns || selectedColumns;
-    
+
     // If selectedColumns is provided and empty, show warning
     if (columnsToExport !== null && columnsToExport.length === 0) {
       toast.warning("Please select at least one column to export.", {
@@ -64,7 +64,7 @@ export const useExcelExport = ({
 
       // Prepare data for export
       let exportData;
-      
+
       if (columnsToExport && columnsToExport.length > 0) {
         // Only include selected columns
         exportData = data.map((item) => {

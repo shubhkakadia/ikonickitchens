@@ -12,7 +12,7 @@ export async function GET(request, { params }) {
     if (authError) return authError;
     const { id } = await params;
     const lot = await prisma.lot.findFirst({
-      where: { 
+      where: {
         id: id,
         is_deleted: false,
       },
@@ -63,14 +63,14 @@ export async function GET(request, { params }) {
         },
       },
     });
-    
+
     if (!lot) {
       return NextResponse.json(
         { status: false, message: "Lot not found" },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(
       { status: true, message: "Lot fetched successfully", data: lot },
       { status: 200 }
@@ -164,9 +164,9 @@ export async function PATCH(request, { params }) {
       console.error(`Failed to log lot update: ${id} - ${lot.name}`);
     }
     return NextResponse.json(
-      { 
-        status: true, 
-        message: "Lot updated successfully", 
+      {
+        status: true,
+        message: "Lot updated successfully",
         data: lot,
         ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
       },
@@ -186,7 +186,7 @@ export async function DELETE(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    
+
     // Fetch lot with project before soft deleting
     const lotToDelete = await prisma.lot.findUnique({
       where: { id: id },
@@ -214,7 +214,7 @@ export async function DELETE(request, { params }) {
       where: { id: id },
       data: { is_deleted: true },
     });
-    
+
     const logged = await withLogging(
       request,
       "lot",
@@ -225,9 +225,9 @@ export async function DELETE(request, { params }) {
     if (!logged) {
       console.error(`Failed to log lot deletion: ${id} - ${lotToDelete.name}`);
       return NextResponse.json(
-        { 
-          status: true, 
-          message: "Lot deleted successfully", 
+        {
+          status: true,
+          message: "Lot deleted successfully",
           data: lot,
           warning: "Note: Deletion succeeded but logging failed"
         },

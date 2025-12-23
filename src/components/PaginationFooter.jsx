@@ -176,8 +176,8 @@ export default function PaginationFooter({
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
                       className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${currentPage === pageNum
-                          ? "bg-primary text-white shadow-sm"
-                          : "text-slate-600 hover:bg-white"
+                        ? "bg-primary text-white shadow-sm"
+                        : "text-slate-600 hover:bg-white"
                         }`}
                       aria-label={`Page ${pageNum}`}
                       aria-current={currentPage === pageNum ? "page" : undefined}

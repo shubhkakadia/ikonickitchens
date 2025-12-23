@@ -844,7 +844,7 @@ export default function page() {
                         </h1>
                         <h1 className="text-5xl font-bold text-slate-800">
                           {employeeData && (
-                            <span className="ml-3 text-secondary">
+                            <span className="text-secondary">
                               {employeeData.first_name}
                               {employeeData.last_name && ` ${employeeData.last_name}`}
                             </span>

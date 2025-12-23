@@ -723,25 +723,21 @@ export default function page() {
                               paginatedClients.map((e) => (
                                 <tr
                                   key={e.client_id}
-                                  className="hover:bg-slate-50 transition-colors duration-200"
+                                  className="hover:bg-slate-50 transition-colors duration-200 cursor-pointer"
+                                  onClick={() => {
+                                    router.push(
+                                      `/admin/clients/${e.client_id}`
+                                    );
+                                    dispatch(
+                                      replaceTab({
+                                        id: uuidv4(),
+                                        title: e.client_name,
+                                        href: `/admin/clients/${e.client_id}`,
+                                      })
+                                    );
+                                  }}
                                 >
-                                  <td
-                                    className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      router.push(
-                                        `/admin/clients/${e.client_id}`
-                                      );
-                                      dispatch(
-                                        replaceTab({
-                                          id: uuidv4(),
-                                          title: e.client_name,
-                                          href: `/admin/clients/${e.client_id}`,
-                                        })
-                                      );
-                                    }}
-                                    style={{ cursor: 'pointer' }}
-                                  >
+                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
                                     <span className="text-slate-700">
                                       {e.client_name || "-"}
                                     </span>

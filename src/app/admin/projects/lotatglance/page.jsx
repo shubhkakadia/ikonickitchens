@@ -854,14 +854,25 @@ export default function page() {
                           <table className="min-w-full divide-y divide-slate-200 table-fixed">
                             <thead className="bg-slate-50 sticky top-0 z-20">
                               <tr>
-                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[200px] min-w-[200px] max-w-[200px]">
+                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[250px] min-w-[250px] max-w-[250px]">
                                   Client Name
                                 </th>
                                 <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-[200px] z-30 bg-slate-50 w-[500px] min-w-[500px] max-w-[500px]">
                                   Project Name - Lot Number
                                 </th>
-                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[100px] min-w-[100px] max-w-[100px] h-[300px] border-r border-slate-200 sticky top-0 left-[700px] z-30 bg-slate-50">
-                                  Percentage Completed
+                                <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px] border-r border-slate-200 sticky top-0 left-[700px] z-30 bg-slate-50">
+                                  <div className="flex flex-col items-center justify-end gap-2 h-full">
+                                    <span
+                                      className="whitespace-nowrap"
+                                      style={{
+                                        writingMode: "vertical-rl",
+                                        textOrientation: "mixed",
+                                        transform: "rotate(180deg)",
+                                      }}
+                                    >
+                                      Percentage Completed
+                                    </span>
+                                  </div>
                                 </th>
                                 {stages.map(stage => {
                                   const filterStatus = stageFilters[stage] || "ALL";
@@ -937,7 +948,7 @@ export default function page() {
                                   >
                                     <td
                                       onClick={(e) => handleClientNameClick(lot, e)}
-                                      className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[200px] min-w-[200px] max-w-[200px]"
+                                      className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[250px] min-w-[250px] max-w-[250px]"
                                       title="Click to open client"
                                     >
                                       <span>
@@ -951,7 +962,7 @@ export default function page() {
                                     >
                                       {lot.project?.name || "N/A"} - {lot.lot_id}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[700px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap w-[100px] min-w-[100px] max-w-[100px]">
+                                    <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[700px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px]">
                                       {getPercentageCompleted(lot)}%
                                     </td>
                                     {stages.map((stage) => {

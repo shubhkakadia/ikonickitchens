@@ -324,7 +324,7 @@ export default function page() {
           <div className="h-full w-full overflow-y-auto">
             <div className="px-4 py-2">
               <div className="flex items-center gap-2 mb-4">
-                <TabsController href="/admin/suppliers" title="Suppliers">
+                <TabsController back={true} title="Suppliers">
                   <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
                     <ChevronLeft className="w-8 h-8 text-slate-600" />
                   </div>

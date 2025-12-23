@@ -1421,7 +1421,7 @@ export default function page() {
             ) : (
               <div className="p-4">
                 <div className="flex items-center gap-4 mb-4">
-                  <TabsController href="/admin/projects" title="Projects">
+                  <TabsController back={true} title="Projects">
                     <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
                       <ChevronLeft className="w-6 h-6 text-slate-600" />
                     </div>

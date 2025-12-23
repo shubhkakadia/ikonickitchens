@@ -643,7 +643,7 @@ export default function page() {
               <div className="p-3">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
-                  <TabsController href="/admin/clients" title="Clients">
+                  <TabsController back={true} title="Clients">
                     <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
                       <ChevronLeft className="w-6 h-6 text-slate-600" />
                     </div>

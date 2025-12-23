@@ -30,7 +30,7 @@ export async function convertImageToWebP(imageBuffer, mimeType) {
   try {
     // Convert to WebP with quality optimization
     const webpBuffer = await sharp(imageBuffer)
-      .webp({ quality: 85, effort: 4 })
+      .webp({ quality: 90 })
       .toBuffer();
     return webpBuffer;
   } catch (error) {

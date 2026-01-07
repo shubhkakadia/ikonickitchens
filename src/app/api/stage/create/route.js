@@ -5,6 +5,7 @@ import {
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { sendNotification } from "@/lib/notification";
 
 export async function POST(request) {
   try {
@@ -51,8 +52,16 @@ export async function POST(request) {
       where: { stage_id: stageId },
       include: {
         lot: {
-          select: {
-            project: { select: { project_id: true, name: true } },
+          include: {
+            project: {
+              include: {
+                client: {
+                  select: {
+                    client_name: true,
+                  },
+                },
+              },
+            },
           },
         },
         assigned_to: {
@@ -76,6 +85,28 @@ export async function POST(request) {
       "CREATE",
       `Stage created successfully: ${stage.name} for lot: ${stage.lot_id} and project: ${stage.lot?.project?.name}`
     );
+    
+    // Send notification if stage is completed
+    if (stage.status === "DONE") {
+      try {
+        await sendNotification(
+          {
+            type: "stage",
+            stage_id: stage.stage_id,
+            lot_id: stage.lot_id,
+            stage_name: stage.name,
+            status: stage.status,
+            project_name: stage.lot?.project?.name || "Unknown Project",
+            client_name: stage.lot?.project?.client?.client_name || "Unknown Client",
+          },
+          "stage_completed"
+        );
+      } catch (notificationError) {
+        console.error("Failed to send stage completion notification:", notificationError);
+        // Don't fail the request if notification fails
+      }
+    }
+    
     if (!logged) {
       console.error(`Failed to log stage creation: ${stage.stage_id} - ${stage.name}`);
       return NextResponse.json(

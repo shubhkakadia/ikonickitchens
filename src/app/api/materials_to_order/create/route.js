@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateAdminAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { sendNotification } from "@/lib/notification";
 
 export async function POST(request) {
   try {
@@ -103,6 +104,33 @@ export async function POST(request) {
 
     const projectName = completeMto.project?.name || "No Project";
     const logged = await withLogging(request, "materials_to_order", mto.id, "CREATE", `Materials to order created successfully${completeMto.project ? ` for project: ${projectName}` : ""}`);
+
+    // Send notification for MTO creation
+    try {
+      // Get lot names
+      const lotNames = completeMto.lots && completeMto.lots.length > 0
+        ? (completeMto.lots.length === 1
+          ? completeMto.lots[0].lot_id
+          : completeMto.lots.map(l => l.lot_id).join(", "))
+        : "Unknown Lot";
+
+      await sendNotification(
+        {
+          type: "material_to_order",
+          materials_to_order_id: mto.id,
+          project_id: completeMto.project_id,
+          project_name: completeMto.project?.name || "Unknown Project",
+          client_name: completeMto.project?.client?.client_name || "Unknown Client",
+          lot_name: lotNames,
+          is_new: true,
+        },
+        "materials_to_order_list_update"
+      );
+    } catch (notificationError) {
+      console.error("Failed to send MTO creation notification:", notificationError);
+      // Don't fail the request if notification fails
+    }
+
     if (!logged) {
       console.error(`Failed to log materials to order creation: ${mto.id}`);
       return NextResponse.json(

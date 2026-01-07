@@ -24,6 +24,7 @@ model users {
   purchase_order      purchase_order[]     @relation("PurchaseOrderOrderedBy")
   sessions            sessions[]
   employee            employees?           @relation(fields: [employee_id], references: [employee_id], onDelete: SetNull)
+  notification_config notification_config?
 
   @@index([employee_id])
 }
@@ -672,6 +673,37 @@ model constants_config {
   updatedAt DateTime @updatedAt
 
   @@index([category])
+}
+
+model notification_config {
+  id                                  String   @id @default(uuid())
+  material_to_order                   Boolean  @default(false)
+  // project_deadline                    Boolean  @default(false)
+  stage_updates                       Boolean  @default(false)
+  stage_quote_approve                 Boolean  @default(false)
+  stage_material_appliances_selection Boolean  @default(false)
+  stage_drafting                      Boolean  @default(false)
+  stage_drafting_revision             Boolean  @default(false)
+  stage_final_design_approval         Boolean  @default(false)
+  stage_site_measurements             Boolean  @default(false)
+  stage_final_approval_for_production Boolean  @default(false)
+  stage_machining_out                 Boolean  @default(false)
+  stage_material_order                Boolean  @default(false)
+  stage_cnc                           Boolean  @default(false)
+  stage_assembly                      Boolean  @default(false)
+  stage_delivery                      Boolean  @default(false)
+  stage_installation                  Boolean  @default(false)
+  stage_invoice_sent                  Boolean  @default(false)
+  stage_maintenance                   Boolean  @default(false)
+  stage_job_completion                Boolean  @default(false)
+  stock_transactions                  Boolean  @default(false)
+  supplier_statements                 Boolean  @default(false)
+  user_id                             String   @unique
+  user                                users?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  createdAt                           DateTime @default(now())
+  updatedAt                           DateTime @updatedAt
+
+  @@index([user_id])
 }
 
 enum LogAction {

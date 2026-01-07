@@ -95,7 +95,7 @@ export async function PATCH(request, { params }) {
     );
     
     // Send notification if stage is completed
-    if (updatedStage.status === "COMPLETED") {
+    if (updatedStage.status === "DONE") {
       try {
         await sendNotification(
           {

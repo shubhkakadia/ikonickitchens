@@ -344,22 +344,22 @@ function getNotificationConfigField(templateName, record = {}) {
       // For stage_completed, map stage_name to the specific stage config field
       if (record.stage_name) {
         const stageFieldMap = {
-          "quote_approve": "stage_quote_approve",
+          "quote approval": "stage_quote_approve",
           "material_appliances_selection": "stage_material_appliances_selection",
           "drafting": "stage_drafting",
-          "drafting_revision": "stage_drafting_revision",
-          "final_design_approval": "stage_final_design_approval",
-          "site_measurements": "stage_site_measurements",
-          "final_approval_for_production": "stage_final_approval_for_production",
-          "machining_out": "stage_machining_out",
-          "material_order": "stage_material_order",
+          "drafting revision": "stage_drafting_revision",
+          "final design approval": "stage_final_design_approval",
+          "site measurements": "stage_site_measurements",
+          "final approval for production": "stage_final_approval_for_production",
+          "machining out": "stage_machining_out",
+          "material order": "stage_material_order",
           "cnc": "stage_cnc",
           "assembly": "stage_assembly",
           "delivery": "stage_delivery",
           "installation": "stage_installation",
-          "invoice_sent": "stage_invoice_sent",
+          "invoice sent": "stage_invoice_sent",
           "maintenance": "stage_maintenance",
-          "job_completion": "stage_job_completion",
+          "job completion": "stage_job_completion",
         };
         const stageName = record.stage_name.toLowerCase();
         return stageFieldMap[stageName] || null;
@@ -383,7 +383,7 @@ function prepareWhatsAppMessage(record, templateName = null) {
   if (!finalTemplateName) {
     // Determine template and parameters based on notification type
     if (record.notification_type === "stage_completed" ||
-      (record.type === "stage" && record.status === "COMPLETED")) {
+      (record.type === "stage" && record.status === "DONE")) {
       finalTemplateName = TEMPLATE_NAME_MAP.stage_completed;
       parameters = buildStageCompletedParams({
         project_name: record.project_name,

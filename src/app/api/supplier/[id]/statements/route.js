@@ -9,6 +9,7 @@ import {
 } from "@/lib/fileHandler";
 import path from "path";
 import { withLogging } from "@/lib/withLogging";
+import { sendNotification } from "@/lib/notification";
 
 export async function GET(request, { params }) {
   try {
@@ -184,6 +185,43 @@ export async function POST(request, { params }) {
       "CREATE",
       `Statement uploaded successfully: ${statement.month_year} for supplier: ${supplier.name}`
     );
+    
+    // Send notification for supplier statement creation
+    try {
+      // Format due date
+      let formattedDueDate = "Unknown Date";
+      if (statement.due_date) {
+        try {
+          const date = new Date(statement.due_date);
+          if (!isNaN(date.getTime())) {
+            formattedDueDate = date.toLocaleDateString("en-AU", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            });
+          }
+        } catch (e) {
+          formattedDueDate = String(statement.due_date);
+        }
+      }
+      
+      await sendNotification(
+        {
+          type: "supplier_statement",
+          supplier_id: id,
+          supplier_statement_id: statement.id,
+          supplier_name: supplier.name,
+          year_month: statement.month_year,
+          amount: statement.amount || "N/A",
+          due_date: formattedDueDate,
+        },
+        "supplier_statement_added"
+      );
+    } catch (notificationError) {
+      console.error("Failed to send supplier statement notification:", notificationError);
+      // Don't fail the request if notification fails
+    }
+    
     if (!logged) {
       console.error(`Failed to log statement upload: ${statement.id} - ${statement.month_year}`);
       return NextResponse.json(

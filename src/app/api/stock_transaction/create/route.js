@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { sendNotification } from "@/lib/notification";
 
 /**
  * Handle USED transaction (from Materials To Order)
@@ -628,6 +629,67 @@ export async function POST(request) {
           `Failed to log stock transaction creation: ${logEntityId}`
         );
       }
+    }
+
+    // Send notification for stock transaction creation
+    try {
+      // Fetch item details for notification
+      const item = await prisma.item.findUnique({
+        where: { item_id: item_id },
+        include: {
+          sheet: true,
+          handle: true,
+          hardware: true,
+          accessory: true,
+          edging_tape: true,
+        },
+      });
+      
+      // Build item name with brand, color, finish
+      let itemName = "Unknown Item";
+      let dimensions = "N/A";
+      
+      if (item) {
+        const parts = [];
+        if (item.sheet) parts.push(`Brand: ${item.sheet.brand || "N/A"}`);
+        if (item.sheet?.color) parts.push(`Color: ${item.sheet.color}`);
+        if (item.sheet?.finish) parts.push(`Finish: ${item.sheet.finish}`);
+        if (item.sheet?.dimensions) dimensions = item.sheet.dimensions;
+        // handle
+        if (item.handle) parts.push(`Handle: ${item.handle.brand || "N/A"}`);
+        if (item.handle?.color) parts.push(`Color: ${item.handle.color}`);
+        if (item.handle?.type) parts.push(`Type: ${item.handle.type}`);
+        if (item.handle?.material) parts.push(`Material: ${item.handle.material}`);
+        if (item.handle?.dimensions) dimensions = item.handle.dimensions;
+        // hardware
+        if (item.hardware) parts.push(`Hardware: ${item.hardware.brand || "N/A"}`);
+        if (item.hardware?.name) parts.push(`Name: ${item.hardware.name}`);
+        if (item.hardware?.type) parts.push(`Type: ${item.hardware.type}`);
+        if (item.hardware?.dimensions) dimensions = item.hardware.dimensions;
+        // accessory
+        if (item.accessory) parts.push(`Accessory: ${item.accessory.name || "N/A"}`);
+        // edging_tape
+        if (item.edging_tape) parts.push(`Edging Tape: ${item.edging_tape.brand || "N/A"}`);
+        if (item.edging_tape?.color) parts.push(`Color: ${item.edging_tape.color}`);
+        if (item.edging_tape?.finish) parts.push(`Finish: ${item.edging_tape.finish}`);
+        if (item.edging_tape?.dimensions) dimensions = item.edging_tape.dimensions;
+        itemName = parts.length > 0 ? parts.join(", ") : item.item_id;
+      }
+      
+      await sendNotification(
+        {
+          type: "stock_transaction",
+          item_id: item_id,
+          quantity: quantity,
+          transaction_type: type, // ADDED, USED, or WASTED
+          item_name: itemName,
+          dimensions: dimensions,
+        },
+        "stock_transaction_created"
+      );
+    } catch (notificationError) {
+      console.error("Failed to send stock transaction notification:", notificationError);
+      // Don't fail the request if notification fails
     }
 
     return NextResponse.json(

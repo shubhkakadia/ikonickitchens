@@ -5,6 +5,7 @@ import {
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { sendNotification } from "@/lib/notification";
 
 export async function PATCH(request, { params }) {
   try {
@@ -60,8 +61,16 @@ export async function PATCH(request, { params }) {
       where: { stage_id: id },
       include: {
         lot: {
-          select: {
-            project: { select: { project_id: true, name: true } },
+          include: {
+            project: {
+              include: {
+                client: {
+                  select: {
+                    client_name: true,
+                  },
+                },
+              },
+            },
           },
         },
         assigned_to: {
@@ -84,6 +93,28 @@ export async function PATCH(request, { params }) {
       "UPDATE",
       `Stage updated successfully: ${updatedStage.name} for lot: ${updatedStage.lot_id} and project: ${updatedStage.lot?.project?.name}`
     );
+    
+    // Send notification if stage is completed
+    if (updatedStage.status === "DONE") {
+      try {
+        await sendNotification(
+          {
+            type: "stage",
+            stage_id: id,
+            lot_id: updatedStage.lot_id,
+            stage_name: updatedStage.name,
+            status: updatedStage.status,
+            project_name: updatedStage.lot?.project?.name || "Unknown Project",
+            client_name: updatedStage.lot?.project?.client?.client_name || "Unknown Client",
+          },
+          "stage_completed"
+        );
+      } catch (notificationError) {
+        console.error("Failed to send stage completion notification:", notificationError);
+        // Don't fail the request if notification fails
+      }
+    }
+    
     if (!logged) {
       console.error(`Failed to log stage update: ${id} - ${updatedStage.name}`);
     }

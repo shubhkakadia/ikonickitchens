@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { sendNotification } from "@/lib/notification";
 
 export async function GET(request, { params }) {
   try {
@@ -102,7 +103,15 @@ export async function PATCH(request, { params }) {
     const includeMto = {
       lots: {
         include: {
-          project: true,
+          project: {
+            include: {
+              client: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
         },
       },
       items: {
@@ -121,6 +130,11 @@ export async function PATCH(request, { params }) {
       },
       project: {
         include: {
+          client: {
+            select: {
+              name: true,
+            },
+          },
           lots: true,
         },
       },
@@ -238,6 +252,35 @@ export async function PATCH(request, { params }) {
       "UPDATE",
       `Materials to order updated successfully for project: ${projectName}`
     );
+    
+    // Send notification for MTO update (only if items or status changed)
+    if (data.items !== undefined || data.status !== undefined) {
+      try {
+        // Get lot names
+        const lotNames = mto.lots && mto.lots.length > 0
+          ? (mto.lots.length === 1 
+              ? mto.lots[0].lot_id 
+              : mto.lots.map(l => l.lot_id).join(", "))
+          : "Unknown Lot";
+        
+        await sendNotification(
+          {
+            type: "material_to_order",
+            materials_to_order_id: id,
+            project_id: mto.project_id,
+            project_name: mto.project?.name || "Unknown Project",
+            client_name: mto.project?.client?.name || "Unknown Client",
+            lot_name: lotNames,
+            is_new: false,
+          },
+          "materials_to_order_list_update"
+        );
+      } catch (notificationError) {
+        console.error("Failed to send MTO update notification:", notificationError);
+        // Don't fail the request if notification fails
+      }
+    }
+    
     if (!logged) {
       console.error(`Failed to log materials to order update: ${id}`);
     }

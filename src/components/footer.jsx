@@ -105,7 +105,7 @@ export default function Footer() {
               </p>
               <div className="flex space-x-4">
                 <Link
-                  href="https://www.facebook.com/ikonic.kitchens"
+                  href="https://www.facebook.com/p/Ikonic-Kitchens-Cabinets-61554967671495/"
                   aria-label="Facebook"
                   className="w-10 h-10 bg-[#B92F34] rounded-full flex items-center justify-center hover:bg-white hover:text-[#B92F34] transition-colors duration-300"
                   target="_blank"
@@ -113,7 +113,7 @@ export default function Footer() {
                   <Facebook />
                 </Link>
                 <Link
-                  href="https://www.instagram.com/ikonic.kitchens"
+                  href="https://www.instagram.com/ikonic_kitchens_cabinets/"
                   aria-label="Instagram"
                   className="w-10 h-10 bg-[#B92F34] rounded-full flex items-center justify-center hover:bg-white hover:text-[#B92F34] transition-colors duration-300"
                   target="_blank"

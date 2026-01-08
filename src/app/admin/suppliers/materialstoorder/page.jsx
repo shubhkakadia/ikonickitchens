@@ -27,6 +27,7 @@ import {
   X,
   File,
   AlertTriangle,
+  Check,
 } from "lucide-react";
 import Image from "next/image";
 import PurchaseOrder from "../components/PurchaseOrderForm";
@@ -107,6 +108,8 @@ export default function page() {
   const [isSavingQuantityOrderedById, setIsSavingQuantityOrderedById] = useState(
     {}
   );
+  const [pendingChangesById, setPendingChangesById] = useState({});
+  const [originalQuantityOrderedById, setOriginalQuantityOrderedById] = useState({});
   const quantityOrderedTimersRef = useRef(new Map());
   // Delete MTO state
   const [showDeleteMTOModal, setShowDeleteMTOModal] = useState(false);
@@ -120,14 +123,35 @@ export default function page() {
   // Initialize draft values for the editable Qty Ordered inputs (don't clobber what user is typing)
   useEffect(() => {
     const mtosArray = Array.isArray(mtos) ? mtos : [];
+    const newDraft = {};
+    const newOriginal = {};
+    
+    mtosArray.forEach((mto) => {
+      (mto?.items || []).forEach((it) => {
+        if (it?.id) {
+          const originalValue = String(it.quantity_ordered ?? 0);
+          newDraft[it.id] = originalValue;
+          newOriginal[it.id] = originalValue;
+        }
+      });
+    });
+    
     setQuantityOrderedDraftById((prev) => {
       const next = { ...prev };
-      mtosArray.forEach((mto) => {
-        (mto?.items || []).forEach((it) => {
-          if (it?.id && next[it.id] === undefined) {
-            next[it.id] = String(it.quantity_ordered ?? 0);
-          }
-        });
+      Object.keys(newDraft).forEach((id) => {
+        if (next[id] === undefined) {
+          next[id] = newDraft[id];
+        }
+      });
+      return next;
+    });
+    
+    setOriginalQuantityOrderedById((prev) => {
+      const next = { ...prev };
+      Object.keys(newOriginal).forEach((id) => {
+        if (next[id] === undefined) {
+          next[id] = newOriginal[id];
+        }
       });
       return next;
     });
@@ -186,16 +210,6 @@ export default function page() {
     }
   };
 
-  const applyQuantityOrderedToLocalState = (mtoItemId, value) => {
-    setMtos((prev) =>
-      (prev || []).map((mto) => ({
-        ...mto,
-        items: (mto.items || []).map((it) =>
-          it.id === mtoItemId ? { ...it, quantity_ordered: value } : it
-        ),
-      }))
-    );
-  };
 
   const saveQuantityOrdered = async (mtoItemId, rawValue) => {
     const sessionToken = getToken();
@@ -226,11 +240,41 @@ export default function page() {
       }
 
       const saved = response?.data?.data?.quantity_ordered ?? parsed;
+      const orderedBy = response?.data?.data?.ordered_by;
+      
       setQuantityOrderedDraftById((prev) => ({
         ...prev,
         [mtoItemId]: String(saved),
       }));
-      applyQuantityOrderedToLocalState(mtoItemId, saved);
+      
+      // Update local state with the saved quantity and ordered_by info
+      setMtos((prev) =>
+        (prev || []).map((mto) => ({
+          ...mto,
+          items: (mto.items || []).map((it) =>
+            it.id === mtoItemId
+              ? {
+                  ...it,
+                  quantity_ordered: saved,
+                  ordered_by: orderedBy,
+                }
+              : it
+          ),
+        }))
+      );
+      
+      // Update original value to the saved value
+      setOriginalQuantityOrderedById((prev) => ({
+        ...prev,
+        [mtoItemId]: String(saved),
+      }));
+      
+      // Clear pending changes after successful save
+      setPendingChangesById((prev) => {
+        const next = { ...prev };
+        delete next[mtoItemId];
+        return next;
+      });
     } catch (err) {
       console.error("Failed to update quantity_ordered:", err);
       toast.error(err?.response?.data?.message || err?.message || "Failed to save");
@@ -241,17 +285,54 @@ export default function page() {
 
   const handleQuantityOrderedChange = (mtoItemId, nextValue) => {
     setQuantityOrderedDraftById((prev) => ({ ...prev, [mtoItemId]: nextValue }));
+    
+    // Check if the value has changed from the original
+    setOriginalQuantityOrderedById((prevOrig) => {
+      const originalValue = prevOrig[mtoItemId];
+      if (nextValue !== originalValue) {
+        setPendingChangesById((prev) => ({ ...prev, [mtoItemId]: true }));
+      } else {
+        setPendingChangesById((prev) => {
+          const next = { ...prev };
+          delete next[mtoItemId];
+          return next;
+        });
+      }
+      return prevOrig;
+    });
+  };
 
-    const timers = quantityOrderedTimersRef.current;
-    if (timers.has(mtoItemId)) {
-      clearTimeout(timers.get(mtoItemId));
+  const handleCancelQuantityOrdered = (mtoItemId) => {
+    // Get original value from state, or find it from mtos if not in state
+    let originalValue = originalQuantityOrderedById[mtoItemId];
+    if (!originalValue) {
+      // Fallback: find the item in mtos to get the current quantity_ordered
+      const mtosArray = Array.isArray(mtos) ? mtos : [];
+      for (const mto of mtosArray) {
+        const foundItem = (mto?.items || []).find((it) => it.id === mtoItemId);
+        if (foundItem) {
+          originalValue = String(foundItem.quantity_ordered ?? 0);
+          break;
+        }
+      }
     }
-    timers.set(
-      mtoItemId,
-      setTimeout(() => {
-        saveQuantityOrdered(mtoItemId, nextValue);
-      }, 800)
-    );
+    if (originalValue !== undefined) {
+      setQuantityOrderedDraftById((prev) => ({
+        ...prev,
+        [mtoItemId]: originalValue,
+      }));
+    }
+    setPendingChangesById((prev) => {
+      const next = { ...prev };
+      delete next[mtoItemId];
+      return next;
+    });
+  };
+
+  const handleSaveQuantityOrdered = async (mtoItemId) => {
+    const value = quantityOrderedDraftById[mtoItemId];
+    await saveQuantityOrdered(mtoItemId, value);
+    // Note: original value is updated in saveQuantityOrdered after successful save
   };
 
   const openCreatePOForSupplier = (supplierName, supplierId, mtoId = null) => {
@@ -1352,11 +1433,11 @@ export default function page() {
                                                           <table className="w-full border border-slate-200 rounded-lg table-fixed">
                                                             <colgroup>
                                                               <col className="w-40" />
+                                                              <col className="w-30" />
                                                               <col className="w-60" />
-                                                              <col className="w-80" />
                                                               <col className="w-32" />
                                                               <col className="w-40" />
-                                                              <col className="w-32" />
+                                                              <col className="w-60" />
                                                               <col className="w-40" />
                                                             </colgroup>
                                                             <thead className="bg-slate-50">
@@ -1756,34 +1837,51 @@ export default function page() {
                                                                         </div>
                                                                       </td>
                                                                       <td className="px-3 py-2 whitespace-nowrap">
-                                                                        <input
-                                                                          type="number"
-                                                                          min="0"
-                                                                          value={
-                                                                            quantityOrderedDraftById[item.id] ??
-                                                                            String(item.quantity_ordered ?? 0)
-                                                                          }
-                                                                          onChange={(e) =>
-                                                                            handleQuantityOrderedChange(
-                                                                              item.id,
-                                                                              e.target.value
-                                                                            )
-                                                                          }
-                                                                          onBlur={() => {
-                                                                            const timers =
-                                                                              quantityOrderedTimersRef.current;
-                                                                            if (timers.has(item.id)) {
-                                                                              clearTimeout(timers.get(item.id));
-                                                                              timers.delete(item.id);
-                                                                            }
-                                                                            const v =
-                                                                              quantityOrderedDraftById[item.id] ??
-                                                                              String(item.quantity_ordered ?? 0);
-                                                                            saveQuantityOrdered(item.id, v);
-                                                                          }}
-                                                                          disabled={!!isSavingQuantityOrderedById[item.id]}
-                                                                          className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
-                                                                        />
+                                                                        <div className="flex flex-col gap-1">
+                                                                          <div className="flex items-center gap-1">
+                                                                            <input
+                                                                              type="number"
+                                                                              min="0"
+                                                                              value={
+                                                                                quantityOrderedDraftById[item.id] ??
+                                                                                String(item.quantity_ordered ?? 0)
+                                                                              }
+                                                                              onChange={(e) =>
+                                                                                handleQuantityOrderedChange(
+                                                                                  item.id,
+                                                                                  e.target.value
+                                                                                )
+                                                                              }
+                                                                              disabled={!!isSavingQuantityOrderedById[item.id]}
+                                                                              className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
+                                                                            />
+                                                                            {pendingChangesById[item.id] && (
+                                                                              <div className="flex items-center gap-1">
+                                                                                <button
+                                                                                  onClick={() => handleSaveQuantityOrdered(item.id)}
+                                                                                  disabled={!!isSavingQuantityOrderedById[item.id]}
+                                                                                  className="cursor-pointer p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                                  title="Save"
+                                                                                >
+                                                                                  <Check className="w-4 h-4" />
+                                                                                </button>
+                                                                                <button
+                                                                                  onClick={() => handleCancelQuantityOrdered(item.id)}
+                                                                                  disabled={!!isSavingQuantityOrderedById[item.id]}
+                                                                                  className="cursor-pointer p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                                  title="Cancel"
+                                                                                >
+                                                                                  <X className="w-4 h-4" />
+                                                                                </button>
+                                                                              </div>
+                                                                            )}
+                                                                          </div>
+                                                                          {item.ordered_by?.username && !pendingChangesById[item.id] && (
+                                                                            <div className="text-[12px] text-slate-500">
+                                                                              Ordered by: {item.ordered_by.username}
+                                                                            </div>
+                                                                          )}
+                                                                        </div>
                                                                       </td>
                                                                       <td className="px-3 py-2 whitespace-nowrap">
                                                                         {Number(item.quantity_ordered_po || 0) >

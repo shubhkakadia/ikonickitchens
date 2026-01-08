@@ -25,6 +25,12 @@ export async function GET(request) {
             quantity_ordered: true,
             quantity_ordered_po: true,
             notes: true,
+            ordered_by: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
             ordered_items: {
               select: {
                 quantity: true,

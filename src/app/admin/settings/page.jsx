@@ -49,6 +49,7 @@ export default function SettingsPage() {
   // Notification config state
   const [notificationConfig, setNotificationConfig] = useState({
     material_to_order: false,
+    material_to_order_ordered: false,
     stage_quote_approve: false,
     stage_material_appliances_selection: false,
     stage_drafting: false,
@@ -71,6 +72,7 @@ export default function SettingsPage() {
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [expandedStages, setExpandedStages] = useState(false);
+  const [expandedMaterialsToOrder, setExpandedMaterialsToOrder] = useState(false);
 
   // Primary color - using the btn-primary color
   const primaryColor = "#B92F34";
@@ -207,6 +209,7 @@ export default function SettingsPage() {
       if (response.data.status) {
         setNotificationConfig({
           material_to_order: response.data.data.material_to_order || false,
+          material_to_order_ordered: response.data.data.material_to_order_ordered || false,
           stage_quote_approve: response.data.data.stage_quote_approve || false,
           stage_material_appliances_selection: response.data.data.stage_material_appliances_selection || false,
           stage_drafting: response.data.data.stage_drafting || false,
@@ -856,26 +859,75 @@ export default function SettingsPage() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {/* Material to Order */}
-                          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                            <div className="flex-1">
-                              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                                Material to Order
-                              </h3>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                Receive notifications when materials need to be ordered
-                              </p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={notificationConfig.material_to_order}
-                                onChange={() => handleNotificationToggle("material_to_order")}
-                                disabled={isUpdatingNotifications}
-                                className="sr-only peer"
-                              />
-                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/30 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary"></div>
-                            </label>
+                          {/* Materials to Order Accordion */}
+                          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                            <button
+                              onClick={() => setExpandedMaterialsToOrder(!expandedMaterialsToOrder)}
+                              className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                  Materials to Order
+                                </h3>
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                  ({[notificationConfig.material_to_order, notificationConfig.material_to_order_ordered].filter(Boolean).length} enabled)
+                                </span>
+                              </div>
+                              {expandedMaterialsToOrder ? (
+                                <ChevronUp className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                              ) : (
+                                <ChevronDown className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                              )}
+                            </button>
+                            {expandedMaterialsToOrder && (
+                              <div className="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                <div className="p-4 space-y-3">
+                                  {/* Materials to Order - Generated */}
+                                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                                    <div className="flex-1">
+                                      <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                        Materials to Order - Generated
+                                      </h4>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                        Receive notifications when materials to order are generated
+                                      </p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={notificationConfig.material_to_order}
+                                        onChange={() => handleNotificationToggle("material_to_order")}
+                                        disabled={isUpdatingNotifications}
+                                        className="sr-only peer"
+                                      />
+                                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/30 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                  </div>
+
+                                  {/* Materials to Order - Ordered */}
+                                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                                    <div className="flex-1">
+                                      <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                        Materials to Order - Ordered
+                                      </h4>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                        Receive notifications when materials from a supplier are fully ordered
+                                      </p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={notificationConfig.material_to_order_ordered}
+                                        onChange={() => handleNotificationToggle("material_to_order_ordered")}
+                                        disabled={isUpdatingNotifications}
+                                        className="sr-only peer"
+                                      />
+                                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/30 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           {/* Stage Updates Accordion */}

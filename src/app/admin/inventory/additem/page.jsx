@@ -1001,7 +1001,8 @@ export default function page() {
                             value={formData.quantity}
                             onChange={handleInputChange}
                             className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                            placeholder="Eg. 100"
+                            placeholder="Eg. 100.5"
+                            step="0.01"
                           />
                         </div>
 

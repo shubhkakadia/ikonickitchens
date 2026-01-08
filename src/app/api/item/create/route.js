@@ -118,7 +118,7 @@ export async function POST(request, { params }) {
         data: {
           description,
           price: price ? parseFloat(price) : null,
-          quantity: quantity ? parseInt(quantity) : null,
+          quantity: quantity ? parseFloat(quantity) : null,
           category: category.toUpperCase(),
           supplier_id: supplier_id || null,
           measurement_unit: measurement_unit || null,

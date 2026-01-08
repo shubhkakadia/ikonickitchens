@@ -1890,6 +1890,7 @@ export default function page() {
                                       }
                                       placeholder={formatValue(item.quantity)}
                                       className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                      step="0.1"
                                     />
                                   ) : (
                                     <p className="text-sm font-bold text-slate-800">
@@ -1940,7 +1941,7 @@ export default function page() {
                                       $
                                       {(
                                         parseFloat(item.price || 0) *
-                                        parseInt(item.quantity || 0)
+                                        parseFloat(item.quantity || 0)
                                       ).toFixed(2)}
                                     </p>
                                   </div>

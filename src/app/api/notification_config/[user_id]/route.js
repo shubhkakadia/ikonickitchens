@@ -36,6 +36,7 @@ export async function GET(request, { params }) {
         data: {
           user_id: user_id,
           material_to_order: false,
+          material_to_order_ordered: false,
           stage_quote_approve: false,
           stage_material_appliances_selection: false,
           stage_drafting: false,
@@ -89,6 +90,7 @@ export async function PATCH(request, { params }) {
     
     const {
       material_to_order,
+      material_to_order_ordered,
       stage_quote_approve,
       stage_material_appliances_selection,
       stage_drafting,
@@ -119,6 +121,7 @@ export async function PATCH(request, { params }) {
       where: { user_id: user_id },
       update: {
         material_to_order: material_to_order !== undefined ? material_to_order : existingConfig?.material_to_order ?? false,
+        material_to_order_ordered: material_to_order_ordered !== undefined ? material_to_order_ordered : existingConfig?.material_to_order_ordered ?? false,
         stage_quote_approve: stage_quote_approve !== undefined ? stage_quote_approve : existingConfig?.stage_quote_approve ?? false,
         stage_material_appliances_selection: stage_material_appliances_selection !== undefined ? stage_material_appliances_selection : existingConfig?.stage_material_appliances_selection ?? false,
         stage_drafting: stage_drafting !== undefined ? stage_drafting : existingConfig?.stage_drafting ?? false,
@@ -141,6 +144,7 @@ export async function PATCH(request, { params }) {
       create: {
         user_id: user_id,
         material_to_order: material_to_order !== undefined ? material_to_order : false,
+        material_to_order_ordered: material_to_order_ordered !== undefined ? material_to_order_ordered : false,
         stage_quote_approve: stage_quote_approve !== undefined ? stage_quote_approve : false,
         stage_material_appliances_selection: stage_material_appliances_selection !== undefined ? stage_material_appliances_selection : false,
         stage_drafting: stage_drafting !== undefined ? stage_drafting : false,

@@ -9,22 +9,23 @@ datasource db {
 }
 
 model users {
-  id                  String               @id @default(uuid())
-  username            String               @unique
-  password            String
-  user_type           String
-  is_active           Boolean              @default(true)
-  employee_id         String?              @unique
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  logs                logs[]
-  material_selection  material_selection[]
-  materials_to_orders materials_to_order[] @relation("MaterialsToBeOrderedCreatedBy")
-  module_access       module_access?
-  purchase_order      purchase_order[]     @relation("PurchaseOrderOrderedBy")
-  sessions            sessions[]
-  employee            employees?           @relation(fields: [employee_id], references: [employee_id], onDelete: SetNull)
-  notification_config notification_config?
+  id                       String                    @id @default(uuid())
+  username                 String                    @unique
+  password                 String
+  user_type                String
+  is_active                Boolean                   @default(true)
+  employee_id              String?                   @unique
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  logs                     logs[]
+  material_selection       material_selection[]
+  materials_to_orders      materials_to_order[]      @relation("MaterialsToBeOrderedCreatedBy")
+  module_access            module_access?
+  purchase_order           purchase_order[]          @relation("PurchaseOrderOrderedBy")
+  sessions                 sessions[]
+  employee                 employees?                @relation(fields: [employee_id], references: [employee_id], onDelete: SetNull)
+  notification_config      notification_config?
+  materials_to_order_items materials_to_order_item[]
 
   @@index([employee_id])
 }
@@ -572,6 +573,8 @@ model materials_to_order_item {
   quantity_used       Int                   @default(0)
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
+  ordered_by_id       String?
+  ordered_by          users?                @relation(fields: [ordered_by_id], references: [id])
   item                item                  @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
   mto                 materials_to_order    @relation(fields: [mto_id], references: [id], onDelete: Cascade)
   ordered_items       purchase_order_item[]
@@ -678,6 +681,7 @@ model constants_config {
 model notification_config {
   id                                  String   @id @default(uuid())
   material_to_order                   Boolean  @default(false)
+  material_to_order_ordered           Boolean  @default(false)
   // project_deadline                    Boolean  @default(false)
   stage_updates                       Boolean  @default(false)
   stage_quote_approve                 Boolean  @default(false)

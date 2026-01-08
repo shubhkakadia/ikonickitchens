@@ -58,15 +58,7 @@ export async function POST(request) {
     const completeMto = await prisma.materials_to_order.findUnique({
       where: { id: mto.id },
       include: {
-        lots: {
-          include: {
-            project: {
-              include: {
-                client: true,
-              },
-            },
-          },
-        },
+        lots: true,
         items: {
           include: {
             item: {
@@ -82,7 +74,7 @@ export async function POST(request) {
         },
         project: {
           include: {
-            lots: true,
+            client: true,
           },
         },
       },
@@ -113,6 +105,7 @@ export async function POST(request) {
           ? completeMto.lots[0].lot_id
           : completeMto.lots.map(l => l.lot_id).join(", "))
         : "Unknown Lot";
+        console.log(completeMto);
 
       await sendNotification(
         {

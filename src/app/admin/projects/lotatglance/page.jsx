@@ -599,6 +599,23 @@ export default function page() {
     };
   }, []);
 
+  // Close dropdowns when scrolling
+  useEffect(() => {
+    const handleScroll = () => {
+      // Close all filter dropdowns
+      setShowFilterDropdowns({});
+      // Close column dropdown
+      setShowColumnDropdown(false);
+      // Close all status dropdowns
+      setStatusDropdownOpen(null);
+    };
+
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, []);
+
   return (
     <AdminRoute>
       <div className="flex h-screen bg-tertiary">

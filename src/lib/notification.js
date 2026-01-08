@@ -96,7 +96,7 @@ function buildStageCompletedParams(data) {
  */
 function buildMtoUpdateParams(data) {
   const {
-    status = "updated", // "generated" or "updated"
+    status = "updated", // "generated", "updated", or "{supplier_name} Ordered"
     project_name = "Unknown Project",
     lot_name = "Unknown Lot",
     client_name = "Unknown Client",
@@ -189,7 +189,12 @@ function determineNotificationTypes(record) {
   if (record.type) {
     switch (record.type) {
       case "material_to_order":
-        notificationTypes.push("material_to_order");
+        // Check if it's an ordered notification (has supplier_name in status)
+        if (record.status && typeof record.status === "string" && record.status.includes("Ordered")) {
+          notificationTypes.push("material_to_order_ordered");
+        } else {
+          notificationTypes.push("material_to_order");
+        }
         // Also add the WhatsApp template notification type
         notificationTypes.push("materials_to_order_list_update");
         break;
@@ -335,6 +340,10 @@ const TEMPLATE_NAME_MAP = {
 function getNotificationConfigField(templateName, record = {}) {
   switch (templateName) {
     case TEMPLATE_NAME_MAP.materials_to_order_list_update:
+      // Check if this is an ordered notification (has supplier_name in status)
+      if (record.status && typeof record.status === "string" && record.status.includes("Ordered")) {
+        return "material_to_order_ordered";
+      }
       return "material_to_order";
     case TEMPLATE_NAME_MAP.supplier_statement_added:
       return "supplier_statements";
@@ -395,8 +404,14 @@ function prepareWhatsAppMessage(record, templateName = null) {
     } else if (record.notification_type === "materials_to_order_list_update" ||
       record.type === "material_to_order") {
       finalTemplateName = TEMPLATE_NAME_MAP.materials_to_order_list_update;
-      // Determine if it's generated (new) or updated
-      const status = record.is_new ? "generated" : "updated";
+      // Determine status: if supplier_name is provided and it's an ordered notification, use "{supplier_name} Ordered"
+      // Otherwise, use "generated" for new or "updated" for existing
+      let status;
+      if (record.supplier_name && record.is_ordered) {
+        status = `${record.supplier_name} Ordered`;
+      } else {
+        status = record.is_new ? "generated" : "updated";
+      }
       parameters = buildMtoUpdateParams({
         status,
         project_name: record.project_name,
@@ -437,7 +452,14 @@ function prepareWhatsAppMessage(record, templateName = null) {
         status: record.status,
       });
     } else if (finalTemplateName === TEMPLATE_NAME_MAP.materials_to_order_list_update) {
-      const status = record.is_new ? "generated" : "updated";
+      // Determine status: if supplier_name is provided and it's an ordered notification, use "{supplier_name} Ordered"
+      // Otherwise, use "generated" for new or "updated" for existing
+      let status;
+      if (record.supplier_name && record.is_ordered) {
+        status = `${record.supplier_name} Ordered`;
+      } else {
+        status = record.is_new ? "generated" : "updated";
+      }
       parameters = buildMtoUpdateParams({
         status,
         project_name: record.project_name,

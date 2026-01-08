@@ -153,7 +153,7 @@ export async function PATCH(request, { params }) {
     if (price !== null && price !== undefined)
       updateData.price = parseFloat(price);
     if (quantity !== null && quantity !== undefined)
-      updateData.quantity = parseInt(quantity);
+      updateData.quantity = parseFloat(quantity);
     if (supplier_id !== null && supplier_id !== undefined)
       updateData.supplier_id = supplier_id;
     if (measurement_unit !== null && measurement_unit !== undefined)

@@ -784,14 +784,23 @@ export default function page() {
         is_sunmica: false,
       });
       setImagePreview(null);
+      // Clear file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       setIsSubmitting(false);
       setErrors({});
       setIsDropdownOpen(false);
       setIsSubCategoryDropdownOpen(false);
       setIsSupplierDropdownOpen(false);
+      setIsMeasuringUnitDropdownOpen(false);
+      setIsFinishDropdownOpen(false);
+      setIsFaceDropdownOpen(false);
       setSearchTerm("Sheet");
       setSubCategorySearchTerm("");
       setSupplierSearchTerm("");
+      setMeasuringUnitSearchTerm("");
+      setFinishSearchTerm("");
       setFaceSearchTerm("");
       setSelectedCategory("Sheet");
       faceAutoSetRef.current = false;

@@ -506,37 +506,123 @@ export default function page() {
       return true;
     });
 
+    // Helper function to extract field values for multi-level sorting
+    const getFieldValue = (item, field) => {
+      if (field === "brand") {
+        return item.sheet?.brand || item.handle?.brand || item.hardware?.brand || item.edging_tape?.brand || "";
+      } else if (field === "color") {
+        return item.sheet?.color || item.handle?.color || item.edging_tape?.color || "";
+      } else if (field === "finish") {
+        return item.sheet?.finish || item.edging_tape?.finish || "";
+      } else if (field === "type") {
+        return item.handle?.type || item.hardware?.type || "";
+      } else if (field === "material") {
+        return item.handle?.material || "";
+      } else if (field === "name") {
+        return item.hardware?.name || item.accessory?.name || "";
+      } else if (field === "sub_category") {
+        return item.hardware?.sub_category || "";
+      } else if (field === "dimensions") {
+        return item.sheet?.dimensions || item.handle?.dimensions || item.hardware?.dimensions || item.edging_tape?.dimensions || "";
+      }
+      return item[field] || "";
+    };
+
     // Sort data
     filtered.sort((a, b) => {
-      let aValue = a[sortField] || "";
-      let bValue = b[sortField] || "";
+      // Multi-level sorting when default sort is active (brand asc for most categories, name asc for accessory)
+      const isDefaultSort = (activeTab === "accessory" && sortField === "name" && sortOrder === "asc") ||
+                           (activeTab !== "accessory" && sortField === "brand" && sortOrder === "asc");
 
-      // Handle nested object sorting
-      if (sortField === "brand") {
-        aValue = a.sheet?.brand || a.handle?.brand || a.hardware?.brand || a.edging_tape?.brand || "";
-        bValue = b.sheet?.brand || b.handle?.brand || b.hardware?.brand || b.edging_tape?.brand || "";
-      } else if (sortField === "color") {
-        aValue = a.sheet?.color || a.handle?.color || a.edging_tape?.color || "";
-        bValue = b.sheet?.color || b.handle?.color || b.edging_tape?.color || "";
-      } else if (sortField === "finish") {
-        aValue = a.sheet?.finish || a.edging_tape?.finish || "";
-        bValue = b.sheet?.finish || b.edging_tape?.finish || "";
-      } else if (sortField === "type") {
-        aValue = a.handle?.type || a.hardware?.type || "";
-        bValue = b.handle?.type || b.hardware?.type || "";
-      } else if (sortField === "material") {
-        aValue = a.handle?.material || "";
-        bValue = b.handle?.material || "";
-      } else if (sortField === "name") {
-        aValue = a.hardware?.name || a.accessory?.name || "";
-        bValue = b.hardware?.name || b.accessory?.name || "";
-      } else if (sortField === "sub_category") {
-        aValue = a.hardware?.sub_category || "";
-        bValue = b.hardware?.sub_category || "";
-      } else if (sortField === "dimensions") {
-        aValue = a.sheet?.dimensions || a.handle?.dimensions || a.hardware?.dimensions || a.edging_tape?.dimensions || "";
-        bValue = b.sheet?.dimensions || b.handle?.dimensions || b.hardware?.dimensions || b.edging_tape?.dimensions || "";
+      if (isDefaultSort) {
+        // Apply multi-level sorting based on category
+        if (activeTab === "sheet" || activeTab === "sunmica" || activeTab === "edging_tape") {
+          // Brand → Color → Finish → Dimensions
+          const aBrand = getFieldValue(a, "brand").toString().toLowerCase();
+          const bBrand = getFieldValue(b, "brand").toString().toLowerCase();
+          if (aBrand !== bBrand) {
+            return aBrand < bBrand ? -1 : aBrand > bBrand ? 1 : 0;
+          }
+
+          const aColor = getFieldValue(a, "color").toString().toLowerCase();
+          const bColor = getFieldValue(b, "color").toString().toLowerCase();
+          if (aColor !== bColor) {
+            return aColor < bColor ? -1 : aColor > bColor ? 1 : 0;
+          }
+
+          const aFinish = getFieldValue(a, "finish").toString().toLowerCase();
+          const bFinish = getFieldValue(b, "finish").toString().toLowerCase();
+          if (aFinish !== bFinish) {
+            return aFinish < bFinish ? -1 : aFinish > bFinish ? 1 : 0;
+          }
+
+          const aDimensions = getFieldValue(a, "dimensions").toString().toLowerCase();
+          const bDimensions = getFieldValue(b, "dimensions").toString().toLowerCase();
+          return aDimensions < bDimensions ? -1 : aDimensions > bDimensions ? 1 : 0;
+        } else if (activeTab === "handle") {
+          // Brand → Color → Type → Material → Dimensions
+          const aBrand = getFieldValue(a, "brand").toString().toLowerCase();
+          const bBrand = getFieldValue(b, "brand").toString().toLowerCase();
+          if (aBrand !== bBrand) {
+            return aBrand < bBrand ? -1 : aBrand > bBrand ? 1 : 0;
+          }
+
+          const aColor = getFieldValue(a, "color").toString().toLowerCase();
+          const bColor = getFieldValue(b, "color").toString().toLowerCase();
+          if (aColor !== bColor) {
+            return aColor < bColor ? -1 : aColor > bColor ? 1 : 0;
+          }
+
+          const aType = getFieldValue(a, "type").toString().toLowerCase();
+          const bType = getFieldValue(b, "type").toString().toLowerCase();
+          if (aType !== bType) {
+            return aType < bType ? -1 : aType > bType ? 1 : 0;
+          }
+
+          const aMaterial = getFieldValue(a, "material").toString().toLowerCase();
+          const bMaterial = getFieldValue(b, "material").toString().toLowerCase();
+          if (aMaterial !== bMaterial) {
+            return aMaterial < bMaterial ? -1 : aMaterial > bMaterial ? 1 : 0;
+          }
+
+          const aDimensions = getFieldValue(a, "dimensions").toString().toLowerCase();
+          const bDimensions = getFieldValue(b, "dimensions").toString().toLowerCase();
+          return aDimensions < bDimensions ? -1 : aDimensions > bDimensions ? 1 : 0;
+        } else if (activeTab === "hardware") {
+          // Brand → Name → Type → Sub Category → Dimensions
+          const aBrand = getFieldValue(a, "brand").toString().toLowerCase();
+          const bBrand = getFieldValue(b, "brand").toString().toLowerCase();
+          if (aBrand !== bBrand) {
+            return aBrand < bBrand ? -1 : aBrand > bBrand ? 1 : 0;
+          }
+
+          const aName = getFieldValue(a, "name").toString().toLowerCase();
+          const bName = getFieldValue(b, "name").toString().toLowerCase();
+          if (aName !== bName) {
+            return aName < bName ? -1 : aName > bName ? 1 : 0;
+          }
+
+          const aType = getFieldValue(a, "type").toString().toLowerCase();
+          const bType = getFieldValue(b, "type").toString().toLowerCase();
+          if (aType !== bType) {
+            return aType < bType ? -1 : aType > bType ? 1 : 0;
+          }
+
+          const aSubCategory = getFieldValue(a, "sub_category").toString().toLowerCase();
+          const bSubCategory = getFieldValue(b, "sub_category").toString().toLowerCase();
+          if (aSubCategory !== bSubCategory) {
+            return aSubCategory < bSubCategory ? -1 : aSubCategory > bSubCategory ? 1 : 0;
+          }
+
+          const aDimensions = getFieldValue(a, "dimensions").toString().toLowerCase();
+          const bDimensions = getFieldValue(b, "dimensions").toString().toLowerCase();
+          return aDimensions < bDimensions ? -1 : aDimensions > bDimensions ? 1 : 0;
+        }
       }
+
+      // Single field sorting for non-default sorts
+      let aValue = getFieldValue(a, sortField);
+      let bValue = getFieldValue(b, sortField);
 
       // Handle relevance sorting (by search match)
       if (sortOrder === "relevance" && search) {

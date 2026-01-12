@@ -322,7 +322,9 @@ export default function page() {
           (item.handle?.color || "").toLowerCase().includes(searchLower) ||
           (item.edging_tape?.brand || "").toLowerCase().includes(searchLower) ||
           (item.edging_tape?.color || "").toLowerCase().includes(searchLower) ||
-          (item.edging_tape?.description || "").toLowerCase().includes(searchLower);
+          (item.edging_tape?.description || "")
+            .toLowerCase()
+            .includes(searchLower);
         if (!matchesSearch) return false;
       }
 
@@ -509,9 +511,20 @@ export default function page() {
     // Helper function to extract field values for multi-level sorting
     const getFieldValue = (item, field) => {
       if (field === "brand") {
-        return item.sheet?.brand || item.handle?.brand || item.hardware?.brand || item.edging_tape?.brand || "";
+        return (
+          item.sheet?.brand ||
+          item.handle?.brand ||
+          item.hardware?.brand ||
+          item.edging_tape?.brand ||
+          ""
+        );
       } else if (field === "color") {
-        return item.sheet?.color || item.handle?.color || item.edging_tape?.color || "";
+        return (
+          item.sheet?.color ||
+          item.handle?.color ||
+          item.edging_tape?.color ||
+          ""
+        );
       } else if (field === "finish") {
         return item.sheet?.finish || item.edging_tape?.finish || "";
       } else if (field === "type") {
@@ -523,7 +536,13 @@ export default function page() {
       } else if (field === "sub_category") {
         return item.hardware?.sub_category || "";
       } else if (field === "dimensions") {
-        return item.sheet?.dimensions || item.handle?.dimensions || item.hardware?.dimensions || item.edging_tape?.dimensions || "";
+        return (
+          item.sheet?.dimensions ||
+          item.handle?.dimensions ||
+          item.hardware?.dimensions ||
+          item.edging_tape?.dimensions ||
+          ""
+        );
       }
       return item[field] || "";
     };
@@ -531,12 +550,21 @@ export default function page() {
     // Sort data
     filtered.sort((a, b) => {
       // Multi-level sorting when default sort is active (brand asc for most categories, name asc for accessory)
-      const isDefaultSort = (activeTab === "accessory" && sortField === "name" && sortOrder === "asc") ||
-                           (activeTab !== "accessory" && sortField === "brand" && sortOrder === "asc");
+      const isDefaultSort =
+        (activeTab === "accessory" &&
+          sortField === "name" &&
+          sortOrder === "asc") ||
+        (activeTab !== "accessory" &&
+          sortField === "brand" &&
+          sortOrder === "asc");
 
       if (isDefaultSort) {
         // Apply multi-level sorting based on category
-        if (activeTab === "sheet" || activeTab === "sunmica" || activeTab === "edging_tape") {
+        if (
+          activeTab === "sheet" ||
+          activeTab === "sunmica" ||
+          activeTab === "edging_tape"
+        ) {
           // Brand → Color → Finish → Dimensions
           const aBrand = getFieldValue(a, "brand").toString().toLowerCase();
           const bBrand = getFieldValue(b, "brand").toString().toLowerCase();
@@ -556,9 +584,17 @@ export default function page() {
             return aFinish < bFinish ? -1 : aFinish > bFinish ? 1 : 0;
           }
 
-          const aDimensions = getFieldValue(a, "dimensions").toString().toLowerCase();
-          const bDimensions = getFieldValue(b, "dimensions").toString().toLowerCase();
-          return aDimensions < bDimensions ? -1 : aDimensions > bDimensions ? 1 : 0;
+          const aDimensions = getFieldValue(a, "dimensions")
+            .toString()
+            .toLowerCase();
+          const bDimensions = getFieldValue(b, "dimensions")
+            .toString()
+            .toLowerCase();
+          return aDimensions < bDimensions
+            ? -1
+            : aDimensions > bDimensions
+            ? 1
+            : 0;
         } else if (activeTab === "handle") {
           // Brand → Color → Type → Material → Dimensions
           const aBrand = getFieldValue(a, "brand").toString().toLowerCase();
@@ -579,15 +615,27 @@ export default function page() {
             return aType < bType ? -1 : aType > bType ? 1 : 0;
           }
 
-          const aMaterial = getFieldValue(a, "material").toString().toLowerCase();
-          const bMaterial = getFieldValue(b, "material").toString().toLowerCase();
+          const aMaterial = getFieldValue(a, "material")
+            .toString()
+            .toLowerCase();
+          const bMaterial = getFieldValue(b, "material")
+            .toString()
+            .toLowerCase();
           if (aMaterial !== bMaterial) {
             return aMaterial < bMaterial ? -1 : aMaterial > bMaterial ? 1 : 0;
           }
 
-          const aDimensions = getFieldValue(a, "dimensions").toString().toLowerCase();
-          const bDimensions = getFieldValue(b, "dimensions").toString().toLowerCase();
-          return aDimensions < bDimensions ? -1 : aDimensions > bDimensions ? 1 : 0;
+          const aDimensions = getFieldValue(a, "dimensions")
+            .toString()
+            .toLowerCase();
+          const bDimensions = getFieldValue(b, "dimensions")
+            .toString()
+            .toLowerCase();
+          return aDimensions < bDimensions
+            ? -1
+            : aDimensions > bDimensions
+            ? 1
+            : 0;
         } else if (activeTab === "hardware") {
           // Brand → Name → Type → Sub Category → Dimensions
           const aBrand = getFieldValue(a, "brand").toString().toLowerCase();
@@ -608,15 +656,31 @@ export default function page() {
             return aType < bType ? -1 : aType > bType ? 1 : 0;
           }
 
-          const aSubCategory = getFieldValue(a, "sub_category").toString().toLowerCase();
-          const bSubCategory = getFieldValue(b, "sub_category").toString().toLowerCase();
+          const aSubCategory = getFieldValue(a, "sub_category")
+            .toString()
+            .toLowerCase();
+          const bSubCategory = getFieldValue(b, "sub_category")
+            .toString()
+            .toLowerCase();
           if (aSubCategory !== bSubCategory) {
-            return aSubCategory < bSubCategory ? -1 : aSubCategory > bSubCategory ? 1 : 0;
+            return aSubCategory < bSubCategory
+              ? -1
+              : aSubCategory > bSubCategory
+              ? 1
+              : 0;
           }
 
-          const aDimensions = getFieldValue(a, "dimensions").toString().toLowerCase();
-          const bDimensions = getFieldValue(b, "dimensions").toString().toLowerCase();
-          return aDimensions < bDimensions ? -1 : aDimensions > bDimensions ? 1 : 0;
+          const aDimensions = getFieldValue(a, "dimensions")
+            .toString()
+            .toLowerCase();
+          const bDimensions = getFieldValue(b, "dimensions")
+            .toString()
+            .toLowerCase();
+          return aDimensions < bDimensions
+            ? -1
+            : aDimensions > bDimensions
+            ? 1
+            : 0;
         }
       }
 
@@ -875,7 +939,9 @@ export default function page() {
   const { exportToExcel, isExporting } = useExcelExport({
     columnMap,
     filenamePrefix: `${activeTab}_inventory_export`,
-    sheetName: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Inventory`,
+    sheetName: `${
+      activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
+    } Inventory`,
     selectedColumns,
   });
 
@@ -986,10 +1052,11 @@ export default function page() {
                           <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                              ? "border-secondary text-secondary"
-                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                              }`}
+                            className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                              activeTab === tab.id
+                                ? "border-secondary text-secondary"
+                                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                            }`}
                           >
                             {tab.label}
                           </button>
@@ -1005,10 +1072,11 @@ export default function page() {
                           <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                           <input
                             type="text"
-                            placeholder={`Search ${activeTab === "edging_tape"
-                              ? "edging tape"
-                              : activeTab
-                              } items by description, supplier reference, brand, color`}
+                            placeholder={`Search ${
+                              activeTab === "edging_tape"
+                                ? "edging tape"
+                                : activeTab
+                            } items by description, supplier reference, brand, color`}
                             className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -1066,13 +1134,13 @@ export default function page() {
                                   )}
                                   {(activeTab === "sheet" ||
                                     activeTab === "sunmica") && (
-                                      <button
-                                        onClick={() => handleSort("finish")}
-                                        className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                      >
-                                        Finish {getSortIcon("finish")}
-                                      </button>
-                                    )}
+                                    <button
+                                      onClick={() => handleSort("finish")}
+                                      className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                    >
+                                      Finish {getSortIcon("finish")}
+                                    </button>
+                                  )}
                                   {activeTab === "handle" && (
                                     <button
                                       onClick={() => handleSort("type")}
@@ -1132,10 +1200,11 @@ export default function page() {
                           <button
                             onClick={handleOpenStockTally}
                             disabled={filteredAndSortedData.length === 0}
-                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium relative ${filteredAndSortedData.length === 0
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer hover:bg-slate-100"
-                              }`}
+                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium relative ${
+                              filteredAndSortedData.length === 0
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                            }`}
                           >
                             <ClipboardList className="h-4 w-4" />
                             <span>Stock Tally</span>
@@ -1149,12 +1218,13 @@ export default function page() {
                                 filteredAndSortedData.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedData.length === 0 ||
                                 selectedColumns.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -1171,11 +1241,12 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedData.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedData.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
@@ -1183,11 +1254,18 @@ export default function page() {
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedColumns.length === availableColumns.length}
-                                      onChange={() => handleColumnToggle("Select All")}
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() =>
+                                        handleColumnToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -1199,8 +1277,12 @@ export default function page() {
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={() => handleColumnToggle(column)}
+                                        checked={selectedColumns.includes(
+                                          column
+                                        )}
+                                        onChange={() =>
+                                          handleColumnToggle(column)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -1226,48 +1308,48 @@ export default function page() {
                                 activeTab === "handle" ||
                                 activeTab === "hardware" ||
                                 activeTab === "edging_tape") && (
-                                  <th
-                                    className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                    onClick={() => handleSort("brand")}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      Brand
-                                      {getSortIcon("brand")}
-                                    </div>
-                                  </th>
-                                )}
+                                <th
+                                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                  onClick={() => handleSort("brand")}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    Brand
+                                    {getSortIcon("brand")}
+                                  </div>
+                                </th>
+                              )}
                               {(activeTab === "sheet" ||
                                 activeTab === "sunmica" ||
                                 activeTab === "handle" ||
                                 activeTab === "edging_tape") && (
-                                  <th
-                                    className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                    onClick={() => handleSort("color")}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      Color
-                                      {getSortIcon("color")}
-                                    </div>
-                                  </th>
-                                )}
+                                <th
+                                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                  onClick={() => handleSort("color")}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    Color
+                                    {getSortIcon("color")}
+                                  </div>
+                                </th>
+                              )}
                               {(activeTab === "sheet" ||
                                 activeTab === "sunmica" ||
                                 activeTab === "edging_tape") && (
-                                  <>
-                                    <th
-                                      className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                      onClick={() => handleSort("finish")}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        Finish
-                                        {getSortIcon("finish")}
-                                      </div>
-                                    </th>
-                                    <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                      Dimensions
-                                    </th>
-                                  </>
-                                )}
+                                <>
+                                  <th
+                                    className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                    onClick={() => handleSort("finish")}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      Finish
+                                      {getSortIcon("finish")}
+                                    </div>
+                                  </th>
+                                  <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                    Dimensions
+                                  </th>
+                                </>
+                              )}
                               {activeTab === "handle" && (
                                 <>
                                   <th
@@ -1412,41 +1494,41 @@ export default function page() {
                                     activeTab === "handle" ||
                                     activeTab === "hardware" ||
                                     activeTab === "edging_tape") && (
-                                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                        {item.sheet?.brand ||
-                                          item.handle?.brand ||
-                                          item.hardware?.brand ||
-                                          item.edging_tape?.brand ||
-                                          "N/A"}
-                                      </td>
-                                    )}
+                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
+                                      {item.sheet?.brand ||
+                                        item.handle?.brand ||
+                                        item.hardware?.brand ||
+                                        item.edging_tape?.brand ||
+                                        "N/A"}
+                                    </td>
+                                  )}
                                   {(activeTab === "sheet" ||
                                     activeTab === "sunmica" ||
                                     activeTab === "handle" ||
                                     activeTab === "edging_tape") && (
-                                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                        {item.sheet?.color ||
-                                          item.handle?.color ||
-                                          item.edging_tape?.color ||
-                                          "N/A"}
-                                      </td>
-                                    )}
+                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                      {item.sheet?.color ||
+                                        item.handle?.color ||
+                                        item.edging_tape?.color ||
+                                        "N/A"}
+                                    </td>
+                                  )}
                                   {(activeTab === "sheet" ||
                                     activeTab === "sunmica" ||
                                     activeTab === "edging_tape") && (
-                                      <>
-                                        <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                          {item.sheet?.finish ||
-                                            item.edging_tape?.finish ||
-                                            "N/A"}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                          {item.sheet?.dimensions ||
-                                            item.edging_tape?.dimensions ||
-                                            "N/A"}
-                                        </td>
-                                      </>
-                                    )}
+                                    <>
+                                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                        {item.sheet?.finish ||
+                                          item.edging_tape?.finish ||
+                                          "N/A"}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                        {item.sheet?.dimensions ||
+                                          item.edging_tape?.dimensions ||
+                                          "N/A"}
+                                      </td>
+                                    </>
+                                  )}
                                   {activeTab === "handle" && (
                                     <>
                                       <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
@@ -1811,7 +1893,6 @@ export default function page() {
             filteredAndSortedData={filteredAndSortedData}
           />
         )}
-
       </div>
     </AdminRoute>
   );

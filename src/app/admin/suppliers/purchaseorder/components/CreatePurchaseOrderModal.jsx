@@ -84,6 +84,12 @@ export default function CreatePurchaseOrderModal({ setShowModal, onSuccess }) {
     }
   };
 
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(value) || 0);
+
   const fetchSupplierItems = async (supplierId) => {
     try {
       setLoadingItems(true);
@@ -555,9 +561,10 @@ export default function CreatePurchaseOrderModal({ setShowModal, onSuccess }) {
                             <Package className="w-5 h-5 text-slate-400" />
                           )}
                         </div>
+                        {/* dimensions */}
                         <div>
                           <p className="text-sm font-medium text-slate-800">{getItemDisplayName(item)}</p>
-                          <p className="text-xs text-slate-500">{item.category} • Stock: {item.quantity} {item.measurement_unit}</p>
+                          <p className="text-xs text-slate-500">{item.category} • Stock: {item.quantity} {item.measurement_unit} • Dimensions: {item.sheet?.dimensions || item.handle?.dimensions || item.hardware?.dimensions || item.edging_tape?.dimensions || "N/A"} </p>
                         </div>
                         <Plus className="w-4 h-4 text-primary ml-auto" />
                       </div>
@@ -689,7 +696,11 @@ export default function CreatePurchaseOrderModal({ setShowModal, onSuccess }) {
 
                         {/* Total Column */}
                         <td className="px-4 py-3 text-sm font-medium text-slate-800">
-                          ${((parseFloat(item.order_quantity) || 0) * (parseFloat(item.order_unit_price) || 0)).toFixed(2)}
+                          $
+                          {formatCurrency(
+                            (parseFloat(item.order_quantity) || 0) *
+                            (parseFloat(item.order_unit_price) || 0)
+                          )}
                         </td>
 
                         {/* Actions Column */}
@@ -708,9 +719,18 @@ export default function CreatePurchaseOrderModal({ setShowModal, onSuccess }) {
                 {selectedItems.length > 0 && (
                   <tfoot className="bg-slate-50 font-medium">
                     <tr>
-                      <td colSpan="6" className="px-4 py-3 text-right text-sm text-slate-600">Calculated Total:</td>
+                      <td colSpan="6" className="px-4 py-3 text-right text-sm text-slate-600">Grand Total:</td>
                       <td className="px-4 py-3 text-sm text-slate-900">
-                        ${selectedItems.reduce((sum, item) => sum + (parseFloat(item.order_quantity) || 0) * (parseFloat(item.order_unit_price) || 0), 0).toFixed(2)}
+                        $
+                        {formatCurrency(
+                          selectedItems.reduce(
+                            (sum, item) =>
+                              sum +
+                              (parseFloat(item.order_quantity) || 0) *
+                              (parseFloat(item.order_unit_price) || 0),
+                            0
+                          )
+                        )}
                       </td>
                       <td></td>
                     </tr>

@@ -26,6 +26,7 @@ import {
     Phone,
     MessageSquare,
     HelpCircle,
+    Settings,
 } from "lucide-react";
 
 const TAB_KINDS = {
@@ -64,12 +65,20 @@ export default function SitePhotosPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [employeeRole, setEmployeeRole] = useState(null);
     const [showSupportDropdown, setShowSupportDropdown] = useState(false);
+    const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+    const [notificationConfig, setNotificationConfig] = useState({
+        assign_installer: false,
+    });
+    const [notificationLoading, setNotificationLoading] = useState(false);
+    const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
     const fileInputRefs = useRef({});
     const supportDropdownRef = useRef(null);
+    const settingsDropdownRef = useRef(null);
 
     useEffect(() => {
         fetchEmployeeRole();
         fetchActiveLots();
+        fetchNotificationConfig();
     }, []);
 
     // Close dropdown when clicking outside
@@ -78,16 +87,19 @@ export default function SitePhotosPage() {
             if (supportDropdownRef.current && !supportDropdownRef.current.contains(event.target)) {
                 setShowSupportDropdown(false);
             }
+            if (settingsDropdownRef.current && !settingsDropdownRef.current.contains(event.target)) {
+                setShowSettingsDropdown(false);
+            }
         };
 
-        if (showSupportDropdown) {
+        if (showSupportDropdown || showSettingsDropdown) {
             document.addEventListener("mousedown", handleClickOutside);
         }
 
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [showSupportDropdown]);
+    }, [showSupportDropdown, showSettingsDropdown]);
 
     const fetchEmployeeRole = async () => {
         try {
@@ -183,6 +195,83 @@ export default function SitePhotosPage() {
         setShowSupportDropdown(false);
     };
 
+    const fetchNotificationConfig = async () => {
+        try {
+            setNotificationLoading(true);
+            const sessionToken = getToken();
+            if (!sessionToken) {
+                return;
+            }
+
+            const userId = getUserData()?.user?.id;
+            if (!userId) return;
+
+            const response = await axios.get(`/api/notification_config/${userId}`, {
+                headers: {
+                    Authorization: `Bearer ${sessionToken}`,
+                },
+            });
+
+            if (response.data.status) {
+                setNotificationConfig({
+                    assign_installer: response.data.data.assign_installer || false,
+                });
+            }
+        } catch (error) {
+            console.error("Error fetching notification config:", error);
+        } finally {
+            setNotificationLoading(false);
+        }
+    };
+
+    const handleNotificationToggle = async () => {
+        try {
+            setIsUpdatingNotifications(true);
+            const sessionToken = getToken();
+            if (!sessionToken) {
+                toast.error("No valid session found. Please login again.");
+                return;
+            }
+
+            const userId = getUserData()?.user?.id;
+            if (!userId) {
+                toast.error("Unable to determine user ID");
+                return;
+            }
+
+            const updatedConfig = {
+                ...notificationConfig,
+                assign_installer: !notificationConfig.assign_installer,
+            };
+
+            const response = await axios.patch(
+                `/api/notification_config/${userId}`,
+                updatedConfig,
+                {
+                    headers: {
+                        Authorization: `Bearer ${sessionToken}`,
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            if (response.data.status) {
+                setNotificationConfig(updatedConfig);
+                toast.success("Notification preference updated successfully!");
+            } else {
+                toast.error(response.data.message || "Failed to update notification preference");
+            }
+        } catch (error) {
+            console.error("Error updating notification config:", error);
+            toast.error(
+                error.response?.data?.message ||
+                "Failed to update notification preference. Please try again."
+            );
+        } finally {
+            setIsUpdatingNotifications(false);
+        }
+    };
+
     // Get allowed tabs based on employee role
     const getAllowedTabs = () => {
         if (employeeRole?.toLowerCase() === "installer") {
@@ -201,7 +290,15 @@ export default function SitePhotosPage() {
                 return;
             }
 
-            const response = await axios.get("/api/lot/active", {
+            const userData = getUserData();
+            const userType = getUserType();
+
+            if (!(userType === "employee" && userData?.user?.employee_id)) {
+                toast.error("No installer account found. Please login again.");
+                return;
+            }
+
+            const response = await axios.get(`/api/lot/installer/${userData.user.employee_id}`, {
                 headers: {
                     Authorization: `Bearer ${sessionToken}`,
                 },
@@ -210,40 +307,12 @@ export default function SitePhotosPage() {
             if (response.data.status) {
                 const lotsData = response.data.data;
 
-                // Filter lots based on user assignments if user is an installer
-                const userData = getUserData();
-                const userType = getUserType();
-                let filteredLots = lotsData;
-
-                // Only filter if user is an employee with installer role
-                if (userType === "employee" && userData?.user?.employee_id) {
-                    // Wait for employee role to be fetched before filtering
-                    // If role is installer, filter lots to only show assigned ones
-                    if (employeeRole?.toLowerCase() === "installer") {
-                        const employeeId = userData.user.employee_id;
-                        filteredLots = lotsData.filter((lot) => {
-                            // Check if user is the installer
-                            if (lot.installer_id === employeeId) {
-                                return true;
-                            }
-                            // Check if user is assigned to any stage
-                            const isAssignedToStage = lot.stages?.some((stage) =>
-                                stage.assigned_to?.some(
-                                    (assignment) => assignment.employee_id === employeeId
-                                )
-                            );
-                            return isAssignedToStage;
-                        });
-                    }
-                    // For other employee roles, show all lots
-                }
-
-                setAllLots(filteredLots); // Store filtered lots
-                setLots(filteredLots); // Initially show filtered lots
+                setAllLots(lotsData);
+                setLots(lotsData);
 
                 // Initialize file notes state from existing files
                 const fileNotesState = {};
-                filteredLots.forEach((lot) => {
+                lots.forEach((lot) => {
                     lot.tabs?.forEach((tab) => {
                         tab.files?.forEach((file) => {
                             fileNotesState[file.id] = file.notes || "";
@@ -256,7 +325,7 @@ export default function SitePhotosPage() {
                 const allowedTabs = getAllowedTabs();
                 const defaultTab = allowedTabs[0] || TAB_KINDS.DELIVERY;
                 const tabsState = {};
-                filteredLots.forEach((lot) => {
+                lots.forEach((lot) => {
                     tabsState[lot.id] = defaultTab;
                 });
                 setActiveTabs(tabsState);
@@ -792,6 +861,44 @@ export default function SitePhotosPage() {
                                                 <MessageSquare className="w-5 h-5 text-gray-700" />
                                                 <span className="text-sm text-gray-700">WhatsApp</span>
                                             </button>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Settings Button */}
+                                <div className="relative" ref={settingsDropdownRef}>
+                                    <button
+                                        onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
+                                        title="Settings"
+                                    >
+                                        <Settings className="w-5 h-5 text-gray-700" />
+                                    </button>
+                                    {showSettingsDropdown && (
+                                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                                            <div className="px-4 py-3 flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-800">
+                                                        Notifications
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        Installer updates
+                                                    </p>
+                                                </div>
+                                                {notificationLoading ? (
+                                                    <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                                                ) : (
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={notificationConfig.assign_installer}
+                                                            onChange={handleNotificationToggle}
+                                                            disabled={isUpdatingNotifications}
+                                                            className="sr-only peer"
+                                                        />
+                                                        <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-secondary/20 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-secondary"></div>
+                                                    </label>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

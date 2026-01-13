@@ -2,28 +2,29 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { validateAdminAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 
-// Helper function to check if user is admin or master-admin
-async function isAdminOrMasterAdmin(request) {
+// Helper function to check if user is admin/master-admin or accessing their own config
+async function canAccessNotificationConfig(request, userId) {
   const session = await getUserFromToken(request);
   if (!session) return false;
   const userType = session.user_type?.toLowerCase();
-  return userType === "admin" || userType === "master-admin";
+  if (userType === "admin" || userType === "master-admin") return true;
+  return String(session.user_id) === String(userId);
 }
 
 export async function GET(request, { params }) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    
-    // Additional check: Only admin and master-admin can access notification config
-    if (!(await isAdminOrMasterAdmin(request))) {
+
+    const { user_id } = await params;
+
+    // Additional check: Only admin/master-admin or the user can access notification config
+    if (!(await canAccessNotificationConfig(request, user_id))) {
       return NextResponse.json(
-        { status: false, message: "Access denied. Only admin and master-admin can access notification settings." },
+        { status: false, message: "Access denied. You can only access your own notification settings." },
         { status: 403 }
       );
     }
-    
-    const { user_id } = await params;
     
     // Get notification config for the user, or create default if it doesn't exist
     let notificationConfig = await prisma.notification_config.findUnique({
@@ -37,6 +38,7 @@ export async function GET(request, { params }) {
           user_id: user_id,
           material_to_order: false,
           material_to_order_ordered: false,
+          assign_installer: false,
           stage_quote_approve: false,
           stage_material_appliances_selection: false,
           stage_drafting: false,
@@ -76,21 +78,22 @@ export async function PATCH(request, { params }) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    
-    // Additional check: Only admin and master-admin can update notification config
-    if (!(await isAdminOrMasterAdmin(request))) {
+
+    const { user_id } = await params;
+
+    // Additional check: Only admin/master-admin or the user can update notification config
+    if (!(await canAccessNotificationConfig(request, user_id))) {
       return NextResponse.json(
-        { status: false, message: "Access denied. Only admin and master-admin can update notification settings." },
+        { status: false, message: "Access denied. You can only update your own notification settings." },
         { status: 403 }
       );
     }
-    
-    const { user_id } = await params;
     const body = await request.json();
     
     const {
       material_to_order,
       material_to_order_ordered,
+      assign_installer,
       stage_quote_approve,
       stage_material_appliances_selection,
       stage_drafting,
@@ -122,6 +125,7 @@ export async function PATCH(request, { params }) {
       update: {
         material_to_order: material_to_order !== undefined ? material_to_order : existingConfig?.material_to_order ?? false,
         material_to_order_ordered: material_to_order_ordered !== undefined ? material_to_order_ordered : existingConfig?.material_to_order_ordered ?? false,
+        assign_installer: assign_installer !== undefined ? assign_installer : existingConfig?.assign_installer ?? false,
         stage_quote_approve: stage_quote_approve !== undefined ? stage_quote_approve : existingConfig?.stage_quote_approve ?? false,
         stage_material_appliances_selection: stage_material_appliances_selection !== undefined ? stage_material_appliances_selection : existingConfig?.stage_material_appliances_selection ?? false,
         stage_drafting: stage_drafting !== undefined ? stage_drafting : existingConfig?.stage_drafting ?? false,
@@ -145,6 +149,7 @@ export async function PATCH(request, { params }) {
         user_id: user_id,
         material_to_order: material_to_order !== undefined ? material_to_order : false,
         material_to_order_ordered: material_to_order_ordered !== undefined ? material_to_order_ordered : false,
+        assign_installer: assign_installer !== undefined ? assign_installer : false,
         stage_quote_approve: stage_quote_approve !== undefined ? stage_quote_approve : false,
         stage_material_appliances_selection: stage_material_appliances_selection !== undefined ? stage_material_appliances_selection : false,
         stage_drafting: stage_drafting !== undefined ? stage_drafting : false,

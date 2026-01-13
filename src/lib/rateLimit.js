@@ -34,7 +34,7 @@ export function rateLimit(options = {}) {
     // Get or create rate limit entry
     let entry = rateLimitStore.get(key);
 
-    if (!entry || now - entry.resetTime > windowMs) {
+    if (!entry || now > entry.resetTime) {
       // Create new entry or reset expired entry
       entry = {
         count: 0,
@@ -57,7 +57,7 @@ export function rateLimit(options = {}) {
 
     // Check if limit exceeded
     if (entry.count > max) {
-      const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
+      const retryAfter = Math.max(0, Math.ceil((entry.resetTime - now) / 1000));
       return {
         success: false,
         status: 429,

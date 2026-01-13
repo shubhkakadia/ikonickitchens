@@ -88,6 +88,12 @@ export default function PurchaseOrderForm({
     }
   };
 
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(value) || 0);
+
   // Preselect MTO when provided by parent
   useEffect(() => {
     if (!selectedMtoId || !materialsToOrder.length) return;
@@ -538,6 +544,9 @@ export default function PurchaseOrderForm({
                           Unit Price (including GST)
                         </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                          GST Rate
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                           Total
                         </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -739,10 +748,10 @@ export default function PurchaseOrderForm({
                           <td className="px-4 py-2 whitespace-nowrap">
                             <p className="text-xs font-medium text-slate-900">
                               $
-                              {(
+                              {formatCurrency(
                                 (parseFloat(item.quantity) || 0) *
                                 (parseFloat(item.unit_price) || 0)
-                              ).toFixed(2)}
+                              )}
                             </p>
                           </td>
 
@@ -771,15 +780,15 @@ export default function PurchaseOrderForm({
                         <td className="px-4 py-2 whitespace-nowrap">
                           <p className="text-sm font-bold text-slate-900">
                             $
-                            {poItems
-                              .reduce(
+                            {formatCurrency(
+                              poItems.reduce(
                                 (sum, item) =>
                                   sum +
                                   (parseFloat(item.quantity) || 0) *
                                   (parseFloat(item.unit_price) || 0),
                                 0
                               )
-                              .toFixed(2)}
+                            )}
                           </p>
                         </td>
                         <td></td>

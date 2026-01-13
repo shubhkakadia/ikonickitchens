@@ -159,6 +159,22 @@ function buildStockTransactionParams(data) {
   return [item_name, status, String(quantity_added), dimensions];
 }
 
+/**
+ * Builds template parameters for assign_installer notification
+ * @param {Object} data - Installer assignment data
+ * @returns {Array<string>} - Array of parameter values
+ */
+function buildAssignInstallerParams(data) {
+  const {
+    installer_name = "Unknown Installer",
+    project_name = "Unknown Project",
+    lot_id = "Unknown Lot",
+    url = "https://ikonickitchens.com.au/admin/site_photos",
+  } = data;
+
+  return [installer_name, project_name, lot_id, url];
+}
+
 // Format phone number to Australian national format for storage
 function formatPhone(phone) {
   if (!phone || typeof phone !== "string" || phone.trim() === "") return phone; // Return as-is if empty
@@ -207,6 +223,9 @@ function determineNotificationTypes(record) {
         notificationTypes.push("supplier_statements");
         // Also add the WhatsApp template notification type
         notificationTypes.push("supplier_statement_added");
+        break;
+      case "assign_installer":
+        notificationTypes.push("assign_installer");
         break;
       case "stage":
       case "stage_update":
@@ -329,6 +348,7 @@ const TEMPLATE_NAME_MAP = {
   materials_to_order_list_update: "materials_to_order_list_update",
   supplier_statement_added: "supplier_statement_added",
   stock_transaction_created: "stock_transaction_created",
+  assign_installer: "assign_installer",
 };
 
 /**
@@ -345,6 +365,8 @@ function getNotificationConfigField(templateName, record = {}) {
         return "material_to_order_ordered";
       }
       return "material_to_order";
+    case TEMPLATE_NAME_MAP.assign_installer:
+      return "assign_installer";
     case TEMPLATE_NAME_MAP.supplier_statement_added:
       return "supplier_statements";
     case TEMPLATE_NAME_MAP.stock_transaction_created:
@@ -440,6 +462,15 @@ function prepareWhatsAppMessage(record, templateName = null) {
         quantity_added: record.quantity,
         dimensions: record.dimensions,
       });
+    } else if (record.notification_type === "assign_installer" ||
+      record.type === "assign_installer") {
+      finalTemplateName = TEMPLATE_NAME_MAP.assign_installer;
+      parameters = buildAssignInstallerParams({
+        installer_name: record.installer_name,
+        project_name: record.project_name,
+        lot_id: record.lot_id,
+        url: "https://ikonickitchens.com.au/admin/site_photos"
+      });
     }
   } else {
     // Template name provided - build parameters based on template name
@@ -482,6 +513,13 @@ function prepareWhatsAppMessage(record, templateName = null) {
         status: transactionType,
         quantity_added: record.quantity,
         dimensions: record.dimensions,
+      });
+    } else if (finalTemplateName === TEMPLATE_NAME_MAP.assign_installer) {
+      parameters = buildAssignInstallerParams({
+        installer_name: record.installer_name,
+        project_name: record.project_name,
+        lot_id: record.lot_id,
+        url: "https://ikonickitchens.com.au/admin/site_photos",
       });
     }
   }
@@ -526,7 +564,15 @@ function prepareWhatsAppMessage(record, templateName = null) {
  *   quantity: 10,
  *   transaction_type: "ADDED"
  * }, "stock_transaction_created");
+ * 
+ * @example
+ * // Lot installer assigned notification
+ * await sendNotification({
+ *   type: "assign_installer",
+ * }, "assign_installer");
  */
+
+
 export async function sendNotification(record, templateName = null) {
   if (!record || typeof record !== "object") {
     console.warn("sendNotification: Invalid record provided");

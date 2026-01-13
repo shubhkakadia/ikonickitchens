@@ -5,6 +5,7 @@ import {
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { sendNotification } from "@/lib/notification";
 
 export async function GET(request, { params }) {
   try {
@@ -168,6 +169,26 @@ export async function PATCH(request, { params }) {
       "UPDATE",
       `Lot updated successfully: ${lot.name} for project: ${lot.project.name}`
     );
+    // installer assigned notification
+    if (lot.installer_id !== null) {
+      try {
+        await sendNotification(
+          {
+            type: "assign_installer",
+            lot_id: lot.lot_id,
+            installer_name: lot.installer?.first_name + " " + lot.installer?.last_name,
+            project_name: lot.project?.name,
+            url: "https://ikonickitchens.com.au/admin/site_photos"
+          },
+          "assign_installer"
+        );
+      }
+      catch (notificationError) {
+        console.error("Failed to send installer assigned notification:", notificationError);
+        // Don't fail the request if notification fails
+      }
+    }
+    
     if (!logged) {
       console.error(`Failed to log lot update: ${id} - ${lot.name}`);
     }

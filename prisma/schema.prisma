@@ -682,6 +682,7 @@ model notification_config {
   id                                  String   @id @default(uuid())
   material_to_order                   Boolean  @default(false)
   material_to_order_ordered           Boolean  @default(false)
+  assign_installer                    Boolean  @default(false)
   // project_deadline                    Boolean  @default(false)
   stage_updates                       Boolean  @default(false)
   stage_quote_approve                 Boolean  @default(false)

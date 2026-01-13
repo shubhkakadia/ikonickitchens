@@ -290,7 +290,15 @@ export default function SitePhotosPage() {
                 return;
             }
 
-            const response = await axios.get("/api/lot/active", {
+            const userData = getUserData();
+            const userType = getUserType();
+
+            if (!(userType === "employee" && userData?.user?.employee_id)) {
+                toast.error("No installer account found. Please login again.");
+                return;
+            }
+
+            const response = await axios.get(`/api/lot/installer/${userData.user.employee_id}`, {
                 headers: {
                     Authorization: `Bearer ${sessionToken}`,
                 },
@@ -299,40 +307,12 @@ export default function SitePhotosPage() {
             if (response.data.status) {
                 const lotsData = response.data.data;
 
-                // Filter lots based on user assignments if user is an installer
-                const userData = getUserData();
-                const userType = getUserType();
-                let filteredLots = lotsData;
-
-                // Only filter if user is an employee with installer role
-                if (userType === "employee" && userData?.user?.employee_id) {
-                    // Wait for employee role to be fetched before filtering
-                    // If role is installer, filter lots to only show assigned ones
-                    if (employeeRole?.toLowerCase() === "installer") {
-                        const employeeId = userData.user.employee_id;
-                        filteredLots = lotsData.filter((lot) => {
-                            // Check if user is the installer
-                            if (lot.installer_id === employeeId) {
-                                return true;
-                            }
-                            // Check if user is assigned to any stage
-                            const isAssignedToStage = lot.stages?.some((stage) =>
-                                stage.assigned_to?.some(
-                                    (assignment) => assignment.employee_id === employeeId
-                                )
-                            );
-                            return isAssignedToStage;
-                        });
-                    }
-                    // For other employee roles, show all lots
-                }
-
-                setAllLots(filteredLots); // Store filtered lots
-                setLots(filteredLots); // Initially show filtered lots
+                setAllLots(lotsData);
+                setLots(lotsData);
 
                 // Initialize file notes state from existing files
                 const fileNotesState = {};
-                filteredLots.forEach((lot) => {
+                lots.forEach((lot) => {
                     lot.tabs?.forEach((tab) => {
                         tab.files?.forEach((file) => {
                             fileNotesState[file.id] = file.notes || "";
@@ -345,7 +325,7 @@ export default function SitePhotosPage() {
                 const allowedTabs = getAllowedTabs();
                 const defaultTab = allowedTabs[0] || TAB_KINDS.DELIVERY;
                 const tabsState = {};
-                filteredLots.forEach((lot) => {
+                lots.forEach((lot) => {
                     tabsState[lot.id] = defaultTab;
                 });
                 setActiveTabs(tabsState);

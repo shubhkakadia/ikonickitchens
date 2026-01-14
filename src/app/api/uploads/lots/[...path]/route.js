@@ -364,11 +364,15 @@ export async function DELETE(request, { params }) {
         { status: 404 }
       );
     }
+    // Mark file as deleted in database instead of physically deleting it
+    // Since this is a soft delete, we check the database first, not the disk
+    
+    // Construct the expected relative path
     const targetPath = path.join(process.cwd(), "mediauploads", ...segments);
-
-    // Prevent path traversal
     const uploadsRoot = path.join(process.cwd(), "mediauploads");
     const normalized = path.normalize(targetPath);
+    
+    // Prevent path traversal
     if (!normalized.startsWith(uploadsRoot)) {
       return NextResponse.json(
         { status: false, message: "Not found" },
@@ -376,24 +380,6 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Check if file exists
-    let stat;
-    try {
-      stat = await fs.promises.stat(normalized);
-    } catch {
-      return NextResponse.json(
-        { status: false, message: "File not found" },
-        { status: 404 }
-      );
-    }
-    if (!stat.isFile()) {
-      return NextResponse.json(
-        { status: false, message: "Not a file" },
-        { status: 404 }
-      );
-    }
-
-    // Mark file as deleted in database instead of physically deleting it
     const relativePath = path
       .relative(process.cwd(), normalized)
       .replaceAll("\\", "/");
@@ -408,7 +394,7 @@ export async function DELETE(request, { params }) {
 
     // If not found by URL, try to find by filename and path segments
     // This handles cases where the path might not match exactly
-    if (!fileRecord && segments.length >= 3) {
+    if (!fileRecord && segments.length >= 4) {
       const [projectId, lotId, tabKind, filename] = segments;
       const tabKindEnum = TABKIND_TO_ENUM[tabKind] || tabKind.toUpperCase();
 

@@ -30,6 +30,7 @@ import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
+import SearchBar from "@/components/SearchBar";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -1079,6 +1080,8 @@ export default function StatementsPage() {
                     <h1 className="text-xl font-bold text-slate-600">
                       Supplier Statements
                     </h1>
+                    <div className="flex items-center gap-2">                    
+                    <SearchBar />
                     <button
                       onClick={() => setShowUploadStatementModal(true)}
                       className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-xs font-medium"
@@ -1086,6 +1089,7 @@ export default function StatementsPage() {
                       <Receipt className="w-4 h-4" />
                       Upload Statement
                     </button>
+                    </div>
                   </div>
                 </div>
 

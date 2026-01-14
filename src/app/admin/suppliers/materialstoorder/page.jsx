@@ -34,6 +34,7 @@ import PurchaseOrder from "../components/PurchaseOrderForm";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import CreateMaterialsToOrderModal from "./components/CreateMaterialsToOrderModal";
+import SearchBar from "@/components/SearchBar";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -129,7 +130,11 @@ export default function page() {
     mtosArray.forEach((mto) => {
       (mto?.items || []).forEach((it) => {
         if (it?.id) {
-          const originalValue = String(it.quantity_ordered ?? 0);
+          // If quantity_ordered_po > 0, use that value instead of quantity_ordered
+          const qtyOrdered = (it.quantity_ordered_po && Number(it.quantity_ordered_po) > 0) 
+            ? it.quantity_ordered_po 
+            : (it.quantity_ordered ?? 0);
+          const originalValue = String(qtyOrdered);
           newDraft[it.id] = originalValue;
           newOriginal[it.id] = originalValue;
         }
@@ -974,6 +979,8 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-700">
                       Materials to Order
                     </h1>
+                    <div className="flex items-center gap-2">                    
+                    <SearchBar />
                     <button
                       onClick={() => setShowCreateMTOModal(true)}
                       className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-xs font-medium"
@@ -981,6 +988,7 @@ export default function page() {
                       <Plus className="h-4 w-4" />
                       <span>Create Materials to Order</span>
                     </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1386,49 +1394,55 @@ export default function page() {
                                                         return -1;
                                                       return a.localeCompare(b);
                                                     });
-                                                  return orderedGroupNames.map(
-                                                    (name) => (
-                                                      <div key={name}>
-                                                        <div className="flex items-center justify-between mb-2">
-                                                          <div className="text-xs font-semibold text-slate-700">
-                                                            {name}
+                                                    return orderedGroupNames.map((name) => {
+                                                      // Check if all items in this group have been fully ordered
+                                                      const groupItems = groups.get(name) || [];
+                                                      const allItemsOrdered = groupItems.length > 0 && groupItems.every(
+                                                        (it) => Number(it.quantity_ordered_po || 0) >= Number(it.quantity || 0)
+                                                      );
+                                                      
+                                                      return (
+                                                        <div key={name}>
+                                                          <div className="flex items-center justify-between mb-2">
+                                                            <div className="text-xs font-semibold text-slate-700">
+                                                              {name}
+                                                            </div>
+                                                            {activeTab ===
+                                                              "active" &&
+                                                              name !==
+                                                              "Unassigned" && !allItemsOrdered && (
+                                                                <button
+                                                                  type="button"
+                                                                  onClick={() => {
+                                                                    const firstItem =
+                                                                      groups.get(
+                                                                        name
+                                                                      )?.[0];
+                                                                    const supplierId =
+                                                                      firstItem
+                                                                        ?.item
+                                                                        ?.supplier
+                                                                        ?.supplier_id ||
+                                                                      firstItem
+                                                                        ?.item
+                                                                        ?.supplier_id ||
+                                                                      null;
+                                                                    if (!supplierId)
+                                                                      return;
+                                                                    openCreatePOForSupplier(
+                                                                      name,
+                                                                      supplierId,
+                                                                      mto.id
+                                                                    );
+                                                                  }}
+                                                                  className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
+                                                                >
+                                                                  <Plus className="inline w-3 h-3 mr-1" />{" "}
+                                                                  Create Purchase
+                                                                  Order
+                                                                </button>
+                                                              )}
                                                           </div>
-                                                          {activeTab ===
-                                                            "active" &&
-                                                            name !==
-                                                            "Unassigned" && (
-                                                              <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                  const firstItem =
-                                                                    groups.get(
-                                                                      name
-                                                                    )?.[0];
-                                                                  const supplierId =
-                                                                    firstItem
-                                                                      ?.item
-                                                                      ?.supplier
-                                                                      ?.supplier_id ||
-                                                                    firstItem
-                                                                      ?.item
-                                                                      ?.supplier_id ||
-                                                                    null;
-                                                                  if (!supplierId)
-                                                                    return;
-                                                                  openCreatePOForSupplier(
-                                                                    name,
-                                                                    supplierId,
-                                                                    mto.id
-                                                                  );
-                                                                }}
-                                                                className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
-                                                              >
-                                                                <Plus className="inline w-3 h-3 mr-1" />{" "}
-                                                                Create Purchase
-                                                                Order
-                                                              </button>
-                                                            )}
-                                                        </div>
                                                         <div className="overflow-x-auto">
                                                           <table className="w-full border border-slate-200 rounded-lg table-fixed">
                                                             <colgroup>
@@ -1844,7 +1858,12 @@ export default function page() {
                                                                               min="0"
                                                                               value={
                                                                                 quantityOrderedDraftById[item.id] ??
-                                                                                String(item.quantity_ordered ?? 0)
+                                                                                String(
+                                                                                  // If quantity_ordered_po > 0, use that value instead of quantity_ordered
+                                                                                  (item.quantity_ordered_po && Number(item.quantity_ordered_po))
+                                                                                    ? item.quantity_ordered_po
+                                                                                    : (item.quantity_ordered ?? 0)
+                                                                                )
                                                                               }
                                                                               onChange={(e) =>
                                                                                 handleQuantityOrderedChange(
@@ -1852,7 +1871,7 @@ export default function page() {
                                                                                   e.target.value
                                                                                 )
                                                                               }
-                                                                              disabled={!!isSavingQuantityOrderedById[item.id]}
+                                                                              disabled={!!isSavingQuantityOrderedById[item.id] || (Number(item.quantity_ordered_po || 0) > 0)}
                                                                               className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
                                                                             />
                                                                             {pendingChangesById[item.id] && (
@@ -1913,9 +1932,9 @@ export default function page() {
                                                           </table>
                                                         </div>
                                                       </div>
-                                                    )
-                                                  );
-                                                })()}
+                                                      );
+                                                    });
+                                                  })()}
                                               </div>
                                             )}
                                         </div>

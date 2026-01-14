@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { addTab, replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
+import SearchBar from "@/components/SearchBar";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -654,6 +655,7 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-700">
                       Lots at a Glance
                     </h1>
+                    <SearchBar />
                   </div>
                 </div>
 

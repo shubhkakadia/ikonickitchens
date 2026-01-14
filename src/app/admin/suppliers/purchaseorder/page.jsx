@@ -35,6 +35,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import Image from "next/image";
 import CreatePurchaseOrderModal from "./components/CreatePurchaseOrderModal";
+import SearchBar from "@/components/SearchBar";
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function page() {
@@ -1057,6 +1058,8 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-600">
                       Purchase Orders
                     </h1>
+                    <div className="flex items-center gap-2">                    
+                    <SearchBar />
                     <button
                       onClick={() => setShowCreatePOModal(true)}
                       className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-xs font-medium"
@@ -1064,6 +1067,7 @@ export default function page() {
                       <Plus className="w-4 h-4" />
                       Create Purchase Order
                     </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1257,7 +1261,7 @@ export default function page() {
                               onClick={() => handleSort("order")}
                             >
                               <div className="flex items-center gap-2">
-                                Order / Supplier
+                                Supplier / Order
                                 {getSortIcon("order")}
                               </div>
                             </th>
@@ -1329,10 +1333,10 @@ export default function page() {
                                     <td className="px-3 py-2">
                                       <div className="flex flex-col">
                                         <span className="text-xs font-semibold text-gray-800 truncate">
-                                          {po.order_no}
+                                          {po.supplier?.name || "-"}
                                         </span>
                                         <span className="text-xs text-slate-600 truncate">
-                                          {po.supplier?.name || "-"}
+                                          {po.order_no}
                                         </span>
                                       </div>
                                     </td>

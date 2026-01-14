@@ -163,6 +163,7 @@ export async function POST(request) {
               ? {
                 create: items.map((item) => ({
                   item_id: item.item_id,
+                  mto_item_id: item.mto_item_id,
                   quantity: Number(item.quantity),
                   notes: item.notes,
                   unit_price:
@@ -197,10 +198,7 @@ export async function POST(request) {
           if (!mtoItem) continue;
           const alreadyOrdered = Number(mtoItem.quantity_ordered_po || 0);
           const orderedThisPO = Number(poi.quantity || 0);
-          const cappedOrdered = Math.min(
-            Number(mtoItem.quantity),
-            alreadyOrdered + orderedThisPO
-          );
+          const cappedOrdered = alreadyOrdered + orderedThisPO
           if (cappedOrdered !== alreadyOrdered) {
             await tx.materials_to_order_item.update({
               where: { id: mtoItem.id },

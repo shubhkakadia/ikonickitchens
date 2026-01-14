@@ -2315,12 +2315,12 @@ export default function page() {
                                         </td>
                                         <td className="py-2 px-3 text-slate-600">
                                           {transaction.type === "USED" &&
-                                            transaction.materials_to_order?.project
-                                              ?.name ? (
+                                            (transaction.materials_to_order?.project
+                                              ?.name || transaction.project?.name) ? (
                                             <span className="text-xs font-medium text-slate-800">
                                               {
                                                 transaction.materials_to_order
-                                                  .project.name
+                                                  ?.project?.name || transaction.project?.name
                                               }
                                             </span>
                                           ) : (

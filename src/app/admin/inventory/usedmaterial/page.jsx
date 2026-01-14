@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
@@ -21,6 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Image from "next/image";
+import SearchBar from "@/components/SearchBar";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -46,6 +47,13 @@ export default function page() {
   const [manualNotes, setManualNotes] = useState("");
   const [loadingItems, setLoadingItems] = useState(false);
   const [savingManual, setSavingManual] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedProjectName, setSelectedProjectName] = useState("");
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [projectSearchTerm, setProjectSearchTerm] = useState("");
+  const projectDropdownRef = useRef(null);
 
   // Category options
   const categoryOptions = [
@@ -58,7 +66,42 @@ export default function page() {
 
   useEffect(() => {
     fetchMTOs();
+    fetchProjectsWithAllActiveLots();
   }, []);
+
+  const fetchProjectsWithAllActiveLots = async () => {
+    try {
+      setLoadingProjects(true);
+      const sessionToken = getToken();
+      if (!sessionToken) return;
+
+      const response = await axios.get("/api/project/all", {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+
+      if (response.data.status) {
+        // Filter projects where ALL lots are ACTIVE
+        const filteredProjects = response.data.data.filter((project) => {
+          const lots = project.lots || [];
+          // If project has no lots, exclude it
+          if (lots.length === 0) return false;
+          // Check if all lots are ACTIVE
+          return lots.every((lot) => lot.status === "ACTIVE");
+        });
+        setProjects(filteredProjects);
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      toast.error("Error fetching projects", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
 
   const fetchMTOs = async () => {
     try {
@@ -442,6 +485,50 @@ export default function page() {
     };
   }, [showManualAddModal]);
 
+  // Close project dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        projectDropdownRef.current &&
+        !projectDropdownRef.current.contains(event.target)
+      ) {
+        setIsProjectDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Filter projects based on search term
+  const filteredProjects = projects.filter((project) => {
+    if (!projectSearchTerm) return true;
+    const searchLower = projectSearchTerm.toLowerCase();
+    const projectName = project.name?.toLowerCase() || "";
+    const clientName = project.client?.client_name?.toLowerCase() || "";
+    return projectName.includes(searchLower) || clientName.includes(searchLower);
+  });
+
+  const handleProjectSelect = (project) => {
+    setSelectedProjectId(project.project_id);
+    setSelectedProjectName(project.name);
+    setProjectSearchTerm(`${project.name}${project.client ? ` (${project.client.client_name})` : ""}`);
+    setIsProjectDropdownOpen(false);
+  };
+
+  const handleProjectSearchChange = (e) => {
+    const value = e.target.value;
+    setProjectSearchTerm(value);
+    setIsProjectDropdownOpen(true);
+    // If user clears the input, clear the selection
+    if (!value.trim()) {
+      setSelectedProjectId("");
+      setSelectedProjectName("");
+    }
+  };
+
   const fetchItemsByCategory = async (category) => {
     try {
       setLoadingItems(true);
@@ -512,6 +599,10 @@ export default function page() {
     setShowItemSearchResults(false);
     setSelectedItems([]);
     setManualNotes("");
+    setSelectedProjectId("");
+    setSelectedProjectName("");
+    setProjectSearchTerm("");
+    setIsProjectDropdownOpen(false);
   };
 
   // Handle add item to table
@@ -616,6 +707,7 @@ export default function page() {
             quantity: parseFloat(item.quantity),
             type: "USED",
             notes: manualNotes || `Manually recorded used quantity`,
+            project_id: selectedProjectId || null,
           },
           {
             headers: {
@@ -772,6 +864,8 @@ export default function page() {
                   <h1 className="text-xl font-bold text-slate-700">
                     Used Material
                   </h1>
+                  <div className="flex items-center gap-2">                    
+                  <SearchBar />
                   <button
                     onClick={() => setShowManualAddModal(true)}
                     className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
@@ -779,6 +873,7 @@ export default function page() {
                     <Plus className="w-4 h-4" />
                     Manually Add Material Used
                   </button>
+                  </div>
                 </div>
 
                 <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
@@ -1340,6 +1435,68 @@ export default function page() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Project Selection */}
+              <div className="relative" ref={projectDropdownRef}>
+                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                  Project (Optional)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={projectSearchTerm}
+                    onChange={handleProjectSearchChange}
+                    onFocus={() => setIsProjectDropdownOpen(true)}
+                    className="w-full text-sm text-slate-800 px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    placeholder="Search or select a project..."
+                    disabled={savingManual || loadingProjects}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+                    className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+                    disabled={savingManual || loadingProjects}
+                  >
+                    <ChevronDown
+                      className={`w-5 h-5 transition-transform ${isProjectDropdownOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                </div>
+
+                {isProjectDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {loadingProjects ? (
+                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                        Loading projects...
+                      </div>
+                    ) : filteredProjects.length > 0 ? (
+                      filteredProjects.map((project) => {
+                        const displayText = `${project.name}${project.client ? ` ${project.client.client_name}` : ""}`;
+                        return (
+                          <button
+                            key={project.project_id}
+                            type="button"
+                            onClick={() => handleProjectSelect(project)}
+                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                          >
+                          <span>
+                          <p className="font-bold">{project.name}</p>
+                          <p className="text-xs text-slate-500">{project.client ? ` ${project.client.client_name}` : ""}</p>
+                          </span>
+                            
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                        {projectSearchTerm ? "No matching projects found" : "No projects with all active lots available"}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-slate-100" />
+
               {/* Item Selection & List */}
               <div>
                 <div className="flex items-center justify-between mb-4">

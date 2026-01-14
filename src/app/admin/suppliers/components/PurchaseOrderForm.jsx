@@ -71,6 +71,7 @@ export default function PurchaseOrderForm({
             id: item.id,
             item_id: item.item_id || item.item?.item_id, // Check both locations for item_id
             item: item.item,
+            mto_item_id: item.id,
             // Use remaining for partially ordered lists to continue ordering the balance
             quantity:
               mto.status === "PARTIALLY_ORDERED" ? remaining : mtoQuantity,
@@ -210,7 +211,6 @@ export default function PurchaseOrderForm({
     setSelectedInvoiceFile(null);
     setPageNumber(1);
   };
-
   const handleCreatePurchaseOrder = async () => {
     try {
       setIsCreatingPO(true);
@@ -286,6 +286,7 @@ export default function PurchaseOrderForm({
         .map((item) =>
           JSON.stringify({
             item_id: item.item_id,
+            mto_item_id: item.mto_item_id,
             quantity: parseFloat(item.quantity) || 0,
             unit_price: parseFloat(item.unit_price) || 0,
             notes: "", // Optional notes per item

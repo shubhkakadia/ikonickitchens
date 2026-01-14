@@ -192,6 +192,7 @@ model project {
   lots               lot[]
   material_selection material_selection[]
   materials_to_order materials_to_order[]
+  stock_transactions stock_transaction[]
   client             client?              @relation(fields: [client_id], references: [client_id], onDelete: SetNull)
 
   @@index([project_id])
@@ -639,16 +640,19 @@ model stock_transaction {
   notes                 String?              @db.LongText
   materials_to_order_id String?
   purchase_order_id     String?
+  project_id            String?
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
   item                  item                 @relation(fields: [item_id], references: [item_id])
   materials_to_order    materials_to_order?  @relation(fields: [materials_to_order_id], references: [id], onDelete: SetNull)
   purchase_order        purchase_order?      @relation(fields: [purchase_order_id], references: [id], onDelete: SetNull)
+  project               project?             @relation(fields: [project_id], references: [project_id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([item_id])
   @@index([purchase_order_id])
   @@index([materials_to_order_id])
+  @@index([project_id])
 }
 
 model logs {

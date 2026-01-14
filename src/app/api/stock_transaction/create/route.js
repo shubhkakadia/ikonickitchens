@@ -332,7 +332,7 @@ async function handleAddedTransaction(data) {
  * Creates stock_transaction with type USED
  */
 async function handleManualUsedTransaction(data) {
-  const { item_id, quantity, notes } = data;
+  const { item_id, quantity, notes, project_id } = data;
 
   // Verify item exists
   const itemExists = await prisma.item.findUnique({
@@ -388,6 +388,7 @@ async function handleManualUsedTransaction(data) {
           quantity: quantity,
           type: "USED",
           notes: notes || `Manually recorded used quantity`,
+          project_id: project_id || null,
         },
       });
     });
@@ -527,6 +528,7 @@ export async function POST(request) {
       notes,
       purchase_order_id,
       materials_to_order_id,
+      project_id,
     } = body;
 
     // Validate required fields
@@ -567,6 +569,7 @@ export async function POST(request) {
           item_id,
           quantity,
           notes,
+          project_id,
         });
       }
     } else if (type === "ADDED") {

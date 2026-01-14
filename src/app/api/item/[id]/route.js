@@ -61,6 +61,11 @@ export async function GET(request, { params }) {
             },
           },
         },
+        project: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",

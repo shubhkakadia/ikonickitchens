@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth, getUserFromToken } from "@/lib/validators/authFromToken";
+import {
+  validateAdminAuth,
+  getUserFromToken,
+} from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
 export async function PATCH(request, { params }) {
   try {
@@ -83,7 +87,7 @@ export async function PATCH(request, { params }) {
 
     const updated = await prisma.materials_to_order_item.update({
       where: { id },
-      data: { 
+      data: {
         quantity_ordered: quantityOrdered,
         ordered_by_id: userId,
       },
@@ -108,7 +112,7 @@ export async function PATCH(request, { params }) {
           include: {
             project: {
               include: {
-                client: true
+                client: true,
               },
             },
             lots: {
@@ -165,24 +169,24 @@ export async function PATCH(request, { params }) {
       const previousSupplierItems = mtoItem.mto.items.filter(
         (item) => item.item?.supplier?.supplier_id === supplierId
       );
-      const allOrderedBefore = previousSupplierItems.every(
-        (item) => {
-          // Use the updated quantity for the current item, previous for others
-          const qtyOrdered = item.id === id ? previousQuantityOrdered : (item.quantity_ordered || 0);
-          return qtyOrdered >= (item.quantity || 0);
-        }
-      );
+      const allOrderedBefore = previousSupplierItems.every((item) => {
+        // Use the updated quantity for the current item, previous for others
+        const qtyOrdered =
+          item.id === id ? previousQuantityOrdered : item.quantity_ordered || 0;
+        return qtyOrdered >= (item.quantity || 0);
+      });
 
       // Only send notification if we transitioned from "not all ordered" to "all ordered"
       if (allOrderedNow && !allOrderedBefore && supplierItems.length > 0) {
         // Send notification for ordered status
         try {
           const supplierName = updated.item.supplier.name || "Unknown Supplier";
-          const lotNames = updated.mto.lots && updated.mto.lots.length > 0
-            ? (updated.mto.lots.length === 1
+          const lotNames =
+            updated.mto.lots && updated.mto.lots.length > 0
+              ? updated.mto.lots.length === 1
                 ? updated.mto.lots[0].lot_id
-                : updated.mto.lots.map(l => l.lot_id).join(", "))
-            : "Unknown Lot";
+                : updated.mto.lots.map((l) => l.lot_id).join(", ")
+              : "Unknown Lot";
 
           await sendNotification(
             {
@@ -190,7 +194,8 @@ export async function PATCH(request, { params }) {
               materials_to_order_id: updated.mto_id,
               project_id: updated.mto.project_id,
               project_name: updated.mto.project?.name || "Unknown Project",
-              client_name: updated.mto.project?.client?.client_name || "Unknown Client",
+              client_name:
+                updated.mto.project?.client?.client_name || "Unknown Client",
               lot_name: lotNames,
               supplier_name: supplierName,
               is_ordered: true,
@@ -199,18 +204,26 @@ export async function PATCH(request, { params }) {
             "materials_to_order_list_update"
           );
         } catch (notificationError) {
-          console.error("Failed to send MTO ordered notification:", notificationError);
+          console.error(
+            "Failed to send MTO ordered notification:",
+            notificationError
+          );
           // Don't fail the request if notification fails
         }
       }
     }
+
+    // Check and update MTO status after updating quantity ordered
+    await checkAndUpdateMTOStatus(id);
 
     return NextResponse.json(
       {
         status: true,
         message: "Materials to order item updated successfully",
         data: updated,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" }),
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
       { status: 200 }
     );
@@ -222,4 +235,3 @@ export async function PATCH(request, { params }) {
     );
   }
 }
-

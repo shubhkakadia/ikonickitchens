@@ -4,146 +4,156 @@ import { prisma } from "@/lib/db";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
+import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
 export async function POST(request) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    const contentType = request.headers.get("content-type") || "";
 
-    let supplier_id;
-    let mto_id;
-    let order_no;
-    let orderedBy_id;
-    let invoice_url_id; // may be set if file uploaded
-    let total_amount;
-    let delivery_charge;
-    let invoice_date;
-    let notes;
-    let items;
+    // Parse FormData
+    const form = await request.formData();
 
-    if (contentType.includes("multipart/form-data")) {
-      const form = await request.formData();
+    const supplier_id = form.get("supplier_id") || undefined;
+    const mto_id = form.get("mto_id") || undefined;
+    const order_no = form.get("order_no") || undefined;
+    const orderedBy_id = form.get("orderedBy_id") || undefined;
+    const notes = form.get("notes") || undefined;
 
-      supplier_id = form.get("supplier_id") || undefined;
-      mto_id = form.get("mto_id") || undefined;
-      order_no = form.get("order_no") || undefined;
-      orderedBy_id = form.get("orderedBy_id") || undefined;
-      notes = form.get("notes") || undefined;
+    const totalAmountStr = form.get("total_amount");
+    const total_amount =
+      totalAmountStr !== null && totalAmountStr !== undefined
+        ? Number(totalAmountStr)
+        : undefined;
 
-      const totalAmountStr = form.get("total_amount");
-      total_amount =
-        totalAmountStr !== null && totalAmountStr !== undefined
-          ? Number(totalAmountStr)
-          : undefined;
+    const deliveryChargeStr = form.get("delivery_charge");
+    const delivery_charge =
+      deliveryChargeStr !== null &&
+      deliveryChargeStr !== undefined &&
+      deliveryChargeStr !== ""
+        ? Number(deliveryChargeStr)
+        : undefined;
 
-      const deliveryChargeStr = form.get("delivery_charge");
-      delivery_charge =
-        deliveryChargeStr !== null && deliveryChargeStr !== undefined && deliveryChargeStr !== ""
-          ? Number(deliveryChargeStr)
-          : undefined;
+    const invoiceDateStr = form.get("invoice_date");
+    const invoice_date =
+      invoiceDateStr !== null &&
+      invoiceDateStr !== undefined &&
+      invoiceDateStr !== ""
+        ? new Date(invoiceDateStr)
+        : undefined;
 
-      const invoiceDateStr = form.get("invoice_date");
-      invoice_date =
-        invoiceDateStr !== null && invoiceDateStr !== undefined && invoiceDateStr !== ""
-          ? new Date(invoiceDateStr)
-          : undefined;
+    const status = form.get("status") || undefined;
 
-      const itemsVal = form.get("items");
-      if (itemsVal) {
-        try {
-          if (typeof itemsVal === "string") {
-            let parsed;
-            try {
-              parsed = JSON.parse(itemsVal);
-            } catch (e1) {
-              // Support comma-separated object list without [ ]
-              const trimmed = itemsVal.trim();
-              if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-                try {
-                  parsed = JSON.parse(`[${trimmed}]`);
-                } catch (e2) {
-                  parsed = undefined;
-                }
-              }
-            }
-
-            if (parsed && !Array.isArray(parsed)) {
-              items = [parsed];
-            } else if (Array.isArray(parsed)) {
-              items = parsed;
-            } else {
-              items = undefined;
-            }
-          } else {
-            items = itemsVal;
-          }
-        } catch (_) {
-          items = undefined;
-        }
-      }
-
-      const file =
-        getFileFromFormData(form, "invoice") ||
-        getFileFromFormData(form, "file");
-      if (file) {
-        if (!order_no) {
-          return NextResponse.json(
-            {
-              status: false,
-              message: "order_no is required when uploading a file",
-            },
-            { status: 400 }
-          );
-        }
-
-        // Upload file with order_no as the filename base
-        const uploadResult = await uploadFile(file, {
-          uploadDir: "mediauploads",
-          subDir: "purchase_order",
-          filenameStrategy: "id-based",
-          idPrefix: order_no,
-        });
-
-        const createdFile = await prisma.supplier_file.create({
-          data: {
-            url: uploadResult.relativePath,
-            filename: uploadResult.filename,
-            file_type: "invoice",
-            mime_type: uploadResult.mimeType,
-            extension: uploadResult.extension,
-            size: uploadResult.size,
-          },
-        });
-        invoice_url_id = createdFile.id;
-      }
-    } else {
-      const body = await request.json();
-      supplier_id = body.supplier_id;
-      mto_id = body.mto_id;
-      order_no = body.order_no;
-      orderedBy_id = body.orderedBy_id;
-      invoice_url_id = body.invoice_url_id;
-      total_amount = body.total_amount;
-      delivery_charge = body.delivery_charge;
-      invoice_date = body.invoice_date ? new Date(body.invoice_date) : undefined;
-      notes = body.notes;
-      items = body.items;
-    }
-
+    // Validate required fields
     if (!supplier_id) {
       return NextResponse.json(
         { status: false, message: "supplier_id is required" },
         { status: 400 }
       );
     }
-    // mto_id is optional per schema; do not require it
+
     if (!order_no) {
       return NextResponse.json(
         { status: false, message: "order_no is required" },
         { status: 400 }
       );
     }
+
+    // Check if order_no already exists
+    const existingPO = await prisma.purchase_order.findUnique({
+      where: { order_no },
+    });
+
+    if (existingPO) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: `Purchase order with order number "${order_no}" already exists`,
+        },
+        { status: 409 }
+      );
+    }
+
+    // Parse items from FormData
+    let items;
+    const itemsVal = form.get("items");
+    if (itemsVal) {
+      try {
+        if (typeof itemsVal === "string") {
+          let parsed;
+          try {
+            parsed = JSON.parse(itemsVal);
+          } catch (e1) {
+            // Support comma-separated object list without [ ]
+            const trimmed = itemsVal.trim();
+            if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+              try {
+                parsed = JSON.parse(`[${trimmed}]`);
+              } catch (e2) {
+                parsed = undefined;
+              }
+            }
+          }
+
+          if (parsed && !Array.isArray(parsed)) {
+            items = [parsed];
+          } else if (Array.isArray(parsed)) {
+            items = parsed;
+          } else {
+            items = undefined;
+          }
+        } else {
+          items = itemsVal;
+        }
+      } catch (_) {
+        items = undefined;
+      }
+    }
+
+    // Handle file upload
+    let invoice_url_id;
+    const file =
+      getFileFromFormData(form, "invoice") || getFileFromFormData(form, "file");
+
+    if (file) {
+      // Upload file with order_no as the filename base
+      const uploadResult = await uploadFile(file, {
+        uploadDir: "mediauploads",
+        subDir: "purchase_order",
+        filenameStrategy: "id-based",
+        idPrefix: order_no,
+      });
+
+      const createdFile = await prisma.supplier_file.create({
+        data: {
+          url: uploadResult.relativePath,
+          filename: uploadResult.filename,
+          file_type: "invoice",
+          mime_type: uploadResult.mimeType,
+          extension: uploadResult.extension,
+          size: uploadResult.size,
+        },
+      });
+      invoice_url_id = createdFile.id;
+    }
+
+    // Create purchase order within a transaction
+    // Calculate grand total from items (Order Total + GST)
+    const orderTotal = Array.isArray(items)
+      ? items.reduce((sum, item) => {
+          const itemTotal = Number(item.total_amount || 0);
+          return sum + itemTotal;
+        }, 0)
+      : 0;
+
+    const gstTotal = Array.isArray(items)
+      ? items.reduce((sum, item) => {
+          const itemGst = Number(item.gst || 0);
+          return sum + itemGst;
+        }, 0)
+      : 0;
+
+    const grandTotal = orderTotal + gstTotal;
 
     const result = await prisma.$transaction(async (tx) => {
       // Create PO and items
@@ -154,30 +164,36 @@ export async function POST(request) {
           order_no,
           orderedBy_id,
           invoice_url_id,
-          total_amount,
+          total_amount: grandTotal, // Store grand total (Order Total + GST)
           delivery_charge,
           invoice_date,
           notes,
           items:
             Array.isArray(items) && items.length > 0
               ? {
-                create: items.map((item) => ({
-                  item_id: item.item_id,
-                  mto_item_id: item.mto_item_id,
-                  quantity: Number(item.quantity),
-                  notes: item.notes,
-                  unit_price:
-                    item.unit_price !== undefined
-                      ? Number(item.unit_price)
-                      : undefined,
-                })),
-              }
+                  create: items.map((item) => ({
+                    item_id: item.item_id,
+                    mto_item_id: item.mto_item_id,
+                    quantity: Number(item.quantity),
+                    notes: item.notes,
+                    unit_price:
+                      item.unit_price !== undefined
+                        ? Number(item.unit_price)
+                        : undefined,
+                    gst: item.gst !== undefined ? Number(item.gst) : undefined,
+                    total_amount:
+                      item.total_amount !== undefined
+                        ? Number(item.total_amount)
+                        : undefined,
+                  })),
+                }
               : undefined,
+          status,
         },
         include: { items: true },
       });
 
-      // If linked to an MTO and items provided, update MTOI quantities and MTO status
+      // If linked to an MTO and items provided, update MTOI quantities
       if (createdPO.mto_id && createdPO.items && createdPO.items.length > 0) {
         // Fetch all MTO items for the MTO
         const mtoItems = await tx.materials_to_order_item.findMany({
@@ -198,34 +214,27 @@ export async function POST(request) {
           if (!mtoItem) continue;
           const alreadyOrdered = Number(mtoItem.quantity_ordered_po || 0);
           const orderedThisPO = Number(poi.quantity || 0);
-          const cappedOrdered = alreadyOrdered + orderedThisPO
+          const cappedOrdered = alreadyOrdered + orderedThisPO;
           if (cappedOrdered !== alreadyOrdered) {
             await tx.materials_to_order_item.update({
               where: { id: mtoItem.id },
               data: { quantity_ordered_po: cappedOrdered },
             });
-            // Update local copy for later status calculation
-            mtoItem.quantity_ordered_po = cappedOrdered;
           }
         }
-
-        // Determine MTO status based on whether all items are fully ordered
-        const allFullyOrdered =
-          mtoItems.length > 0 &&
-          mtoItems.every(
-            (mi) =>
-              Number(mi.quantity_ordered_po || 0) === Number(mi.quantity || 0)
-          );
-        await tx.materials_to_order.update({
-          where: { id: createdPO.mto_id },
-          data: {
-            status: allFullyOrdered ? "FULLY_ORDERED" : "PARTIALLY_ORDERED",
-          },
-        });
       }
 
       return createdPO;
     });
+
+    // Update MTO status after transaction (considers both ordered items and reservations)
+    if (result.mto_id && result.items && result.items.length > 0) {
+      // Use the first item's mto_item_id to trigger the status check
+      const firstItemWithMtoId = result.items.find((item) => item.mto_item_id);
+      if (firstItemWithMtoId) {
+        await checkAndUpdateMTOStatus(firstItemWithMtoId.mto_item_id);
+      }
+    }
 
     const logged = await withLogging(
       request,
@@ -241,7 +250,7 @@ export async function POST(request) {
           status: true,
           message: "Purchase order created successfully",
           data: result,
-          warning: "Note: Creation succeeded but logging failed"
+          warning: "Note: Creation succeeded but logging failed",
         },
         { status: 201 }
       );

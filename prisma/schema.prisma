@@ -425,6 +425,7 @@ model item {
   purchase_order_item      purchase_order_item[]
   sheet                    sheet?
   stock_transactions       stock_transaction[]
+  reserve_item_stock       reserve_item_stock[]
 
   @@unique([item_id, category])
   @@index([category])
@@ -579,6 +580,7 @@ model materials_to_order_item {
   item                item                  @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
   mto                 materials_to_order    @relation(fields: [mto_id], references: [id], onDelete: Cascade)
   ordered_items       purchase_order_item[]
+  reserve_item_stock  reserve_item_stock[]
 
   @@index([mto_id])
   @@index([item_id])
@@ -619,6 +621,8 @@ model purchase_order_item {
   quantity          Int
   quantity_received Int?                     @default(0)
   unit_price        Decimal?                 @db.Decimal(10, 2)
+  gst               Decimal?                 @db.Decimal(10, 2)
+  total_amount      Decimal?                 @db.Decimal(10, 2)
   notes             String?                  @db.LongText
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
@@ -713,6 +717,19 @@ model notification_config {
   updatedAt                           DateTime @updatedAt
 
   @@index([user_id])
+}
+
+model reserve_item_stock {
+  id            String                   @id @default(uuid())
+  item_id       String
+  quantity      Int
+  used_quantity Int
+  mto_id        String
+  item          item                     @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  mto           materials_to_order_item @relation(fields: [mto_id], references: [id], onDelete: Cascade)
+  user_id       String
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
 }
 
 enum LogAction {

@@ -28,6 +28,28 @@ export async function GET(request, { params }) {
         supplier: true,
         materials_to_order_items: true,
         purchase_order_item: true,
+        reserve_item_stock: {
+          include: {
+            mto: {
+              include: {
+                mto: {
+                  include: {
+                    project: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                    lots: {
+                      select: {
+                        lot_id: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -205,9 +227,10 @@ export async function PATCH(request, { params }) {
     else if (imageFile && imageFile instanceof File) {
       try {
         // Store old image info before processing new image
-        const oldImageUrl = existingItem.image_id && existingItem.image
-          ? existingItem.image.url
-          : null;
+        const oldImageUrl =
+          existingItem.image_id && existingItem.image
+            ? existingItem.image.url
+            : null;
         const oldImageId = existingItem.image_id || null;
 
         // Upload new image FIRST (before deleting old one)
@@ -249,7 +272,10 @@ export async function PATCH(request, { params }) {
             await deleteFileByRelativePath(oldImageUrl);
           } catch (deleteError) {
             // Log but don't fail the entire operation if old image deletion fails
-            console.error("Error deleting old image (non-critical):", deleteError);
+            console.error(
+              "Error deleting old image (non-critical):",
+              deleteError
+            );
           }
         }
       } catch (error) {
@@ -257,11 +283,13 @@ export async function PATCH(request, { params }) {
         console.error("Upload error details:", {
           message: error.message,
           stack: error.stack,
-          imageFile: imageFile ? {
-            name: imageFile.name,
-            size: imageFile.size,
-            type: imageFile.type,
-          } : null,
+          imageFile: imageFile
+            ? {
+                name: imageFile.name,
+                size: imageFile.size,
+                type: imageFile.type,
+              }
+            : null,
         });
         // Return error instead of silently failing
         return NextResponse.json(
@@ -364,6 +392,28 @@ export async function PATCH(request, { params }) {
         edging_tape: true,
         materials_to_order_items: true,
         purchase_order_item: true,
+        reserve_item_stock: {
+          include: {
+            mto: {
+              include: {
+                mto: {
+                  include: {
+                    project: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                    lots: {
+                      select: {
+                        lot_id: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -418,7 +468,9 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Item updated successfully",
         data: itemWithTransactions,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
       { status: 200 }
     );
@@ -476,9 +528,19 @@ export async function DELETE(request, { params }) {
       data: { is_deleted: true },
     });
 
-    const logged = await withLogging(request, "item", id, "DELETE", `Item deleted successfully: ${item.description || item.item_id}`);
+    const logged = await withLogging(
+      request,
+      "item",
+      id,
+      "DELETE",
+      `Item deleted successfully: ${item.description || item.item_id}`
+    );
     if (!logged) {
-      console.error(`Failed to log item deletion: ${id} - ${item.description || item.item_id}`);
+      console.error(
+        `Failed to log item deletion: ${id} - ${
+          item.description || item.item_id
+        }`
+      );
     }
 
     return NextResponse.json(
@@ -486,7 +548,9 @@ export async function DELETE(request, { params }) {
         status: true,
         message: "Item deleted successfully",
         data: deletedItem,
-        ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Deletion succeeded but logging failed" }),
       },
       { status: 200 }
     );

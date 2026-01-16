@@ -65,26 +65,85 @@ async function handleUsedTransaction(data) {
   let updatedMtoItem;
   try {
     await prisma.$transaction(async (tx) => {
-      // Atomically decrease inventory (guard against negative)
-      const dec = await tx.item.updateMany({
+      let remainingQuantity = quantity;
+
+      // Check if there are any reservations for this item from this specific MTO
+      const reservations = await tx.reserve_item_stock.findMany({
         where: {
           item_id: item_id,
-          quantity: { gte: quantity },
+          mto_id: mtoItem.id, // Only get reservations for this specific MTO item
         },
-        data: {
-          quantity: { decrement: quantity },
+        orderBy: {
+          createdAt: "asc", // Use oldest reservations first (FIFO)
         },
       });
 
-      if (dec.count === 0) {
-        const current = await tx.item.findUnique({
-          where: { item_id: item_id },
-          select: { quantity: true },
-        });
-        const available = current?.quantity ?? 0;
-        throw new Error(
-          `INSUFFICIENT_INVENTORY:${item_id}:${quantity}:${available}`
+      // Use from reservations first - consume entire reservation and delete it
+      for (const reservation of reservations) {
+        if (remainingQuantity <= 0) break;
+
+        // Calculate available quantity in this reservation (total - already used)
+        const availableInReservation =
+          reservation.quantity - reservation.used_quantity;
+
+        if (availableInReservation <= 0) {
+          // This reservation is already fully consumed, delete it
+          await tx.reserve_item_stock.delete({
+            where: { id: reservation.id },
+          });
+          continue;
+        }
+
+        // Use as much as we can from this reservation
+        const quantityToUseFromReservation = Math.min(
+          availableInReservation,
+          remainingQuantity
         );
+
+        // If we're using all the available quantity, delete the reservation
+        // Otherwise, update the used_quantity
+        if (quantityToUseFromReservation >= availableInReservation) {
+          // Fully consumed - delete the reservation entry
+          await tx.reserve_item_stock.delete({
+            where: { id: reservation.id },
+          });
+        } else {
+          // Partially consumed - update used_quantity
+          await tx.reserve_item_stock.update({
+            where: { id: reservation.id },
+            data: {
+              used_quantity: {
+                increment: quantityToUseFromReservation,
+              },
+            },
+          });
+        }
+
+        remainingQuantity -= quantityToUseFromReservation;
+      }
+
+      // If still need more quantity, use from regular stock
+      if (remainingQuantity > 0) {
+        const dec = await tx.item.updateMany({
+          where: {
+            item_id: item_id,
+            quantity: { gte: remainingQuantity },
+          },
+          data: {
+            quantity: { decrement: remainingQuantity },
+          },
+        });
+
+        if (dec.count === 0) {
+          const current = await tx.item.findUnique({
+            where: { item_id: item_id },
+            select: { quantity: true },
+          });
+          const available = current?.quantity ?? 0;
+          throw new Error(
+            `INSUFFICIENT_INVENTORY:${item_id}:${remainingQuantity}:${available}`
+          );
+        }
       }
 
       // Update materials_to_order_item's quantity_used
@@ -361,6 +420,8 @@ async function handleManualUsedTransaction(data) {
   let stockTransaction;
   try {
     await prisma.$transaction(async (tx) => {
+      // Manual transactions don't have MTO context, so we can't use reservations
+      // Just use from regular stock directly
       const dec = await tx.item.updateMany({
         where: {
           item_id: item_id,
@@ -443,6 +504,8 @@ async function handleWastedTransaction(data) {
   // Wrap all database writes in a transaction to ensure atomicity
   try {
     await prisma.$transaction(async (tx) => {
+      // Wasted transactions don't have MTO context, so we can't use reservations
+      // Just use from regular stock directly
       const dec = await tx.item.updateMany({
         where: {
           item_id: item_id,
@@ -647,11 +710,11 @@ export async function POST(request) {
           edging_tape: true,
         },
       });
-      
+
       // Build item name with brand, color, finish
       let itemName = "Unknown Item";
       let dimensions = "N/A";
-      
+
       if (item) {
         const parts = [];
         if (item.sheet) parts.push(`Brand: ${item.sheet.brand || "N/A"}`);
@@ -662,23 +725,30 @@ export async function POST(request) {
         if (item.handle) parts.push(`Handle: ${item.handle.brand || "N/A"}`);
         if (item.handle?.color) parts.push(`Color: ${item.handle.color}`);
         if (item.handle?.type) parts.push(`Type: ${item.handle.type}`);
-        if (item.handle?.material) parts.push(`Material: ${item.handle.material}`);
+        if (item.handle?.material)
+          parts.push(`Material: ${item.handle.material}`);
         if (item.handle?.dimensions) dimensions = item.handle.dimensions;
         // hardware
-        if (item.hardware) parts.push(`Hardware: ${item.hardware.brand || "N/A"}`);
+        if (item.hardware)
+          parts.push(`Hardware: ${item.hardware.brand || "N/A"}`);
         if (item.hardware?.name) parts.push(`Name: ${item.hardware.name}`);
         if (item.hardware?.type) parts.push(`Type: ${item.hardware.type}`);
         if (item.hardware?.dimensions) dimensions = item.hardware.dimensions;
         // accessory
-        if (item.accessory) parts.push(`Accessory: ${item.accessory.name || "N/A"}`);
+        if (item.accessory)
+          parts.push(`Accessory: ${item.accessory.name || "N/A"}`);
         // edging_tape
-        if (item.edging_tape) parts.push(`Edging Tape: ${item.edging_tape.brand || "N/A"}`);
-        if (item.edging_tape?.color) parts.push(`Color: ${item.edging_tape.color}`);
-        if (item.edging_tape?.finish) parts.push(`Finish: ${item.edging_tape.finish}`);
-        if (item.edging_tape?.dimensions) dimensions = item.edging_tape.dimensions;
+        if (item.edging_tape)
+          parts.push(`Edging Tape: ${item.edging_tape.brand || "N/A"}`);
+        if (item.edging_tape?.color)
+          parts.push(`Color: ${item.edging_tape.color}`);
+        if (item.edging_tape?.finish)
+          parts.push(`Finish: ${item.edging_tape.finish}`);
+        if (item.edging_tape?.dimensions)
+          dimensions = item.edging_tape.dimensions;
         itemName = parts.length > 0 ? parts.join(", ") : item.item_id;
       }
-      
+
       await sendNotification(
         {
           type: "stock_transaction",
@@ -691,7 +761,10 @@ export async function POST(request) {
         "stock_transaction_created"
       );
     } catch (notificationError) {
-      console.error("Failed to send stock transaction notification:", notificationError);
+      console.error(
+        "Failed to send stock transaction notification:",
+        notificationError
+      );
       // Don't fail the request if notification fails
     }
 
@@ -699,7 +772,9 @@ export async function POST(request) {
       {
         status: result.status,
         message: result.message,
-        ...(logged ? {} : { warning: "Note: Creation succeeded but logging failed" }),
+        ...(logged
+          ? {}
+          : { warning: "Note: Creation succeeded but logging failed" }),
         data: result.data,
       },
       { status: result.statusCode }

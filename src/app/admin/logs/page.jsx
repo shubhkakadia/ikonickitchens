@@ -22,6 +22,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useEffect, useMemo, useState } from "react";
 import { useExcelExport } from "@/hooks/useExcelExport";
+import SearchBar from "@/components/SearchBar";
 
 export default function page() {
   const [logs, setLogs] = useState([]);
@@ -480,6 +481,7 @@ export default function page() {
                 <div className="px-4 py-2 shrink-0">
                   <div className="flex justify-between items-center">
                     <h1 className="text-xl font-bold text-slate-700">Logs</h1>
+                    <SearchBar />
                   </div>
                 </div>
 

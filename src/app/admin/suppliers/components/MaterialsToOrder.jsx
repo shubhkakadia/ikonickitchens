@@ -43,7 +43,11 @@ const GroupedItemsTable = (({
       const next = { ...prev };
       items.forEach((it) => {
         if (it?.id && next[it.id] === undefined) {
-          next[it.id] = String(it.quantity_ordered ?? 0);
+          // If quantity_ordered_po > 0, use that value instead of quantity_ordered
+          const qtyOrdered = (it.quantity_ordered_po && Number(it.quantity_ordered_po) > 0) 
+            ? it.quantity_ordered_po 
+            : (it.quantity_ordered ?? 0);
+          next[it.id] = String(qtyOrdered);
         }
       });
       return next;
@@ -142,11 +146,18 @@ const GroupedItemsTable = (({
 
   return (
     <div className="space-y-2">
-      {orderedGroupNames.map((name) => (
+      {orderedGroupNames.map((name) => {
+        // Check if all items in this group have been fully ordered
+        const groupItems = groups.get(name) || [];
+        const allItemsOrdered = groupItems.length > 0 && groupItems.every(
+          (it) => Number(it.quantity_ordered_po || 0) >= Number(it.quantity || 0)
+        );
+        
+        return (
         <div key={name}>
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-semibold text-slate-700">{name}</div>
-            {activeTab === "active" && name !== "Unassigned" && (
+            {activeTab === "active" && name !== "Unassigned" && !allItemsOrdered && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -350,7 +361,12 @@ const GroupedItemsTable = (({
                         min="0"
                         value={
                           quantityOrderedDraftById[item.id] ??
-                          String(item.quantity_ordered ?? 0)
+                          String(
+                            // If quantity_ordered_po > 0, use that value instead of quantity_ordered
+                            (item.quantity_ordered_po && Number(item.quantity_ordered_po) > 0)
+                              ? item.quantity_ordered_po
+                              : (item.quantity_ordered ?? 0)
+                          )
                         }
                         onChange={(e) =>
                           handleQuantityOrderedChange(item.id, e.target.value)
@@ -363,10 +379,15 @@ const GroupedItemsTable = (({
                           }
                           const v =
                             quantityOrderedDraftById[item.id] ??
-                            String(item.quantity_ordered ?? 0);
+                            String(
+                              // If quantity_ordered_po > 0, use that value instead of quantity_ordered
+                              (item.quantity_ordered_po && Number(item.quantity_ordered_po))
+                                ? item.quantity_ordered_po
+                                : (item.quantity_ordered ?? 0)
+                            );
                           saveQuantityOrdered(item.id, v);
                         }}
-                        disabled={!!isSavingQuantityOrderedById[item.id]}
+                        disabled={!!isSavingQuantityOrderedById[item.id] || (Number(item.quantity_ordered_po || 0) > 0)}
                         className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
                       />
                     </td>
@@ -394,7 +415,8 @@ const GroupedItemsTable = (({
             </table>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 });

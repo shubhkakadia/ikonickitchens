@@ -28,6 +28,7 @@ import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
+import SearchBar from "@/components/SearchBar";
 
 export default function page() {
   const router = useRouter();
@@ -413,15 +414,18 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-700">
                       Employees
                     </h1>
-                    <TabsController
-                      href="/admin/employees/addemployee"
-                      title="Add Employee"
-                    >
-                      <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
-                        <Plus className="h-4 w-4" />
-                        Add Employee
-                      </div>
-                    </TabsController>
+                    <div className="flex items-center gap-2">                    
+                    <SearchBar />
+                      <TabsController
+                        href="/admin/employees/addemployee"
+                        title="Add Employee"
+                      >
+                        <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
+                          <Plus className="h-4 w-4" />
+                          Add Employee
+                        </div>
+                      </TabsController></div>
+
                   </div>
                 </div>
 

@@ -53,6 +53,7 @@ export async function GET(request) {
                 supplier: { select: { supplier_id: true, name: true } },
               },
             },
+            reserve_item_stock: true,
           },
         },
         media: { where: { is_deleted: false } },

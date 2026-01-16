@@ -15,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
+import SearchBar from "@/components/SearchBar";
 
 export default function ConfigPage() {
   const { getToken } = useAuth();
@@ -291,13 +292,17 @@ export default function ConfigPage() {
           <CRMLayout />
           <div className="flex-1 overflow-y-auto">
             <div className="p-6">
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold text-slate-800 mb-2">
-                  Configuration Management
-                </h1>
-                <p className="text-slate-600">
-                  Manage role, hardware, measuring unit, and finish configurations
-                </p>
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-800 mb-2">
+                    Configuration Management
+                  </h1>
+
+                  <p className="text-slate-600">
+                    Manage role, hardware, measuring unit, and finish configurations
+                  </p></div>
+
+                <SearchBar />
               </div>
 
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-[calc(100vh-12rem)] overflow-hidden">
@@ -309,8 +314,8 @@ export default function ConfigPage() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                            ? "border-secondary text-secondary"
-                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                          ? "border-secondary text-secondary"
+                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
                           }`}
                       >
                         {tab.label}
@@ -453,8 +458,8 @@ export default function ConfigPage() {
                               key={page}
                               onClick={() => setCurrentPage(page)}
                               className={`cursor-pointer px-3 py-1 text-sm font-medium rounded ${currentPage === page
-                                  ? "bg-primary text-white"
-                                  : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
+                                ? "bg-primary text-white"
+                                : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
                                 }`}
                             >
                               {page}

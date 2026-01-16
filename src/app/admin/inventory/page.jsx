@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import StockTally from "@/components/StockTally.jsx";
 import MultiSelectDropdown from "./components/MultiSelectDropdown";
+import SearchBar from "@/components/SearchBar";
 
 export default function page() {
   const router = useRouter();
@@ -1031,6 +1032,8 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-700">
                       Inventory
                     </h1>
+                    <div className="flex items-center gap-2">                    
+                    <SearchBar />
                     <TabsController
                       href="/admin/inventory/additem"
                       title="Add Item"
@@ -1040,6 +1043,7 @@ export default function page() {
                         Add Item
                       </div>
                     </TabsController>
+                    </div>
                   </div>
                 </div>
 

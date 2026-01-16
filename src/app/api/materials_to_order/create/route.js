@@ -105,7 +105,6 @@ export async function POST(request) {
           ? completeMto.lots[0].lot_id
           : completeMto.lots.map(l => l.lot_id).join(", "))
         : "Unknown Lot";
-        console.log(completeMto);
 
       await sendNotification(
         {

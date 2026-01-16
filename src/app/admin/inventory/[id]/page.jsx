@@ -99,7 +99,8 @@ export default function page() {
   const subCategoryDropdownRef = React.useRef(null);
   const [hardwareSubCategories, setHardwareSubCategories] = useState([]);
   const [loadingSubCategories, setLoadingSubCategories] = useState(false);
-  const [showCreateSubCategoryModal, setShowCreateSubCategoryModal] = useState(false);
+  const [showCreateSubCategoryModal, setShowCreateSubCategoryModal] =
+    useState(false);
   const [newSubCategoryValue, setNewSubCategoryValue] = useState("");
   const [isCreatingSubCategory, setIsCreatingSubCategory] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
@@ -107,12 +108,14 @@ export default function page() {
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
   const supplierDropdownRef = React.useRef(null);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [isMeasuringUnitDropdownOpen, setIsMeasuringUnitDropdownOpen] = useState(false);
+  const [isMeasuringUnitDropdownOpen, setIsMeasuringUnitDropdownOpen] =
+    useState(false);
   const [measuringUnitSearchTerm, setMeasuringUnitSearchTerm] = useState("");
   const measuringUnitDropdownRef = React.useRef(null);
   const [measuringUnitOptions, setMeasuringUnitOptions] = useState([]);
   const [loadingMeasuringUnits, setLoadingMeasuringUnits] = useState(false);
-  const [showCreateMeasuringUnitModal, setShowCreateMeasuringUnitModal] = useState(false);
+  const [showCreateMeasuringUnitModal, setShowCreateMeasuringUnitModal] =
+    useState(false);
   const [newMeasuringUnitValue, setNewMeasuringUnitValue] = useState("");
   const [isCreatingMeasuringUnit, setIsCreatingMeasuringUnit] = useState(false);
   const [isFinishDropdownOpen, setIsFinishDropdownOpen] = useState(false);
@@ -140,8 +143,7 @@ export default function page() {
   const stockTxTotalPages = Math.ceil(
     sortedStockTransactions.length / stock_tx_item_per_page
   );
-  const stockTxStartIndex =
-    (stockTxCurrentPage - 1) * stock_tx_item_per_page;
+  const stockTxStartIndex = (stockTxCurrentPage - 1) * stock_tx_item_per_page;
   const stockTxEndIndex = stockTxStartIndex + stock_tx_item_per_page;
   const currentStockTransactions = sortedStockTransactions.slice(
     stockTxStartIndex,
@@ -348,7 +350,14 @@ export default function page() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showDropdown, isSubCategoryDropdownOpen, isSupplierDropdownOpen, isMeasuringUnitDropdownOpen, isFinishDropdownOpen, isFaceDropdownOpen]);
+  }, [
+    showDropdown,
+    isSubCategoryDropdownOpen,
+    isSupplierDropdownOpen,
+    isMeasuringUnitDropdownOpen,
+    isFinishDropdownOpen,
+    isFaceDropdownOpen,
+  ]);
 
   const fetchItem = async () => {
     try {
@@ -382,7 +391,7 @@ export default function page() {
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-        "An error occurred while fetching item data"
+          "An error occurred while fetching item data"
       );
     } finally {
       setLoading(false);
@@ -474,7 +483,9 @@ export default function page() {
             };
             const response = await axios.request(config);
             if (response.data.status && response.data.data) {
-              const subCategories = response.data.data.map((item) => item.value);
+              const subCategories = response.data.data.map(
+                (item) => item.value
+              );
               setHardwareSubCategories(subCategories);
             }
           } catch (error) {
@@ -761,7 +772,8 @@ export default function page() {
         editFormData.color = item.sheet?.color || "";
         editFormData.finish = item.sheet?.finish || "";
         // Map "1" to "single side" for backward compatibility
-        const faceValue = item.sheet?.face === "1" ? "single side" : (item.sheet?.face || "");
+        const faceValue =
+          item.sheet?.face === "1" ? "single side" : item.sheet?.face || "";
         editFormData.face = faceValue;
         editFormData.dimensions = item.sheet?.dimensions || "";
         editFormData.is_sunmica = item.sheet?.is_sunmica || false;
@@ -874,7 +886,7 @@ export default function page() {
       }
       toast.error(
         error.response?.data?.message ||
-        "Failed to update item. Please try again.",
+          "Failed to update item. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
@@ -1082,14 +1094,13 @@ export default function page() {
                 />
                 <button
                   type="button"
-                  onClick={() =>
-                    setIsFinishDropdownOpen(!isFinishDropdownOpen)
-                  }
+                  onClick={() => setIsFinishDropdownOpen(!isFinishDropdownOpen)}
                   className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <ChevronDown
-                    className={`w-4 h-4 transition-transform ${isFinishDropdownOpen ? "rotate-180" : ""
-                      }`}
+                    className={`w-4 h-4 transition-transform ${
+                      isFinishDropdownOpen ? "rotate-180" : ""
+                    }`}
                   />
                 </button>
               </div>
@@ -1112,21 +1123,25 @@ export default function page() {
                           {finish}
                         </button>
                       ))}
-                      {finishSearchTerm && !filteredFinishes.some(f => f.toLowerCase() === finishSearchTerm.toLowerCase()) && (
-                        <div className="border-t border-slate-200">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNewFinishValue(finishSearchTerm);
-                              setShowCreateFinishModal(true);
-                            }}
-                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                          >
-                            <Plus className="w-4 h-4" />
-                            Create "{finishSearchTerm}"
-                          </button>
-                        </div>
-                      )}
+                      {finishSearchTerm &&
+                        !filteredFinishes.some(
+                          (f) =>
+                            f.toLowerCase() === finishSearchTerm.toLowerCase()
+                        ) && (
+                          <div className="border-t border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNewFinishValue(finishSearchTerm);
+                                setShowCreateFinishModal(true);
+                              }}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Create "{finishSearchTerm}"
+                            </button>
+                          </div>
+                        )}
                     </>
                   ) : (
                     <div className="px-4 py-3">
@@ -1177,8 +1192,11 @@ export default function page() {
                   onFocus={() => setIsFaceDropdownOpen(true)}
                   placeholder={formatValue(item.sheet.face)}
                   disabled={formData.is_sunmica}
-                  className={`w-full text-sm text-slate-800 px-2 py-1 pr-8 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${formData.is_sunmica ? "bg-slate-100 cursor-not-allowed border-slate-300" : "border-slate-300"
-                    }`}
+                  className={`w-full text-sm text-slate-800 px-2 py-1 pr-8 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${
+                    formData.is_sunmica
+                      ? "bg-slate-100 cursor-not-allowed border-slate-300"
+                      : "border-slate-300"
+                  }`}
                 />
                 <button
                   type="button"
@@ -1187,8 +1205,9 @@ export default function page() {
                   className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
                 >
                   <ChevronDown
-                    className={`w-4 h-4 transition-transform ${isFaceDropdownOpen ? "rotate-180" : ""
-                      }`}
+                    className={`w-4 h-4 transition-transform ${
+                      isFaceDropdownOpen ? "rotate-180" : ""
+                    }`}
                   />
                 </button>
               </div>
@@ -1276,7 +1295,8 @@ export default function page() {
             )}
             {isEditing && formData.is_sunmica && (
               <p className="mt-1 text-xs text-slate-500">
-                Face field is automatically set to "single side" for sunmica items
+                Face field is automatically set to "single side" for sunmica
+                items
               </p>
             )}
           </div>
@@ -1374,8 +1394,9 @@ export default function page() {
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${isSubCategoryDropdownOpen ? "rotate-180" : ""
-                      }`}
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      isSubCategoryDropdownOpen ? "rotate-180" : ""
+                    }`}
                   />
                 </button>
 
@@ -1397,21 +1418,26 @@ export default function page() {
                             {subCategory}
                           </button>
                         ))}
-                        {subCategorySearchTerm && !filteredSubCategories.some(sc => sc.toLowerCase() === subCategorySearchTerm.toLowerCase()) && (
-                          <div className="border-t border-slate-200">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewSubCategoryValue(subCategorySearchTerm);
-                                setShowCreateSubCategoryModal(true);
-                              }}
-                              className="cursor-pointer w-full text-left px-3 py-2 text-xs text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              Create "{subCategorySearchTerm}"
-                            </button>
-                          </div>
-                        )}
+                        {subCategorySearchTerm &&
+                          !filteredSubCategories.some(
+                            (sc) =>
+                              sc.toLowerCase() ===
+                              subCategorySearchTerm.toLowerCase()
+                          ) && (
+                            <div className="border-t border-slate-200">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewSubCategoryValue(subCategorySearchTerm);
+                                  setShowCreateSubCategoryModal(true);
+                                }}
+                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                Create "{subCategorySearchTerm}"
+                              </button>
+                            </div>
+                          )}
                       </>
                     ) : (
                       <div className="px-3 py-2">
@@ -1543,14 +1569,13 @@ export default function page() {
                 />
                 <button
                   type="button"
-                  onClick={() =>
-                    setIsFinishDropdownOpen(!isFinishDropdownOpen)
-                  }
+                  onClick={() => setIsFinishDropdownOpen(!isFinishDropdownOpen)}
                   className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <ChevronDown
-                    className={`w-4 h-4 transition-transform ${isFinishDropdownOpen ? "rotate-180" : ""
-                      }`}
+                    className={`w-4 h-4 transition-transform ${
+                      isFinishDropdownOpen ? "rotate-180" : ""
+                    }`}
                   />
                 </button>
               </div>
@@ -1573,21 +1598,25 @@ export default function page() {
                           {finish}
                         </button>
                       ))}
-                      {finishSearchTerm && !filteredFinishes.some(f => f.toLowerCase() === finishSearchTerm.toLowerCase()) && (
-                        <div className="border-t border-slate-200">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNewFinishValue(finishSearchTerm);
-                              setShowCreateFinishModal(true);
-                            }}
-                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                          >
-                            <Plus className="w-4 h-4" />
-                            Create "{finishSearchTerm}"
-                          </button>
-                        </div>
-                      )}
+                      {finishSearchTerm &&
+                        !filteredFinishes.some(
+                          (f) =>
+                            f.toLowerCase() === finishSearchTerm.toLowerCase()
+                        ) && (
+                          <div className="border-t border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNewFinishValue(finishSearchTerm);
+                                setShowCreateFinishModal(true);
+                              }}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Create "{finishSearchTerm}"
+                            </button>
+                          </div>
+                        )}
                     </>
                   ) : (
                     <div className="px-4 py-3">
@@ -1789,9 +1818,14 @@ export default function page() {
                                   } else if (item.image?.url) {
                                     // Existing image
                                     setSelectedFile({
-                                      name: item.image.filename || item.item_id || "item-image",
+                                      name:
+                                        item.image.filename ||
+                                        item.item_id ||
+                                        "item-image",
                                       type: "image",
-                                      url: item.image.url.startsWith('/') ? item.image.url : `/${item.image.url}`,
+                                      url: item.image.url.startsWith("/")
+                                        ? item.image.url
+                                        : `/${item.image.url}`,
                                       size: item.image.size || 0,
                                       isExisting: true,
                                     });
@@ -1987,33 +2021,38 @@ export default function page() {
                                         className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                       >
                                         <ChevronDown
-                                          className={`w-3.5 h-3.5 transition-transform duration-200 ${isSupplierDropdownOpen
-                                            ? "rotate-180"
-                                            : ""
-                                            }`}
+                                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                            isSupplierDropdownOpen
+                                              ? "rotate-180"
+                                              : ""
+                                          }`}
                                         />
                                       </button>
 
                                       {isSupplierDropdownOpen && (
                                         <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
                                           {filteredSuppliers.length > 0 ? (
-                                            filteredSuppliers.map((supplier) => (
-                                              <button
-                                                key={supplier.supplier_id}
-                                                type="button"
-                                                onClick={() =>
-                                                  handleSupplierSelect(supplier)
-                                                }
-                                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                              >
-                                                <div className="font-medium">
-                                                  {supplier.name}
-                                                </div>
-                                                <div className="text-xs text-slate-500">
-                                                  {supplier.supplier_id}
-                                                </div>
-                                              </button>
-                                            ))
+                                            filteredSuppliers.map(
+                                              (supplier) => (
+                                                <button
+                                                  key={supplier.supplier_id}
+                                                  type="button"
+                                                  onClick={() =>
+                                                    handleSupplierSelect(
+                                                      supplier
+                                                    )
+                                                  }
+                                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                                >
+                                                  <div className="font-medium">
+                                                    {supplier.name}
+                                                  </div>
+                                                  <div className="text-xs text-slate-500">
+                                                    {supplier.supplier_id}
+                                                  </div>
+                                                </button>
+                                              )
+                                            )
                                           ) : (
                                             <div className="px-3 py-2 text-xs text-slate-500 text-center">
                                               No suppliers found
@@ -2045,7 +2084,10 @@ export default function page() {
                                 </div>
 
                                 {/* Measurement Unit Field */}
-                                <div className="relative" ref={measuringUnitDropdownRef}>
+                                <div
+                                  className="relative"
+                                  ref={measuringUnitDropdownRef}
+                                >
                                   <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
                                     <Ruler className="w-3.5 h-3.5" />
                                     Measurement Unit
@@ -2055,22 +2097,37 @@ export default function page() {
                                       <div className="relative">
                                         <input
                                           type="text"
-                                          value={measuringUnitSearchTerm || formData.measurement_unit || ""}
-                                          onChange={handleMeasuringUnitSearchChange}
-                                          onFocus={() => setIsMeasuringUnitDropdownOpen(true)}
-                                          placeholder={formatValue(item.measurement_unit)}
+                                          value={
+                                            measuringUnitSearchTerm ||
+                                            formData.measurement_unit ||
+                                            ""
+                                          }
+                                          onChange={
+                                            handleMeasuringUnitSearchChange
+                                          }
+                                          onFocus={() =>
+                                            setIsMeasuringUnitDropdownOpen(true)
+                                          }
+                                          placeholder={formatValue(
+                                            item.measurement_unit
+                                          )}
                                           className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                                         />
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            setIsMeasuringUnitDropdownOpen(!isMeasuringUnitDropdownOpen)
+                                            setIsMeasuringUnitDropdownOpen(
+                                              !isMeasuringUnitDropdownOpen
+                                            )
                                           }
                                           className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                         >
                                           <ChevronDown
-                                            className={`w-4 h-4 transition-transform ${isMeasuringUnitDropdownOpen ? "rotate-180" : ""
-                                              }`}
+                                            className={`w-4 h-4 transition-transform ${
+                                              isMeasuringUnitDropdownOpen
+                                                ? "rotate-180"
+                                                : ""
+                                            }`}
                                           />
                                         </button>
                                       </div>
@@ -2081,50 +2138,73 @@ export default function page() {
                                             <div className="px-4 py-3 text-sm text-slate-500 text-center">
                                               Loading measuring units...
                                             </div>
-                                          ) : filteredMeasuringUnits.length > 0 ? (
+                                          ) : filteredMeasuringUnits.length >
+                                            0 ? (
                                             <>
-                                              {filteredMeasuringUnits.map((unit, index) => (
-                                                <button
-                                                  key={index}
-                                                  type="button"
-                                                  onClick={() => handleMeasuringUnitSelect(unit)}
-                                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                                >
-                                                  {unit}
-                                                </button>
-                                              ))}
-                                              {measuringUnitSearchTerm && !filteredMeasuringUnits.some(u => u.toLowerCase() === measuringUnitSearchTerm.toLowerCase()) && (
-                                                <div className="border-t border-slate-200">
+                                              {filteredMeasuringUnits.map(
+                                                (unit, index) => (
                                                   <button
+                                                    key={index}
                                                     type="button"
-                                                    onClick={() => {
-                                                      setNewMeasuringUnitValue(measuringUnitSearchTerm);
-                                                      setShowCreateMeasuringUnitModal(true);
-                                                    }}
-                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                    onClick={() =>
+                                                      handleMeasuringUnitSelect(
+                                                        unit
+                                                      )
+                                                    }
+                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                                   >
-                                                    <Plus className="w-4 h-4" />
-                                                    Create "{measuringUnitSearchTerm}"
+                                                    {unit}
                                                   </button>
-                                                </div>
+                                                )
                                               )}
+                                              {measuringUnitSearchTerm &&
+                                                !filteredMeasuringUnits.some(
+                                                  (u) =>
+                                                    u.toLowerCase() ===
+                                                    measuringUnitSearchTerm.toLowerCase()
+                                                ) && (
+                                                  <div className="border-t border-slate-200">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setNewMeasuringUnitValue(
+                                                          measuringUnitSearchTerm
+                                                        );
+                                                        setShowCreateMeasuringUnitModal(
+                                                          true
+                                                        );
+                                                      }}
+                                                      className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                    >
+                                                      <Plus className="w-4 h-4" />
+                                                      Create "
+                                                      {measuringUnitSearchTerm}"
+                                                    </button>
+                                                  </div>
+                                                )}
                                             </>
                                           ) : (
                                             <div className="px-4 py-3">
                                               <div className="text-sm text-slate-500 mb-2">
-                                                No matching measuring units found
+                                                No matching measuring units
+                                                found
                                               </div>
                                               {measuringUnitSearchTerm && (
                                                 <button
                                                   type="button"
                                                   onClick={() => {
-                                                    setNewMeasuringUnitValue(measuringUnitSearchTerm);
-                                                    setShowCreateMeasuringUnitModal(true);
+                                                    setNewMeasuringUnitValue(
+                                                      measuringUnitSearchTerm
+                                                    );
+                                                    setShowCreateMeasuringUnitModal(
+                                                      true
+                                                    );
                                                   }}
                                                   className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
                                                 >
                                                   <Plus className="w-4 h-4" />
-                                                  Create "{measuringUnitSearchTerm}"
+                                                  Create "
+                                                  {measuringUnitSearchTerm}"
                                                 </button>
                                               )}
                                             </div>
@@ -2179,7 +2259,9 @@ export default function page() {
                                   {isEditing ? (
                                     <input
                                       type="url"
-                                      value={formData.supplier_product_link || ""}
+                                      value={
+                                        formData.supplier_product_link || ""
+                                      }
                                       onChange={(e) =>
                                         handleInputChange(
                                           "supplier_product_link",
@@ -2200,11 +2282,12 @@ export default function page() {
                                           rel="noopener noreferrer"
                                           className="text-primary hover:underline"
                                         >
-                                          {item.supplier_product_link.length > 40
+                                          {item.supplier_product_link.length >
+                                          40
                                             ? `${item.supplier_product_link.substring(
-                                              0,
-                                              40
-                                            )}...`
+                                                0,
+                                                40
+                                              )}...`
                                             : item.supplier_product_link}
                                         </a>
                                       ) : (
@@ -2218,6 +2301,125 @@ export default function page() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Reserved Stock Section */}
+                      {item?.reserve_item_stock &&
+                        item.reserve_item_stock.length > 0 &&
+                        (() => {
+                          // Calculate total reserved quantity
+                          const totalReserved = item.reserve_item_stock.reduce(
+                            (sum, reservation) =>
+                              sum +
+                              (reservation.quantity -
+                                reservation.used_quantity),
+                            0
+                          );
+
+                          return (
+                            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                  <Box className="w-4 h-4" />
+                                  Reserved Stock
+                                </h3>
+                                <div className="text-right">
+                                  <label className="text-xs uppercase tracking-wide text-slate-500">
+                                    Total Reserved
+                                  </label>
+                                  <p className="text-sm font-bold text-amber-600">
+                                    {totalReserved}
+                                    {item.measurement_unit && (
+                                      <span className="ml-1 text-xs text-slate-500 font-normal">
+                                        {item.measurement_unit}
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="border-b border-slate-200">
+                                      <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                        Project Name
+                                      </th>
+                                      <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                        Lot ID
+                                      </th>
+                                      <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                        Reserved Qty
+                                      </th>
+                                      <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                        Used Qty
+                                      </th>
+                                      <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                        Remaining
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {item.reserve_item_stock.map(
+                                      (reservation) => {
+                                        const remaining =
+                                          reservation.quantity -
+                                          reservation.used_quantity;
+                                        return (
+                                          <tr
+                                            key={reservation.id}
+                                            className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                                          >
+                                            <td className="py-2 px-3 text-slate-700">
+                                              {reservation.mto?.mto?.project
+                                                ?.name || "-"}
+                                            </td>
+                                            <td className="py-2 px-3 text-slate-700">
+                                              {reservation.mto?.mto?.lots &&
+                                              reservation.mto.mto.lots.length >
+                                                0 ? (
+                                                <span className="text-xs font-medium text-slate-800">
+                                                  {reservation.mto.mto.lots
+                                                    .map((lot) => lot.lot_id)
+                                                    .join(", ")}
+                                                </span>
+                                              ) : (
+                                                "-"
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-3 text-right font-medium text-slate-800">
+                                              {reservation.quantity}
+                                              {item.measurement_unit && (
+                                                <span className="ml-1 text-xs text-slate-500 font-normal">
+                                                  {item.measurement_unit}
+                                                </span>
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-3 text-right text-slate-600">
+                                              {reservation.used_quantity}
+                                              {item.measurement_unit && (
+                                                <span className="ml-1 text-xs text-slate-500 font-normal">
+                                                  {item.measurement_unit}
+                                                </span>
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-3 text-right font-bold text-amber-600">
+                                              {remaining}
+                                              {item.measurement_unit && (
+                                                <span className="ml-1 text-xs text-slate-500 font-normal">
+                                                  {item.measurement_unit}
+                                                </span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        );
+                                      }
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                       {/* Stock Transactions Section */}
                       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
@@ -2253,111 +2455,133 @@ export default function page() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {currentStockTransactions.map((transaction) => (
-                                    <React.Fragment key={transaction.id}>
-                                      <tr
-                                        className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${transaction.notes ? "cursor-pointer" : ""
+                                  {currentStockTransactions.map(
+                                    (transaction) => (
+                                      <React.Fragment key={transaction.id}>
+                                        <tr
+                                          className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                                            transaction.notes
+                                              ? "cursor-pointer"
+                                              : ""
                                           }`}
-                                        onClick={() => transaction.notes && toggleNotes(transaction.id)}
-                                      >
-                                        <td className="py-2 px-3 whitespace-nowrap">
-                                          {transaction.notes && (
-                                            <div className="flex items-center">
-                                              {expandedNotes.has(transaction.id) ? (
-                                                <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
-                                              ) : (
-                                                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-                                              )}
-                                            </div>
-                                          )}
-                                        </td>
-                                        <td className="py-2 px-3 text-slate-700">
-                                          {new Date(
-                                            transaction.createdAt
-                                          ).toLocaleString("en-US", {
-                                            year: "numeric",
-                                            month: "short",
-                                            day: "numeric",
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                          })}
-                                        </td>
-                                        <td className="py-2 px-3">
-                                          <span
-                                            className={`px-2 py-1 text-xs font-medium rounded-full ${transaction.type === "ADDED"
-                                              ? "bg-emerald-100 text-emerald-800"
-                                              : transaction.type === "USED"
-                                                ? "bg-blue-100 text-blue-800"
-                                                : "bg-red-100 text-red-800"
+                                          onClick={() =>
+                                            transaction.notes &&
+                                            toggleNotes(transaction.id)
+                                          }
+                                        >
+                                          <td className="py-2 px-3 whitespace-nowrap">
+                                            {transaction.notes && (
+                                              <div className="flex items-center">
+                                                {expandedNotes.has(
+                                                  transaction.id
+                                                ) ? (
+                                                  <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                                                ) : (
+                                                  <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                                                )}
+                                              </div>
+                                            )}
+                                          </td>
+                                          <td className="py-2 px-3 text-slate-700">
+                                            {new Date(
+                                              transaction.createdAt
+                                            ).toLocaleString("en-US", {
+                                              year: "numeric",
+                                              month: "short",
+                                              day: "numeric",
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            })}
+                                          </td>
+                                          <td className="py-2 px-3">
+                                            <span
+                                              className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                transaction.type === "ADDED"
+                                                  ? "bg-emerald-100 text-emerald-800"
+                                                  : transaction.type === "USED"
+                                                  ? "bg-blue-100 text-blue-800"
+                                                  : "bg-red-100 text-red-800"
                                               }`}
-                                          >
-                                            {transaction.type}
-                                          </span>
-                                        </td>
-                                        <td className="py-2 px-3 text-right font-medium text-slate-800">
-                                          {transaction.type === "ADDED" ? "+" : "-"}
-                                          {transaction.quantity}
-                                          {item.measurement_unit && (
-                                            <span className="ml-1 text-xs text-slate-500 font-normal">
-                                              {item.measurement_unit}
+                                            >
+                                              {transaction.type}
                                             </span>
-                                          )}
-                                        </td>
-                                        <td className="py-2 px-3 text-slate-600">
-                                          {transaction.type === "ADDED" &&
-                                            transaction.purchase_order?.order_no ? (
-                                            <span className="text-xs font-medium text-primary">
-                                              {transaction.purchase_order.order_no}
-                                            </span>
-                                          ) : (
-                                            "-"
-                                          )}
-                                        </td>
-                                        <td className="py-2 px-3 text-slate-600">
-                                          {transaction.type === "USED" &&
-                                            transaction.materials_to_order?.project
-                                              ?.name ? (
-                                            <span className="text-xs font-medium text-slate-800">
-                                              {
-                                                transaction.materials_to_order
-                                                  .project.name
-                                              }
-                                            </span>
-                                          ) : (
-                                            "-"
-                                          )}
-                                        </td>
-                                        <td className="py-2 px-3 text-slate-600">
-                                          {transaction.type === "USED" &&
-                                            transaction.materials_to_order?.lots &&
+                                          </td>
+                                          <td className="py-2 px-3 text-right font-medium text-slate-800">
+                                            {transaction.type === "ADDED"
+                                              ? "+"
+                                              : "-"}
+                                            {transaction.quantity}
+                                            {item.measurement_unit && (
+                                              <span className="ml-1 text-xs text-slate-500 font-normal">
+                                                {item.measurement_unit}
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className="py-2 px-3 text-slate-600">
+                                            {transaction.type === "ADDED" &&
+                                            transaction.purchase_order
+                                              ?.order_no ? (
+                                              <span className="text-xs font-medium text-primary">
+                                                {
+                                                  transaction.purchase_order
+                                                    .order_no
+                                                }
+                                              </span>
+                                            ) : (
+                                              "-"
+                                            )}
+                                          </td>
+                                          <td className="py-2 px-3 text-slate-600">
+                                            {transaction.type === "USED" &&
+                                            (transaction.materials_to_order
+                                              ?.project?.name ||
+                                              transaction.project?.name) ? (
+                                              <span className="text-xs font-medium text-slate-800">
+                                                {transaction.materials_to_order
+                                                  ?.project?.name ||
+                                                  transaction.project?.name}
+                                              </span>
+                                            ) : (
+                                              "-"
+                                            )}
+                                          </td>
+                                          <td className="py-2 px-3 text-slate-600">
+                                            {transaction.type === "USED" &&
+                                            transaction.materials_to_order
+                                              ?.lots &&
                                             transaction.materials_to_order.lots
                                               .length > 0 ? (
-                                            <span className="text-xs font-medium text-slate-800">
-                                              {transaction.materials_to_order.lots
-                                                .map((lot) => lot.lot_id)
-                                                .join(", ")}
-                                            </span>
-                                          ) : (
-                                            "-"
-                                          )}
-                                        </td>
-                                      </tr>
-                                      {transaction.notes && expandedNotes.has(transaction.id) && (
-                                        <tr className="bg-slate-50">
-                                          <td colSpan="7" className="px-4 py-4">
-                                            <div className="text-xs text-slate-700">
-                                              <span className="font-medium text-slate-800 mb-2 block">
-                                                Notes:
+                                              <span className="text-xs font-medium text-slate-800">
+                                                {transaction.materials_to_order.lots
+                                                  .map((lot) => lot.lot_id)
+                                                  .join(", ")}
                                               </span>
-                                              <div className="text-slate-600 whitespace-pre-wrap pl-4 border-l-2 border-slate-300">
-                                                {transaction.notes}
-                                              </div>
-                                            </div>
+                                            ) : (
+                                              "-"
+                                            )}
                                           </td>
                                         </tr>
-                                      )}
-                                    </React.Fragment>
-                                  ))}
+                                        {transaction.notes &&
+                                          expandedNotes.has(transaction.id) && (
+                                            <tr className="bg-slate-50">
+                                              <td
+                                                colSpan="7"
+                                                className="px-4 py-4"
+                                              >
+                                                <div className="text-xs text-slate-700">
+                                                  <span className="font-medium text-slate-800 mb-2 block">
+                                                    Notes:
+                                                  </span>
+                                                  <div className="text-slate-600 whitespace-pre-wrap pl-4 border-l-2 border-slate-300">
+                                                    {transaction.notes}
+                                                  </div>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          )}
+                                      </React.Fragment>
+                                    )
+                                  )}
                                 </tbody>
                               </table>
                             </div>
@@ -2395,10 +2619,11 @@ export default function page() {
                                         onClick={() =>
                                           handleStockTxPageChange(page)
                                         }
-                                        className={`cursor-pointer px-2 py-1 text-xs font-medium rounded ${stockTxCurrentPage === page
-                                          ? "bg-primary text-white"
-                                          : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
-                                          }`}
+                                        className={`cursor-pointer px-2 py-1 text-xs font-medium rounded ${
+                                          stockTxCurrentPage === page
+                                            ? "bg-primary text-white"
+                                            : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
+                                        }`}
                                       >
                                         {page}
                                       </button>
@@ -2424,7 +2649,9 @@ export default function page() {
                         ) : (
                           <div className="text-center py-8 text-slate-500">
                             <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                            <p className="text-sm">No stock transactions found</p>
+                            <p className="text-sm">
+                              No stock transactions found
+                            </p>
                           </div>
                         )}
                       </div>
@@ -2458,14 +2685,17 @@ export default function page() {
             allFiles={
               item?.image
                 ? [
-                  {
-                    url: item.image.url.startsWith('/') ? item.image.url : `/${item.image.url}`,
-                    filename: item.image.filename || item.item_id || "item-image",
-                    mime_type: "image",
-                    size: item.image.size || 0,
-                    id: item.image.id || item.item_id,
-                  },
-                ]
+                    {
+                      url: item.image.url.startsWith("/")
+                        ? item.image.url
+                        : `/${item.image.url}`,
+                      filename:
+                        item.image.filename || item.item_id || "item-image",
+                      mime_type: "image",
+                      size: item.image.size || 0,
+                      id: item.image.id || item.item_id,
+                    },
+                  ]
                 : []
             }
             currentIndex={0}
@@ -2487,8 +2717,14 @@ export default function page() {
 
         {/* Create Finish Modal */}
         {showCreateFinishModal && (
-          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateFinishModal(false)}>
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowCreateFinishModal(false)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
                 <h2 className="text-xl font-bold text-slate-800">
                   Create New Finish
@@ -2542,8 +2778,14 @@ export default function page() {
 
         {/* Create Measuring Unit Modal */}
         {showCreateMeasuringUnitModal && (
-          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateMeasuringUnitModal(false)}>
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowCreateMeasuringUnitModal(false)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
                 <h2 className="text-xl font-bold text-slate-800">
                   Create New Measuring Unit
@@ -2584,10 +2826,14 @@ export default function page() {
                   </button>
                   <button
                     onClick={handleCreateNewMeasuringUnit}
-                    disabled={isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()}
+                    disabled={
+                      isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()
+                    }
                     className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    {isCreatingMeasuringUnit ? "Creating..." : "Create Measuring Unit"}
+                    {isCreatingMeasuringUnit
+                      ? "Creating..."
+                      : "Create Measuring Unit"}
                   </button>
                 </div>
               </div>
@@ -2597,8 +2843,14 @@ export default function page() {
 
         {/* Create Hardware Sub Category Modal */}
         {showCreateSubCategoryModal && (
-          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateSubCategoryModal(false)}>
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowCreateSubCategoryModal(false)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
                 <h2 className="text-xl font-bold text-slate-800">
                   Create New Hardware Sub Category
@@ -2639,17 +2891,20 @@ export default function page() {
                   </button>
                   <button
                     onClick={handleCreateNewSubCategory}
-                    disabled={isCreatingSubCategory || !newSubCategoryValue?.trim()}
+                    disabled={
+                      isCreatingSubCategory || !newSubCategoryValue?.trim()
+                    }
                     className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    {isCreatingSubCategory ? "Creating..." : "Create Sub Category"}
+                    {isCreatingSubCategory
+                      ? "Creating..."
+                      : "Create Sub Category"}
                   </button>
                 </div>
               </div>
             </div>
           </div>
         )}
-
       </div>
     </AdminRoute>
   );

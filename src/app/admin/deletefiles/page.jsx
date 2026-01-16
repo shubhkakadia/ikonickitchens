@@ -35,6 +35,7 @@ import {
   RotateCw,
   Database,
 } from "lucide-react";
+import SearchBar from "@/components/SearchBar";
 
 // Setup PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -643,6 +644,7 @@ export default function DeleteFilesPage() {
                     <h1 className="text-xl font-bold text-slate-700">
                       Deleted Files & Records
                     </h1>
+                    <SearchBar />
                   </div>
                 </div>
 
@@ -653,8 +655,8 @@ export default function DeleteFilesPage() {
                       <button
                         onClick={() => setActiveTab("media")}
                         className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "media"
-                            ? "text-primary border-b-2 border-primary"
-                            : "text-slate-600 hover:text-slate-900"
+                          ? "text-primary border-b-2 border-primary"
+                          : "text-slate-600 hover:text-slate-900"
                           }`}
                       >
                         <div className="flex items-center gap-2">
@@ -665,8 +667,8 @@ export default function DeleteFilesPage() {
                       <button
                         onClick={() => setActiveTab("records")}
                         className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "records"
-                            ? "text-primary border-b-2 border-primary"
-                            : "text-slate-600 hover:text-slate-900"
+                          ? "text-primary border-b-2 border-primary"
+                          : "text-slate-600 hover:text-slate-900"
                           }`}
                       >
                         <div className="flex items-center gap-2">

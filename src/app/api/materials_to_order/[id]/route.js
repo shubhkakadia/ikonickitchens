@@ -29,6 +29,7 @@ export async function GET(request, { params }) {
                 image: true,
               },
             },
+            reserve_item_stock: true,
           },
         },
         project: {
@@ -107,7 +108,7 @@ export async function PATCH(request, { params }) {
             include: {
               client: {
                 select: {
-                  name: true,
+                  client_name: true,
                 },
               },
             },
@@ -132,7 +133,7 @@ export async function PATCH(request, { params }) {
         include: {
           client: {
             select: {
-              name: true,
+              client_name: true,
             },
           },
           lots: true,
@@ -296,7 +297,7 @@ export async function PATCH(request, { params }) {
   } catch (error) {
     const msg = error?.message || "";
     if (msg.startsWith("INSUFFICIENT_INVENTORY:")) {
-      const [, requested, available] = msg.split(":");
+      const [, , requested, available] = msg.split(":");
       return NextResponse.json(
         {
           status: false,

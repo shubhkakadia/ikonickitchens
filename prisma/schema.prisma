@@ -192,6 +192,7 @@ model project {
   lots               lot[]
   material_selection material_selection[]
   materials_to_order materials_to_order[]
+  stock_transactions stock_transaction[]
   client             client?              @relation(fields: [client_id], references: [client_id], onDelete: SetNull)
 
   @@index([project_id])
@@ -424,6 +425,7 @@ model item {
   purchase_order_item      purchase_order_item[]
   sheet                    sheet?
   stock_transactions       stock_transaction[]
+  reserve_item_stock       reserve_item_stock[]
 
   @@unique([item_id, category])
   @@index([category])
@@ -578,6 +580,7 @@ model materials_to_order_item {
   item                item                  @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
   mto                 materials_to_order    @relation(fields: [mto_id], references: [id], onDelete: Cascade)
   ordered_items       purchase_order_item[]
+  reserve_item_stock  reserve_item_stock[]
 
   @@index([mto_id])
   @@index([item_id])
@@ -618,6 +621,8 @@ model purchase_order_item {
   quantity          Int
   quantity_received Int?                     @default(0)
   unit_price        Decimal?                 @db.Decimal(10, 2)
+  gst               Decimal?                 @db.Decimal(10, 2)
+  total_amount      Decimal?                 @db.Decimal(10, 2)
   notes             String?                  @db.LongText
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
@@ -639,16 +644,19 @@ model stock_transaction {
   notes                 String?              @db.LongText
   materials_to_order_id String?
   purchase_order_id     String?
+  project_id            String?
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
   item                  item                 @relation(fields: [item_id], references: [item_id])
   materials_to_order    materials_to_order?  @relation(fields: [materials_to_order_id], references: [id], onDelete: SetNull)
   purchase_order        purchase_order?      @relation(fields: [purchase_order_id], references: [id], onDelete: SetNull)
+  project               project?             @relation(fields: [project_id], references: [project_id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([item_id])
   @@index([purchase_order_id])
   @@index([materials_to_order_id])
+  @@index([project_id])
 }
 
 model logs {
@@ -709,6 +717,19 @@ model notification_config {
   updatedAt                           DateTime @updatedAt
 
   @@index([user_id])
+}
+
+model reserve_item_stock {
+  id            String                   @id @default(uuid())
+  item_id       String
+  quantity      Int
+  used_quantity Int
+  mto_id        String
+  item          item                     @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  mto           materials_to_order_item @relation(fields: [mto_id], references: [id], onDelete: Cascade)
+  user_id       String
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
 }
 
 enum LogAction {

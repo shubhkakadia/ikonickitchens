@@ -10,6 +10,9 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const stockTransactions = await prisma.stock_transaction.findMany({
       where: { item_id: id },
+      include: {
+        project: true,
+      },
       orderBy: {
         createdAt: "desc",
       },

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
@@ -21,6 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Image from "next/image";
+import SearchBar from "@/components/SearchBar";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -46,6 +47,13 @@ export default function page() {
   const [manualNotes, setManualNotes] = useState("");
   const [loadingItems, setLoadingItems] = useState(false);
   const [savingManual, setSavingManual] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedProjectName, setSelectedProjectName] = useState("");
+  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+  const [projectSearchTerm, setProjectSearchTerm] = useState("");
+  const projectDropdownRef = useRef(null);
 
   // Category options
   const categoryOptions = [
@@ -58,7 +66,42 @@ export default function page() {
 
   useEffect(() => {
     fetchMTOs();
+    fetchProjectsWithAllActiveLots();
   }, []);
+
+  const fetchProjectsWithAllActiveLots = async () => {
+    try {
+      setLoadingProjects(true);
+      const sessionToken = getToken();
+      if (!sessionToken) return;
+
+      const response = await axios.get("/api/project/all", {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+
+      if (response.data.status) {
+        // Filter projects where ALL lots are ACTIVE
+        const filteredProjects = response.data.data.filter((project) => {
+          const lots = project.lots || [];
+          // If project has no lots, exclude it
+          if (lots.length === 0) return false;
+          // Check if all lots are ACTIVE
+          return lots.every((lot) => lot.status === "ACTIVE");
+        });
+        setProjects(filteredProjects);
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      toast.error("Error fetching projects", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
 
   const fetchMTOs = async () => {
     try {
@@ -73,14 +116,20 @@ export default function page() {
         return;
       }
 
-      const response = await axios.get("/api/materials_to_order/all", {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-        },
-      });
+      const response = await axios.get(
+        "/api/materials_to_order/used_material_list",
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        }
+      );
 
       if (response.data.status) {
-        setMtos(response.data.data);
+        // Store both ready_to_use and upcoming MTOs
+        const { ready_to_use, upcoming } = response.data.data;
+        // Combine both for compatibility with existing code
+        setMtos([...ready_to_use, ...upcoming]);
       } else {
         toast.error(response.data.message || "Failed to fetch MTOs", {
           position: "top-right",
@@ -143,30 +192,24 @@ export default function page() {
       if (response.data.status) {
         const updatedMto = response?.data?.data;
         setMtos((prev) =>
-          prev.map((mto) => (mto.id === mtoId ? (updatedMto || mto) : mto))
+          prev.map((mto) => (mto.id === mtoId ? updatedMto || mto : mto))
         );
         if (expandedMto === mtoId) setExpandedMto(null);
         setOpenMtoStatusDropdownId(null);
-        toast.success(
-          `MTO marked as ${completed ? "completed" : "active"}`,
-          {
-            position: "top-right",
-            autoClose: 2500,
-          }
-        );
+        toast.success(`MTO marked as ${completed ? "completed" : "active"}`, {
+          position: "top-right",
+          autoClose: 2500,
+        });
       } else {
-        toast.error(
-          response.data.message || "Failed to update MTO status",
-          {
-            position: "top-right",
-            autoClose: 3000,
-          }
-        );
+        toast.error(response.data.message || "Failed to update MTO status", {
+          position: "top-right",
+          autoClose: 3000,
+        });
       }
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-        "Error updating MTO status. Please try again.",
+          "Error updating MTO status. Please try again.",
         {
           position: "top-right",
           autoClose: 3000,
@@ -366,7 +409,7 @@ export default function page() {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-        "Error updating quantity used. Please try again.",
+          "Error updating quantity used. Please try again.",
         {
           position: "top-right",
           autoClose: 3000,
@@ -430,7 +473,7 @@ export default function page() {
     if (!showManualAddModal) return;
 
     const handleClickOutside = (event) => {
-      const searchElement = document.querySelector('[data-search-container]');
+      const searchElement = document.querySelector("[data-search-container]");
       if (searchElement && !searchElement.contains(event.target)) {
         setShowItemSearchResults(false);
       }
@@ -441,6 +484,56 @@ export default function page() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showManualAddModal]);
+
+  // Close project dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        projectDropdownRef.current &&
+        !projectDropdownRef.current.contains(event.target)
+      ) {
+        setIsProjectDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Filter projects based on search term
+  const filteredProjects = projects.filter((project) => {
+    if (!projectSearchTerm) return true;
+    const searchLower = projectSearchTerm.toLowerCase();
+    const projectName = project.name?.toLowerCase() || "";
+    const clientName = project.client?.client_name?.toLowerCase() || "";
+    return (
+      projectName.includes(searchLower) || clientName.includes(searchLower)
+    );
+  });
+
+  const handleProjectSelect = (project) => {
+    setSelectedProjectId(project.project_id);
+    setSelectedProjectName(project.name);
+    setProjectSearchTerm(
+      `${project.name}${
+        project.client ? ` (${project.client.client_name})` : ""
+      }`
+    );
+    setIsProjectDropdownOpen(false);
+  };
+
+  const handleProjectSearchChange = (e) => {
+    const value = e.target.value;
+    setProjectSearchTerm(value);
+    setIsProjectDropdownOpen(true);
+    // If user clears the input, clear the selection
+    if (!value.trim()) {
+      setSelectedProjectId("");
+      setSelectedProjectName("");
+    }
+  };
 
   const fetchItemsByCategory = async (category) => {
     try {
@@ -470,7 +563,7 @@ export default function page() {
   };
 
   // Filter items based on search
-  const filteredItems = allItems.filter(item => {
+  const filteredItems = allItems.filter((item) => {
     if (!itemSearch) return false;
     const searchLower = itemSearch.toLowerCase();
 
@@ -512,48 +605,60 @@ export default function page() {
     setShowItemSearchResults(false);
     setSelectedItems([]);
     setManualNotes("");
+    setSelectedProjectId("");
+    setSelectedProjectName("");
+    setProjectSearchTerm("");
+    setIsProjectDropdownOpen(false);
   };
 
   // Handle add item to table
   const handleAddItem = (item) => {
     // Check if already added
-    if (selectedItems.some(i => i.item_id === item.item_id)) {
+    if (selectedItems.some((i) => i.item_id === item.item_id)) {
       toast.info("Item already added");
       return;
     }
 
-    setSelectedItems(prev => [...prev, {
-      ...item,
-      item_id: item.item_id,
-      stock_quantity: item.quantity, // Preserve original stock quantity
-      quantity: 1, // Default quantity
-    }]);
+    setSelectedItems((prev) => [
+      ...prev,
+      {
+        ...item,
+        item_id: item.item_id,
+        stock_quantity: item.quantity, // Preserve original stock quantity
+        quantity: 1, // Default quantity
+      },
+    ]);
     setItemSearch("");
     setShowItemSearchResults(false);
   };
 
   // Handle update item quantity
   const handleUpdateItem = (itemId, field, value) => {
-    setSelectedItems(prev => prev.map(item => {
-      if (item.item_id === itemId) {
-        return { ...item, [field]: value };
-      }
-      return item;
-    }));
+    setSelectedItems((prev) =>
+      prev.map((item) => {
+        if (item.item_id === itemId) {
+          return { ...item, [field]: value };
+        }
+        return item;
+      })
+    );
   };
 
   // Handle remove item from table
   const handleRemoveItem = (itemId) => {
-    setSelectedItems(prev => prev.filter(item => item.item_id !== itemId));
+    setSelectedItems((prev) => prev.filter((item) => item.item_id !== itemId));
   };
 
   // Get item display name
   const getItemDisplayName = (item) => {
-    if (item.sheet) return `${item.sheet.brand} ${item.sheet.color} ${item.sheet.finish}`;
-    if (item.handle) return `${item.handle.brand} ${item.handle.color} ${item.handle.type}`;
+    if (item.sheet)
+      return `${item.sheet.brand} ${item.sheet.color} ${item.sheet.finish}`;
+    if (item.handle)
+      return `${item.handle.brand} ${item.handle.color} ${item.handle.type}`;
     if (item.hardware) return `${item.hardware.brand} ${item.hardware.name}`;
     if (item.accessory) return item.accessory.name;
-    if (item.edging_tape) return `${item.edging_tape.brand} ${item.edging_tape.color}`;
+    if (item.edging_tape)
+      return `${item.edging_tape.brand} ${item.edging_tape.color}`;
     return item.description || "Item";
   };
 
@@ -568,7 +673,9 @@ export default function page() {
     }
 
     // Validate quantities
-    const invalidItems = selectedItems.some(item => !item.quantity || item.quantity <= 0);
+    const invalidItems = selectedItems.some(
+      (item) => !item.quantity || item.quantity <= 0
+    );
     if (invalidItems) {
       toast.error("All items must have a quantity greater than 0", {
         position: "top-right",
@@ -578,21 +685,20 @@ export default function page() {
     }
 
     // Check if sufficient quantity is available for all items
-    const insufficientItems = selectedItems.filter(item => {
+    const insufficientItems = selectedItems.filter((item) => {
       const requestedQty = parseFloat(item.quantity);
       const availableQty = item.stock_quantity ?? item.quantity;
       return requestedQty > availableQty;
     });
 
     if (insufficientItems.length > 0) {
-      const itemNames = insufficientItems.map(item => getItemDisplayName(item)).join(", ");
-      toast.error(
-        `Insufficient quantity for: ${itemNames}`,
-        {
-          position: "top-right",
-          autoClose: 5000,
-        }
-      );
+      const itemNames = insufficientItems
+        .map((item) => getItemDisplayName(item))
+        .join(", ");
+      toast.error(`Insufficient quantity for: ${itemNames}`, {
+        position: "top-right",
+        autoClose: 5000,
+      });
       return;
     }
 
@@ -608,7 +714,7 @@ export default function page() {
       }
 
       // Create stock transactions for all items
-      const promises = selectedItems.map(item =>
+      const promises = selectedItems.map((item) =>
         axios.post(
           `/api/stock_transaction/create`,
           {
@@ -616,6 +722,7 @@ export default function page() {
             quantity: parseFloat(item.quantity),
             type: "USED",
             notes: manualNotes || `Manually recorded used quantity`,
+            project_id: selectedProjectId || null,
           },
           {
             headers: {
@@ -627,7 +734,9 @@ export default function page() {
       );
 
       const results = await Promise.allSettled(promises);
-      const failed = results.filter(r => r.status === "rejected" || !r.value?.data?.status);
+      const failed = results.filter(
+        (r) => r.status === "rejected" || !r.value?.data?.status
+      );
 
       if (failed.length > 0) {
         toast.error(
@@ -647,7 +756,7 @@ export default function page() {
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-        "Error recording material used. Please try again.",
+          "Error recording material used. Please try again.",
         {
           position: "top-right",
           autoClose: 3000,
@@ -727,13 +836,23 @@ export default function page() {
     return details;
   };
 
+  // Filter MTOs by status and readiness
   const activeMtos = mtos.filter(
-    (mto) => !Boolean(mto.used_material_completed)
+    (mto) => !Boolean(mto.used_material_completed) && mto.is_ready === true
+  );
+  const upcomingMtos = mtos.filter(
+    (mto) => !Boolean(mto.used_material_completed) && mto.is_ready === false
   );
   const completedMtos = mtos.filter((mto) =>
     Boolean(mto.used_material_completed)
   );
-  const displayedMtos = mtoTab === "completed" ? completedMtos : activeMtos;
+
+  const displayedMtos =
+    mtoTab === "completed"
+      ? completedMtos
+      : mtoTab === "upcoming"
+      ? upcomingMtos
+      : activeMtos;
 
   return (
     <AdminRoute>
@@ -772,13 +891,16 @@ export default function page() {
                   <h1 className="text-xl font-bold text-slate-700">
                     Used Material
                   </h1>
-                  <button
-                    onClick={() => setShowManualAddModal(true)}
-                    className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Manually Add Material Used
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <SearchBar />
+                    <button
+                      onClick={() => setShowManualAddModal(true)}
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Manually Add Material Used
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
@@ -799,19 +921,31 @@ export default function page() {
                           <nav className="flex space-x-6">
                             <button
                               onClick={() => setMtoTab("active")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${mtoTab === "active"
-                                ? "border-primary text-primary"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
+                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                mtoTab === "active"
+                                  ? "border-primary text-primary"
+                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                              }`}
                             >
                               Active ({activeMtos.length})
                             </button>
                             <button
+                              onClick={() => setMtoTab("upcoming")}
+                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                mtoTab === "upcoming"
+                                  ? "border-primary text-primary"
+                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                              }`}
+                            >
+                              Upcoming ({upcomingMtos.length})
+                            </button>
+                            <button
                               onClick={() => setMtoTab("completed")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${mtoTab === "completed"
-                                ? "border-primary text-primary"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                }`}
+                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                mtoTab === "completed"
+                                  ? "border-primary text-primary"
+                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                              }`}
                             >
                               Completed ({completedMtos.length})
                             </button>
@@ -849,8 +983,8 @@ export default function page() {
                                 const lotIds =
                                   mto.lots && mto.lots.length > 0
                                     ? mto.lots
-                                      .map((lot) => lot.lot_id)
-                                      .join(", ")
+                                        .map((lot) => lot.lot_id)
+                                        .join(", ")
                                     : "N/A";
 
                                 return (
@@ -875,7 +1009,7 @@ export default function page() {
                                         <div className="flex-1">
                                           <div className="text-sm font-semibold text-slate-700">
                                             {mto.project?.name ||
-                                              "Unknown Project"}
+                                              "Manually Added"}
                                           </div>
                                           <div className="text-sm text-slate-500 mt-0.5">
                                             Lot ID: {lotIds}
@@ -884,9 +1018,16 @@ export default function page() {
                                       </button>
 
                                       {/* Used Material Status (one-way: Active -> Completed) */}
-                                      {mtoTab === "active" ? (
+                                      {mtoTab === "upcoming" ? (
+                                        <div className="shrink-0 ml-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-orange-50 text-sm font-semibold text-orange-700">
+                                          <span className="h-2 w-2 rounded-full bg-orange-500" />
+                                          Upcoming
+                                        </div>
+                                      ) : !Boolean(
+                                          mto.used_material_completed
+                                        ) ? (
                                         <div
-                                          className="shrink-0 ml-4 relative"
+                                          className="relative shrink-0 ml-4"
                                           data-mto-status-dropdown
                                           onClick={(e) => e.stopPropagation()}
                                         >
@@ -894,8 +1035,11 @@ export default function page() {
                                             type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setOpenMtoStatusDropdownId((prev) =>
-                                                prev === mto.id ? null : mto.id
+                                              setOpenMtoStatusDropdownId(
+                                                (prev) =>
+                                                  prev === mto.id
+                                                    ? null
+                                                    : mto.id
                                               );
                                             }}
                                             disabled={
@@ -911,7 +1055,8 @@ export default function page() {
                                             <ChevronDown className="w-4 h-4 text-slate-500" />
                                           </button>
 
-                                          {openMtoStatusDropdownId === mto.id && (
+                                          {openMtoStatusDropdownId ===
+                                            mto.id && (
                                             <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-30 overflow-hidden">
                                               <button
                                                 type="button"
@@ -943,7 +1088,8 @@ export default function page() {
                                     {/* Accordion Content */}
                                     {isExpanded && (
                                       <div className="border-t border-slate-200 px-4 py-3 bg-slate-50">
-                                        {Object.keys(groupedItems).length === 0 ? (
+                                        {Object.keys(groupedItems).length ===
+                                        0 ? (
                                           <div className="text-sm text-slate-500 text-center py-4 font-medium">
                                             No items in this MTO
                                           </div>
@@ -958,7 +1104,9 @@ export default function page() {
                                                   <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
                                                     {getCategoryIcon(category)}
                                                     <h3 className="text-sm font-semibold text-slate-700">
-                                                      {formatCategoryName(category)}
+                                                      {formatCategoryName(
+                                                        category
+                                                      )}
                                                     </h3>
                                                     <span className="text-sm text-slate-500 ml-auto font-medium">
                                                       {items.length} item(s)
@@ -971,11 +1119,20 @@ export default function page() {
                                                           mtoItem.item
                                                         );
                                                       // Compare string input with original number value
-                                                      const inputString = quantityInputs[mtoItem.id];
-                                                      const originalValue = String(mtoItem.quantity_used || 0);
+                                                      const inputString =
+                                                        quantityInputs[
+                                                          mtoItem.id
+                                                        ];
+                                                      const originalValue =
+                                                        String(
+                                                          mtoItem.quantity_used ||
+                                                            0
+                                                        );
                                                       const hasChanges =
-                                                        inputString !== undefined &&
-                                                        inputString !== originalValue;
+                                                        inputString !==
+                                                          undefined &&
+                                                        inputString !==
+                                                          originalValue;
                                                       return (
                                                         <div
                                                           key={mtoItem.id}
@@ -1098,7 +1255,8 @@ export default function page() {
                                                                 {itemDetails?.sub_category && (
                                                                   <div>
                                                                     <span className="text-slate-500 font-bold">
-                                                                      Sub Category:
+                                                                      Sub
+                                                                      Category:
                                                                     </span>{" "}
                                                                     <span className="text-slate-700">
                                                                       {
@@ -1133,19 +1291,20 @@ export default function page() {
                                                                 )}
                                                                 {mtoItem.item
                                                                   ?.supplier && (
-                                                                    <div>
-                                                                      <span className="text-slate-500 font-bold">
-                                                                        Supplier:
-                                                                      </span>{" "}
-                                                                      <span className="text-slate-700">
-                                                                        {
-                                                                          mtoItem.item
-                                                                            .supplier
-                                                                            .name
-                                                                        }
-                                                                      </span>
-                                                                    </div>
-                                                                  )}
+                                                                  <div>
+                                                                    <span className="text-slate-500 font-bold">
+                                                                      Supplier:
+                                                                    </span>{" "}
+                                                                    <span className="text-slate-700">
+                                                                      {
+                                                                        mtoItem
+                                                                          .item
+                                                                          .supplier
+                                                                          .name
+                                                                      }
+                                                                    </span>
+                                                                  </div>
+                                                                )}
                                                               </div>
                                                             </div>
 
@@ -1155,17 +1314,19 @@ export default function page() {
                                                                 Total
                                                               </div>
                                                               <div className="text-base font-bold text-slate-700">
-                                                                {mtoItem.quantity}
+                                                                {
+                                                                  mtoItem.quantity
+                                                                }
                                                               </div>
                                                               {mtoItem.item
                                                                 ?.measurement_unit && (
-                                                                  <div className="text-xs text-slate-500 mt-1">
-                                                                    {
-                                                                      mtoItem.item
-                                                                        .measurement_unit
-                                                                    }
-                                                                  </div>
-                                                                )}
+                                                                <div className="text-xs text-slate-500 mt-1">
+                                                                  {
+                                                                    mtoItem.item
+                                                                      .measurement_unit
+                                                                  }
+                                                                </div>
+                                                              )}
                                                             </div>
 
                                                             {/* Used Count Column */}
@@ -1179,13 +1340,13 @@ export default function page() {
                                                               </div>
                                                               {mtoItem.item
                                                                 ?.measurement_unit && (
-                                                                  <div className="text-xs text-slate-500 mt-1">
-                                                                    {
-                                                                      mtoItem.item
-                                                                        .measurement_unit
-                                                                    }
-                                                                  </div>
-                                                                )}
+                                                                <div className="text-xs text-slate-500 mt-1">
+                                                                  {
+                                                                    mtoItem.item
+                                                                      .measurement_unit
+                                                                  }
+                                                                </div>
+                                                              )}
                                                             </div>
 
                                                             {/* Input Field Column */}
@@ -1203,40 +1364,76 @@ export default function page() {
                                                                   value={
                                                                     quantityInputs[
                                                                       mtoItem.id
-                                                                    ] !== undefined
+                                                                    ] !==
+                                                                    undefined
                                                                       ? quantityInputs[
-                                                                      mtoItem.id
-                                                                      ]
-                                                                      : String(mtoItem.quantity_used || 0)
+                                                                          mtoItem
+                                                                            .id
+                                                                        ]
+                                                                      : String(
+                                                                          mtoItem.quantity_used ||
+                                                                            0
+                                                                        )
                                                                   }
-                                                                  onChange={(e) => {
+                                                                  onChange={(
+                                                                    e
+                                                                  ) => {
                                                                     // Store raw string value to allow empty input
-                                                                    const value = e.target.value;
+                                                                    const value =
+                                                                      e.target
+                                                                        .value;
                                                                     handleQuantityInputChange(
                                                                       mtoItem.id,
                                                                       value
                                                                     );
                                                                   }}
                                                                   className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-center font-medium"
-                                                                  disabled={saving}
+                                                                  disabled={
+                                                                    saving ||
+                                                                    mtoTab ===
+                                                                      "upcoming"
+                                                                  }
                                                                 />
                                                                 {mtoItem.item
                                                                   ?.measurement_unit && (
-                                                                    <div className="text-xs text-slate-500 mt-1">
-                                                                      {
-                                                                        mtoItem.item
-                                                                          .measurement_unit
-                                                                      }
-                                                                    </div>
-                                                                  )}
+                                                                  <div className="text-xs text-slate-500 mt-1">
+                                                                    {
+                                                                      mtoItem
+                                                                        .item
+                                                                        .measurement_unit
+                                                                    }
+                                                                  </div>
+                                                                )}
                                                                 {(() => {
-                                                                  const inputString = quantityInputs[mtoItem.id];
-                                                                  if (inputString === undefined) return null;
-                                                                  const inputValue = inputString === "" ? 0 : parseFloat(inputString);
-                                                                  if (!isNaN(inputValue) && inputValue > mtoItem.quantity) {
+                                                                  const inputString =
+                                                                    quantityInputs[
+                                                                      mtoItem.id
+                                                                    ];
+                                                                  if (
+                                                                    inputString ===
+                                                                    undefined
+                                                                  )
+                                                                    return null;
+                                                                  const inputValue =
+                                                                    inputString ===
+                                                                    ""
+                                                                      ? 0
+                                                                      : parseFloat(
+                                                                          inputString
+                                                                        );
+                                                                  if (
+                                                                    !isNaN(
+                                                                      inputValue
+                                                                    ) &&
+                                                                    inputValue >
+                                                                      mtoItem.quantity
+                                                                  ) {
                                                                     return (
                                                                       <div className="text-xs text-red-600 font-medium">
-                                                                        Max: {mtoItem.quantity}
+                                                                        Max:{" "}
+                                                                        {
+                                                                          mtoItem.quantity
+                                                                        }
                                                                       </div>
                                                                     );
                                                                   }
@@ -1259,7 +1456,9 @@ export default function page() {
                                                                       )
                                                                     }
                                                                     disabled={
-                                                                      saving
+                                                                      saving ||
+                                                                      mtoTab ===
+                                                                        "upcoming"
                                                                     }
                                                                     className="cursor-pointer p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
                                                                     title="Cancel"
@@ -1274,11 +1473,36 @@ export default function page() {
                                                                       )
                                                                     }
                                                                     disabled={(() => {
-                                                                      if (saving) return true;
-                                                                      const inputString = quantityInputs[mtoItem.id];
-                                                                      if (inputString === undefined) return false;
-                                                                      const inputValue = inputString === "" ? 0 : parseFloat(inputString);
-                                                                      return !isNaN(inputValue) && inputValue > mtoItem.quantity;
+                                                                      if (
+                                                                        saving ||
+                                                                        mtoTab ===
+                                                                          "upcoming"
+                                                                      )
+                                                                        return true;
+                                                                      const inputString =
+                                                                        quantityInputs[
+                                                                          mtoItem
+                                                                            .id
+                                                                        ];
+                                                                      if (
+                                                                        inputString ===
+                                                                        undefined
+                                                                      )
+                                                                        return false;
+                                                                      const inputValue =
+                                                                        inputString ===
+                                                                        ""
+                                                                          ? 0
+                                                                          : parseFloat(
+                                                                              inputString
+                                                                            );
+                                                                      return (
+                                                                        !isNaN(
+                                                                          inputValue
+                                                                        ) &&
+                                                                        inputValue >
+                                                                          mtoItem.quantity
+                                                                      );
                                                                     })()}
                                                                     className="cursor-pointer p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                                     title="Save"
@@ -1323,12 +1547,17 @@ export default function page() {
       {/* Manual Add Material Modal */}
       {showManualAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
-          <div className="absolute inset-0 bg-slate-900/40" onClick={handleCloseManualModal} />
+          <div
+            className="absolute inset-0 bg-slate-900/40"
+            onClick={handleCloseManualModal}
+          />
 
           <div className="relative bg-white w-full max-w-6xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h2 className="text-xl font-semibold text-slate-800">Manually Add Material Used</h2>
+              <h2 className="text-xl font-semibold text-slate-800">
+                Manually Add Material Used
+              </h2>
               <button
                 onClick={handleCloseManualModal}
                 className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -1340,10 +1569,85 @@ export default function page() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Project Selection */}
+              <div className="relative" ref={projectDropdownRef}>
+                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                  Project (Optional)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={projectSearchTerm}
+                    onChange={handleProjectSearchChange}
+                    onFocus={() => setIsProjectDropdownOpen(true)}
+                    className="w-full text-sm text-slate-800 px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    placeholder="Search or select a project..."
+                    disabled={savingManual || loadingProjects}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIsProjectDropdownOpen(!isProjectDropdownOpen)
+                    }
+                    className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+                    disabled={savingManual || loadingProjects}
+                  >
+                    <ChevronDown
+                      className={`w-5 h-5 transition-transform ${
+                        isProjectDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {isProjectDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {loadingProjects ? (
+                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                        Loading projects...
+                      </div>
+                    ) : filteredProjects.length > 0 ? (
+                      filteredProjects.map((project) => {
+                        const displayText = `${project.name}${
+                          project.client ? ` ${project.client.client_name}` : ""
+                        }`;
+                        return (
+                          <button
+                            key={project.project_id}
+                            type="button"
+                            onClick={() => handleProjectSelect(project)}
+                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                          >
+                            <span>
+                              <p className="font-bold">{project.name}</p>
+                              <p className="text-xs text-slate-500">
+                                {project.client
+                                  ? ` ${project.client.client_name}`
+                                  : ""}
+                              </p>
+                            </span>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                        {projectSearchTerm
+                          ? "No matching projects found"
+                          : "No projects with all active lots available"}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-slate-100" />
+
               {/* Item Selection & List */}
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Items</h3>
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+                    Items
+                  </h3>
                 </div>
 
                 {/* Category Dropdown and Search Bar */}
@@ -1377,7 +1681,11 @@ export default function page() {
                       <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                       <input
                         type="text"
-                        placeholder={selectedCategory ? "Search items by name, category, brand..." : "Please select a category first"}
+                        placeholder={
+                          selectedCategory
+                            ? "Search items by name, category, brand..."
+                            : "Please select a category first"
+                        }
                         value={itemSearch}
                         onChange={(e) => {
                           setItemSearch(e.target.value);
@@ -1394,36 +1702,53 @@ export default function page() {
                     </div>
 
                     {/* Search Results Dropdown */}
-                    {showItemSearchResults && itemSearch && selectedCategory && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
-                        {loadingItems ? (
-                          <div className="p-4 text-center text-slate-500 text-sm">Loading items...</div>
-                        ) : filteredItems.length === 0 ? (
-                          <div className="p-4 text-center text-slate-500 text-sm">No items found</div>
-                        ) : (
-                          filteredItems.map(item => (
-                            <div
-                              key={item.item_id}
-                              onClick={() => handleAddItem(item)}
-                              className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 flex items-center gap-3"
-                            >
-                              <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
-                                {item.image?.url ? (
-                                  <Image src={`/${item.image.url}`} alt="Item" width={40} height={40} className="w-full h-full object-cover" />
-                                ) : (
-                                  <Package className="w-5 h-5 text-slate-400" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-slate-800">{getItemDisplayName(item)}</p>
-                                <p className="text-xs text-slate-500">{item.category} • Stock: {item.quantity} {item.measurement_unit}</p>
-                              </div>
-                              <Plus className="w-4 h-4 text-primary ml-auto" />
+                    {showItemSearchResults &&
+                      itemSearch &&
+                      selectedCategory && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+                          {loadingItems ? (
+                            <div className="p-4 text-center text-slate-500 text-sm">
+                              Loading items...
                             </div>
-                          ))
-                        )}
-                      </div>
-                    )}
+                          ) : filteredItems.length === 0 ? (
+                            <div className="p-4 text-center text-slate-500 text-sm">
+                              No items found
+                            </div>
+                          ) : (
+                            filteredItems.map((item) => (
+                              <div
+                                key={item.item_id}
+                                onClick={() => handleAddItem(item)}
+                                className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 flex items-center gap-3"
+                              >
+                                <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
+                                  {item.image?.url ? (
+                                    <Image
+                                      src={`/${item.image.url}`}
+                                      alt="Item"
+                                      width={40}
+                                      height={40}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Package className="w-5 h-5 text-slate-400" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-slate-800">
+                                    {getItemDisplayName(item)}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {item.category} • Stock: {item.quantity}{" "}
+                                    {item.measurement_unit}
+                                  </p>
+                                </div>
+                                <Plus className="w-4 h-4 text-primary ml-auto" />
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
                   </div>
                 </div>
 
@@ -1432,18 +1757,33 @@ export default function page() {
                   <table className="w-full">
                     <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Image</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Category</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Details</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">In Stock</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Quantity</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Actions</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                          Image
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                          Category
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                          Details
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                          In Stock
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                          Quantity
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {selectedItems.length === 0 ? (
                         <tr>
-                          <td colSpan="6" className="px-4 py-8 text-center text-slate-500 text-sm">
+                          <td
+                            colSpan="6"
+                            className="px-4 py-8 text-center text-slate-500 text-sm"
+                          >
                             No items selected. Search and add items above.
                           </td>
                         </tr>
@@ -1454,7 +1794,13 @@ export default function page() {
                             <td className="px-4 py-3">
                               <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
                                 {item.image?.url ? (
-                                  <Image src={`/${item.image.url}`} alt="Item" width={40} height={40} className="w-full h-full object-cover" />
+                                  <Image
+                                    src={`/${item.image.url}`}
+                                    alt="Item"
+                                    width={40}
+                                    height={40}
+                                    className="w-full h-full object-cover"
+                                  />
                                 ) : (
                                   <Package className="w-5 h-5 text-slate-400" />
                                 )}
@@ -1473,50 +1819,130 @@ export default function page() {
                               <div className="text-xs text-slate-600 space-y-1">
                                 {item.sheet && (
                                   <>
-                                    <div><span className="font-medium">Color:</span> {item.sheet.color}</div>
-                                    <div><span className="font-medium">Finish:</span> {item.sheet.finish}</div>
-                                    <div><span className="font-medium">Face:</span> {item.sheet.face || "-"}</div>
-                                    <div><span className="font-medium">Dimensions:</span> {item.sheet.dimensions}</div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Color:
+                                      </span>{" "}
+                                      {item.sheet.color}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Finish:
+                                      </span>{" "}
+                                      {item.sheet.finish}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">Face:</span>{" "}
+                                      {item.sheet.face || "-"}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Dimensions:
+                                      </span>{" "}
+                                      {item.sheet.dimensions}
+                                    </div>
                                   </>
                                 )}
                                 {item.handle && (
                                   <>
-                                    <div><span className="font-medium">Color:</span> {item.handle.color}</div>
-                                    <div><span className="font-medium">Type:</span> {item.handle.type}</div>
-                                    <div><span className="font-medium">Dimensions:</span> {item.handle.dimensions}</div>
-                                    <div><span className="font-medium">Material:</span> {item.handle.material || "-"}</div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Color:
+                                      </span>{" "}
+                                      {item.handle.color}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">Type:</span>{" "}
+                                      {item.handle.type}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Dimensions:
+                                      </span>{" "}
+                                      {item.handle.dimensions}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Material:
+                                      </span>{" "}
+                                      {item.handle.material || "-"}
+                                    </div>
                                   </>
                                 )}
                                 {item.hardware && (
                                   <>
-                                    <div><span className="font-medium">Name:</span> {item.hardware.name}</div>
-                                    <div><span className="font-medium">Type:</span> {item.hardware.type}</div>
-                                    <div><span className="font-medium">Dimensions:</span> {item.hardware.dimensions}</div>
-                                    <div><span className="font-medium">Sub Category:</span> {item.hardware.sub_category}</div>
+                                    <div>
+                                      <span className="font-medium">Name:</span>{" "}
+                                      {item.hardware.name}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">Type:</span>{" "}
+                                      {item.hardware.type}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Dimensions:
+                                      </span>{" "}
+                                      {item.hardware.dimensions}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Sub Category:
+                                      </span>{" "}
+                                      {item.hardware.sub_category}
+                                    </div>
                                   </>
                                 )}
                                 {item.accessory && (
                                   <>
-                                    <div><span className="font-medium">Name:</span> {item.accessory.name}</div>
+                                    <div>
+                                      <span className="font-medium">Name:</span>{" "}
+                                      {item.accessory.name}
+                                    </div>
                                   </>
                                 )}
                                 {item.edging_tape && (
                                   <>
-                                    <div><span className="font-medium">Brand:</span> {item.edging_tape.brand || "-"}</div>
-                                    <div><span className="font-medium">Color:</span> {item.edging_tape.color || "-"}</div>
-                                    <div><span className="font-medium">Finish:</span> {item.edging_tape.finish || "-"}</div>
-                                    <div><span className="font-medium">Dimensions:</span> {item.edging_tape.dimensions || "-"}</div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Brand:
+                                      </span>{" "}
+                                      {item.edging_tape.brand || "-"}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Color:
+                                      </span>{" "}
+                                      {item.edging_tape.color || "-"}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Finish:
+                                      </span>{" "}
+                                      {item.edging_tape.finish || "-"}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">
+                                        Dimensions:
+                                      </span>{" "}
+                                      {item.edging_tape.dimensions || "-"}
+                                    </div>
                                   </>
                                 )}
-                                {!item.sheet && !item.handle && !item.hardware && !item.accessory && !item.edging_tape && (
-                                  <div>{item.description || "-"}</div>
-                                )}
+                                {!item.sheet &&
+                                  !item.handle &&
+                                  !item.hardware &&
+                                  !item.accessory &&
+                                  !item.edging_tape && (
+                                    <div>{item.description || "-"}</div>
+                                  )}
                               </div>
                             </td>
 
                             {/* In Stock Column */}
                             <td className="px-4 py-3 text-sm text-slate-600">
-                              {item.stock_quantity ?? item.quantity} {item.measurement_unit}
+                              {item.stock_quantity ?? item.quantity}{" "}
+                              {item.measurement_unit}
                             </td>
 
                             {/* Quantity Column */}
@@ -1525,7 +1951,13 @@ export default function page() {
                                 type="number"
                                 min="1"
                                 value={item.quantity}
-                                onChange={(e) => handleUpdateItem(item.item_id, "quantity", e.target.value)}
+                                onChange={(e) =>
+                                  handleUpdateItem(
+                                    item.item_id,
+                                    "quantity",
+                                    e.target.value
+                                  )
+                                }
                                 className="w-20 p-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-primary outline-none"
                                 disabled={savingManual}
                               />

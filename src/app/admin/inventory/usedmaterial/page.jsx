@@ -1330,7 +1330,7 @@ export default function page() {
                                                             </div>
 
                                                             {/* Used Count Column */}
-                                                            <div className="text-center min-w-[80px]">
+                                                            <div className="text-center min-w-20">
                                                               <div className="text-sm text-slate-500 mb-1.5 font-medium">
                                                                 Used
                                                               </div>
@@ -1443,7 +1443,7 @@ export default function page() {
                                                             </div>
 
                                                             {/* Actions Column */}
-                                                            <div className="text-center min-w-[80px]">
+                                                            <div className="text-center min-w-20">
                                                               <div className="text-sm text-slate-500 mb-1.5 font-medium">
                                                                 Actions
                                                               </div>

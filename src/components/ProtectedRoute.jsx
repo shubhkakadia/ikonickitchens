@@ -223,6 +223,7 @@ export function AdminRoute({
     [`/admin/inventory/${id}`]: "item_details",
     "/admin/site_photos": "site_photos",
     "/admin/config": "config",
+    "/admin/calendar": "calendar",
   };
 
   // Check authentication first - redirect to login if not authenticated

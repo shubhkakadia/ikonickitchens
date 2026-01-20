@@ -64,6 +64,7 @@ export async function PATCH(request, { params }) {
           statements: data.statements,
           site_photos: data.site_photos,
           config: data.config,
+          calendar: data.calendar,
         },
       });
     } catch (error) {

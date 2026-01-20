@@ -19,6 +19,7 @@ import {
   CircleSmall,
   ArrowLeftToLine,
   ArrowRightToLine,
+  CalendarDays,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -50,6 +51,13 @@ export default function Sidebar() {
       icon: LayoutDashboard,
       label: "Dashboard",
       href: "/admin/dashboard",
+      access: false,
+      subtabs: [],
+    },
+    {
+      icon: CalendarDays,
+      label: "Calendar",
+      href: "/admin/calendar",
       access: false,
       subtabs: [],
     },

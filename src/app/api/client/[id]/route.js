@@ -14,42 +14,66 @@ export async function GET(request, { params }) {
         client_id: id,
         is_deleted: false,
       },
-      include: {
+      select: {
+        client_id: true,
+        client_name: true,
+        client_type: true,
+        client_address: true,
+        client_phone: true,
+        client_email: true,
+        client_website: true,
+        client_notes: true,
+        contacts: true,
         projects: {
           where: {
             is_deleted: false,
           },
-          include: {
+          select: {
+            id: true,
+            project_id: true,
+            name: true,
+            createdAt: true,
             lots: {
               where: {
                 is_deleted: false,
               },
-              include: {
-                stages: true,
+              select: {
+                id: true,
+                lot_id: true,
+                name: true,
+                status: true,
+                startDate: true,
+                installationDueDate: true,
+                stages: {
+                  select: {
+                    name: true,
+                    status: true,
+                    createdAt: true,
+                  },
+                },
               },
             },
           },
         },
-        contacts: true,
       },
     });
 
     if (!client) {
       return NextResponse.json(
         { status: false, message: "Client not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     return NextResponse.json(
       { status: true, message: "Client fetched successfully", data: client },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/client/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -70,7 +94,7 @@ export async function PATCH(request, { params }) {
     } = await request.json();
     const formatPhone = (phone) => {
       return phone ? formatPhoneToNational(phone) : phone;
-    }
+    };
 
     await prisma.client.update({
       where: { client_id: id },
@@ -88,17 +112,47 @@ export async function PATCH(request, { params }) {
     // include projects and contacts
     const clientWithRelations = await prisma.client.findUnique({
       where: { client_id: id },
-      include: {
+      select: {
+        client_id: true,
+        client_name: true,
+        client_type: true,
+        client_address: true,
+        client_phone: true,
+        client_email: true,
+        client_website: true,
+        client_notes: true,
+        contacts: true,
         projects: {
-          include: {
+          where: {
+            is_deleted: false,
+          },
+          select: {
+            id: true,
+            project_id: true,
+            name: true,
+            createdAt: true,
             lots: {
-              include: {
-                stages: true,
+              where: {
+                is_deleted: false,
+              },
+              select: {
+                id: true,
+                lot_id: true,
+                name: true,
+                status: true,
+                startDate: true,
+                installationDueDate: true,
+                stages: {
+                  select: {
+                    name: true,
+                    status: true,
+                    createdAt: true,
+                  },
+                },
               },
             },
           },
         },
-        contacts: true,
       },
     });
     const logged = await withLogging(
@@ -106,25 +160,29 @@ export async function PATCH(request, { params }) {
       "client",
       id,
       "UPDATE",
-      `Client updated successfully: ${clientWithRelations.client_name}`
+      `Client updated successfully: ${clientWithRelations.client_name}`,
     );
     if (!logged) {
-      console.error(`Failed to log client update: ${id} - ${clientWithRelations.client_name}`);
+      console.error(
+        `Failed to log client update: ${id} - ${clientWithRelations.client_name}`,
+      );
     }
     return NextResponse.json(
       {
         status: true,
         message: "Client updated successfully",
         data: clientWithRelations,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/client/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -143,14 +201,14 @@ export async function DELETE(request, { params }) {
     if (!existingClient) {
       return NextResponse.json(
         { status: false, message: "Client not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (existingClient.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Client already deleted" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -165,29 +223,31 @@ export async function DELETE(request, { params }) {
       "client",
       id,
       "DELETE",
-      `Client deleted successfully: ${client.client_name}`
+      `Client deleted successfully: ${client.client_name}`,
     );
     if (!logged) {
-      console.error(`Failed to log client deletion: ${id} - ${client.client_name}`);
+      console.error(
+        `Failed to log client deletion: ${id} - ${client.client_name}`,
+      );
       return NextResponse.json(
         {
           status: true,
           message: "Client deleted successfully",
           data: client,
-          warning: "Note: Deletion succeeded but logging failed"
+          warning: "Note: Deletion succeeded but logging failed",
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
     return NextResponse.json(
       { status: true, message: "Client deleted successfully", data: client },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/client/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

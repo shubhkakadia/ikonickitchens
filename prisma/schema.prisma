@@ -26,6 +26,7 @@ model users {
   employee                 employees?                @relation(fields: [employee_id], references: [employee_id], onDelete: SetNull)
   notification_config      notification_config?
   materials_to_order_items materials_to_order_item[]
+  meetingParticipants      meeting[]
 
   @@index([employee_id])
 }
@@ -60,6 +61,7 @@ model module_access {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   usedmaterial     Boolean  @default(false)
+  calendar         Boolean  @default(false)
   user             users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
@@ -220,6 +222,7 @@ model lot {
   tabs                   lot_tab[]
   material_selection     material_selection?
   stages                 stage[]
+  meetingLots            meeting[]
 
   @@index([lot_id])
   @@index([project_id])
@@ -691,6 +694,7 @@ model notification_config {
   material_to_order                   Boolean  @default(false)
   material_to_order_ordered           Boolean  @default(false)
   assign_installer                    Boolean  @default(false)
+  meeting                             Boolean  @default(false)
   // project_deadline                    Boolean  @default(false)
   stage_updates                       Boolean  @default(false)
   stage_quote_approve                 Boolean  @default(false)
@@ -720,17 +724,31 @@ model notification_config {
 }
 
 model reserve_item_stock {
-  id            String                   @id @default(uuid())
+  id            String                  @id @default(uuid())
   item_id       String
   quantity      Int
   used_quantity Int
   mto_id        String
-  item          item                     @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
+  item          item                    @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
   mto           materials_to_order_item @relation(fields: [mto_id], references: [id], onDelete: Cascade)
   user_id       String
-  createdAt     DateTime                 @default(now())
-  updatedAt     DateTime                 @updatedAt
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 }
+
+model meeting {
+  id            String                 @id @default(uuid())
+  date_time     DateTime
+  date_time_end DateTime?
+  title         String
+  notes         String?
+  remainder     String?
+  participants  users[]
+  lots          lot[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
 
 enum LogAction {
   CREATE

@@ -10,8 +10,11 @@ export async function POST(request) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    const { lot_id, name, project_id, startDate, installationDueDate, notes } =
+    let { lot_id, name, project_id, startDate, installationDueDate, notes } =
       await request.json();
+    project_id = decodeURIComponent(project_id);
+    lot_id = decodeURIComponent(lot_id);
+
     const existingLot = await prisma.lot.findUnique({
       where: { lot_id: lot_id.toLowerCase() },
     });
@@ -21,7 +24,7 @@ export async function POST(request) {
           status: false,
           message: "Lot already exists by this lot id: " + lot_id.toLowerCase(),
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
     const lot = await prisma.lot.create({
@@ -45,7 +48,7 @@ export async function POST(request) {
       "lot",
       lot.lot_id,
       "CREATE",
-      `Lot created successfully: ${lot.name} for project: ${lot.project.name}`
+      `Lot created successfully: ${lot.name} for project: ${lot.project.name}`,
     );
     if (!logged) {
       console.error(`Failed to log lot creation: ${lot.lot_id} - ${lot.name}`);
@@ -54,20 +57,20 @@ export async function POST(request) {
           status: true,
           message: "Lot created successfully",
           data: lot,
-          warning: "Note: Creation succeeded but logging failed"
+          warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
     return NextResponse.json(
       { status: true, message: "Lot created successfully", data: lot },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/lot/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

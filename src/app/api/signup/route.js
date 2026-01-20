@@ -112,6 +112,7 @@ export async function POST(request) {
             statements: module_access.statements,
             site_photos: module_access.site_photos,
             config: module_access.config,
+            calendar: module_access.calendar,
           },
         });
       });

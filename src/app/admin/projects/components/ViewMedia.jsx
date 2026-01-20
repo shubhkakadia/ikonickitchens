@@ -1,7 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Document, Page, pdfjs } from "react-pdf";
-import { ZoomOut, ZoomIn, Download, X, File as FileIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ZoomOut,
+  ZoomIn,
+  Download,
+  X,
+  File as FileIcon,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  RotateCw,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -20,6 +30,7 @@ export default function ViewMedia({
   const [pdfScale, setPdfScale] = useState(1.0);
   const [currentPageInView, setCurrentPageInView] = useState(1);
   const [imageScale, setImageScale] = useState(1.0);
+  const [imageRotation, setImageRotation] = useState(0);
   const [currentFileIndex, setCurrentFileIndex] = useState(currentIndex);
   const allFilesRef = useRef(allFiles);
   const currentFileIndexRef = useRef(currentIndex);
@@ -49,17 +60,23 @@ export default function ViewMedia({
     let fileUrl = null;
     if (file.url) {
       // If URL already starts with /, use as is, otherwise prepend /
-      fileUrl = file.url.startsWith('/') ? file.url : `/${file.url}`;
+      fileUrl = file.url.startsWith("/") ? file.url : `/${file.url}`;
     }
 
     // Determine file type - check multiple possible fields
-    const fileType = file.mime_type || file.type ||
-      (file.filename?.endsWith('.pdf') ? 'application/pdf' :
-        file.filename?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? 'image' :
-          file.filename?.match(/\.(mp4|webm|ogg|mov)$/i) ? 'video' : '');
+    const fileType =
+      file.mime_type ||
+      file.type ||
+      (file.filename?.endsWith(".pdf")
+        ? "application/pdf"
+        : file.filename?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
+          ? "image"
+          : file.filename?.match(/\.(mp4|webm|ogg|mov)$/i)
+            ? "video"
+            : "");
 
     return {
-      name: file.filename || file.name || 'Unknown file',
+      name: file.filename || file.name || "Unknown file",
       type: fileType,
       size: file.size || 0,
       url: fileUrl,
@@ -84,6 +101,7 @@ export default function ViewMedia({
       if (prevFile) {
         setSelectedFile(prevFile);
         setImageScale(1.0); // Reset zoom when changing files
+        setImageRotation(0); // Reset rotation when changing files
         setPdfScale(1.0);
         setCurrentPageInView(1);
         setNumPages(null);
@@ -105,6 +123,7 @@ export default function ViewMedia({
       if (nextFile) {
         setSelectedFile(nextFile);
         setImageScale(1.0); // Reset zoom when changing files
+        setImageRotation(0); // Reset rotation when changing files
         setPdfScale(1.0);
         setCurrentPageInView(1);
         setNumPages(null);
@@ -120,6 +139,7 @@ export default function ViewMedia({
     setNumPages(null);
     setPdfScale(1.0);
     setImageScale(1.0);
+    setImageRotation(0);
     setCurrentPageInView(1);
   }, [setViewFileModal, setSelectedFile, setPageNumber]);
 
@@ -143,7 +163,8 @@ export default function ViewMedia({
   }, [handlePrevious, handleNext, handleClose]);
 
   const canNavigatePrevious = allFiles.length > 0 && currentFileIndex > 0;
-  const canNavigateNext = allFiles.length > 0 && currentFileIndex < allFiles.length - 1;
+  const canNavigateNext =
+    allFiles.length > 0 && currentFileIndex < allFiles.length - 1;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
@@ -197,16 +218,16 @@ export default function ViewMedia({
 
         {/* Modal Content */}
         <div className="relative flex-1 overflow-auto p-2 bg-slate-50">
-
           {selectedFile.type?.includes("image") ? (
             <div className="flex items-center justify-center min-h-full">
               <div
                 className="transition-transform duration-200"
                 style={{
-                  transform: `scale(${imageScale})`,
+                  transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
                   transformOrigin: "center center",
                 }}
               >
+                {/* rotate image */}
                 <Image
                   loading="lazy"
                   width={1000}
@@ -214,12 +235,13 @@ export default function ViewMedia({
                   objectFit="contain"
                   src={
                     selectedFile.url ||
-                    (selectedFile instanceof File || selectedFile instanceof Blob
+                    (selectedFile instanceof File ||
+                    selectedFile instanceof Blob
                       ? URL.createObjectURL(selectedFile)
                       : null)
                   }
                   alt={selectedFile.name}
-                  className=" rounded-lg shadow-lg"
+                  className=" rounded-lg shadow-lg w-full h-full object-contain"
                 />
               </div>
             </div>
@@ -230,7 +252,8 @@ export default function ViewMedia({
                 <Document
                   file={
                     selectedFile.url ||
-                    (selectedFile instanceof File || selectedFile instanceof Blob
+                    (selectedFile instanceof File ||
+                    selectedFile instanceof Blob
                       ? selectedFile
                       : null)
                   }
@@ -304,9 +327,9 @@ export default function ViewMedia({
             <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
               <button
                 onClick={() =>
-                  setImageScale((prev) => Math.max(prev - 0.25, 0.5))
+                  setImageScale((prev) => Math.max(prev - 0.25, 0.25))
                 }
-                disabled={imageScale <= 0.5}
+                disabled={imageScale <= 0.25}
                 className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Zoom Out"
               >
@@ -325,46 +348,61 @@ export default function ViewMedia({
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
+              <div className="h-6 w-px bg-slate-300 mx-1"></div>
+              <button
+                onClick={() => setImageRotation((prev) => (prev - 90) % 360)}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                title="Rotate Left"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setImageRotation((prev) => (prev + 90) % 360)}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                title="Rotate Right"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
             </div>
           )}
 
           {/* PDF Controls */}
           {(selectedFile.type?.includes("pdf") ||
             selectedFile.name?.endsWith(".pdf")) && (
-              <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
-                <button
-                  onClick={() =>
-                    setPdfScale((prev) => Math.max(prev - 0.25, 0.5))
-                  }
-                  disabled={pdfScale <= 0.5}
-                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-                <span className="text-sm font-medium text-slate-700 min-w-[50px] text-center">
-                  {Math.round(pdfScale * 100)}%
-                </span>
-                <button
-                  onClick={() =>
-                    setPdfScale((prev) => Math.min(prev + 0.25, 3.0))
-                  }
-                  disabled={pdfScale >= 3.0}
-                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-                {numPages && (
-                  <>
-                    <div className="h-6 w-px bg-slate-300 mx-1"></div>
-                    <span className="text-sm font-medium text-slate-700">
-                      Page {currentPageInView} of {numPages}
-                    </span>
-                  </>
-                )}
-              </div>
-            )}
+            <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
+              <button
+                onClick={() =>
+                  setPdfScale((prev) => Math.max(prev - 0.25, 0.25))
+                }
+                disabled={pdfScale <= 0.25}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-sm font-medium text-slate-700 min-w-[50px] text-center">
+                {Math.round(pdfScale * 100)}%
+              </span>
+              <button
+                onClick={() =>
+                  setPdfScale((prev) => Math.min(prev + 0.25, 3.0))
+                }
+                disabled={pdfScale >= 3.0}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              {numPages && (
+                <>
+                  <div className="h-6 w-px bg-slate-300 mx-1"></div>
+                  <span className="text-sm font-medium text-slate-700">
+                    Page {currentPageInView} of {numPages}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
 
           <button
             onClick={() => {
@@ -377,7 +415,10 @@ export default function ViewMedia({
                 a.href = selectedFile.url;
                 a.download = selectedFile.name;
                 a.click();
-              } else if (selectedFile instanceof File || selectedFile instanceof Blob) {
+              } else if (
+                selectedFile instanceof File ||
+                selectedFile instanceof Blob
+              ) {
                 // For new files that are actual File/Blob objects, create object URL
                 const fileURL = URL.createObjectURL(selectedFile);
                 const a = document.createElement("a");

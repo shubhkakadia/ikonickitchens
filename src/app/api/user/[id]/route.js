@@ -142,6 +142,7 @@ export async function PATCH(request, { params }) {
           statements: updateData.module_access.statements,
           site_photos: updateData.module_access.site_photos,
           config: updateData.module_access.config,
+          calendar: updateData.module_access.calendar,
         },
       });
       user = {

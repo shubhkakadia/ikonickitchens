@@ -97,6 +97,11 @@ export default function EmployeeDetailPage() {
       isParent: false,
     },
     {
+      key: "calendar",
+      label: "Calendar",
+      isParent: false,
+    },
+    {
       key: "employees",
       label: "Employees",
       isParent: true,

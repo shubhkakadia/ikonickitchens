@@ -5,6 +5,7 @@ import {
   getUserFromToken,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { sendNotification } from "@/lib/notification";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -130,6 +131,103 @@ export async function POST(request) {
         `Failed to log meeting creation: ${meeting.id} - ${meeting.title}`,
       );
     }
+
+    // Send meeting notifications to participants
+    try {
+      // Fetch additional data for notification
+      const meetingWithDetails = await prisma.meeting.findUnique({
+        where: { id: meeting.id },
+        include: {
+          participants: {
+            include: {
+              employee: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                  phone: true,
+                },
+              },
+            },
+          },
+          lots: {
+            include: {
+              project: {
+                select: {
+                  name: true,
+                  client: {
+                    select: {
+                      client_name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (meetingWithDetails) {
+        // Format project names
+        const projectNames =
+          [
+            ...new Set(
+              meetingWithDetails.lots
+                .map((lot) => lot.project?.name)
+                .filter(Boolean),
+            ),
+          ].join(", ") || "No projects";
+
+        // Format lot IDs with client names
+        const lotIdClient =
+          meetingWithDetails.lots
+            .map((lot) => {
+              const clientName =
+                lot.project?.client?.client_name || "Unknown Client";
+              return `${lot.lot_id} (${clientName})`;
+            })
+            .join(", ") || "No lots";
+
+        // Format date (DD/MM/YYYY)
+        const formattedDate = dayjs(meetingWithDetails.date_time)
+          .tz("Australia/Adelaide")
+          .format("DD/MM/YYYY");
+
+        // Format time (HH:MM AM/PM)
+        const formattedTime = dayjs(meetingWithDetails.date_time)
+          .tz("Australia/Adelaide")
+          .format("h:mm A");
+
+        // Format participants
+        const participants = meetingWithDetails.participants
+          .map((p) =>
+            `${p.employee?.first_name || ""} ${p.employee?.last_name || ""}`.trim(),
+          )
+          .filter(Boolean);
+
+        const participant1 = participants[0] || "No participants";
+        const participant2Plus =
+          participants.length > 1 ? participants.slice(1).join(", ") : "";
+
+        // Build notification record
+        const notificationRecord = {
+          title: meetingWithDetails.title,
+          project_names: projectNames,
+          lot_id_client: lotIdClient,
+          date: formattedDate,
+          time: formattedTime,
+          participant1,
+          participant2_plus: participant2Plus,
+          notes: meetingWithDetails.notes || "No notes provided",
+        };
+
+        // Send notification
+        await sendNotification(notificationRecord, "meeting_confirmation");
+      }
+    } catch (notificationError) {
+      console.error("Error sending meeting notifications:", notificationError);
+      // Don't fail the meeting creation if notifications fail
+    }
+
     return NextResponse.json({
       status: true,
       message: "Meeting created successfully",

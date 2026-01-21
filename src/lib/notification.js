@@ -2,9 +2,10 @@ import { prisma } from "@/lib/db";
 import axios from "axios";
 import { parsePhoneNumber } from "libphonenumber-js";
 
-
 // WhatsApp Business API Configuration
-const WHATSAPP_API_URL = process.env.NEXT_PUBLIC_WHATSAPP_API_URL || "https://graph.facebook.com/v24.0/980380258481972/messages";
+const WHATSAPP_API_URL =
+  process.env.NEXT_PUBLIC_WHATSAPP_API_URL ||
+  "https://graph.facebook.com/v24.0/980380258481972/messages";
 const WHATSAPP_ACCESS_TOKEN = process.env.NEXT_PUBLIC_WHATSAPP_ACCESS_TOKEN;
 
 /**
@@ -60,11 +61,13 @@ async function sendWhatsAppMessage(phoneNumber, templateName, parameters = []) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
       throw new Error(
-        `WhatsApp API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`
+        `WhatsApp API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`,
       );
     } else if (error.request) {
       // The request was made but no response was received
-      throw new Error(`WhatsApp API error: No response received - ${error.message}`);
+      throw new Error(
+        `WhatsApp API error: No response received - ${error.message}`,
+      );
     } else {
       // Something happened in setting up the request that triggered an Error
       throw new Error(`WhatsApp API error: ${error.message}`);
@@ -119,9 +122,8 @@ function buildSupplierStatementParams(data) {
   } = data;
 
   // Format amount if it's a number
-  const formattedAmount = typeof amount === "number"
-    ? `$${amount.toFixed(2)}`
-    : amount;
+  const formattedAmount =
+    typeof amount === "number" ? `$${amount.toFixed(2)}` : amount;
 
   // Format due date if it's a Date object or ISO string
   let formattedDueDate = due_date;
@@ -175,6 +177,35 @@ function buildAssignInstallerParams(data) {
   return [installer_name, project_name, lot_id, url];
 }
 
+/**
+ * Builds template parameters for meeting_confirmation notification
+ * @param {Object} data - Meeting confirmation data
+ * @returns {Array<string>} - Array of parameter values
+ */
+function buildMeetingConfirmationParams(data) {
+  const {
+    title = "Meeting",
+    project_names = "No projects",
+    lot_id_client = "No lots",
+    date = "",
+    time = "",
+    participant1 = "No participants",
+    participant2_plus = "",
+    notes = "No notes provided",
+  } = data;
+
+  return [
+    title,
+    project_names,
+    lot_id_client,
+    date,
+    time,
+    participant1,
+    participant2_plus,
+    notes,
+  ];
+}
+
 // Format phone number to Australian national format for storage
 function formatPhone(phone) {
   if (!phone || typeof phone !== "string" || phone.trim() === "") return phone; // Return as-is if empty
@@ -191,7 +222,7 @@ function formatPhone(phone) {
     // If parsing fails, return original value
     return phone.trim();
   }
-};
+}
 
 /**
  * Determines which notification types should be triggered based on the record
@@ -206,7 +237,11 @@ function determineNotificationTypes(record) {
     switch (record.type) {
       case "material_to_order":
         // Check if it's an ordered notification (has supplier_name in status)
-        if (record.status && typeof record.status === "string" && record.status.includes("Ordered")) {
+        if (
+          record.status &&
+          typeof record.status === "string" &&
+          record.status.includes("Ordered")
+        ) {
           notificationTypes.push("material_to_order_ordered");
         } else {
           notificationTypes.push("material_to_order");
@@ -232,22 +267,24 @@ function determineNotificationTypes(record) {
         // Map stage name to notification config field
         if (record.stage_name) {
           const stageFieldMap = {
-            "quote_approve": "stage_quote_approve",
-            "material_appliances_selection": "stage_material_appliances_selection",
-            "drafting": "stage_drafting",
-            "drafting_revision": "stage_drafting_revision",
-            "final_design_approval": "stage_final_design_approval",
-            "site_measurements": "stage_site_measurements",
-            "final_approval_for_production": "stage_final_approval_for_production",
-            "machining_out": "stage_machining_out",
-            "material_order": "stage_material_order",
-            "cnc": "stage_cnc",
-            "assembly": "stage_assembly",
-            "delivery": "stage_delivery",
-            "installation": "stage_installation",
-            "invoice_sent": "stage_invoice_sent",
-            "maintenance": "stage_maintenance",
-            "job_completion": "stage_job_completion",
+            quote_approve: "stage_quote_approve",
+            material_appliances_selection:
+              "stage_material_appliances_selection",
+            drafting: "stage_drafting",
+            drafting_revision: "stage_drafting_revision",
+            final_design_approval: "stage_final_design_approval",
+            site_measurements: "stage_site_measurements",
+            final_approval_for_production:
+              "stage_final_approval_for_production",
+            machining_out: "stage_machining_out",
+            material_order: "stage_material_order",
+            cnc: "stage_cnc",
+            assembly: "stage_assembly",
+            delivery: "stage_delivery",
+            installation: "stage_installation",
+            invoice_sent: "stage_invoice_sent",
+            maintenance: "stage_maintenance",
+            job_completion: "stage_job_completion",
           };
           const stageField = stageFieldMap[record.stage_name.toLowerCase()];
           if (stageField) {
@@ -290,7 +327,9 @@ async function getUsersToNotify(templateName, record = {}) {
     const configField = getNotificationConfigField(templateName, record);
 
     if (!configField) {
-      console.warn(`No notification config field found for template: ${templateName}`);
+      console.warn(
+        `No notification config field found for template: ${templateName}`,
+      );
       return [];
     }
 
@@ -349,6 +388,7 @@ const TEMPLATE_NAME_MAP = {
   supplier_statement_added: "supplier_statement_added",
   stock_transaction_created: "stock_transaction_created",
   assign_installer: "assign_installer",
+  meeting_confirmation: "meeting_confirmation",
 };
 
 /**
@@ -361,7 +401,11 @@ function getNotificationConfigField(templateName, record = {}) {
   switch (templateName) {
     case TEMPLATE_NAME_MAP.materials_to_order_list_update:
       // Check if this is an ordered notification (has supplier_name in status)
-      if (record.status && typeof record.status === "string" && record.status.includes("Ordered")) {
+      if (
+        record.status &&
+        typeof record.status === "string" &&
+        record.status.includes("Ordered")
+      ) {
         return "material_to_order_ordered";
       }
       return "material_to_order";
@@ -376,26 +420,29 @@ function getNotificationConfigField(templateName, record = {}) {
       if (record.stage_name) {
         const stageFieldMap = {
           "quote approval": "stage_quote_approve",
-          "material_appliances_selection": "stage_material_appliances_selection",
-          "drafting": "stage_drafting",
+          material_appliances_selection: "stage_material_appliances_selection",
+          drafting: "stage_drafting",
           "drafting revision": "stage_drafting_revision",
           "final design approval": "stage_final_design_approval",
           "site measurements": "stage_site_measurements",
-          "final approval for production": "stage_final_approval_for_production",
+          "final approval for production":
+            "stage_final_approval_for_production",
           "machining out": "stage_machining_out",
           "material order": "stage_material_order",
-          "cnc": "stage_cnc",
-          "assembly": "stage_assembly",
-          "delivery": "stage_delivery",
-          "installation": "stage_installation",
+          cnc: "stage_cnc",
+          assembly: "stage_assembly",
+          delivery: "stage_delivery",
+          installation: "stage_installation",
           "invoice sent": "stage_invoice_sent",
-          "maintenance": "stage_maintenance",
+          maintenance: "stage_maintenance",
           "job completion": "stage_job_completion",
         };
         const stageName = record.stage_name.toLowerCase();
         return stageFieldMap[stageName] || null;
       }
       return null;
+    case TEMPLATE_NAME_MAP.meeting_confirmation:
+      return "meeting";
     default:
       return null;
   }
@@ -413,8 +460,10 @@ function prepareWhatsAppMessage(record, templateName = null) {
   // If template name is provided, use it; otherwise determine from record
   if (!finalTemplateName) {
     // Determine template and parameters based on notification type
-    if (record.notification_type === "stage_completed" ||
-      (record.type === "stage" && record.status === "DONE")) {
+    if (
+      record.notification_type === "stage_completed" ||
+      (record.type === "stage" && record.status === "DONE")
+    ) {
       finalTemplateName = TEMPLATE_NAME_MAP.stage_completed;
       parameters = buildStageCompletedParams({
         project_name: record.project_name,
@@ -423,8 +472,10 @@ function prepareWhatsAppMessage(record, templateName = null) {
         stage_name: record.stage_name || record.name,
         status: record.status,
       });
-    } else if (record.notification_type === "materials_to_order_list_update" ||
-      record.type === "material_to_order") {
+    } else if (
+      record.notification_type === "materials_to_order_list_update" ||
+      record.type === "material_to_order"
+    ) {
       finalTemplateName = TEMPLATE_NAME_MAP.materials_to_order_list_update;
       // Determine status: if supplier_name is provided and it's an ordered notification, use "{supplier_name} Ordered"
       // Otherwise, use "generated" for new or "updated" for existing
@@ -440,8 +491,10 @@ function prepareWhatsAppMessage(record, templateName = null) {
         lot_name: record.lot_name,
         client_name: record.client_name,
       });
-    } else if (record.notification_type === "supplier_statement_added" ||
-      record.type === "supplier_statement") {
+    } else if (
+      record.notification_type === "supplier_statement_added" ||
+      record.type === "supplier_statement"
+    ) {
       finalTemplateName = TEMPLATE_NAME_MAP.supplier_statement_added;
       parameters = buildSupplierStatementParams({
         supplier_name: record.supplier_name,
@@ -449,27 +502,31 @@ function prepareWhatsAppMessage(record, templateName = null) {
         amount: record.amount,
         due_date: record.due_date,
       });
-    } else if (record.notification_type === "stock_transaction_created" ||
-      record.type === "stock_transaction") {
+    } else if (
+      record.notification_type === "stock_transaction_created" ||
+      record.type === "stock_transaction"
+    ) {
       finalTemplateName = TEMPLATE_NAME_MAP.stock_transaction_created;
       // Use the transaction type (ADDED, USED, WASTED) as status
       const transactionType = ["ADDED", "USED", "WASTED"].includes(record.type)
         ? record.type
-        : (record.transaction_type || "ADDED");
+        : record.transaction_type || "ADDED";
       parameters = buildStockTransactionParams({
         item_name: record.item_name,
         status: transactionType,
         quantity_added: record.quantity,
         dimensions: record.dimensions,
       });
-    } else if (record.notification_type === "assign_installer" ||
-      record.type === "assign_installer") {
+    } else if (
+      record.notification_type === "assign_installer" ||
+      record.type === "assign_installer"
+    ) {
       finalTemplateName = TEMPLATE_NAME_MAP.assign_installer;
       parameters = buildAssignInstallerParams({
         installer_name: record.installer_name,
         project_name: record.project_name,
         lot_id: record.lot_id,
-        url: "https://ikonickitchens.com.au/admin/site_photos"
+        url: "https://ikonickitchens.com.au/admin/site_photos",
       });
     }
   } else {
@@ -482,7 +539,9 @@ function prepareWhatsAppMessage(record, templateName = null) {
         stage_name: record.stage_name || record.name,
         status: record.status,
       });
-    } else if (finalTemplateName === TEMPLATE_NAME_MAP.materials_to_order_list_update) {
+    } else if (
+      finalTemplateName === TEMPLATE_NAME_MAP.materials_to_order_list_update
+    ) {
       // Determine status: if supplier_name is provided and it's an ordered notification, use "{supplier_name} Ordered"
       // Otherwise, use "generated" for new or "updated" for existing
       let status;
@@ -497,17 +556,21 @@ function prepareWhatsAppMessage(record, templateName = null) {
         lot_name: record.lot_name,
         client_name: record.client_name,
       });
-    } else if (finalTemplateName === TEMPLATE_NAME_MAP.supplier_statement_added) {
+    } else if (
+      finalTemplateName === TEMPLATE_NAME_MAP.supplier_statement_added
+    ) {
       parameters = buildSupplierStatementParams({
         supplier_name: record.supplier_name,
         year_month: record.year_month || record.month_year,
         amount: record.amount,
         due_date: record.due_date,
       });
-    } else if (finalTemplateName === TEMPLATE_NAME_MAP.stock_transaction_created) {
+    } else if (
+      finalTemplateName === TEMPLATE_NAME_MAP.stock_transaction_created
+    ) {
       const transactionType = ["ADDED", "USED", "WASTED"].includes(record.type)
         ? record.type
-        : (record.transaction_type || "ADDED");
+        : record.transaction_type || "ADDED";
       parameters = buildStockTransactionParams({
         item_name: record.item_name,
         status: transactionType,
@@ -520,6 +583,17 @@ function prepareWhatsAppMessage(record, templateName = null) {
         project_name: record.project_name,
         lot_id: record.lot_id,
         url: "https://ikonickitchens.com.au/admin/site_photos",
+      });
+    } else if (finalTemplateName === TEMPLATE_NAME_MAP.meeting_confirmation) {
+      parameters = buildMeetingConfirmationParams({
+        title: record.title,
+        project_names: record.project_names,
+        lot_id_client: record.lot_id_client,
+        date: record.date,
+        time: record.time,
+        participant1: record.participant1,
+        participant2_plus: record.participant2_plus,
+        notes: record.notes,
       });
     }
   }
@@ -537,7 +611,7 @@ function prepareWhatsAppMessage(record, templateName = null) {
  *   - [other fields]: any - Additional record data
  * @param {string} templateName - Optional explicit WhatsApp template name to use (e.g., "stage_completed", "materials_to_order_list_update", etc.)
  * @returns {Promise<Object>} - Result object with success status and details
- * 
+ *
  * @example
  * // Material to order notification with explicit template
  * await sendNotification({
@@ -546,7 +620,7 @@ function prepareWhatsAppMessage(record, templateName = null) {
  *   project_id: "IK001",
  *   is_new: true
  * }, "materials_to_order_list_update");
- * 
+ *
  * @example
  * // Stage update notification
  * await sendNotification({
@@ -555,7 +629,7 @@ function prepareWhatsAppMessage(record, templateName = null) {
  *   lot_id: "IK001-lot 1",
  *   status: "COMPLETED"
  * }, "stage_completed");
- * 
+ *
  * @example
  * // Stock transaction notification
  * await sendNotification({
@@ -564,14 +638,13 @@ function prepareWhatsAppMessage(record, templateName = null) {
  *   quantity: 10,
  *   transaction_type: "ADDED"
  * }, "stock_transaction_created");
- * 
+ *
  * @example
  * // Lot installer assigned notification
  * await sendNotification({
  *   type: "assign_installer",
  * }, "assign_installer");
  */
-
 
 export async function sendNotification(record, templateName = null) {
   if (!record || typeof record !== "object") {
@@ -586,10 +659,14 @@ export async function sendNotification(record, templateName = null) {
 
   try {
     // Prepare WhatsApp message template and parameters
-    const { templateName: finalTemplateName, parameters } = prepareWhatsAppMessage(record, templateName);
+    const { templateName: finalTemplateName, parameters } =
+      prepareWhatsAppMessage(record, templateName);
 
     if (!finalTemplateName) {
-      console.warn("sendNotification: No template name determined for record", record);
+      console.warn(
+        "sendNotification: No template name determined for record",
+        record,
+      );
       return {
         success: true,
         message: "No template name determined",
@@ -603,10 +680,14 @@ export async function sendNotification(record, templateName = null) {
     const usersToNotify = await getUsersToNotify(finalTemplateName, record);
 
     if (usersToNotify.length === 0) {
-      console.log("sendNotification: No users to notify for template:", finalTemplateName);
+      console.log(
+        "sendNotification: No users to notify for template:",
+        finalTemplateName,
+      );
       return {
         success: true,
-        message: "No users to notify (notification settings disabled or no eligible users)",
+        message:
+          "No users to notify (notification settings disabled or no eligible users)",
         sent: 0,
         failed: 0,
         notificationTypes: [finalTemplateName],
@@ -621,7 +702,11 @@ export async function sendNotification(record, templateName = null) {
         }
 
         try {
-          const response = await sendWhatsAppMessage(user.phone, finalTemplateName, parameters);
+          const response = await sendWhatsAppMessage(
+            user.phone,
+            finalTemplateName,
+            parameters,
+          );
           return {
             userId: user.userId,
             phone: user.phone,
@@ -629,10 +714,13 @@ export async function sendNotification(record, templateName = null) {
             response,
           };
         } catch (error) {
-          console.error(`Failed to send notification to user ${user.userId}:`, error);
+          console.error(
+            `Failed to send notification to user ${user.userId}:`,
+            error,
+          );
           throw error;
         }
-      })
+      }),
     );
 
     // Count successes and failures
@@ -644,7 +732,7 @@ export async function sendNotification(record, templateName = null) {
       if (result.status === "rejected") {
         console.error(
           `Notification failed for user ${usersToNotify[index].userId}:`,
-          result.reason
+          result.reason,
         );
       }
     });
@@ -668,4 +756,3 @@ export async function sendNotification(record, templateName = null) {
     };
   }
 }
-

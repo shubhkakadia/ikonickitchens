@@ -45,9 +45,10 @@ export default function SettingsPage() {
     oldPassword: "",
     newPassword: "",
   });
-  
+
   // Notification config state
   const [notificationConfig, setNotificationConfig] = useState({
+    meeting: false,
     material_to_order: false,
     material_to_order_ordered: false,
     stage_quote_approve: false,
@@ -72,7 +73,8 @@ export default function SettingsPage() {
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [expandedStages, setExpandedStages] = useState(false);
-  const [expandedMaterialsToOrder, setExpandedMaterialsToOrder] = useState(false);
+  const [expandedMaterialsToOrder, setExpandedMaterialsToOrder] =
+    useState(false);
 
   // Primary color - using the btn-primary color
   const primaryColor = "#B92F34";
@@ -181,7 +183,7 @@ export default function SettingsPage() {
       console.error("Error fetching user details:", error);
       setError(
         error.response?.data?.message ||
-        "Failed to load user details. Please try again."
+          "Failed to load user details. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -208,24 +210,33 @@ export default function SettingsPage() {
 
       if (response.data.status) {
         setNotificationConfig({
+          meeting: response.data.data.meeting || false,
           material_to_order: response.data.data.material_to_order || false,
-          material_to_order_ordered: response.data.data.material_to_order_ordered || false,
+          material_to_order_ordered:
+            response.data.data.material_to_order_ordered || false,
           stage_quote_approve: response.data.data.stage_quote_approve || false,
-          stage_material_appliances_selection: response.data.data.stage_material_appliances_selection || false,
+          stage_material_appliances_selection:
+            response.data.data.stage_material_appliances_selection || false,
           stage_drafting: response.data.data.stage_drafting || false,
-          stage_drafting_revision: response.data.data.stage_drafting_revision || false,
-          stage_final_design_approval: response.data.data.stage_final_design_approval || false,
-          stage_site_measurements: response.data.data.stage_site_measurements || false,
-          stage_final_approval_for_production: response.data.data.stage_final_approval_for_production || false,
+          stage_drafting_revision:
+            response.data.data.stage_drafting_revision || false,
+          stage_final_design_approval:
+            response.data.data.stage_final_design_approval || false,
+          stage_site_measurements:
+            response.data.data.stage_site_measurements || false,
+          stage_final_approval_for_production:
+            response.data.data.stage_final_approval_for_production || false,
           stage_machining_out: response.data.data.stage_machining_out || false,
-          stage_material_order: response.data.data.stage_material_order || false,
+          stage_material_order:
+            response.data.data.stage_material_order || false,
           stage_cnc: response.data.data.stage_cnc || false,
           stage_assembly: response.data.data.stage_assembly || false,
           stage_delivery: response.data.data.stage_delivery || false,
           stage_installation: response.data.data.stage_installation || false,
           stage_invoice_sent: response.data.data.stage_invoice_sent || false,
           stage_maintenance: response.data.data.stage_maintenance || false,
-          stage_job_completion: response.data.data.stage_job_completion || false,
+          stage_job_completion:
+            response.data.data.stage_job_completion || false,
           stock_transactions: response.data.data.stock_transactions || false,
           supplier_statements: response.data.data.supplier_statements || false,
         });
@@ -266,7 +277,7 @@ export default function SettingsPage() {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -277,18 +288,20 @@ export default function SettingsPage() {
           hideProgressBar: false,
         });
       } else {
-        toast.error(response.data.message || "Failed to update notification preferences");
+        toast.error(
+          response.data.message || "Failed to update notification preferences",
+        );
       }
     } catch (error) {
       console.error("Error updating notification config:", error);
       toast.error(
         error.response?.data?.message ||
-        "Failed to update notification preferences. Please try again.",
+          "Failed to update notification preferences. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
           hideProgressBar: false,
-        }
+        },
       );
     } finally {
       setIsUpdatingNotifications(false);
@@ -386,12 +399,12 @@ export default function SettingsPage() {
       console.error("Error updating password:", error);
       toast.error(
         error.response?.data?.message ||
-        "Failed to update password. Please check your current password and try again.",
+          "Failed to update password. Please check your current password and try again.",
         {
           position: "top-right",
           autoClose: 5000,
           hideProgressBar: false,
-        }
+        },
       );
     } finally {
       setIsUpdating(false);
@@ -427,7 +440,11 @@ export default function SettingsPage() {
       // Adjust for negative days
       if (days < 0) {
         months--;
-        const lastDayOfPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        const lastDayOfPrevMonth = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          0,
+        );
         days += lastDayOfPrevMonth.getDate();
       }
 
@@ -480,20 +497,27 @@ export default function SettingsPage() {
                   </p>
                   <button
                     onClick={() => fetchUserDetails()}
-                    className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl ${!darkMode ? "btn-primary" : ""
-                      }`}
-                    style={darkMode ? {
-                      backgroundColor: complementaryColors.base,
-                      color: complementaryColors.textColor
-                    } : {}}
+                    className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl ${
+                      !darkMode ? "btn-primary" : ""
+                    }`}
+                    style={
+                      darkMode
+                        ? {
+                            backgroundColor: complementaryColors.base,
+                            color: complementaryColors.textColor,
+                          }
+                        : {}
+                    }
                     onMouseEnter={(e) => {
                       if (darkMode) {
-                        e.currentTarget.style.backgroundColor = complementaryColors.lighter;
+                        e.currentTarget.style.backgroundColor =
+                          complementaryColors.lighter;
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (darkMode) {
-                        e.currentTarget.style.backgroundColor = complementaryColors.base;
+                        e.currentTarget.style.backgroundColor =
+                          complementaryColors.base;
                       }
                     }}
                   >
@@ -516,7 +540,9 @@ export default function SettingsPage() {
                   <button
                     onClick={toggleDarkMode}
                     className="p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                    title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                    title={
+                      darkMode ? "Switch to light mode" : "Switch to dark mode"
+                    }
                   >
                     {darkMode ? (
                       <Sun className="h-5 w-5 text-yellow-500" />
@@ -563,262 +589,300 @@ export default function SettingsPage() {
                 {/* Tab Content */}
                 {activeTab === "personal" && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Employee Profile Card */}
-                  {employee && (
-                    <div className="lg:col-span-1">
-                      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <div
-                          className={`bg-linear-to-br p-6 ${!darkMode ? "from-primary to-primary/80" : ""
+                    {/* Employee Profile Card */}
+                    {employee && (
+                      <div className="lg:col-span-1">
+                        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                          <div
+                            className={`bg-linear-to-br p-6 ${
+                              !darkMode ? "from-primary to-primary/80" : ""
                             }`}
-                          style={darkMode ? {
-                            background: `linear-gradient(to bottom right, ${complementaryColors.base}, ${complementaryColors.lighter})`
-                          } : {}}
-                        >
-                          <div className="flex flex-col items-center">
-                            {employee.image?.url ? (
-                              <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg mb-4">
-                                <Image
-                                  src={`/${employee.image.url}`}
-                                  alt={`${employee.first_name} ${employee.last_name || ""}`}
-                                  fill
-                                  className="object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-28 h-28 rounded-full bg-white/20 flex items-center justify-center mb-4 border-4 border-white shadow-lg">
-                                <UserCircle className="h-14 w-14 text-white" />
-                              </div>
-                            )}
-                            <h2 className="text-2xl font-bold text-white text-center">
-                              {employee.first_name} {employee.last_name || ""}
-                            </h2>
-                            {employee.role && (
-                              <p className="text-white/90 text-base mt-2 font-medium">
-                                {employee.role}
-                              </p>
-                            )}
-                            {employee.employee_id && (
-                              <p className="text-white/80 text-xs mt-1">
-                                ID: {employee.employee_id}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="p-6 space-y-4">
-                          {/* Date of Birth */}
-                          {employee.dob && (
-                            <div className="flex items-center gap-3 text-sm">
-                              <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
-                              <div className="flex-1">
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
-                                  Date of Birth
+                            style={
+                              darkMode
+                                ? {
+                                    background: `linear-gradient(to bottom right, ${complementaryColors.base}, ${complementaryColors.lighter})`,
+                                  }
+                                : {}
+                            }
+                          >
+                            <div className="flex flex-col items-center">
+                              {employee.image?.url ? (
+                                <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg mb-4">
+                                  <Image
+                                    src={`/${employee.image.url}`}
+                                    alt={`${employee.first_name} ${employee.last_name || ""}`}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-28 h-28 rounded-full bg-white/20 flex items-center justify-center mb-4 border-4 border-white shadow-lg">
+                                  <UserCircle className="h-14 w-14 text-white" />
+                                </div>
+                              )}
+                              <h2 className="text-2xl font-bold text-white text-center">
+                                {employee.first_name} {employee.last_name || ""}
+                              </h2>
+                              {employee.role && (
+                                <p className="text-white/90 text-base mt-2 font-medium">
+                                  {employee.role}
                                 </p>
-                                <p className="text-slate-700 dark:text-slate-300 font-medium">
-                                  {formatDate(employee.dob)}
+                              )}
+                              {employee.employee_id && (
+                                <p className="text-white/80 text-xs mt-1">
+                                  ID: {employee.employee_id}
                                 </p>
-                              </div>
+                              )}
                             </div>
-                          )}
-
-                          {/* Start Date with Days Count */}
-                          {employee.join_date && (
-                            <div className="flex items-center gap-3 text-sm">
-                              <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
-                              <div className="flex-1">
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
-                                  Start Date
-                                </p>
-                                <div className="flex items-center gap-2">
-                                  <p className="text-slate-700 dark:text-slate-300 font-medium">
-                                    {formatDate(employee.join_date)}
+                          </div>
+                          <div className="p-6 space-y-4">
+                            {/* Date of Birth */}
+                            {employee.dob && (
+                              <div className="flex items-center gap-3 text-sm">
+                                <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
+                                    Date of Birth
                                   </p>
-                                  {calculateDaysSinceStart(employee.join_date) && (
-                                    <span
-                                      className={`px-2 py-0.5 text-xs font-semibold rounded-full ${!darkMode ? "bg-primary/10 text-primary" : ""
-                                        }`}
-                                      style={darkMode ? {
-                                        backgroundColor: complementaryColors.withAlpha20,
-                                        color: complementaryColors.base
-                                      } : {}}
-                                    >
-                                      {calculateDaysSinceStart(employee.join_date)}
-                                    </span>
-                                  )}
+                                  <p className="text-slate-700 dark:text-slate-300 font-medium">
+                                    {formatDate(employee.dob)}
+                                  </p>
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
-                          {/* Email */}
-                          {employee.email && (
-                            <div className="flex items-center gap-3 text-sm">
-                              <Mail className="h-4 w-4 text-slate-400 shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
-                                  Email
-                                </p>
-                                <p className="text-slate-700 dark:text-slate-300 font-medium truncate">
-                                  {employee.email}
-                                </p>
+                            {/* Start Date with Days Count */}
+                            {employee.join_date && (
+                              <div className="flex items-center gap-3 text-sm">
+                                <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
+                                    Start Date
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-slate-700 dark:text-slate-300 font-medium">
+                                      {formatDate(employee.join_date)}
+                                    </p>
+                                    {calculateDaysSinceStart(
+                                      employee.join_date,
+                                    ) && (
+                                      <span
+                                        className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                          !darkMode
+                                            ? "bg-primary/10 text-primary"
+                                            : ""
+                                        }`}
+                                        style={
+                                          darkMode
+                                            ? {
+                                                backgroundColor:
+                                                  complementaryColors.withAlpha20,
+                                                color: complementaryColors.base,
+                                              }
+                                            : {}
+                                        }
+                                      >
+                                        {calculateDaysSinceStart(
+                                          employee.join_date,
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
-                          {/* Mobile Number */}
-                          {employee.phone && (
-                            <div className="flex items-center gap-3 text-sm">
-                              <Phone className="h-4 w-4 text-slate-400 shrink-0" />
-                              <div className="flex-1">
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
-                                  Mobile Number
-                                </p>
-                                <p className="text-slate-700 dark:text-slate-300 font-medium">
-                                  {employee.phone}
-                                </p>
+                            {/* Email */}
+                            {employee.email && (
+                              <div className="flex items-center gap-3 text-sm">
+                                <Mail className="h-4 w-4 text-slate-400 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
+                                    Email
+                                  </p>
+                                  <p className="text-slate-700 dark:text-slate-300 font-medium truncate">
+                                    {employee.email}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
-                          {/* Address */}
-                          {employee.address && (
-                            <div className="flex items-start gap-3 text-sm">
-                              <MapPin className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
-                              <div className="flex-1">
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
-                                  Address
-                                </p>
-                                <p className="text-slate-700 dark:text-slate-300">
-                                  {employee.address}
-                                </p>
+                            {/* Mobile Number */}
+                            {employee.phone && (
+                              <div className="flex items-center gap-3 text-sm">
+                                <Phone className="h-4 w-4 text-slate-400 shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
+                                    Mobile Number
+                                  </p>
+                                  <p className="text-slate-700 dark:text-slate-300 font-medium">
+                                    {employee.phone}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
+
+                            {/* Address */}
+                            {employee.address && (
+                              <div className="flex items-start gap-3 text-sm">
+                                <MapPin className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
+                                    Address
+                                  </p>
+                                  <p className="text-slate-700 dark:text-slate-300">
+                                    {employee.address}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Account Settings Card */}
-                  <div className={employee ? "lg:col-span-2" : "lg:col-span-3"}>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                      <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`p-2 rounded-lg ${!darkMode ? "bg-primary/10" : ""
-                              }`}
-                            style={darkMode ? {
-                              backgroundColor: complementaryColors.withAlpha20
-                            } : {}}
-                          >
-                            <SettingsIcon
-                              className={`h-5 w-5 ${!darkMode ? "text-primary" : ""
-                                }`}
-                              style={darkMode ? { color: complementaryColors.base } : {}}
-                            />
-                          </div>
-                          <div>
-                            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                              Account Settings
-                            </h2>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                              Manage your account information
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-6 space-y-6">
-                        {/* Username */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            Username
-                          </label>
-                          <input
-                            type="text"
-                            value={user.username || ""}
-                            disabled
-                            className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 cursor-not-allowed"
-                          />
-                        </div>
-
-                        {/* User Type */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            User Type
-                          </label>
+                    {/* Account Settings Card */}
+                    <div
+                      className={employee ? "lg:col-span-2" : "lg:col-span-3"}
+                    >
+                      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
                           <div className="flex items-center gap-3">
+                            <div
+                              className={`p-2 rounded-lg ${
+                                !darkMode ? "bg-primary/10" : ""
+                              }`}
+                              style={
+                                darkMode
+                                  ? {
+                                      backgroundColor:
+                                        complementaryColors.withAlpha20,
+                                    }
+                                  : {}
+                              }
+                            >
+                              <SettingsIcon
+                                className={`h-5 w-5 ${
+                                  !darkMode ? "text-primary" : ""
+                                }`}
+                                style={
+                                  darkMode
+                                    ? { color: complementaryColors.base }
+                                    : {}
+                                }
+                              />
+                            </div>
+                            <div>
+                              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                                Account Settings
+                              </h2>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Manage your account information
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                          {/* Username */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                              Username
+                            </label>
                             <input
                               type="text"
-                              value={user.user_type || ""}
+                              value={user.username || ""}
                               disabled
-                              className="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 cursor-not-allowed capitalize"
+                              className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 cursor-not-allowed"
                             />
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                            User type can only be changed by master-admin
-                          </p>
-                        </div>
 
-                        {/* Active Status */}
-                        <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                          <input
-                            type="checkbox"
-                            id="is_active"
-                            checked={user.is_active ?? true}
-                            disabled
-                            className="w-4 h-4 text-primary bg-gray-100 dark:bg-slate-700 border-gray-300 dark:border-slate-600 rounded cursor-not-allowed"
-                          />
-                          <label
-                            htmlFor="is_active"
-                            className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-not-allowed flex-1"
-                          >
-                            Account Active
-                          </label>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            (Can only be changed by master-admin)
-                          </p>
-                        </div>
+                          {/* User Type */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                              User Type
+                            </label>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="text"
+                                value={user.user_type || ""}
+                                disabled
+                                className="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 cursor-not-allowed capitalize"
+                              />
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                              User type can only be changed by master-admin
+                            </p>
+                          </div>
 
-                        {/* Password */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            Password
-                          </label>
-                          <div className="flex items-center gap-3">
+                          {/* Active Status */}
+                          <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
                             <input
-                              type="password"
-                              value="••••••••"
+                              type="checkbox"
+                              id="is_active"
+                              checked={user.is_active ?? true}
                               disabled
-                              className="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 cursor-not-allowed"
+                              className="w-4 h-4 text-primary bg-gray-100 dark:bg-slate-700 border-gray-300 dark:border-slate-600 rounded cursor-not-allowed"
                             />
-                            <button
-                              onClick={handleResetPassword}
-                              className={`cursor-pointer px-4 py-2.5 text-sm font-medium rounded-lg flex items-center gap-2 whitespace-nowrap transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl ${!darkMode ? "btn-primary" : ""
-                                }`}
-                              style={darkMode ? {
-                                backgroundColor: complementaryColors.base,
-                                color: complementaryColors.textColor
-                              } : {}}
-                              onMouseEnter={(e) => {
-                                if (darkMode) {
-                                  e.currentTarget.style.backgroundColor = complementaryColors.lighter;
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (darkMode) {
-                                  e.currentTarget.style.backgroundColor = complementaryColors.base;
-                                }
-                              }}
+                            <label
+                              htmlFor="is_active"
+                              className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-not-allowed flex-1"
                             >
-                              <Lock className="h-4 w-4" />
-                              Change Password
-                            </button>
+                              Account Active
+                            </label>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              (Can only be changed by master-admin)
+                            </p>
+                          </div>
+
+                          {/* Password */}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                              Password
+                            </label>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="password"
+                                value="••••••••"
+                                disabled
+                                className="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 cursor-not-allowed"
+                              />
+                              <button
+                                onClick={handleResetPassword}
+                                className={`cursor-pointer px-4 py-2.5 text-sm font-medium rounded-lg flex items-center gap-2 whitespace-nowrap transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl ${
+                                  !darkMode ? "btn-primary" : ""
+                                }`}
+                                style={
+                                  darkMode
+                                    ? {
+                                        backgroundColor:
+                                          complementaryColors.base,
+                                        color: complementaryColors.textColor,
+                                      }
+                                    : {}
+                                }
+                                onMouseEnter={(e) => {
+                                  if (darkMode) {
+                                    e.currentTarget.style.backgroundColor =
+                                      complementaryColors.lighter;
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (darkMode) {
+                                    e.currentTarget.style.backgroundColor =
+                                      complementaryColors.base;
+                                  }
+                                }}
+                              >
+                                <Lock className="h-4 w-4" />
+                                Change Password
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
                 )}
 
                 {activeTab === "notifications" && (
@@ -827,13 +891,22 @@ export default function SettingsPage() {
                       <div className="flex items-center gap-3">
                         <div
                           className={`p-2 rounded-lg ${!darkMode ? "bg-primary/10" : ""}`}
-                          style={darkMode ? {
-                            backgroundColor: complementaryColors.withAlpha20
-                          } : {}}
+                          style={
+                            darkMode
+                              ? {
+                                  backgroundColor:
+                                    complementaryColors.withAlpha20,
+                                }
+                              : {}
+                          }
                         >
                           <Bell
                             className={`h-5 w-5 ${!darkMode ? "text-primary" : ""}`}
-                            style={darkMode ? { color: complementaryColors.base } : {}}
+                            style={
+                              darkMode
+                                ? { color: complementaryColors.base }
+                                : {}
+                            }
                           />
                         </div>
                         <div>
@@ -862,7 +935,11 @@ export default function SettingsPage() {
                           {/* Materials to Order Accordion */}
                           <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                             <button
-                              onClick={() => setExpandedMaterialsToOrder(!expandedMaterialsToOrder)}
+                              onClick={() =>
+                                setExpandedMaterialsToOrder(
+                                  !expandedMaterialsToOrder,
+                                )
+                              }
                               className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
                             >
                               <div className="flex items-center gap-3">
@@ -870,7 +947,14 @@ export default function SettingsPage() {
                                   Materials to Order
                                 </h3>
                                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                                  ({[notificationConfig.material_to_order, notificationConfig.material_to_order_ordered].filter(Boolean).length} enabled)
+                                  (
+                                  {
+                                    [
+                                      notificationConfig.material_to_order,
+                                      notificationConfig.material_to_order_ordered,
+                                    ].filter(Boolean).length
+                                  }{" "}
+                                  enabled)
                                 </span>
                               </div>
                               {expandedMaterialsToOrder ? (
@@ -889,14 +973,21 @@ export default function SettingsPage() {
                                         Materials to Order - Generated
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications when materials to order are generated
+                                        Receive notifications when materials to
+                                        order are generated
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.material_to_order}
-                                        onChange={() => handleNotificationToggle("material_to_order")}
+                                        checked={
+                                          notificationConfig.material_to_order
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "material_to_order",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -911,14 +1002,21 @@ export default function SettingsPage() {
                                         Materials to Order - Ordered
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications when materials from a supplier are fully ordered
+                                        Receive notifications when materials
+                                        from a supplier are fully ordered
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.material_to_order_ordered}
-                                        onChange={() => handleNotificationToggle("material_to_order_ordered")}
+                                        checked={
+                                          notificationConfig.material_to_order_ordered
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "material_to_order_ordered",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -941,7 +1039,15 @@ export default function SettingsPage() {
                                   Stage Updates
                                 </h3>
                                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                                  ({Object.keys(notificationConfig).filter(key => key.startsWith('stage_') && notificationConfig[key]).length} enabled)
+                                  (
+                                  {
+                                    Object.keys(notificationConfig).filter(
+                                      (key) =>
+                                        key.startsWith("stage_") &&
+                                        notificationConfig[key],
+                                    ).length
+                                  }{" "}
+                                  enabled)
                                 </span>
                               </div>
                               {expandedStages ? (
@@ -960,14 +1066,21 @@ export default function SettingsPage() {
                                         Quote Approve
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications when quotes are approved
+                                        Receive notifications when quotes are
+                                        approved
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_quote_approve}
-                                        onChange={() => handleNotificationToggle("stage_quote_approve")}
+                                        checked={
+                                          notificationConfig.stage_quote_approve
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_quote_approve",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -982,14 +1095,21 @@ export default function SettingsPage() {
                                         Material & Appliances Selection
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for material and appliances selection updates
+                                        Receive notifications for material and
+                                        appliances selection updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_material_appliances_selection}
-                                        onChange={() => handleNotificationToggle("stage_material_appliances_selection")}
+                                        checked={
+                                          notificationConfig.stage_material_appliances_selection
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_material_appliances_selection",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1004,14 +1124,21 @@ export default function SettingsPage() {
                                         Drafting
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for drafting stage updates
+                                        Receive notifications for drafting stage
+                                        updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_drafting}
-                                        onChange={() => handleNotificationToggle("stage_drafting")}
+                                        checked={
+                                          notificationConfig.stage_drafting
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_drafting",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1026,14 +1153,21 @@ export default function SettingsPage() {
                                         Drafting Revision
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for drafting revision updates
+                                        Receive notifications for drafting
+                                        revision updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_drafting_revision}
-                                        onChange={() => handleNotificationToggle("stage_drafting_revision")}
+                                        checked={
+                                          notificationConfig.stage_drafting_revision
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_drafting_revision",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1048,14 +1182,21 @@ export default function SettingsPage() {
                                         Final Design Approval
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications when final design is approved
+                                        Receive notifications when final design
+                                        is approved
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_final_design_approval}
-                                        onChange={() => handleNotificationToggle("stage_final_design_approval")}
+                                        checked={
+                                          notificationConfig.stage_final_design_approval
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_final_design_approval",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1070,14 +1211,21 @@ export default function SettingsPage() {
                                         Site Measurements
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for site measurements updates
+                                        Receive notifications for site
+                                        measurements updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_site_measurements}
-                                        onChange={() => handleNotificationToggle("stage_site_measurements")}
+                                        checked={
+                                          notificationConfig.stage_site_measurements
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_site_measurements",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1092,14 +1240,21 @@ export default function SettingsPage() {
                                         Final Approval for Production
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications when final approval for production is given
+                                        Receive notifications when final
+                                        approval for production is given
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_final_approval_for_production}
-                                        onChange={() => handleNotificationToggle("stage_final_approval_for_production")}
+                                        checked={
+                                          notificationConfig.stage_final_approval_for_production
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_final_approval_for_production",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1114,14 +1269,21 @@ export default function SettingsPage() {
                                         Machining Out
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for machining out stage updates
+                                        Receive notifications for machining out
+                                        stage updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_machining_out}
-                                        onChange={() => handleNotificationToggle("stage_machining_out")}
+                                        checked={
+                                          notificationConfig.stage_machining_out
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_machining_out",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1136,14 +1298,21 @@ export default function SettingsPage() {
                                         Material Order
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications when materials are ordered
+                                        Receive notifications when materials are
+                                        ordered
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_material_order}
-                                        onChange={() => handleNotificationToggle("stage_material_order")}
+                                        checked={
+                                          notificationConfig.stage_material_order
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_material_order",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1158,14 +1327,17 @@ export default function SettingsPage() {
                                         CNC
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for CNC stage updates
+                                        Receive notifications for CNC stage
+                                        updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
                                         checked={notificationConfig.stage_cnc}
-                                        onChange={() => handleNotificationToggle("stage_cnc")}
+                                        onChange={() =>
+                                          handleNotificationToggle("stage_cnc")
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1180,14 +1352,21 @@ export default function SettingsPage() {
                                         Assembly
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for assembly stage updates
+                                        Receive notifications for assembly stage
+                                        updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_assembly}
-                                        onChange={() => handleNotificationToggle("stage_assembly")}
+                                        checked={
+                                          notificationConfig.stage_assembly
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_assembly",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1202,14 +1381,21 @@ export default function SettingsPage() {
                                         Delivery
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for delivery stage updates
+                                        Receive notifications for delivery stage
+                                        updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_delivery}
-                                        onChange={() => handleNotificationToggle("stage_delivery")}
+                                        checked={
+                                          notificationConfig.stage_delivery
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_delivery",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1224,14 +1410,21 @@ export default function SettingsPage() {
                                         Installation
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for installation stage updates
+                                        Receive notifications for installation
+                                        stage updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_installation}
-                                        onChange={() => handleNotificationToggle("stage_installation")}
+                                        checked={
+                                          notificationConfig.stage_installation
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_installation",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1246,14 +1439,21 @@ export default function SettingsPage() {
                                         Invoice Sent
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications when invoices are sent
+                                        Receive notifications when invoices are
+                                        sent
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_invoice_sent}
-                                        onChange={() => handleNotificationToggle("stage_invoice_sent")}
+                                        checked={
+                                          notificationConfig.stage_invoice_sent
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_invoice_sent",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1268,14 +1468,21 @@ export default function SettingsPage() {
                                         Maintenance
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications for maintenance stage updates
+                                        Receive notifications for maintenance
+                                        stage updates
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_maintenance}
-                                        onChange={() => handleNotificationToggle("stage_maintenance")}
+                                        checked={
+                                          notificationConfig.stage_maintenance
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_maintenance",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1290,14 +1497,21 @@ export default function SettingsPage() {
                                         Job Completion
                                       </h4>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Receive notifications when jobs are completed
+                                        Receive notifications when jobs are
+                                        completed
                                       </p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={notificationConfig.stage_job_completion}
-                                        onChange={() => handleNotificationToggle("stage_job_completion")}
+                                        checked={
+                                          notificationConfig.stage_job_completion
+                                        }
+                                        onChange={() =>
+                                          handleNotificationToggle(
+                                            "stage_job_completion",
+                                          )
+                                        }
                                         disabled={isUpdatingNotifications}
                                         className="sr-only peer"
                                       />
@@ -1307,6 +1521,31 @@ export default function SettingsPage() {
                                 </div>
                               </div>
                             )}
+                          </div>
+
+                          {/* Meeting Notifications */}
+                          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <div className="flex-1">
+                              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                Meeting Notifications
+                              </h3>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Receive notifications about meeting schedules
+                                and updates
+                              </p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={notificationConfig.meeting}
+                                onChange={() =>
+                                  handleNotificationToggle("meeting")
+                                }
+                                disabled={isUpdatingNotifications}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/30 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary"></div>
+                            </label>
                           </div>
 
                           {/* Stock Transactions */}
@@ -1323,7 +1562,9 @@ export default function SettingsPage() {
                               <input
                                 type="checkbox"
                                 checked={notificationConfig.stock_transactions}
-                                onChange={() => handleNotificationToggle("stock_transactions")}
+                                onChange={() =>
+                                  handleNotificationToggle("stock_transactions")
+                                }
                                 disabled={isUpdatingNotifications}
                                 className="sr-only peer"
                               />
@@ -1345,7 +1586,11 @@ export default function SettingsPage() {
                               <input
                                 type="checkbox"
                                 checked={notificationConfig.supplier_statements}
-                                onChange={() => handleNotificationToggle("supplier_statements")}
+                                onChange={() =>
+                                  handleNotificationToggle(
+                                    "supplier_statements",
+                                  )
+                                }
                                 disabled={isUpdatingNotifications}
                                 className="sr-only peer"
                               />
@@ -1368,16 +1613,25 @@ export default function SettingsPage() {
                   <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`p-2 rounded-lg ${!darkMode ? "bg-primary/10" : ""
-                          }`}
-                        style={darkMode ? {
-                          backgroundColor: complementaryColors.withAlpha20
-                        } : {}}
+                        className={`p-2 rounded-lg ${
+                          !darkMode ? "bg-primary/10" : ""
+                        }`}
+                        style={
+                          darkMode
+                            ? {
+                                backgroundColor:
+                                  complementaryColors.withAlpha20,
+                              }
+                            : {}
+                        }
                       >
                         <Lock
-                          className={`h-5 w-5 ${!darkMode ? "text-primary" : ""
-                            }`}
-                          style={darkMode ? { color: complementaryColors.base } : {}}
+                          className={`h-5 w-5 ${
+                            !darkMode ? "text-primary" : ""
+                          }`}
+                          style={
+                            darkMode ? { color: complementaryColors.base } : {}
+                          }
                         />
                       </div>
                       <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
@@ -1407,7 +1661,7 @@ export default function SettingsPage() {
                           onChange={(e) =>
                             handlePasswordInputChange(
                               "oldPassword",
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           placeholder="Enter your current password"
@@ -1441,7 +1695,7 @@ export default function SettingsPage() {
                           onChange={(e) =>
                             handlePasswordInputChange(
                               "newPassword",
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           placeholder="Enter your new password"
@@ -1479,20 +1733,27 @@ export default function SettingsPage() {
                     <button
                       onClick={handleSavePassword}
                       disabled={isUpdating}
-                      className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 ${!darkMode ? "btn-primary" : ""
-                        }`}
-                      style={darkMode ? {
-                        backgroundColor: complementaryColors.base,
-                        color: complementaryColors.textColor
-                      } : {}}
+                      className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 ${
+                        !darkMode ? "btn-primary" : ""
+                      }`}
+                      style={
+                        darkMode
+                          ? {
+                              backgroundColor: complementaryColors.base,
+                              color: complementaryColors.textColor,
+                            }
+                          : {}
+                      }
                       onMouseEnter={(e) => {
                         if (darkMode && !e.currentTarget.disabled) {
-                          e.currentTarget.style.backgroundColor = complementaryColors.lighter;
+                          e.currentTarget.style.backgroundColor =
+                            complementaryColors.lighter;
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (darkMode) {
-                          e.currentTarget.style.backgroundColor = complementaryColors.base;
+                          e.currentTarget.style.backgroundColor =
+                            complementaryColors.base;
                         }
                       }}
                     >

@@ -1,13 +1,197 @@
 import React from "react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "react-toastify";
 import axios from "axios";
-import { ChevronDown, FileText, FileUp, Check, X, Trash } from "lucide-react";
+import {
+  ChevronDown,
+  FileText,
+  FileUp,
+  Check,
+  X,
+  Trash,
+  File,
+} from "lucide-react";
 import Image from "next/image";
 import TextEditor from "@/components/TextEditor/TextEditor";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
+
+// File item component with self-contained notes state (prevents parent re-renders from causing focus loss)
+const FileItemWithNotes = ({
+  file,
+  handleViewExistingFile,
+  openDeleteFileConfirmation,
+  isDeletingFile,
+  getToken,
+}) => {
+  const [notes, setNotes] = useState(file.notes || "");
+  const [saveStatus, setSaveStatus] = useState("idle"); // "idle" | "saving" | "saved"
+  const debounceTimer = useRef(null);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
+
+  // Save file notes to API
+  const saveFileNotes = async (notesValue) => {
+    if (!file.id) return;
+
+    try {
+      setSaveStatus("saving");
+
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        setSaveStatus("idle");
+        return;
+      }
+
+      const response = await axios.patch(
+        `/api/lot_file/${file.id}`,
+        { notes: notesValue },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (response.data.status) {
+        setSaveStatus("saved");
+        setTimeout(() => {
+          setSaveStatus("idle");
+        }, 2000);
+      } else {
+        toast.error(response.data.message || "Failed to save file notes");
+        setSaveStatus("idle");
+      }
+    } catch (error) {
+      console.error("Error saving file notes:", error);
+      toast.error("Failed to save file notes. Please try again.");
+      setSaveStatus("idle");
+    }
+  };
+
+  // Debounced handler for notes changes
+  const handleNotesChange = (value) => {
+    setNotes(value);
+
+    // Clear existing timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    // Set new timer (1 second debounce)
+    debounceTimer.current = setTimeout(() => {
+      saveFileNotes(value);
+    }, 1000);
+  };
+
+  return (
+    <div className="gap-4 flex items-start">
+      <div
+        className="relative group cursor-pointer"
+        style={{ width: "125px" }}
+        onClick={() => handleViewExistingFile(file)}
+      >
+        <div className="w-full h-auto aspect-square rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50 hover:bg-slate-100 transition-colors">
+          {file.mime_type.includes("image") ? (
+            <Image
+              height={140}
+              width={140}
+              src={`/${file.url}`}
+              alt={file.filename}
+              className="w-full h-full object-cover rounded-lg"
+            />
+          ) : file.mime_type.includes("video") ? (
+            <video
+              src={`/${file.url}`}
+              className="w-full h-full object-cover rounded-lg"
+              muted
+              playsInline
+            />
+          ) : (
+            <div
+              className={`w-full h-auto aspect-square flex items-center justify-center rounded-lg ${
+                file.mime_type.includes("pdf") ? "bg-red-50" : "bg-green-50"
+              }`}
+            >
+              {file.mime_type.includes("pdf") ? (
+                <FileText className="w-8 h-8 text-red-600" />
+              ) : (
+                <File className="w-8 h-8 text-green-600" />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* File Info */}
+        <div className="space-y-1 w-full">
+          <p
+            className="text-xs font-medium text-slate-700 truncate w-full"
+            title={file.filename}
+          >
+            {file.filename}
+          </p>
+          <p className="text-xs text-slate-500">
+            {(file.size / 1024 / 1024).toFixed(2)} MB
+          </p>
+        </div>
+
+        {/* Delete Button */}
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openDeleteFileConfirmation(file);
+            }}
+            disabled={isDeletingFile === file.id}
+            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+            title="Delete file"
+          >
+            {isDeletingFile === file.id ? (
+              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+            ) : (
+              <Trash className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Notes Section */}
+      <div className="relative flex-1">
+        <textarea
+          rows="6"
+          value={notes}
+          onChange={(e) => handleNotesChange(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full border border-slate-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent"
+          placeholder="Add notes for this file..."
+        />
+        {/* Save status indicator */}
+        {saveStatus === "saving" && (
+          <span className="absolute bottom-2 right-2 text-xs text-slate-500 font-medium flex items-center gap-1">
+            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-500"></div>
+            Saving...
+          </span>
+        )}
+        {saveStatus === "saved" && (
+          <span className="absolute bottom-2 right-2 text-xs text-green-600 font-medium flex items-center gap-1">
+            <Check className="w-3 h-3" />
+            Saved!
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function SiteMeasurementsSection({
   selectedLotData,
@@ -105,8 +289,9 @@ export default function SiteMeasurementsSection({
 
       formData.append("site_group", siteGroup);
 
-      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${selectedLotData.lot_id
-        }/site_measurements`;
+      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
+        selectedLotData.lot_id
+      }/site_measurements`;
 
       // Show progress toast
       showProgressToast(files.length);
@@ -127,13 +312,16 @@ export default function SiteMeasurementsSection({
       } else {
         dismissProgressToast();
         toast.error(
-          response.data.message || `Failed to upload ${groupName.toLowerCase()}`
+          response.data.message ||
+            `Failed to upload ${groupName.toLowerCase()}`,
         );
       }
     } catch (error) {
       console.error(`Error uploading ${groupName.toLowerCase()}:`, error);
       dismissProgressToast();
-      toast.error(`Failed to upload ${groupName.toLowerCase()}. Please try again.`);
+      toast.error(
+        `Failed to upload ${groupName.toLowerCase()}. Please try again.`,
+      );
     } finally {
       setIsUploading(false);
     }
@@ -226,8 +414,9 @@ export default function SiteMeasurementsSection({
               {title} ({files.length})
             </span>
             <div
-              className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
-                }`}
+              className={`transform transition-transform duration-200 ${
+                isExpanded ? "rotate-180" : ""
+              }`}
             >
               <ChevronDown className="w-4 h-4" />
             </div>
@@ -235,90 +424,29 @@ export default function SiteMeasurementsSection({
 
           {/* Collapsible Content */}
           {isExpanded && (
-            <div className="flex flex-wrap gap-3">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  onClick={() => handleViewExistingFile(file)}
-                  title="Click to view file"
-                  className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
-                    }`}
-                >
-                  {/* File Preview */}
+            <div className="gap-3 grid grid-cols-2 items-start">
+              {files.map((file, index) => {
+                // Add border-bottom to all items except those in the last row
+                // In a 2-column grid, last row contains the last 1-2 items
+                const isInLastRow = index >= Math.max(0, files.length - 2);
+                // Add border-right to items in the first column (even indices: 0, 2, 4, etc.)
+                const isFirstColumn = index % 2 === 0;
+
+                return (
                   <div
-                    className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
-                      } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                    key={file.id}
+                    className={`p-4 ${!isInLastRow ? "border-b border-slate-200" : ""} ${isFirstColumn ? "border-r border-slate-200" : ""}`}
                   >
-                    {file.mime_type.includes("image") ? (
-                      <Image
-                        height={100}
-                        width={100}
-                        src={`/${file.url}`}
-                        alt={file.filename}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    ) : file.mime_type.includes("video") ? (
-                      <video
-                        src={`/${file.url}`}
-                        className="w-full h-full object-cover rounded-lg"
-                        muted
-                        playsInline
-                      />
-                    ) : (
-                      <div
-                        className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type.includes("pdf")
-                          ? "bg-red-50"
-                          : "bg-green-50"
-                          }`}
-                      >
-                        {file.mime_type.includes("pdf") ? (
-                          <FileText
-                            className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
-                              } text-red-600`}
-                          />
-                        ) : (
-                          <File
-                            className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
-                              } text-green-600`}
-                          />
-                        )}
-                      </div>
-                    )}
+                    <FileItemWithNotes
+                      file={file}
+                      handleViewExistingFile={handleViewExistingFile}
+                      openDeleteFileConfirmation={openDeleteFileConfirmation}
+                      isDeletingFile={isDeletingFile}
+                      getToken={getToken}
+                    />
                   </div>
-
-                  {/* File Info */}
-                  <div className="space-y-1">
-                    <p
-                      className="text-xs font-medium text-slate-700 truncate"
-                      title={file.filename}
-                    >
-                      {file.filename}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-
-                  {/* Delete Button */}
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openDeleteFileConfirmation(file);
-                      }}
-                      disabled={isDeletingFile === file.id}
-                      className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
-                      title="Delete file"
-                    >
-                      {isDeletingFile === file.id ? (
-                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
-                      ) : (
-                        <Trash className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -379,8 +507,9 @@ export default function SiteMeasurementsSection({
           Select Files {isUploading && "(Uploading...)"}
         </label>
         <div
-          className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${isUploading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+          className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+            isUploading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
         >
           <input
             type="file"
@@ -494,7 +623,7 @@ export default function SiteMeasurementsSection({
         <TextEditor
           initialContent={
             selectedLotData?.tabs.find(
-              (tab) => tab.tab.toLowerCase() === activeTab.toLowerCase()
+              (tab) => tab.tab.toLowerCase() === activeTab.toLowerCase(),
             )?.notes || ""
           }
           onSave={(content) => {

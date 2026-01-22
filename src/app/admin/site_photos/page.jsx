@@ -7,6 +7,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import heic2any from "heic2any";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
+import imageCompression from "browser-image-compression";
 import {
   ChevronDown,
   ChevronUp,
@@ -317,12 +318,7 @@ export default function SitePhotosPage() {
   // Get allowed tabs based on employee role
   const getAllowedTabs = () => {
     if (employeeRole?.toLowerCase() === "installer") {
-      return [
-        TAB_KINDS.INSTALLATION,
-        TAB_KINDS.MAINTENANCE,
-        TAB_KINDS.SITE_PHOTOS,
-        TAB_KINDS.MEASUREMENT_PHOTOS,
-      ];
+      return [TAB_KINDS.INSTALLATION, TAB_KINDS.MAINTENANCE];
     }
     // For all other roles, show all tabs
     return Object.values(TAB_KINDS);
@@ -512,26 +508,68 @@ export default function SitePhotosPage() {
     });
   };
 
+  const processImage = async (file) => {
+    try {
+      // Options for browser-image-compression
+      const options = {
+        maxSizeMB: 10, // Adjust as needed, keeps high quality
+        maxWidthOrHeight: 2560, // Reasonable max dimension for photos
+        useWebWorker: true,
+        fileType: "image/jpeg",
+        initialQuality: 0.9, // High quality
+      };
+
+      // browser-image-compression handles EXIF orientation automatically
+      const compressedFile = await imageCompression(file, options);
+
+      // Create a new File object to preserve original properties if needed
+      return new File([compressedFile], file.name, {
+        type: compressedFile.type,
+        lastModified: Date.now(),
+      });
+    } catch (error) {
+      console.error("Error processing image:", error);
+      // Fallback to original file if processing fails
+      return file;
+    }
+  };
+
   const handleFileSelect = async (lot, tabKind, event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
 
     try {
-      // Check for HEIC files
-      const heicFiles = files.filter((file) => isHeicFile(file));
-      if (heicFiles.length > 0) {
-        toast.info(`Converting ${heicFiles.length} HEIC file(s) to JPEG...`);
+      // Show processing toast if many files
+      if (files.length > 0) {
+        toast.info(
+          `Processing ${files.length} file(s)... This may take a moment.`,
+          { autoClose: 2000 },
+        );
       }
 
-      // Convert HEIC files to JPEG
-      const processedFiles = await Promise.all(
-        files.map(async (file) => {
-          if (isHeicFile(file)) {
-            return await convertHeicToJpeg(file);
-          }
-          return file;
-        }),
-      );
+      const processedFiles = [];
+
+      for (const file of files) {
+        let processedFile = file;
+
+        // processing logic:
+        // 1. If HEIC, convert to JPEG (heic2any)
+        // 2. If Image (JPEG/PNG/etc), run through browser-image-compression to fix orientation
+        // 3. Otherwise (Video/PDF), keep as is
+
+        if (isHeicFile(file)) {
+          processedFile = await convertHeicToJpeg(file);
+          // After conversion, we can optionally run it through compression too
+          // to ensure consistent sizing/quality, but heic2any usually does a good job.
+          // Let's run it through to be safe about orientation if heic2any didn't handle it perfectly
+          // (though heic2any usually does).
+          processedFile = await processImage(processedFile);
+        } else if (file.type.startsWith("image/")) {
+          processedFile = await processImage(file);
+        }
+
+        processedFiles.push(processedFile);
+      }
 
       // Create previews for all files
       const filesWithPreviews = await Promise.all(

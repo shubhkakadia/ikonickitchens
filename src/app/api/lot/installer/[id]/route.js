@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth, getUserFromToken } from "@/lib/validators/authFromToken";
+import {
+  validateAdminAuth,
+  getUserFromToken,
+} from "@/lib/validators/authFromToken";
 
 export async function GET(request, { params }) {
   try {
@@ -9,7 +12,7 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const session = await getUserFromToken(request);
     const userType = session?.user_type;
-    
+
     if (!id) {
       return NextResponse.json(
         { status: false, message: "id is required" },
@@ -39,6 +42,11 @@ export async function GET(request, { params }) {
           select: {
             name: true,
             project_id: true,
+            client: {
+              select: {
+                client_name: true,
+              },
+            },
           },
         },
       },

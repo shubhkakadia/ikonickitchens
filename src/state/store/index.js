@@ -5,11 +5,15 @@ import loggedInUser from "../reducer/loggedInUser";
 import { combineReducers } from "redux";
 import tabs from "../reducer/tabs";
 import xero from "../reducer/xeroCredentials";
+import sidebar from "../reducer/sidebar";
+import inventoryTabs from "../reducer/inventoryTabs";
 
 const rootReducer = combineReducers({
   loggedInUser: loggedInUser,
   tabs: tabs,
   xero: xero,
+  sidebar: sidebar,
+  inventoryTabs: inventoryTabs,
 });
 
 const persistConfig = {

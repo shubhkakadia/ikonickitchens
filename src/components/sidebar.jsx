@@ -28,6 +28,12 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDispatch, useSelector } from "react-redux";
 import { addTab, replaceTab } from "@/state/reducer/tabs";
+import {
+  togglePinned,
+  toggleProjectDropdown,
+  toggleSuppliersDropdown,
+  toggleInventoryDropdown,
+} from "@/state/reducer/sidebar";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import versions from "@/config/versions.json";
@@ -37,12 +43,14 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
   const { activeTab } = useSelector((state) => state.tabs);
+  const {
+    isPinned,
+    projectDropdownOpen,
+    suppliersDropdownOpen,
+    inventoryDropdownOpen,
+  } = useSelector((state) => state.sidebar);
   const router = useRouter();
-  const [isPinned, setIsPinned] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [projectDropdownOpen, setProjectDropdownOpen] = useState(true);
-  const [suppliersDropdownOpen, setSuppliersDropdownOpen] = useState(true);
-  const [inventoryDropdownOpen, setInventoryDropdownOpen] = useState(true);
 
   const isExpanded = isPinned || isHovered;
 
@@ -68,7 +76,13 @@ export default function Sidebar() {
       access: false,
       subtabs: [],
     },
-    { icon: User, label: "Clients", href: "/admin/clients", access: false, subtabs: [] },
+    {
+      icon: User,
+      label: "Clients",
+      href: "/admin/clients",
+      access: false,
+      subtabs: [],
+    },
     {
       icon: PanelsTopLeft,
       label: "Projects",
@@ -137,13 +151,14 @@ export default function Sidebar() {
       href: "/admin/config",
       subtabs: [],
       access: false,
-    }
+    },
   ];
 
   return (
     <div
-      className={`bg-slate-900 h-screen border-r border-slate-800 ${isExpanded ? "w-60" : "w-16"
-        } ${!isPinned && isExpanded ? "fixed left-0 top-0 z-50 shadow-2xl" : "relative"}`}
+      className={`bg-slate-900 h-screen border-r border-slate-800 ${
+        isExpanded ? "w-60" : "w-16"
+      } ${!isPinned && isExpanded ? "fixed left-0 top-0 z-50 shadow-2xl" : "relative"}`}
       onMouseEnter={() => !isPinned && setIsHovered(true)}
       onMouseLeave={() => !isPinned && setIsHovered(false)}
     >
@@ -152,7 +167,10 @@ export default function Sidebar() {
         <div className="flex items-center justify-between gap-2">
           {isExpanded ? (
             <>
-              <Link href="/" className="flex flex-col items-center gap-2 py-2 flex-1">
+              <Link
+                href="/"
+                className="flex flex-col items-center gap-2 py-2 flex-1"
+              >
                 <Image
                   loading="lazy"
                   src="/logo.webp"
@@ -163,7 +181,7 @@ export default function Sidebar() {
                 />
               </Link>
               <button
-                onClick={() => setIsPinned(!isPinned)}
+                onClick={() => dispatch(togglePinned())}
                 className="cursor-pointer p-2 rounded-lg hover:bg-slate-800 transition-colors shrink-0"
                 aria-label={isPinned ? "Unpin sidebar" : "Pin sidebar"}
               >
@@ -176,11 +194,17 @@ export default function Sidebar() {
             </>
           ) : (
             <div
-              onClick={() => setIsPinned(true)}
+              onClick={() => dispatch(togglePinned())}
               className="cursor-pointer py-2 rounded-lg hover:bg-slate-800 transition-colors w-full flex items-center justify-center"
               aria-label="Pin sidebar open"
             >
-              <Image src="/logo.webp" alt="logo" width={150} height={150} className="w-12 h-12 object-contain" />
+              <Image
+                src="/logo.webp"
+                alt="logo"
+                width={150}
+                height={150}
+                className="w-12 h-12 object-contain"
+              />
             </div>
           )}
         </div>
@@ -188,7 +212,10 @@ export default function Sidebar() {
         <div className="flex flex-col justify-between flex-1 min-h-0 gap-4">
           <div className="flex flex-col overflow-y-auto pr-1 gap-1">
             {navdata.map((item) => {
-              const isActive = pathname === item.href || (item.subtabs.length === 0 && pathname.startsWith(item.href + '/'));
+              const isActive =
+                pathname === item.href ||
+                (item.subtabs.length === 0 &&
+                  pathname.startsWith(item.href + "/"));
               const isParentActive = pathname.startsWith(item.href);
 
               if (item.subtabs.length > 0) {
@@ -203,21 +230,23 @@ export default function Sidebar() {
 
                 const toggleDropdown = () => {
                   if (item.label === "Projects")
-                    setProjectDropdownOpen((prev) => !prev);
+                    dispatch(toggleProjectDropdown());
                   else if (item.label === "Suppliers")
-                    setSuppliersDropdownOpen((prev) => !prev);
+                    dispatch(toggleSuppliersDropdown());
                   else if (item.label === "Inventory")
-                    setInventoryDropdownOpen((prev) => !prev);
+                    dispatch(toggleInventoryDropdown());
                 };
 
                 return (
                   <div key={item.href} className="space-y-1">
                     <div
-                      className={`w-full rounded-lg border transition-all duration-200 flex items-center gap-2 ${isExpanded ? "px-3 py-2" : "px-2 py-2 justify-center"
-                        } ${isParentActive
+                      className={`w-full rounded-lg border transition-all duration-200 flex items-center gap-2 ${
+                        isExpanded ? "px-3 py-2" : "px-2 py-2 justify-center"
+                      } ${
+                        isParentActive
                           ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                           : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
-                        }`}
+                      }`}
                     >
                       <button
                         onClick={() => {
@@ -227,25 +256,28 @@ export default function Sidebar() {
                               id: uuidv4(),
                               title: item.label,
                               href: item.href,
-                            })
+                            }),
                           );
                         }}
-                        className={`flex items-center gap-2 cursor-pointer text-sm ${isExpanded ? "flex-1" : ""
-                          }`}
+                        className={`flex items-center gap-2 cursor-pointer text-sm ${
+                          isExpanded ? "flex-1" : ""
+                        }`}
                         title={!isExpanded ? item.label : ""}
                       >
                         <item.icon
-                          className={`w-4 h-4 shrink-0 ${isParentActive
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-white"
-                            }`}
+                          className={`w-4 h-4 shrink-0 ${
+                            isParentActive
+                              ? "text-white"
+                              : "text-slate-400 group-hover:text-white"
+                          }`}
                         />
                         {isExpanded && (
                           <h1
-                            className={`text-sm font-medium ${isParentActive
-                              ? "text-white"
-                              : "text-slate-300 group-hover:text-white"
-                              }`}
+                            className={`text-sm font-medium ${
+                              isParentActive
+                                ? "text-white"
+                                : "text-slate-300 group-hover:text-white"
+                            }`}
                           >
                             {item.label}
                           </h1>
@@ -280,7 +312,7 @@ export default function Sidebar() {
                                   id: uuidv4(),
                                   title: item.label,
                                   href: item.href,
-                                })
+                                }),
                               );
                             }}
                             role="button"
@@ -294,7 +326,7 @@ export default function Sidebar() {
                                     id: uuidv4(),
                                     title: item.label,
                                     href: item.href,
-                                  })
+                                  }),
                                 );
                               }
                             }}
@@ -320,21 +352,31 @@ export default function Sidebar() {
                                     id: uuidv4(),
                                     title: link.name,
                                     href: link.href,
-                                  })
+                                  }),
                                 );
                               }}
-                              className={`w-full text-left cursor-pointer rounded-lg border transition-all duration-200 flex items-center gap-2 ${isExpanded ? "px-3 py-2" : "px-2 py-2 justify-center"
-                                } ${isActiveSub
+                              className={`w-full text-left cursor-pointer rounded-lg border transition-all duration-200 flex items-center gap-2 ${
+                                isExpanded
+                                  ? "px-3 py-2"
+                                  : "px-2 py-2 justify-center"
+                              } ${
+                                isActiveSub
                                   ? "bg-slate-800 text-white border-slate-700"
                                   : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
-                                }`}
+                              }`}
                               title={!isExpanded ? link.name : ""}
                             >
                               {!isExpanded ? (
-                                <CircleSmall className="w-2 h-2 shrink-0 text-slate-400" fill="currentColor" />
+                                <CircleSmall
+                                  className="w-2 h-2 shrink-0 text-slate-400"
+                                  fill="currentColor"
+                                />
                               ) : (
                                 <>
-                                  <CircleSmall className="w-2 h-2 shrink-0 text-slate-400" fill="currentColor" />
+                                  <CircleSmall
+                                    className="w-2 h-2 shrink-0 text-slate-400"
+                                    fill="currentColor"
+                                  />
 
                                   <span className="text-sm font-medium">
                                     {link.name}
@@ -348,7 +390,7 @@ export default function Sidebar() {
                                           id: uuidv4(),
                                           title: link.name,
                                           href: link.href,
-                                        })
+                                        }),
                                       );
                                     }}
                                     className="ml-auto p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
@@ -375,30 +417,34 @@ export default function Sidebar() {
                         id: uuidv4(),
                         title: item.label,
                         href: item.href,
-                      })
+                      }),
                     );
                   }}
                   key={item.href}
-                  className={`cursor-pointer rounded-lg transition-all duration-200 flex items-center gap-2 border ${isExpanded ? "px-3 py-2.5" : "px-2 py-2 justify-center"
-                    } ${isActive
+                  className={`cursor-pointer rounded-lg transition-all duration-200 flex items-center gap-2 border ${
+                    isExpanded ? "px-3 py-2.5" : "px-2 py-2 justify-center"
+                  } ${
+                    isActive
                       ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                       : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
-                    }`}
+                  }`}
                   title={!isExpanded ? item.label : ""}
                 >
                   <item.icon
-                    className={`w-4 h-4 shrink-0 ${isActive
-                      ? "text-white"
-                      : "text-slate-400 group-hover:text-white"
-                      }`}
+                    className={`w-4 h-4 shrink-0 ${
+                      isActive
+                        ? "text-white"
+                        : "text-slate-400 group-hover:text-white"
+                    }`}
                   />
                   {isExpanded && (
                     <>
                       <h1
-                        className={`text-sm font-medium flex-1 text-left ${isActive
-                          ? "text-white"
-                          : "text-slate-300 group-hover:text-white"
-                          }`}
+                        className={`text-sm font-medium flex-1 text-left ${
+                          isActive
+                            ? "text-white"
+                            : "text-slate-300 group-hover:text-white"
+                        }`}
                       >
                         {item.label}
                       </h1>
@@ -411,7 +457,7 @@ export default function Sidebar() {
                               id: uuidv4(),
                               title: item.label,
                               href: item.href,
-                            })
+                            }),
                           );
                         }}
                         role="button"
@@ -425,7 +471,7 @@ export default function Sidebar() {
                                 id: uuidv4(),
                                 title: item.label,
                                 href: item.href,
-                              })
+                              }),
                             );
                           }
                         }}
@@ -449,29 +495,33 @@ export default function Sidebar() {
                     id: uuidv4(),
                     title: "Settings",
                     href: "/admin/settings",
-                  })
+                  }),
                 );
               }}
-              className={`cursor-pointer rounded-lg border transition-all duration-200 flex items-center gap-2 ${isExpanded ? "px-3 py-2.5" : "px-2 py-2 justify-center"
-                } ${pathname === "/admin/settings"
+              className={`cursor-pointer rounded-lg border transition-all duration-200 flex items-center gap-2 ${
+                isExpanded ? "px-3 py-2.5" : "px-2 py-2 justify-center"
+              } ${
+                pathname === "/admin/settings"
                   ? "border-slate-600 bg-slate-800 text-white shadow-sm"
                   : "border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
-                }`}
+              }`}
               title={!isExpanded ? "Settings" : ""}
             >
               <Settings
-                className={`w-4 h-4 shrink-0 ${pathname === "/admin/settings"
-                  ? "text-white"
-                  : "text-slate-400 group-hover:text-white"
-                  }`}
+                className={`w-4 h-4 shrink-0 ${
+                  pathname === "/admin/settings"
+                    ? "text-white"
+                    : "text-slate-400 group-hover:text-white"
+                }`}
               />
               {isExpanded && (
                 <>
                   <h1
-                    className={`text-sm font-medium ${pathname === "/admin/settings"
-                      ? "text-white"
-                      : "text-slate-300 group-hover:text-white"
-                      }`}
+                    className={`text-sm font-medium ${
+                      pathname === "/admin/settings"
+                        ? "text-white"
+                        : "text-slate-300 group-hover:text-white"
+                    }`}
                   >
                     Settings
                   </h1>
@@ -484,7 +534,7 @@ export default function Sidebar() {
                           id: uuidv4(),
                           title: "Settings",
                           href: "/admin/settings",
-                        })
+                        }),
                       );
                     }}
                     role="button"
@@ -498,7 +548,7 @@ export default function Sidebar() {
                             id: uuidv4(),
                             title: "Settings",
                             href: "/admin/settings",
-                          })
+                          }),
                         );
                       }
                     }}
@@ -515,24 +565,28 @@ export default function Sidebar() {
               title={!isExpanded ? "Logout" : ""}
             >
               <div
-                className={`cursor-pointer rounded-lg transition-all duration-200 flex items-center gap-2 border ${isExpanded ? "px-3 py-2.5" : "px-2 py-2 justify-center"
-                  } ${pathname === "/admin/logout"
+                className={`cursor-pointer rounded-lg transition-all duration-200 flex items-center gap-2 border ${
+                  isExpanded ? "px-3 py-2.5" : "px-2 py-2 justify-center"
+                } ${
+                  pathname === "/admin/logout"
                     ? "border-red-200/60 bg-red-50 text-red-700 shadow-sm"
                     : "border-transparent text-slate-300 hover:border-red-200 hover:bg-red-50/30 hover:text-red-500"
-                  }`}
+                }`}
               >
                 <LogOut
-                  className={`w-4 h-4 shrink-0 ${pathname === "/admin/logout"
-                    ? "text-red-700"
-                    : "text-red-400"
-                    }`}
+                  className={`w-4 h-4 shrink-0 ${
+                    pathname === "/admin/logout"
+                      ? "text-red-700"
+                      : "text-red-400"
+                  }`}
                 />
                 {isExpanded && (
                   <h1
-                    className={`text-sm font-medium ${pathname === "/admin/logout"
-                      ? "text-red-700"
-                      : "text-red-400"
-                      }`}
+                    className={`text-sm font-medium ${
+                      pathname === "/admin/logout"
+                        ? "text-red-700"
+                        : "text-red-400"
+                    }`}
                   >
                     Logout
                   </h1>

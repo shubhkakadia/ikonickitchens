@@ -11,8 +11,9 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
+import { setActiveTab } from "@/state/reducer/inventoryTabs";
 import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import {
@@ -37,7 +38,7 @@ import SearchBar from "@/components/SearchBar";
 export default function page() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const [activeTab, setActiveTab] = useState("sheet");
+  const { activeTab } = useSelector((state) => state.inventoryTabs);
   const { getToken } = useAuth();
   const tabs = [
     { id: "sheet", label: "Sheet" },
@@ -243,7 +244,7 @@ export default function page() {
               // Sheet tab: show ONLY non-sunmica items (exclude sunmica)
               items = items.filter(
                 (item) =>
-                  !item.sheet?.is_sunmica || item.sheet?.is_sunmica === false
+                  !item.sheet?.is_sunmica || item.sheet?.is_sunmica === false,
               );
             }
             setData(items);
@@ -348,7 +349,7 @@ export default function page() {
         if (
           filters.sheet_brand.length > 0 &&
           !filters.sheet_brand.some((brand) =>
-            item.sheet?.brand?.toLowerCase().includes(brand.toLowerCase())
+            item.sheet?.brand?.toLowerCase().includes(brand.toLowerCase()),
           )
         ) {
           return false;
@@ -356,7 +357,7 @@ export default function page() {
         if (
           filters.sheet_color.length > 0 &&
           !filters.sheet_color.some((color) =>
-            item.sheet?.color?.toLowerCase().includes(color.toLowerCase())
+            item.sheet?.color?.toLowerCase().includes(color.toLowerCase()),
           )
         ) {
           return false;
@@ -364,7 +365,7 @@ export default function page() {
         if (
           filters.sheet_finish.length > 0 &&
           !filters.sheet_finish.some((finish) =>
-            item.sheet?.finish?.toLowerCase().includes(finish.toLowerCase())
+            item.sheet?.finish?.toLowerCase().includes(finish.toLowerCase()),
           )
         ) {
           return false;
@@ -372,7 +373,7 @@ export default function page() {
         if (
           filters.sheet_face.length > 0 &&
           !filters.sheet_face.some((face) =>
-            item.sheet?.face?.toLowerCase().includes(face.toLowerCase())
+            item.sheet?.face?.toLowerCase().includes(face.toLowerCase()),
           )
         ) {
           return false;
@@ -384,7 +385,7 @@ export default function page() {
         if (
           filters.handle_brand.length > 0 &&
           !filters.handle_brand.some((brand) =>
-            item.handle?.brand?.toLowerCase().includes(brand.toLowerCase())
+            item.handle?.brand?.toLowerCase().includes(brand.toLowerCase()),
           )
         ) {
           return false;
@@ -392,7 +393,7 @@ export default function page() {
         if (
           filters.handle_color.length > 0 &&
           !filters.handle_color.some((color) =>
-            item.handle?.color?.toLowerCase().includes(color.toLowerCase())
+            item.handle?.color?.toLowerCase().includes(color.toLowerCase()),
           )
         ) {
           return false;
@@ -400,7 +401,7 @@ export default function page() {
         if (
           filters.handle_type.length > 0 &&
           !filters.handle_type.some((type) =>
-            item.handle?.type?.toLowerCase().includes(type.toLowerCase())
+            item.handle?.type?.toLowerCase().includes(type.toLowerCase()),
           )
         ) {
           return false;
@@ -410,7 +411,7 @@ export default function page() {
           !filters.handle_material.some((material) =>
             item.handle?.material
               ?.toLowerCase()
-              .includes(material.toLowerCase())
+              .includes(material.toLowerCase()),
           )
         ) {
           return false;
@@ -422,7 +423,7 @@ export default function page() {
         if (
           filters.hardware_brand.length > 0 &&
           !filters.hardware_brand.some((brand) =>
-            item.hardware?.brand?.toLowerCase().includes(brand.toLowerCase())
+            item.hardware?.brand?.toLowerCase().includes(brand.toLowerCase()),
           )
         ) {
           return false;
@@ -430,7 +431,7 @@ export default function page() {
         if (
           filters.hardware_name.length > 0 &&
           !filters.hardware_name.some((name) =>
-            item.hardware?.name?.toLowerCase().includes(name.toLowerCase())
+            item.hardware?.name?.toLowerCase().includes(name.toLowerCase()),
           )
         ) {
           return false;
@@ -438,7 +439,7 @@ export default function page() {
         if (
           filters.hardware_type.length > 0 &&
           !filters.hardware_type.some((type) =>
-            item.hardware?.type?.toLowerCase().includes(type.toLowerCase())
+            item.hardware?.type?.toLowerCase().includes(type.toLowerCase()),
           )
         ) {
           return false;
@@ -448,7 +449,7 @@ export default function page() {
           !filters.hardware_sub_category.some((subCategory) =>
             item.hardware?.sub_category
               ?.toLowerCase()
-              .includes(subCategory.toLowerCase())
+              .includes(subCategory.toLowerCase()),
           )
         ) {
           return false;
@@ -460,7 +461,7 @@ export default function page() {
         if (
           filters.accessory_name.length > 0 &&
           !filters.accessory_name.some((name) =>
-            item.accessory?.name?.toLowerCase().includes(name.toLowerCase())
+            item.accessory?.name?.toLowerCase().includes(name.toLowerCase()),
           )
         ) {
           return false;
@@ -471,7 +472,9 @@ export default function page() {
         if (
           filters.edging_tape_brand.length > 0 &&
           !filters.edging_tape_brand.some((brand) =>
-            item.edging_tape?.brand?.toLowerCase().includes(brand.toLowerCase())
+            item.edging_tape?.brand
+              ?.toLowerCase()
+              .includes(brand.toLowerCase()),
           )
         ) {
           return false;
@@ -479,7 +482,9 @@ export default function page() {
         if (
           filters.edging_tape_color.length > 0 &&
           !filters.edging_tape_color.some((color) =>
-            item.edging_tape?.color?.toLowerCase().includes(color.toLowerCase())
+            item.edging_tape?.color
+              ?.toLowerCase()
+              .includes(color.toLowerCase()),
           )
         ) {
           return false;
@@ -489,7 +494,7 @@ export default function page() {
           !filters.edging_tape_finish.some((finish) =>
             item.edging_tape?.finish
               ?.toLowerCase()
-              .includes(finish.toLowerCase())
+              .includes(finish.toLowerCase()),
           )
         ) {
           return false;
@@ -499,7 +504,7 @@ export default function page() {
           !filters.edging_tape_dimensions.some((dimensions) =>
             item.edging_tape?.dimensions
               ?.toLowerCase()
-              .includes(dimensions.toLowerCase())
+              .includes(dimensions.toLowerCase()),
           )
         ) {
           return false;
@@ -594,8 +599,8 @@ export default function page() {
           return aDimensions < bDimensions
             ? -1
             : aDimensions > bDimensions
-            ? 1
-            : 0;
+              ? 1
+              : 0;
         } else if (activeTab === "handle") {
           // Brand → Color → Type → Material → Dimensions
           const aBrand = getFieldValue(a, "brand").toString().toLowerCase();
@@ -635,8 +640,8 @@ export default function page() {
           return aDimensions < bDimensions
             ? -1
             : aDimensions > bDimensions
-            ? 1
-            : 0;
+              ? 1
+              : 0;
         } else if (activeTab === "hardware") {
           // Brand → Name → Type → Sub Category → Dimensions
           const aBrand = getFieldValue(a, "brand").toString().toLowerCase();
@@ -667,8 +672,8 @@ export default function page() {
             return aSubCategory < bSubCategory
               ? -1
               : aSubCategory > bSubCategory
-              ? 1
-              : 0;
+                ? 1
+                : 0;
           }
 
           const aDimensions = getFieldValue(a, "dimensions")
@@ -680,8 +685,8 @@ export default function page() {
           return aDimensions < bDimensions
             ? -1
             : aDimensions > bDimensions
-            ? 1
-            : 0;
+              ? 1
+              : 0;
         }
       }
 
@@ -822,7 +827,7 @@ export default function page() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
@@ -1032,17 +1037,17 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-700">
                       Inventory
                     </h1>
-                    <div className="flex items-center gap-2">                    
-                    <SearchBar />
-                    <TabsController
-                      href="/admin/inventory/additem"
-                      title="Add Item"
-                    >
-                      <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
-                        <Plus className="h-4 w-4" />
-                        Add Item
-                      </div>
-                    </TabsController>
+                    <div className="flex items-center gap-2">
+                      <SearchBar />
+                      <TabsController
+                        href="/admin/inventory/additem"
+                        title="Add Item"
+                      >
+                        <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
+                          <Plus className="h-4 w-4" />
+                          Add Item
+                        </div>
+                      </TabsController>
                     </div>
                   </div>
                 </div>
@@ -1055,7 +1060,7 @@ export default function page() {
                         {tabs.map((tab) => (
                           <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => dispatch(setActiveTab(tab.id))}
                             className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                               activeTab === tab.id
                                 ? "border-secondary text-secondary"
@@ -1282,7 +1287,7 @@ export default function page() {
                                       <input
                                         type="checkbox"
                                         checked={selectedColumns.includes(
-                                          column
+                                          column,
                                         )}
                                         onChange={() =>
                                           handleColumnToggle(column)
@@ -1464,14 +1469,14 @@ export default function page() {
                                   key={item.item_id}
                                   onClick={() => {
                                     router.push(
-                                      `/admin/inventory/${item.item_id}`
+                                      `/admin/inventory/${item.item_id}`,
                                     );
                                     dispatch(
                                       replaceTab({
                                         id: uuidv4(),
                                         title: getItemTitle(item),
                                         href: `/admin/inventory/${item.item_id}`,
-                                      })
+                                      }),
                                     );
                                   }}
                                   className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
@@ -1787,7 +1792,7 @@ export default function page() {
                         field="hardware_sub_category"
                         options={getDistinctValues(
                           "hardware_sub_category",
-                          data
+                          data,
                         )}
                         selectedValues={filters.hardware_sub_category}
                         onSelectionChange={handleFilterChange}
@@ -1852,7 +1857,7 @@ export default function page() {
                         field="edging_tape_dimensions"
                         options={getDistinctValues(
                           "edging_tape_dimensions",
-                          data
+                          data,
                         )}
                         selectedValues={filters.edging_tape_dimensions}
                         onSelectionChange={handleFilterChange}

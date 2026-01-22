@@ -97,7 +97,7 @@ export async function GET(request, { params }) {
     if (segments.length === 0) {
       return NextResponse.json(
         { status: false, message: "Missing path" },
-        { status: 404 }
+        { status: 404 },
       );
     }
     const targetPath = path.join(process.cwd(), "mediauploads", ...segments);
@@ -108,7 +108,7 @@ export async function GET(request, { params }) {
     if (!normalized.startsWith(uploadsRoot)) {
       return NextResponse.json(
         { status: false, message: "Not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -118,13 +118,13 @@ export async function GET(request, { params }) {
     } catch {
       return NextResponse.json(
         { status: false, message: "Not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
     if (!stat.isFile()) {
       return NextResponse.json(
         { status: false, message: "Not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -142,25 +142,42 @@ export async function GET(request, { params }) {
     if (fileRecord && fileRecord.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     const mimeType = getMimeType(normalized);
-    const data = await fs.promises.readFile(normalized);
+    const fileSize = stat.size;
+    const range = request.headers.get("range");
 
-    return new NextResponse(data, {
-      headers: {
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = end - start + 1;
+      const file = fs.createReadStream(normalized, { start, end });
+      const head = {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": chunksize.toString(),
         "Content-Type": mimeType,
-        "Content-Disposition": "inline", // This tells the browser to display the file inline
         "Cache-Control": "public, max-age=31536000, immutable",
-      },
-    });
+      };
+      return new NextResponse(file, { status: 206, headers: head });
+    } else {
+      const head = {
+        "Content-Length": fileSize.toString(),
+        "Content-Type": mimeType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      };
+      const file = fs.createReadStream(normalized);
+      return new NextResponse(file, { status: 200, headers: head });
+    }
   } catch (error) {
     console.error("Error in GET /api/uploads/lots/[...path]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -179,7 +196,7 @@ export async function POST(request, { params }) {
           message:
             "Path must be /api/uploads/[project_id]/[lot_id]/[tabkind]/[filename?]",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const [projectId, lotId, tabKind] = segments;
@@ -190,10 +207,10 @@ export async function POST(request, { params }) {
         {
           status: false,
           message: `Invalid TabKind: ${tabKind}. Allowed values are: ${VALID_TABKINDS.join(
-            ", "
+            ", ",
           )}`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -209,7 +226,7 @@ export async function POST(request, { params }) {
           message: parseError.message || "Failed to parse form data",
           error: parseError.message,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const fileEntries = [];
@@ -221,7 +238,7 @@ export async function POST(request, { params }) {
     if (fileEntries.length === 0) {
       return NextResponse.json(
         { status: false, message: "No file found in form-data" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -254,7 +271,7 @@ export async function POST(request, { params }) {
     if (!lot) {
       return NextResponse.json(
         { status: false, message: `Lot with ID ${lotId} not found` },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -321,9 +338,9 @@ export async function POST(request, { params }) {
           "media",
           file.fileId,
           "CREATE",
-          `File uploaded successfully: ${file.filename} for lot: ${lot.lot_id} and project: ${lot.project.name}`
-        )
-      )
+          `File uploaded successfully: ${file.filename} for lot: ${lot.lot_id} and project: ${lot.project.name}`,
+        ),
+      ),
     );
 
     const hasLoggingFailures = logged.some((log) => !log);
@@ -338,15 +355,17 @@ export async function POST(request, { params }) {
         lotId,
         tabKind,
         files: saved,
-        ...(hasLoggingFailures ? { warning: "Note: Upload succeeded but some logging failed" } : {})
+        ...(hasLoggingFailures
+          ? { warning: "Note: Upload succeeded but some logging failed" }
+          : {}),
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/uploads/lots/[...path]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -361,22 +380,22 @@ export async function DELETE(request, { params }) {
     if (segments.length === 0) {
       return NextResponse.json(
         { status: false, message: "Missing path" },
-        { status: 404 }
+        { status: 404 },
       );
     }
     // Mark file as deleted in database instead of physically deleting it
     // Since this is a soft delete, we check the database first, not the disk
-    
+
     // Construct the expected relative path
     const targetPath = path.join(process.cwd(), "mediauploads", ...segments);
     const uploadsRoot = path.join(process.cwd(), "mediauploads");
     const normalized = path.normalize(targetPath);
-    
+
     // Prevent path traversal
     if (!normalized.startsWith(uploadsRoot)) {
       return NextResponse.json(
         { status: false, message: "Not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -428,7 +447,7 @@ export async function DELETE(request, { params }) {
             segments,
           },
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -451,13 +470,13 @@ export async function DELETE(request, { params }) {
           filename: updatedFile.filename,
         },
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/uploads/lots/[...path]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

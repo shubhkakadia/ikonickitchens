@@ -503,6 +503,8 @@ export default function SitePhotosPage() {
       if (file.type.startsWith("image/")) {
         reader.readAsDataURL(file);
       } else {
+        // For video or PDF, we don't generate a data URL preview here
+        // The UI will handle displaying an appropriate icon/player
         resolve(null);
       }
     });
@@ -553,11 +555,17 @@ export default function SitePhotosPage() {
         let processedFile = file;
 
         // processing logic:
-        // 1. If HEIC, convert to JPEG (heic2any)
-        // 2. If Image (JPEG/PNG/etc), run through browser-image-compression to fix orientation
-        // 3. Otherwise (Video/PDF), keep as is
+        // 1. If PDF, skip processing (keep as is)
+        // 2. If HEIC, convert to JPEG (heic2any)
+        // 3. If Image (JPEG/PNG/etc), run through browser-image-compression to fix orientation
+        // 4. Otherwise (Video), keep as is
 
-        if (isHeicFile(file)) {
+        if (
+          file.type === "application/pdf" ||
+          file.name.toLowerCase().endsWith(".pdf")
+        ) {
+          // Skip processing for PDFs
+        } else if (isHeicFile(file)) {
           processedFile = await convertHeicToJpeg(file);
           // After conversion, we can optionally run it through compression too
           // to ensure consistent sizing/quality, but heic2any usually does a good job.
@@ -1184,8 +1192,14 @@ export default function SitePhotosPage() {
                                     fileInputRefs.current[key] = el;
                                   }}
                                   type="file"
-                                  accept="image/*,video/*,image/heic,image/heif,.heic,.heif"
-                                  capture="environment"
+                                  accept={
+                                    selectedPhotoType ===
+                                      TAB_KINDS.SITE_PHOTOS ||
+                                    selectedPhotoType ===
+                                      TAB_KINDS.MEASUREMENT_PHOTOS
+                                      ? "image/*,video/*,image/heic,image/heif,.heic,.heif,.pdf,application/pdf"
+                                      : "image/*,video/*,image/heic,image/heif,.heic,.heif"
+                                  }
                                   multiple
                                   onChange={(e) =>
                                     handleFileSelect(lot, selectedPhotoType, e)
@@ -1477,6 +1491,13 @@ export default function SitePhotosPage() {
                               alt={fileItem.file.name}
                               className="w-full h-full object-contain"
                             />
+                          ) : fileItem.file.type === "application/pdf" ||
+                            fileItem.file.name
+                              .toLowerCase()
+                              .endsWith(".pdf") ? (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <FileText className="w-16 h-16 text-gray-400" />
+                            </div>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <ImageIcon className="w-16 h-16 text-gray-400" />

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import {
+  validateAdminAuth,
+  getUserFromToken,
+} from "@/lib/validators/authFromToken";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -146,6 +149,10 @@ export async function POST(request) {
     // Parse request body
     const body = await request.json();
     const { month, year } = body;
+
+    // Get the current user from token
+    const session = await getUserFromToken(request);
+    const currentUserId = session?.user_id;
 
     // Build date range filter for DateTime fields
     const dateRangeFilter = buildDateRangeFilter(year, month);
@@ -401,6 +408,11 @@ export async function POST(request) {
         where: {
           date_time: {
             gte: new Date(),
+          },
+          participants: {
+            some: {
+              id: currentUserId,
+            },
           },
         },
         orderBy: {

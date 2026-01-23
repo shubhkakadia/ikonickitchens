@@ -12,7 +12,7 @@ export async function GET(request, { params }) {
     if (!CATEGORIES.includes(normalizedCategory)) {
       return NextResponse.json(
         { status: false, message: "Invalid category" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -41,13 +41,13 @@ export async function GET(request, { params }) {
     });
     return NextResponse.json(
       { status: true, message: "Items fetched successfully", data: items },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/item/all/[category]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

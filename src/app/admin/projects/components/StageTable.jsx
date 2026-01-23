@@ -86,7 +86,7 @@ export default function StageTable({
     if (typeof stageIdentifier !== "string") return false;
     // Check if it's in the predefined stages array
     return stages.some(
-      (stageName) => stageName.toLowerCase() === stageIdentifier.toLowerCase()
+      (stageName) => stageName.toLowerCase() === stageIdentifier.toLowerCase(),
     );
   };
 
@@ -98,7 +98,7 @@ export default function StageTable({
       return localStages.find(
         (stage) =>
           stage.name.toLowerCase() === stageIdentifier.toLowerCase() ||
-          stage.stage_id === `temp_${stageIdentifier}`
+          stage.stage_id === `temp_${stageIdentifier}`,
       );
     } else {
       // It's a stage_id (UUID format)
@@ -124,7 +124,7 @@ export default function StageTable({
       setLocalStages((prev) => {
         // Check if temp stage already exists
         const existing = prev.find(
-          (s) => s.stage_id === `temp_${stageIdentifier}`
+          (s) => s.stage_id === `temp_${stageIdentifier}`,
         );
         if (existing) {
           return prev; // Already exists
@@ -181,7 +181,7 @@ export default function StageTable({
   const normalizeAssignedTo = (assignedTo) => {
     if (!assignedTo || assignedTo.length === 0) return [];
     return assignedTo.map((assignment) =>
-      typeof assignment === "string" ? assignment : assignment.employee_id
+      typeof assignment === "string" ? assignment : assignment.employee_id,
     );
   };
 
@@ -221,20 +221,21 @@ export default function StageTable({
         const preservedAssignedTo = stageData.assigned_to || [];
 
         // Format assigned_to to match the expected structure (array of objects with employee_id and employee)
-        const formattedAssignedTo = preservedAssignedTo.length > 0
-          ? preservedAssignedTo.map((empId) => {
-            const employee = employees.find((e) => e.employee_id === empId);
-            return employee
-              ? {
-                employee_id: empId,
-                employee: {
-                  first_name: employee.first_name,
-                  last_name: employee.last_name,
-                },
-              }
-              : { employee_id: empId };
-          })
-          : (newStage.assigned_to || []);
+        const formattedAssignedTo =
+          preservedAssignedTo.length > 0
+            ? preservedAssignedTo.map((empId) => {
+                const employee = employees.find((e) => e.employee_id === empId);
+                return employee
+                  ? {
+                      employee_id: empId,
+                      employee: {
+                        first_name: employee.first_name,
+                        last_name: employee.last_name,
+                      },
+                    }
+                  : { employee_id: empId };
+              })
+            : newStage.assigned_to || [];
 
         // Merge assigned_to into the new stage
         const stageWithAssignments = {
@@ -245,7 +246,7 @@ export default function StageTable({
         // Replace temporary stage with real one if it exists
         setLocalStages((prev) => {
           const filtered = prev.filter(
-            (s) => s.stage_id !== `temp_${stageIdentifier}`
+            (s) => s.stage_id !== `temp_${stageIdentifier}`,
           );
           return [...filtered, stageWithAssignments];
         });
@@ -258,7 +259,7 @@ export default function StageTable({
               ...prev,
               stages: [
                 ...(prev.stages?.filter(
-                  (s) => s.stage_id !== `temp_${stageIdentifier}`
+                  (s) => s.stage_id !== `temp_${stageIdentifier}`,
                 ) || []),
                 stageWithAssignments,
               ],
@@ -302,7 +303,7 @@ export default function StageTable({
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status && response.data.data) {
@@ -350,7 +351,7 @@ export default function StageTable({
 
     // Get current assigned employees
     const currentAssignedIds = normalizeAssignedTo(
-      existingStage?.assigned_to || []
+      existingStage?.assigned_to || [],
     );
 
     // Toggle employee assignment
@@ -452,16 +453,10 @@ export default function StageTable({
       const endDate = newStage.endDate || null;
 
       // Validate dates against lot dates before creating
-      if (
-        startDate &&
-        !validateStageDateAgainstLot(startDate, "startDate")
-      ) {
+      if (startDate && !validateStageDateAgainstLot(startDate, "startDate")) {
         return;
       }
-      if (
-        endDate &&
-        !validateStageDateAgainstLot(endDate, "endDate")
-      ) {
+      if (endDate && !validateStageDateAgainstLot(endDate, "endDate")) {
         return;
       }
       // Validate start date is not after end date
@@ -520,7 +515,7 @@ export default function StageTable({
         toast.success("Stage deleted successfully");
         // Remove from local state
         setLocalStages((prev) =>
-          prev.filter((stage) => stage.stage_id !== stageToDelete)
+          prev.filter((stage) => stage.stage_id !== stageToDelete),
         );
         // Update parent lot data
         if (updateLotData) {
@@ -530,7 +525,7 @@ export default function StageTable({
               ...prev,
               stages:
                 prev.stages?.filter(
-                  (stage) => stage.stage_id !== stageToDelete
+                  (stage) => stage.stage_id !== stageToDelete,
                 ) || [],
             };
           });
@@ -667,13 +662,13 @@ export default function StageTable({
       setLocalStages((prev) => {
         // Check if temp stage already exists
         const existing = prev.find(
-          (s) => s.stage_id === `temp_${stageIdentifier}`
+          (s) => s.stage_id === `temp_${stageIdentifier}`,
         );
         if (existing) {
           return prev.map((s) =>
             s.stage_id === `temp_${stageIdentifier}`
               ? { ...s, notes: value }
-              : s
+              : s,
           );
         }
         return [...prev, tempStage];
@@ -697,7 +692,6 @@ export default function StageTable({
     }, 1000);
   };
 
-
   // Helper function to validate stage dates against lot dates
   const validateStageDateAgainstLot = (dateValue, field) => {
     if (!dateValue) return true; // Empty dates are allowed
@@ -712,50 +706,38 @@ export default function StageTable({
 
     if (field === "startDate") {
       if (lotStartDate && stageDate < lotStartDate) {
-        toast.error(
-          "Stage start date cannot be before the lot start date",
-          {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-          }
-        );
+        toast.error("Stage start date cannot be before the lot start date", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        });
         return false;
       }
       if (lotEndDate && stageDate > lotEndDate) {
-        toast.error(
-          "Stage start date cannot be after the lot end date",
-          {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-          }
-        );
+        toast.error("Stage start date cannot be after the lot end date", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        });
         return false;
       }
     }
 
     if (field === "endDate") {
       if (lotStartDate && stageDate < lotStartDate) {
-        toast.error(
-          "Stage end date cannot be before the lot start date",
-          {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-          }
-        );
+        toast.error("Stage end date cannot be before the lot start date", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        });
         return false;
       }
       if (lotEndDate && stageDate > lotEndDate) {
-        toast.error(
-          "Stage end date cannot be after the lot end date",
-          {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-          }
-        );
+        toast.error("Stage end date cannot be after the lot end date", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        });
         return false;
       }
     }
@@ -1028,7 +1010,7 @@ export default function StageTable({
                       validateDateInput(
                         newStartDate,
                         newStage.endDate,
-                        "startDate"
+                        "startDate",
                       )
                     ) {
                       setNewStage({
@@ -1071,7 +1053,7 @@ export default function StageTable({
                       validateDateInput(
                         newStage.startDate,
                         newEndDate,
-                        "endDate"
+                        "endDate",
                       )
                     ) {
                       setNewStage({
@@ -1182,7 +1164,7 @@ export default function StageTable({
                 // Find existing stage data for this stage name
                 const existingStage = localStages.find(
                   (stage) =>
-                    stage.name.toLowerCase() === stageName.toLowerCase()
+                    stage.name.toLowerCase() === stageName.toLowerCase(),
                 );
 
                 return (
@@ -1196,7 +1178,7 @@ export default function StageTable({
                           existingStage || {
                             status: "NOT_STARTED",
                             endDate: "",
-                          }
+                          },
                         )}
                         <input
                           type="text"
@@ -1220,7 +1202,7 @@ export default function StageTable({
                           handleStatusChange(stageName, e.target.value)
                         }
                         className={`px-3 py-1 rounded-full text-xs font-medium border cursor-pointer transition-colors focus:outline-none ${getStatusColor(
-                          existingStage?.status || "NOT_STARTED"
+                          existingStage?.status || "NOT_STARTED",
                         )}`}
                       >
                         <option value="NOT_STARTED">Not Started</option>
@@ -1253,7 +1235,7 @@ export default function StageTable({
                           handleDateChange(
                             stageName,
                             "startDate",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         min={
@@ -1263,7 +1245,9 @@ export default function StageTable({
                         }
                         max={
                           selectedLotData?.installationDueDate
-                            ? formatDateForInput(selectedLotData.installationDueDate)
+                            ? formatDateForInput(
+                                selectedLotData.installationDueDate,
+                              )
                             : undefined
                         }
                         className="max-w-[140px] px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent text-xs"
@@ -1283,7 +1267,9 @@ export default function StageTable({
                         }
                         max={
                           selectedLotData?.installationDueDate
-                            ? formatDateForInput(selectedLotData.installationDueDate)
+                            ? formatDateForInput(
+                                selectedLotData.installationDueDate,
+                              )
                             : undefined
                         }
                         className="max-w-[140px] px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent text-xs"
@@ -1292,10 +1278,11 @@ export default function StageTable({
                     <td className="py-3 px-2">
                       <button
                         onClick={() => handleOpenEmployeeDropdown(stageName)}
-                        className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${existingStage?.assigned_to?.length > 0
-                          ? "text-secondary font-medium"
-                          : "text-slate-600"
-                          }`}
+                        className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${
+                          existingStage?.assigned_to?.length > 0
+                            ? "text-secondary font-medium"
+                            : "text-slate-600"
+                        }`}
                       >
                         {getAssignedTeamMembersDisplay(stageName)}
                       </button>
@@ -1324,8 +1311,8 @@ export default function StageTable({
                     !stages.some(
                       (predefinedStage) =>
                         predefinedStage.toLowerCase() ===
-                        stage.name.toLowerCase()
-                    )
+                        stage.name.toLowerCase(),
+                    ),
                 )
                 ?.map((stage) => (
                   <tr
@@ -1357,7 +1344,7 @@ export default function StageTable({
                           handleStatusChange(stage.stage_id, e.target.value)
                         }
                         className={`px-3 py-1 rounded-full text-xs font-medium border cursor-pointer transition-colors focus:outline-none ${getStatusColor(
-                          stage.status
+                          stage.status,
                         )}`}
                       >
                         <option value="NOT_STARTED">Not Started</option>
@@ -1390,7 +1377,7 @@ export default function StageTable({
                           handleDateChange(
                             stage.stage_id,
                             "startDate",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         min={
@@ -1400,7 +1387,9 @@ export default function StageTable({
                         }
                         max={
                           selectedLotData?.installationDueDate
-                            ? formatDateForInput(selectedLotData.installationDueDate)
+                            ? formatDateForInput(
+                                selectedLotData.installationDueDate,
+                              )
                             : undefined
                         }
                         className="max-w-[140px] px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent text-xs"
@@ -1414,7 +1403,7 @@ export default function StageTable({
                           handleDateChange(
                             stage.stage_id,
                             "endDate",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         min={
@@ -1424,7 +1413,9 @@ export default function StageTable({
                         }
                         max={
                           selectedLotData?.installationDueDate
-                            ? formatDateForInput(selectedLotData.installationDueDate)
+                            ? formatDateForInput(
+                                selectedLotData.installationDueDate,
+                              )
                             : undefined
                         }
                         className="max-w-[140px] px-2 py-1 border border-transparent rounded hover:border-slate-300 focus:border-secondary focus:outline-none bg-transparent text-xs"
@@ -1435,10 +1426,11 @@ export default function StageTable({
                         onClick={() =>
                           handleOpenEmployeeDropdown(stage.stage_id)
                         }
-                        className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${stage.assigned_to?.length > 0
-                          ? "text-secondary font-medium"
-                          : "text-slate-600"
-                          }`}
+                        className={`cursor-pointer text-sm hover:text-secondary hover:underline text-left ${
+                          stage.assigned_to?.length > 0
+                            ? "text-secondary font-medium"
+                            : "text-slate-600"
+                        }`}
                       >
                         {getAssignedTeamMembersDisplay(stage.stage_id)}
                       </button>
@@ -1503,10 +1495,11 @@ export default function StageTable({
                         onClick={() =>
                           handleToggleEmployeeAssignment(employee.employee_id)
                         }
-                        className={`cursor-pointer w-full text-left p-3 border rounded-lg transition-colors ${isAssigned
-                          ? "border-secondary bg-secondary/5 hover:bg-secondary/10"
-                          : "border-slate-200 hover:bg-slate-50 hover:border-secondary"
-                          }`}
+                        className={`cursor-pointer w-full text-left p-3 border rounded-lg transition-colors ${
+                          isAssigned
+                            ? "border-secondary bg-secondary/5 hover:bg-secondary/10"
+                            : "border-slate-200 hover:bg-slate-50 hover:border-secondary"
+                        }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1">

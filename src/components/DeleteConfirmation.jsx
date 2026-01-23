@@ -93,7 +93,8 @@ export default function DeleteConfirmation({
                 {associatedData.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-red-200">
                     <p className="text-sm font-medium text-red-800 mb-2">
-                      The following data associated with this {heading.toLowerCase()} will also be deleted:
+                      The following data associated with this{" "}
+                      {heading.toLowerCase()} will also be deleted:
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
                       {associatedData.map((item, index) => (

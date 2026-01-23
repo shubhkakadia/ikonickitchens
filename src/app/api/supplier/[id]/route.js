@@ -26,7 +26,7 @@ export async function GET(request, { params }) {
     if (!supplier) {
       return NextResponse.json(
         { status: false, message: "Supplier not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
     return NextResponse.json(
@@ -35,13 +35,13 @@ export async function GET(request, { params }) {
         message: "Supplier fetched successfully",
         data: supplier,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/supplier/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -55,11 +55,19 @@ export async function PATCH(request, { params }) {
       await request.json();
     const formatPhone = (phone) => {
       return phone ? formatPhoneToNational(phone) : phone;
-    }
+    };
 
     const supplier = await prisma.supplier.update({
       where: { supplier_id: id },
-      data: { name, email, phone: formatPhone(phone), address, notes, website, abn_number },
+      data: {
+        name,
+        email,
+        phone: formatPhone(phone),
+        address,
+        notes,
+        website,
+        abn_number,
+      },
     });
 
     const logged = await withLogging(
@@ -67,7 +75,7 @@ export async function PATCH(request, { params }) {
       "supplier",
       id,
       "UPDATE",
-      `Supplier updated successfully: ${supplier.name}`
+      `Supplier updated successfully: ${supplier.name}`,
     );
     if (!logged) {
       console.error(`Failed to log supplier update: ${id} - ${supplier.name}`);
@@ -77,15 +85,17 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Supplier updated successfully",
         data: supplier,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/supplier/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -104,14 +114,14 @@ export async function DELETE(request, { params }) {
     if (!existingSupplier) {
       return NextResponse.json(
         { status: false, message: "Supplier not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (existingSupplier.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Supplier already deleted" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -126,18 +136,20 @@ export async function DELETE(request, { params }) {
       "supplier",
       id,
       "DELETE",
-      `Supplier deleted successfully: ${supplier.name}`
+      `Supplier deleted successfully: ${supplier.name}`,
     );
     if (!logged) {
-      console.error(`Failed to log supplier deletion: ${id} - ${supplier.name}`);
+      console.error(
+        `Failed to log supplier deletion: ${id} - ${supplier.name}`,
+      );
       return NextResponse.json(
         {
           status: true,
           message: "Supplier deleted successfully",
           data: supplier,
-          warning: "Note: Deletion succeeded but logging failed"
+          warning: "Note: Deletion succeeded but logging failed",
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
     return NextResponse.json(
@@ -146,13 +158,13 @@ export async function DELETE(request, { params }) {
         message: "Supplier deleted successfully",
         data: supplier,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/supplier/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

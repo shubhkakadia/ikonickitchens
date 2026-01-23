@@ -59,16 +59,14 @@ export async function validateAdminAuth(request) {
   if (!admin) {
     return NextResponse.json(
       { status: false, message: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
   }
   if (await isSessionExpired(request)) {
     return NextResponse.json(
       { status: false, message: "Session expired" },
-      { status: 401 }
+      { status: 401 },
     );
   }
   return null;
 }
-
-

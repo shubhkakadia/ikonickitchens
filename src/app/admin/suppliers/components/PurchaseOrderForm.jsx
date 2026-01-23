@@ -52,7 +52,7 @@ export default function PurchaseOrderForm({
 
     // Find MTO - ID could be string (UUID) or number
     const mto = materialsToOrder.find(
-      (m) => m.id === mtoId || m.id === parseInt(mtoId)
+      (m) => m.id === mtoId || m.id === parseInt(mtoId),
     );
     if (!mto) {
       console.error("MTO not found:", mtoId);
@@ -113,8 +113,8 @@ export default function PurchaseOrderForm({
       prev.map((item) =>
         item.id === itemId
           ? { ...item, quantity: parseInt(newQuantity) || 0 }
-          : item
-      )
+          : item,
+      ),
     );
   };
 
@@ -123,8 +123,8 @@ export default function PurchaseOrderForm({
       prev.map((item) =>
         item.id === itemId
           ? { ...item, unit_price: parseFloat(newPrice) || 0 }
-          : item
-      )
+          : item,
+      ),
     );
   };
 
@@ -259,7 +259,7 @@ export default function PurchaseOrderForm({
 
       if (validItems.length === 0) {
         toast.error(
-          "No valid items found. All items are missing required information."
+          "No valid items found. All items are missing required information.",
         );
         return;
       }
@@ -268,7 +268,7 @@ export default function PurchaseOrderForm({
         toast.warning(
           `${
             poItems.length - validItems.length
-          } item(s) were removed due to missing information.`
+          } item(s) were removed due to missing information.`,
         );
       }
 
@@ -277,7 +277,7 @@ export default function PurchaseOrderForm({
         (sum, item) =>
           sum +
           (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0),
-        0
+        0,
       );
 
       // Use manually entered total if provided, otherwise use calculated
@@ -332,7 +332,7 @@ export default function PurchaseOrderForm({
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -346,7 +346,7 @@ export default function PurchaseOrderForm({
       console.error("Create purchase order failed", err);
       toast.error(
         err?.response?.data?.message ||
-          "An error occurred while creating purchase order"
+          "An error occurred while creating purchase order",
       );
     } finally {
       setIsCreatingPO(false);
@@ -387,7 +387,7 @@ export default function PurchaseOrderForm({
                       onClick={() =>
                         window.open(
                           `/admin/suppliers/${supplier?.supplier_id}`,
-                          "_blank"
+                          "_blank",
                         )
                       }
                       className="cursor-pointer hover:bg-slate-100 rounded p-1.5 transition-colors"
@@ -441,21 +441,19 @@ export default function PurchaseOrderForm({
                   Leave empty to use calculated total
                 </p>
               </div>
-                          {/* Invoice Date */}
-            <div>
-              <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
-                Invoice Date (Optional)
-              </label>
-              <input
-                type="date"
-                value={poInvoiceDate}
-                onChange={(e) => setPoInvoiceDate(e.target.value)}
-                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-              />
+              {/* Invoice Date */}
+              <div>
+                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1">
+                  Invoice Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  value={poInvoiceDate}
+                  onChange={(e) => setPoInvoiceDate(e.target.value)}
+                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                />
+              </div>
             </div>
-            </div>
-
-
 
             {/* Select MTO */}
             <div>
@@ -495,7 +493,7 @@ export default function PurchaseOrderForm({
                           ? mto.items.filter(
                               (it) =>
                                 (parseFloat(it.quantity_ordered_po) || 0) <
-                                (parseFloat(it.quantity) || 0)
+                                (parseFloat(it.quantity) || 0),
                             ).length
                           : 0}{" "}
                         remaining item(s)
@@ -713,8 +711,8 @@ export default function PurchaseOrderForm({
                                   item.stock_on_hand <= 0
                                     ? "text-red-600"
                                     : item.stock_on_hand < 10
-                                    ? "text-yellow-600"
-                                    : "text-green-600"
+                                      ? "text-yellow-600"
+                                      : "text-green-600"
                                 }`}
                               >
                                 {item.stock_on_hand} {item.measurement_unit}
@@ -763,7 +761,7 @@ export default function PurchaseOrderForm({
                               $
                               {formatCurrency(
                                 (parseFloat(item.quantity) || 0) *
-                                  (parseFloat(item.unit_price) || 0)
+                                  (parseFloat(item.unit_price) || 0),
                               )}
                             </p>
                           </td>
@@ -799,8 +797,8 @@ export default function PurchaseOrderForm({
                                   sum +
                                   (parseFloat(item.quantity) || 0) *
                                     (parseFloat(item.unit_price) || 0),
-                                0
-                              )
+                                0,
+                              ),
                             )}
                           </p>
                         </td>
@@ -823,7 +821,7 @@ export default function PurchaseOrderForm({
                               value={poDeliveryCharge || ""}
                               onChange={(e) =>
                                 setPoDeliveryCharge(
-                                  parseFloat(e.target.value) || 0
+                                  parseFloat(e.target.value) || 0,
                                 )
                               }
                               placeholder="0.00"
@@ -850,12 +848,12 @@ export default function PurchaseOrderForm({
                                     sum +
                                     (parseFloat(item.quantity) || 0) *
                                       (parseFloat(item.unit_price) || 0),
-                                  0
+                                  0,
                                 ) +
                                   (parseFloat(poDeliveryCharge) || 0)) *
                                   0.1 *
-                                  100
-                              ) / 100
+                                  100,
+                              ) / 100,
                             )}
                           </p>
                         </td>
@@ -877,7 +875,7 @@ export default function PurchaseOrderForm({
                                   sum +
                                   (parseFloat(item.quantity) || 0) *
                                     (parseFloat(item.unit_price) || 0),
-                                0
+                                0,
                               ) +
                                 (parseFloat(poDeliveryCharge) || 0) +
                                 Math.ceil(
@@ -886,13 +884,13 @@ export default function PurchaseOrderForm({
                                       sum +
                                       (parseFloat(item.quantity) || 0) *
                                         (parseFloat(item.unit_price) || 0),
-                                    0
+                                    0,
                                   ) +
                                     (parseFloat(poDeliveryCharge) || 0)) *
                                     0.1 *
-                                    100
+                                    100,
                                 ) /
-                                  100
+                                  100,
                             )}
                           </p>
                         </td>

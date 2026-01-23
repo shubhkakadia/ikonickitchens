@@ -46,7 +46,7 @@ export async function POST(request, { params }) {
     if (!CATEGORIES.includes(category)) {
       return NextResponse.json(
         { status: false, message: "Invalid category" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -176,11 +176,13 @@ export async function POST(request, { params }) {
         console.error("Upload error details:", {
           message: error.message,
           stack: error.stack,
-          imageFile: imageFile ? {
-            name: imageFile.name,
-            size: imageFile.size,
-            type: imageFile.type,
-          } : null,
+          imageFile: imageFile
+            ? {
+                name: imageFile.name,
+                size: imageFile.size,
+                type: imageFile.type,
+              }
+            : null,
         });
         // Return error instead of silently failing
         return NextResponse.json(
@@ -189,7 +191,7 @@ export async function POST(request, { params }) {
             message: "Failed to upload image",
             error: error.message,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -214,20 +216,24 @@ export async function POST(request, { params }) {
       "item",
       createdItem.item_id,
       "CREATE",
-      `Item created successfully: ${itemDescription}`
+      `Item created successfully: ${itemDescription}`,
     );
     if (!logged) {
-      console.error(`Failed to log item creation: ${createdItem.item_id} - ${itemDescription}`);
+      console.error(
+        `Failed to log item creation: ${createdItem.item_id} - ${itemDescription}`,
+      );
     }
 
     return NextResponse.json(
       {
         status: true,
         message: "Item created successfully",
-        ...(logged ? {} : { warning: "Note: Creation succeeded but logging failed" }),
+        ...(logged
+          ? {}
+          : { warning: "Note: Creation succeeded but logging failed" }),
         data: updatedItem,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Create item error:", error);
@@ -236,7 +242,7 @@ export async function POST(request, { params }) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

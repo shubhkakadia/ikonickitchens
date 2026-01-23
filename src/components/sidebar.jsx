@@ -14,8 +14,6 @@ import {
   Trash2,
   FileText,
   Settings2,
-  Menu,
-  X,
   CircleSmall,
   ArrowLeftToLine,
   ArrowRightToLine,

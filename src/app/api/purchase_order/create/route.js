@@ -48,14 +48,14 @@ export async function POST(request) {
     if (!supplier_id) {
       return NextResponse.json(
         { status: false, message: "supplier_id is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!order_no) {
       return NextResponse.json(
         { status: false, message: "order_no is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -70,7 +70,7 @@ export async function POST(request) {
           status: false,
           message: `Purchase order with order number "${order_no}" already exists`,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -241,7 +241,7 @@ export async function POST(request) {
       "purchase_order",
       result.id,
       "CREATE",
-      `Purchase order created successfully for project: ${result.mto_id}`
+      `Purchase order created successfully for project: ${result.mto_id}`,
     );
     if (!logged) {
       console.error(`Failed to log purchase order creation: ${result.id}`);
@@ -252,7 +252,7 @@ export async function POST(request) {
           data: result,
           warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
 
@@ -262,13 +262,13 @@ export async function POST(request) {
         message: "Purchase order created successfully",
         data: result,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/purchase_order/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,7 +1,14 @@
 "use client";
 import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
-import { ChevronLeft, ChevronDown, Upload, X, Package, Plus } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronDown,
+  Upload,
+  X,
+  Package,
+  Plus,
+} from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import React, { useState, useRef, useEffect } from "react";
@@ -26,7 +33,8 @@ export default function page() {
   const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] =
     useState(false);
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
-  const [isMeasuringUnitDropdownOpen, setIsMeasuringUnitDropdownOpen] = useState(false);
+  const [isMeasuringUnitDropdownOpen, setIsMeasuringUnitDropdownOpen] =
+    useState(false);
   const [isFinishDropdownOpen, setIsFinishDropdownOpen] = useState(false);
   const [isFaceDropdownOpen, setIsFaceDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("Sheet");
@@ -39,7 +47,8 @@ export default function page() {
   const [filteredSuppliers, setFilteredSuppliers] = useState([]);
   const [measuringUnitOptions, setMeasuringUnitOptions] = useState([]);
   const [loadingMeasuringUnits, setLoadingMeasuringUnits] = useState(false);
-  const [showCreateMeasuringUnitModal, setShowCreateMeasuringUnitModal] = useState(false);
+  const [showCreateMeasuringUnitModal, setShowCreateMeasuringUnitModal] =
+    useState(false);
   const [newMeasuringUnitValue, setNewMeasuringUnitValue] = useState("");
   const [isCreatingMeasuringUnit, setIsCreatingMeasuringUnit] = useState(false);
   const [finishOptions, setFinishOptions] = useState([]);
@@ -86,23 +95,24 @@ export default function page() {
     is_sunmica: false,
   });
   const filteredCategories = categories.filter((category) =>
-    category.toLowerCase().includes(searchTerm.toLowerCase())
+    category.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Face options
   const faceOptions = ["single side", "double side"];
   const filteredFaces = faceOptions.filter((face) =>
-    face.toLowerCase().includes(faceSearchTerm.toLowerCase())
+    face.toLowerCase().includes(faceSearchTerm.toLowerCase()),
   );
 
   const [hardwareSubCategories, setHardwareSubCategories] = useState([]);
   const [loadingSubCategories, setLoadingSubCategories] = useState(false);
-  const [showCreateSubCategoryModal, setShowCreateSubCategoryModal] = useState(false);
+  const [showCreateSubCategoryModal, setShowCreateSubCategoryModal] =
+    useState(false);
   const [newSubCategoryValue, setNewSubCategoryValue] = useState("");
   const [isCreatingSubCategory, setIsCreatingSubCategory] = useState(false);
 
   const filteredSubCategories = hardwareSubCategories.filter((subCategory) =>
-    subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase())
+    subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase()),
   );
 
   // Fetch suppliers on component mount
@@ -256,7 +266,7 @@ export default function page() {
       setFilteredSuppliers(suppliers);
     } else {
       const filtered = suppliers.filter((supplier) =>
-        supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+        supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()),
       );
       setFilteredSuppliers(filtered);
     }
@@ -267,9 +277,15 @@ export default function page() {
     const handleClickOutside = (event) => {
       const dropdowns = [
         { ref: dropdownRef, setIsOpen: setIsDropdownOpen },
-        { ref: subCategoryDropdownRef, setIsOpen: setIsSubCategoryDropdownOpen },
+        {
+          ref: subCategoryDropdownRef,
+          setIsOpen: setIsSubCategoryDropdownOpen,
+        },
         { ref: supplierDropdownRef, setIsOpen: setIsSupplierDropdownOpen },
-        { ref: measuringUnitDropdownRef, setIsOpen: setIsMeasuringUnitDropdownOpen },
+        {
+          ref: measuringUnitDropdownRef,
+          setIsOpen: setIsMeasuringUnitDropdownOpen,
+        },
         { ref: finishDropdownRef, setIsOpen: setIsFinishDropdownOpen },
         { ref: faceDropdownRef, setIsOpen: setIsFaceDropdownOpen },
       ];
@@ -388,7 +404,9 @@ export default function page() {
             };
             const response = await axios.request(config);
             if (response.data.status && response.data.data) {
-              const subCategories = response.data.data.map((item) => item.value);
+              const subCategories = response.data.data.map(
+                (item) => item.value,
+              );
               setHardwareSubCategories(subCategories);
             }
           } catch (error) {
@@ -434,7 +452,7 @@ export default function page() {
 
   // Measuring unit handlers
   const filteredMeasuringUnits = measuringUnitOptions.filter((unit) =>
-    unit.toLowerCase().includes(measuringUnitSearchTerm.toLowerCase())
+    unit.toLowerCase().includes(measuringUnitSearchTerm.toLowerCase()),
   );
 
   const handleMeasuringUnitSelect = (unit) => {
@@ -458,7 +476,7 @@ export default function page() {
 
   // Finish handlers
   const filteredFinishes = finishOptions.filter((finish) =>
-    finish.toLowerCase().includes(finishSearchTerm.toLowerCase())
+    finish.toLowerCase().includes(finishSearchTerm.toLowerCase()),
   );
 
   const handleFinishSelect = (finish) => {
@@ -810,10 +828,14 @@ export default function page() {
       if (hasImageFile) {
         dismissProgressToast();
       }
-      toast.error(error.response?.data?.message || "Failed to create item. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to create item. Please try again.",
+        {
+          position: "top-right",
+          autoClose: 3000,
+        },
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -969,8 +991,9 @@ export default function page() {
                               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               <ChevronDown
-                                className={`w-5 h-5 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""
-                                  }`}
+                                className={`w-5 h-5 transition-transform duration-200 ${
+                                  isDropdownOpen ? "rotate-180" : ""
+                                }`}
                               />
                             </button>
                           </div>
@@ -1054,14 +1077,15 @@ export default function page() {
                               type="button"
                               onClick={() =>
                                 setIsSupplierDropdownOpen(
-                                  !isSupplierDropdownOpen
+                                  !isSupplierDropdownOpen,
                                 )
                               }
                               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               <ChevronDown
-                                className={`w-5 h-5 transition-transform duration-200 ${isSupplierDropdownOpen ? "rotate-180" : ""
-                                  }`}
+                                className={`w-5 h-5 transition-transform duration-200 ${
+                                  isSupplierDropdownOpen ? "rotate-180" : ""
+                                }`}
                               />
                             </button>
                           </div>
@@ -1076,7 +1100,7 @@ export default function page() {
                                     onClick={() =>
                                       handleSupplierSelect(
                                         supplier.supplier_id,
-                                        supplier.name
+                                        supplier.name,
                                       )
                                     }
                                     className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
@@ -1099,7 +1123,10 @@ export default function page() {
                             </div>
                           )}
                         </div>
-                        <div className="relative" ref={measuringUnitDropdownRef}>
+                        <div
+                          className="relative"
+                          ref={measuringUnitDropdownRef}
+                        >
                           <label className="block text-sm font-medium text-slate-700 mb-2">
                             Measurement Unit{" "}
                             <span className="text-slate-400">(Optional)</span>
@@ -1107,22 +1134,32 @@ export default function page() {
                           <div className="relative">
                             <input
                               type="text"
-                              value={measuringUnitSearchTerm || formData.measurement_unit}
+                              value={
+                                measuringUnitSearchTerm ||
+                                formData.measurement_unit
+                              }
                               onChange={handleMeasuringUnitSearchChange}
-                              onFocus={() => setIsMeasuringUnitDropdownOpen(true)}
+                              onFocus={() =>
+                                setIsMeasuringUnitDropdownOpen(true)
+                              }
                               className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                               placeholder="Search or type a measuring unit..."
                             />
                             <button
                               type="button"
                               onClick={() =>
-                                setIsMeasuringUnitDropdownOpen(!isMeasuringUnitDropdownOpen)
+                                setIsMeasuringUnitDropdownOpen(
+                                  !isMeasuringUnitDropdownOpen,
+                                )
                               }
                               className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               <ChevronDown
-                                className={`w-5 h-5 transition-transform ${isMeasuringUnitDropdownOpen ? "rotate-180" : ""
-                                  }`}
+                                className={`w-5 h-5 transition-transform ${
+                                  isMeasuringUnitDropdownOpen
+                                    ? "rotate-180"
+                                    : ""
+                                }`}
                               />
                             </button>
                           </div>
@@ -1139,27 +1176,38 @@ export default function page() {
                                     <button
                                       key={index}
                                       type="button"
-                                      onClick={() => handleMeasuringUnitSelect(unit)}
+                                      onClick={() =>
+                                        handleMeasuringUnitSelect(unit)
+                                      }
                                       className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                     >
                                       {unit}
                                     </button>
                                   ))}
-                                  {measuringUnitSearchTerm && !filteredMeasuringUnits.some(u => u.toLowerCase() === measuringUnitSearchTerm.toLowerCase()) && (
-                                    <div className="border-t border-slate-200">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setNewMeasuringUnitValue(measuringUnitSearchTerm);
-                                          setShowCreateMeasuringUnitModal(true);
-                                        }}
-                                        className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                      >
-                                        <Plus className="w-4 h-4" />
-                                        Create "{measuringUnitSearchTerm}"
-                                      </button>
-                                    </div>
-                                  )}
+                                  {measuringUnitSearchTerm &&
+                                    !filteredMeasuringUnits.some(
+                                      (u) =>
+                                        u.toLowerCase() ===
+                                        measuringUnitSearchTerm.toLowerCase(),
+                                    ) && (
+                                      <div className="border-t border-slate-200">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setNewMeasuringUnitValue(
+                                              measuringUnitSearchTerm,
+                                            );
+                                            setShowCreateMeasuringUnitModal(
+                                              true,
+                                            );
+                                          }}
+                                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                        >
+                                          <Plus className="w-4 h-4" />
+                                          Create "{measuringUnitSearchTerm}"
+                                        </button>
+                                      </div>
+                                    )}
                                 </>
                               ) : (
                                 <div className="px-4 py-3">
@@ -1170,7 +1218,9 @@ export default function page() {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        setNewMeasuringUnitValue(measuringUnitSearchTerm);
+                                        setNewMeasuringUnitValue(
+                                          measuringUnitSearchTerm,
+                                        );
                                         setShowCreateMeasuringUnitModal(true);
                                       }}
                                       className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -1256,29 +1306,41 @@ export default function page() {
                               ].map((field) => (
                                 <div key={field}>
                                   {field === "finish" ? (
-                                    <div className="relative" ref={finishDropdownRef}>
+                                    <div
+                                      className="relative"
+                                      ref={finishDropdownRef}
+                                    >
                                       <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
                                         {field}
                                       </label>
                                       <div className="relative">
                                         <input
                                           type="text"
-                                          value={finishSearchTerm || formData.finish}
+                                          value={
+                                            finishSearchTerm || formData.finish
+                                          }
                                           onChange={handleFinishSearchChange}
-                                          onFocus={() => setIsFinishDropdownOpen(true)}
+                                          onFocus={() =>
+                                            setIsFinishDropdownOpen(true)
+                                          }
                                           className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                                           placeholder="Search or type a finish..."
                                         />
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            setIsFinishDropdownOpen(!isFinishDropdownOpen)
+                                            setIsFinishDropdownOpen(
+                                              !isFinishDropdownOpen,
+                                            )
                                           }
                                           className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                         >
                                           <ChevronDown
-                                            className={`w-5 h-5 transition-transform ${isFinishDropdownOpen ? "rotate-180" : ""
-                                              }`}
+                                            className={`w-5 h-5 transition-transform ${
+                                              isFinishDropdownOpen
+                                                ? "rotate-180"
+                                                : ""
+                                            }`}
                                           />
                                         </button>
                                       </div>
@@ -1291,31 +1353,45 @@ export default function page() {
                                             </div>
                                           ) : filteredFinishes.length > 0 ? (
                                             <>
-                                              {filteredFinishes.map((finish, index) => (
-                                                <button
-                                                  key={index}
-                                                  type="button"
-                                                  onClick={() => handleFinishSelect(finish)}
-                                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                                >
-                                                  {finish}
-                                                </button>
-                                              ))}
-                                              {finishSearchTerm && !filteredFinishes.some(f => f.toLowerCase() === finishSearchTerm.toLowerCase()) && (
-                                                <div className="border-t border-slate-200">
+                                              {filteredFinishes.map(
+                                                (finish, index) => (
                                                   <button
+                                                    key={index}
                                                     type="button"
-                                                    onClick={() => {
-                                                      setNewFinishValue(finishSearchTerm);
-                                                      setShowCreateFinishModal(true);
-                                                    }}
-                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                    onClick={() =>
+                                                      handleFinishSelect(finish)
+                                                    }
+                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                                   >
-                                                    <Plus className="w-4 h-4" />
-                                                    Create "{finishSearchTerm}"
+                                                    {finish}
                                                   </button>
-                                                </div>
+                                                ),
                                               )}
+                                              {finishSearchTerm &&
+                                                !filteredFinishes.some(
+                                                  (f) =>
+                                                    f.toLowerCase() ===
+                                                    finishSearchTerm.toLowerCase(),
+                                                ) && (
+                                                  <div className="border-t border-slate-200">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setNewFinishValue(
+                                                          finishSearchTerm,
+                                                        );
+                                                        setShowCreateFinishModal(
+                                                          true,
+                                                        );
+                                                      }}
+                                                      className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                    >
+                                                      <Plus className="w-4 h-4" />
+                                                      Create "{finishSearchTerm}
+                                                      "
+                                                    </button>
+                                                  </div>
+                                                )}
                                             </>
                                           ) : (
                                             <div className="px-4 py-3">
@@ -1326,8 +1402,12 @@ export default function page() {
                                                 <button
                                                   type="button"
                                                   onClick={() => {
-                                                    setNewFinishValue(finishSearchTerm);
-                                                    setShowCreateFinishModal(true);
+                                                    setNewFinishValue(
+                                                      finishSearchTerm,
+                                                    );
+                                                    setShowCreateFinishModal(
+                                                      true,
+                                                    );
                                                   }}
                                                   className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
                                                 >
@@ -1341,58 +1421,78 @@ export default function page() {
                                       )}
                                     </div>
                                   ) : field === "face" ? (
-                                    <div className="relative" ref={faceDropdownRef}>
+                                    <div
+                                      className="relative"
+                                      ref={faceDropdownRef}
+                                    >
                                       <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
                                         {field}
                                       </label>
                                       <div className="relative">
                                         <input
                                           type="text"
-                                          value={faceSearchTerm || formData.face || ""}
+                                          value={
+                                            faceSearchTerm ||
+                                            formData.face ||
+                                            ""
+                                          }
                                           onChange={handleFaceSearchChange}
-                                          onFocus={() => setIsFaceDropdownOpen(true)}
+                                          onFocus={() =>
+                                            setIsFaceDropdownOpen(true)
+                                          }
                                           disabled={formData.is_sunmica}
-                                          className={`w-full text-sm text-slate-800 px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${formData.is_sunmica
-                                            ? "bg-slate-100 cursor-not-allowed border-slate-300"
-                                            : "border-slate-300"
-                                            }`}
+                                          className={`w-full text-sm text-slate-800 px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
+                                            formData.is_sunmica
+                                              ? "bg-slate-100 cursor-not-allowed border-slate-300"
+                                              : "border-slate-300"
+                                          }`}
                                           placeholder="Select face..."
                                         />
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            setIsFaceDropdownOpen(!isFaceDropdownOpen)
+                                            setIsFaceDropdownOpen(
+                                              !isFaceDropdownOpen,
+                                            )
                                           }
                                           disabled={formData.is_sunmica}
                                           className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
                                         >
                                           <ChevronDown
-                                            className={`w-5 h-5 transition-transform ${isFaceDropdownOpen ? "rotate-180" : ""
-                                              }`}
+                                            className={`w-5 h-5 transition-transform ${
+                                              isFaceDropdownOpen
+                                                ? "rotate-180"
+                                                : ""
+                                            }`}
                                           />
                                         </button>
                                       </div>
 
-                                      {isFaceDropdownOpen && !formData.is_sunmica && (
-                                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                          {filteredFaces.length > 0 ? (
-                                            filteredFaces.map((face, index) => (
-                                              <button
-                                                key={index}
-                                                type="button"
-                                                onClick={() => handleFaceSelect(face)}
-                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                              >
-                                                {face}
-                                              </button>
-                                            ))
-                                          ) : (
-                                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                              No matching options found
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
+                                      {isFaceDropdownOpen &&
+                                        !formData.is_sunmica && (
+                                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                            {filteredFaces.length > 0 ? (
+                                              filteredFaces.map(
+                                                (face, index) => (
+                                                  <button
+                                                    key={index}
+                                                    type="button"
+                                                    onClick={() =>
+                                                      handleFaceSelect(face)
+                                                    }
+                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                                  >
+                                                    {face}
+                                                  </button>
+                                                ),
+                                              )
+                                            ) : (
+                                              <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                                No matching options found
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
                                     </div>
                                   ) : (
                                     <div>
@@ -1427,8 +1527,8 @@ export default function page() {
                               </label>
                               {formData.is_sunmica && (
                                 <p className="mt-1 text-xs text-slate-500">
-                                  Face field is automatically set to "single side" for
-                                  sunmica items
+                                  Face field is automatically set to "single
+                                  side" for sunmica items
                                 </p>
                               )}
                             </div>
@@ -1492,16 +1592,17 @@ export default function page() {
                                   type="button"
                                   onClick={() =>
                                     setIsSubCategoryDropdownOpen(
-                                      !isSubCategoryDropdownOpen
+                                      !isSubCategoryDropdownOpen,
                                     )
                                   }
                                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                 >
                                   <ChevronDown
-                                    className={`w-5 h-5 transition-transform duration-200 ${isSubCategoryDropdownOpen
-                                      ? "rotate-180"
-                                      : ""
-                                      }`}
+                                    className={`w-5 h-5 transition-transform duration-200 ${
+                                      isSubCategoryDropdownOpen
+                                        ? "rotate-180"
+                                        : ""
+                                    }`}
                                   />
                                 </button>
                               </div>
@@ -1520,29 +1621,40 @@ export default function page() {
                                             key={index}
                                             type="button"
                                             onClick={() =>
-                                              handleSubCategorySelect(subCategory)
+                                              handleSubCategorySelect(
+                                                subCategory,
+                                              )
                                             }
                                             className="w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                           >
                                             {subCategory}
                                           </button>
-                                        )
+                                        ),
                                       )}
-                                      {subCategorySearchTerm && !filteredSubCategories.some(sc => sc.toLowerCase() === subCategorySearchTerm.toLowerCase()) && (
-                                        <div className="border-t border-slate-200">
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setNewSubCategoryValue(subCategorySearchTerm);
-                                              setShowCreateSubCategoryModal(true);
-                                            }}
-                                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                          >
-                                            <Plus className="w-4 h-4" />
-                                            Create "{subCategorySearchTerm}"
-                                          </button>
-                                        </div>
-                                      )}
+                                      {subCategorySearchTerm &&
+                                        !filteredSubCategories.some(
+                                          (sc) =>
+                                            sc.toLowerCase() ===
+                                            subCategorySearchTerm.toLowerCase(),
+                                        ) && (
+                                          <div className="border-t border-slate-200">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setNewSubCategoryValue(
+                                                  subCategorySearchTerm,
+                                                );
+                                                setShowCreateSubCategoryModal(
+                                                  true,
+                                                );
+                                              }}
+                                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                            >
+                                              <Plus className="w-4 h-4" />
+                                              Create "{subCategorySearchTerm}"
+                                            </button>
+                                          </div>
+                                        )}
                                     </>
                                   ) : (
                                     <div className="px-4 py-3">
@@ -1553,7 +1665,9 @@ export default function page() {
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            setNewSubCategoryValue(subCategorySearchTerm);
+                                            setNewSubCategoryValue(
+                                              subCategorySearchTerm,
+                                            );
                                             setShowCreateSubCategoryModal(true);
                                           }}
                                           className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -1581,11 +1695,11 @@ export default function page() {
                                     className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                                     placeholder={`Enter ${field.replace(
                                       "_",
-                                      " "
+                                      " ",
                                     )}`}
                                   />
                                 </div>
-                              )
+                              ),
                             )}
                           </div>
                         )}
@@ -1614,29 +1728,41 @@ export default function page() {
                               (field) => (
                                 <div key={field}>
                                   {field === "finish" ? (
-                                    <div className="relative" ref={finishDropdownRef}>
+                                    <div
+                                      className="relative"
+                                      ref={finishDropdownRef}
+                                    >
                                       <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
                                         {field}
                                       </label>
                                       <div className="relative">
                                         <input
                                           type="text"
-                                          value={finishSearchTerm || formData.finish}
+                                          value={
+                                            finishSearchTerm || formData.finish
+                                          }
                                           onChange={handleFinishSearchChange}
-                                          onFocus={() => setIsFinishDropdownOpen(true)}
+                                          onFocus={() =>
+                                            setIsFinishDropdownOpen(true)
+                                          }
                                           className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
                                           placeholder="Search or type a finish..."
                                         />
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            setIsFinishDropdownOpen(!isFinishDropdownOpen)
+                                            setIsFinishDropdownOpen(
+                                              !isFinishDropdownOpen,
+                                            )
                                           }
                                           className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                         >
                                           <ChevronDown
-                                            className={`w-5 h-5 transition-transform ${isFinishDropdownOpen ? "rotate-180" : ""
-                                              }`}
+                                            className={`w-5 h-5 transition-transform ${
+                                              isFinishDropdownOpen
+                                                ? "rotate-180"
+                                                : ""
+                                            }`}
                                           />
                                         </button>
                                       </div>
@@ -1649,31 +1775,45 @@ export default function page() {
                                             </div>
                                           ) : filteredFinishes.length > 0 ? (
                                             <>
-                                              {filteredFinishes.map((finish, index) => (
-                                                <button
-                                                  key={index}
-                                                  type="button"
-                                                  onClick={() => handleFinishSelect(finish)}
-                                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                                >
-                                                  {finish}
-                                                </button>
-                                              ))}
-                                              {finishSearchTerm && !filteredFinishes.some(f => f.toLowerCase() === finishSearchTerm.toLowerCase()) && (
-                                                <div className="border-t border-slate-200">
+                                              {filteredFinishes.map(
+                                                (finish, index) => (
                                                   <button
+                                                    key={index}
                                                     type="button"
-                                                    onClick={() => {
-                                                      setNewFinishValue(finishSearchTerm);
-                                                      setShowCreateFinishModal(true);
-                                                    }}
-                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                    onClick={() =>
+                                                      handleFinishSelect(finish)
+                                                    }
+                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                                   >
-                                                    <Plus className="w-4 h-4" />
-                                                    Create "{finishSearchTerm}"
+                                                    {finish}
                                                   </button>
-                                                </div>
+                                                ),
                                               )}
+                                              {finishSearchTerm &&
+                                                !filteredFinishes.some(
+                                                  (f) =>
+                                                    f.toLowerCase() ===
+                                                    finishSearchTerm.toLowerCase(),
+                                                ) && (
+                                                  <div className="border-t border-slate-200">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setNewFinishValue(
+                                                          finishSearchTerm,
+                                                        );
+                                                        setShowCreateFinishModal(
+                                                          true,
+                                                        );
+                                                      }}
+                                                      className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                    >
+                                                      <Plus className="w-4 h-4" />
+                                                      Create "{finishSearchTerm}
+                                                      "
+                                                    </button>
+                                                  </div>
+                                                )}
                                             </>
                                           ) : (
                                             <div className="px-4 py-3">
@@ -1684,8 +1824,12 @@ export default function page() {
                                                 <button
                                                   type="button"
                                                   onClick={() => {
-                                                    setNewFinishValue(finishSearchTerm);
-                                                    setShowCreateFinishModal(true);
+                                                    setNewFinishValue(
+                                                      finishSearchTerm,
+                                                    );
+                                                    setShowCreateFinishModal(
+                                                      true,
+                                                    );
                                                   }}
                                                   className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
                                                 >
@@ -1714,7 +1858,7 @@ export default function page() {
                                     </div>
                                   )}
                                 </div>
-                              )
+                              ),
                             )}
                           </div>
                         )}
@@ -1726,10 +1870,11 @@ export default function page() {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${isSubmitting
-                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                          : "bg-primary/80 hover:bg-primary text-white"
-                          }`}
+                        className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
+                          isSubmitting
+                            ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                            : "bg-primary/80 hover:bg-primary text-white"
+                        }`}
                       >
                         {isSubmitting ? "Adding Item..." : "Add Item"}
                       </button>
@@ -1744,8 +1889,14 @@ export default function page() {
 
       {/* Create Hardware Sub Category Modal */}
       {showCreateSubCategoryModal && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateSubCategoryModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateSubCategoryModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
                 Create New Hardware Sub Category
@@ -1786,10 +1937,14 @@ export default function page() {
                 </button>
                 <button
                   onClick={handleCreateNewSubCategory}
-                  disabled={isCreatingSubCategory || !newSubCategoryValue?.trim()}
+                  disabled={
+                    isCreatingSubCategory || !newSubCategoryValue?.trim()
+                  }
                   className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {isCreatingSubCategory ? "Creating..." : "Create Sub Category"}
+                  {isCreatingSubCategory
+                    ? "Creating..."
+                    : "Create Sub Category"}
                 </button>
               </div>
             </div>
@@ -1799,8 +1954,14 @@ export default function page() {
 
       {/* Create Finish Modal */}
       {showCreateFinishModal && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateFinishModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateFinishModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
                 Create New Finish
@@ -1854,8 +2015,14 @@ export default function page() {
 
       {/* Create Measuring Unit Modal */}
       {showCreateMeasuringUnitModal && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateMeasuringUnitModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateMeasuringUnitModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
                 Create New Measuring Unit
@@ -1896,10 +2063,14 @@ export default function page() {
                 </button>
                 <button
                   onClick={handleCreateNewMeasuringUnit}
-                  disabled={isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()}
+                  disabled={
+                    isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()
+                  }
                   className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {isCreatingMeasuringUnit ? "Creating..." : "Create Measuring Unit"}
+                  {isCreatingMeasuringUnit
+                    ? "Creating..."
+                    : "Create Measuring Unit"}
                 </button>
               </div>
             </div>

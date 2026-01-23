@@ -189,17 +189,19 @@ export default function page() {
                   onChange={handleInputChange}
                   onFocus={() => handleFocus("username")}
                   onBlur={() => handleBlur("username")}
-                  className={`bg-slate-200 backdrop-blur-sm block w-full pl-12 pr-4 py-4 border border-slate-400 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition duration-200 text-slate-600 ${errors.username
-                    ? "border-red-400 focus:ring-red-500 focus:border-red-500"
-                    : ""
-                    }`}
+                  className={`bg-slate-200 backdrop-blur-sm block w-full pl-12 pr-4 py-4 border border-slate-400 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition duration-200 text-slate-600 ${
+                    errors.username
+                      ? "border-red-400 focus:ring-red-500 focus:border-red-500"
+                      : ""
+                  }`}
                 />
                 <label
                   htmlFor="username"
-                  className={`absolute left-12 transition-all duration-200 pointer-events-none z-10 ${isFieldActive("username")
-                    ? "top-0 text-xs text-slate-600 bg-slate-50 px-1 -mt-2 rounded"
-                    : "top-4 text-sm text-slate-600"
-                    }`}
+                  className={`absolute left-12 transition-all duration-200 pointer-events-none z-10 ${
+                    isFieldActive("username")
+                      ? "top-0 text-xs text-slate-600 bg-slate-50 px-1 -mt-2 rounded"
+                      : "top-4 text-sm text-slate-600"
+                  }`}
                 >
                   Enter Admin Username
                 </label>
@@ -223,17 +225,19 @@ export default function page() {
                   onChange={handleInputChange}
                   onFocus={() => handleFocus("password")}
                   onBlur={() => handleBlur("password")}
-                  className={`bg-slate-200 backdrop-blur-sm block w-full pl-12 pr-12 py-4 border border-slate-400 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition duration-200 text-slate-600 ${errors.password
-                    ? "border-red-400 focus:ring-red-500 focus:border-red-500"
-                    : ""
-                    }`}
+                  className={`bg-slate-200 backdrop-blur-sm block w-full pl-12 pr-12 py-4 border border-slate-400 rounded-xl focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition duration-200 text-slate-600 ${
+                    errors.password
+                      ? "border-red-400 focus:ring-red-500 focus:border-red-500"
+                      : ""
+                  }`}
                 />
                 <label
                   htmlFor="password"
-                  className={`absolute left-12 transition-all duration-200 pointer-events-none z-10 ${isFieldActive("password")
-                    ? "top-0 text-xs text-slate-600 bg-slate-50 px-1 -mt-2 rounded"
-                    : "top-4 text-sm text-slate-600"
-                    }`}
+                  className={`absolute left-12 transition-all duration-200 pointer-events-none z-10 ${
+                    isFieldActive("password")
+                      ? "top-0 text-xs text-slate-600 bg-slate-50 px-1 -mt-2 rounded"
+                      : "top-4 text-sm text-slate-600"
+                  }`}
                 >
                   Enter Password
                 </label>

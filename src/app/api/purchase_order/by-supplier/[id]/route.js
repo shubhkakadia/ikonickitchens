@@ -49,7 +49,7 @@ export async function GET(request, { params }) {
         invoice_url: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
     return NextResponse.json(
@@ -58,13 +58,13 @@ export async function GET(request, { params }) {
         message: "Purchase orders fetched successfully",
         data: pos,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/purchase_order/by-supplier/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

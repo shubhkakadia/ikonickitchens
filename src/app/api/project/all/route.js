@@ -20,7 +20,7 @@ export async function GET(request) {
       },
       orderBy: {
         client: {
-          client_name: 'asc',
+          client_name: "asc",
         },
       },
     });
@@ -30,13 +30,13 @@ export async function GET(request) {
         message: "Projects fetched successfully",
         data: projects,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/project/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

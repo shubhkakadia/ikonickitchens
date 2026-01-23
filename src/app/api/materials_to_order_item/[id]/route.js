@@ -18,7 +18,7 @@ export async function PATCH(request, { params }) {
     if (!session) {
       return NextResponse.json(
         { status: false, message: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
     const userId = session.user_id;
@@ -29,7 +29,7 @@ export async function PATCH(request, { params }) {
     if (!data || data.quantity_ordered === undefined) {
       return NextResponse.json(
         { status: false, message: "quantity_ordered is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -37,7 +37,7 @@ export async function PATCH(request, { params }) {
     if (!Number.isFinite(raw) || raw < 0) {
       return NextResponse.json(
         { status: false, message: "quantity_ordered must be a number >= 0" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -78,7 +78,7 @@ export async function PATCH(request, { params }) {
     if (!mtoItem) {
       return NextResponse.json(
         { status: false, message: "Materials to order item not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -145,7 +145,7 @@ export async function PATCH(request, { params }) {
       "materials_to_order_item",
       id,
       "UPDATE",
-      `Updated quantity_ordered=${quantityOrdered} for mto_item=${id} (mto_id=${mtoItem.mto_id}, item_id=${mtoItem.item_id})`
+      `Updated quantity_ordered=${quantityOrdered} for mto_item=${id} (mto_id=${mtoItem.mto_id}, item_id=${mtoItem.item_id})`,
     );
     if (!logged) {
       console.error(`Failed to log materials_to_order_item update: ${id}`);
@@ -156,18 +156,18 @@ export async function PATCH(request, { params }) {
     if (supplierId && updated.mto) {
       // Get all items from this MTO that belong to the same supplier
       const supplierItems = updated.mto.items.filter(
-        (item) => item.item?.supplier?.supplier_id === supplierId
+        (item) => item.item?.supplier?.supplier_id === supplierId,
       );
 
       // Check current state: if all items from this supplier are fully ordered
       const allOrderedNow = supplierItems.every(
-        (item) => (item.quantity_ordered || 0) >= (item.quantity || 0)
+        (item) => (item.quantity_ordered || 0) >= (item.quantity || 0),
       );
 
       // Check previous state: were all items already ordered before this update?
       // We need to check the previous state by looking at the old data
       const previousSupplierItems = mtoItem.mto.items.filter(
-        (item) => item.item?.supplier?.supplier_id === supplierId
+        (item) => item.item?.supplier?.supplier_id === supplierId,
       );
       const allOrderedBefore = previousSupplierItems.every((item) => {
         // Use the updated quantity for the current item, previous for others
@@ -201,12 +201,12 @@ export async function PATCH(request, { params }) {
               is_ordered: true,
               status: `${supplierName} Ordered`,
             },
-            "materials_to_order_list_update"
+            "materials_to_order_list_update",
           );
         } catch (notificationError) {
           console.error(
             "Failed to send MTO ordered notification:",
-            notificationError
+            notificationError,
           );
           // Don't fail the request if notification fails
         }
@@ -225,13 +225,13 @@ export async function PATCH(request, { params }) {
           ? {}
           : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/materials_to_order_item/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

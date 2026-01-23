@@ -42,7 +42,13 @@ export default function page() {
 
   // Define all available columns for export
   const availableColumns = useMemo(() => {
-    return ["Client Name", "Project Name", "Lot ID", "Percentage Completed", ...stages];
+    return [
+      "Client Name",
+      "Project Name",
+      "Lot ID",
+      "Percentage Completed",
+      ...stages,
+    ];
   }, []);
 
   // Initialize selected columns with all columns
@@ -100,7 +106,7 @@ export default function page() {
   const getStageStatus = (lot, stageName) => {
     // Stage names are stored in lowercase in the database, so we need case-insensitive comparison
     const stage = lot.stages?.find(
-      (s) => s.name.toLowerCase() === stageName.toLowerCase()
+      (s) => s.name.toLowerCase() === stageName.toLowerCase(),
     );
     if (!stage) {
       return "NOT_STARTED";
@@ -114,7 +120,7 @@ export default function page() {
       return 0;
     }
     const doneCount = lot.stages.filter(
-      (stage) => stage.status === "DONE"
+      (stage) => stage.status === "DONE",
     ).length;
     return Math.round((doneCount / stages.length) * 100);
   };
@@ -175,7 +181,9 @@ export default function page() {
         const searchLower = search.toLowerCase();
         const projectName = (lot.project?.name || "").toLowerCase();
         const lotId = (lot.lot_id || "").toLowerCase();
-        const clientName = (lot.project?.client?.client_name || "").toLowerCase();
+        const clientName = (
+          lot.project?.client?.client_name || ""
+        ).toLowerCase();
         if (
           !projectName.includes(searchLower) &&
           !lotId.includes(searchLower) &&
@@ -190,7 +198,7 @@ export default function page() {
         if (filterStatus && filterStatus !== "ALL") {
           // Get stage status inline to avoid dependency issues
           const stage = lot.stages?.find(
-            (s) => s.name.toLowerCase() === stageName.toLowerCase()
+            (s) => s.name.toLowerCase() === stageName.toLowerCase(),
           );
           const lotStageStatus = stage ? stage.status : "NOT_STARTED";
 
@@ -302,7 +310,7 @@ export default function page() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
@@ -319,7 +327,7 @@ export default function page() {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
-        }
+        },
       );
       return;
     }
@@ -404,7 +412,7 @@ export default function page() {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
-        }
+        },
       );
     } catch (error) {
       console.error("Error exporting to Excel:", error);
@@ -437,7 +445,7 @@ export default function page() {
         id: uuidv4(),
         title: lot.project.name,
         href: projectHref,
-      })
+      }),
     );
   };
 
@@ -460,7 +468,7 @@ export default function page() {
         id: uuidv4(),
         title: lot.project.client.client_name,
         href: clientHref,
-      })
+      }),
     );
   };
 
@@ -478,9 +486,10 @@ export default function page() {
       },
     }));
 
-    setStatusDropdownOpen(statusDropdownOpen === dropdownKey ? null : dropdownKey);
+    setStatusDropdownOpen(
+      statusDropdownOpen === dropdownKey ? null : dropdownKey,
+    );
   };
-
 
   // Handle stage status update
   const handleStageStatusUpdate = async (lot, stage, newStatus) => {
@@ -499,7 +508,7 @@ export default function page() {
 
       // Find the stage object for this lot and stage name
       const stageObj = lot.stages?.find(
-        (s) => s.name.toLowerCase() === stage.toLowerCase()
+        (s) => s.name.toLowerCase() === stage.toLowerCase(),
       );
 
       if (!stageObj || !stageObj.stage_id) {
@@ -520,7 +529,7 @@ export default function page() {
               Authorization: `Bearer ${sessionToken}`,
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         if (createResponse.data.status) {
@@ -532,7 +541,9 @@ export default function page() {
           setStatusDropdownOpen(null);
           fetchActiveLots();
         } else {
-          toast.error(createResponse.data.message || "Failed to update stage status");
+          toast.error(
+            createResponse.data.message || "Failed to update stage status",
+          );
         }
       } else {
         // Stage exists, update it
@@ -544,16 +555,17 @@ export default function page() {
             notes: stageObj.notes || "",
             startDate: stageObj.startDate || null,
             endDate: stageObj.endDate || null,
-            assigned_to: stageObj.assigned_to?.map((a) =>
-              typeof a === "string" ? a : (a.employee_id || a)
-            ) || [],
+            assigned_to:
+              stageObj.assigned_to?.map((a) =>
+                typeof a === "string" ? a : a.employee_id || a,
+              ) || [],
           },
           {
             headers: {
               Authorization: `Bearer ${sessionToken}`,
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         if (response.data.status) {
@@ -678,19 +690,27 @@ export default function page() {
                         <div className="flex items-center gap-2">
                           {/* Status Legend */}
                           <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
-                            <span className="text-xs font-medium text-slate-600">Status:</span>
+                            <span className="text-xs font-medium text-slate-600">
+                              Status:
+                            </span>
                             <div className="flex items-center gap-2">
                               <div className="flex items-center gap-1.5">
                                 <div className="w-4 h-4 rounded bg-gray-400"></div>
-                                <span className="text-xs text-slate-600">Not Started</span>
+                                <span className="text-xs text-slate-600">
+                                  Not Started
+                                </span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <div className="w-4 h-4 rounded bg-yellow-400"></div>
-                                <span className="text-xs text-slate-600">In Progress</span>
+                                <span className="text-xs text-slate-600">
+                                  In Progress
+                                </span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <div className="w-4 h-4 rounded bg-green-400"></div>
-                                <span className="text-xs text-slate-600">Done</span>
+                                <span className="text-xs text-slate-600">
+                                  Done
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -713,12 +733,13 @@ export default function page() {
                                 filteredLots.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredLots.length === 0 ||
                                 selectedColumns.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -734,10 +755,11 @@ export default function page() {
                               disabled={
                                 isExporting || filteredLots.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting || filteredLots.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting || filteredLots.length === 0
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
@@ -745,11 +767,18 @@ export default function page() {
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedColumns.length === availableColumns.length}
-                                      onChange={() => handleColumnToggle("Select All")}
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() =>
+                                        handleColumnToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -761,8 +790,12 @@ export default function page() {
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={() => handleColumnToggle(column)}
+                                        checked={selectedColumns.includes(
+                                          column,
+                                        )}
+                                        onChange={() =>
+                                          handleColumnToggle(column)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -798,10 +831,11 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "ALL")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "ALL"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                                }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "ALL"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
                             >
                               All Statuses
                             </button>
@@ -809,10 +843,11 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "NOT_STARTED")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "NOT_STARTED"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                                }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "NOT_STARTED"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
                             >
                               Not Started
                             </button>
@@ -820,10 +855,11 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "IN_PROGRESS")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "IN_PROGRESS"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                                }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "IN_PROGRESS"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
                             >
                               In Progress
                             </button>
@@ -831,10 +867,11 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "DONE")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "DONE"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                                }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "DONE"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
                             >
                               Done
                             </button>
@@ -842,10 +879,11 @@ export default function page() {
                               onClick={() =>
                                 handleStageFilterChange(stage, "NA")
                               }
-                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${filterStatus === "NA"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                                }`}
+                              className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                                filterStatus === "NA"
+                                  ? "bg-slate-100 font-medium"
+                                  : ""
+                              }`}
                             >
                               NA
                             </button>
@@ -893,8 +931,9 @@ export default function page() {
                                     </span>
                                   </div>
                                 </th>
-                                {stages.map(stage => {
-                                  const filterStatus = stageFilters[stage] || "ALL";
+                                {stages.map((stage) => {
+                                  const filterStatus =
+                                    stageFilters[stage] || "ALL";
                                   const hasFilter = filterStatus !== "ALL";
 
                                   return (
@@ -916,15 +955,24 @@ export default function page() {
 
                                         <div className="relative filter-dropdown-container shrink-0">
                                           <button
-                                            ref={el => (filterButtonRefs.current[stage] = el)}
-                                            onClick={e => handleFilterButtonClick(stage, e)}
-                                            className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${hasFilter ? "bg-primary/20" : ""
-                                              }`}
+                                            ref={(el) =>
+                                              (filterButtonRefs.current[stage] =
+                                                el)
+                                            }
+                                            onClick={(e) =>
+                                              handleFilterButtonClick(stage, e)
+                                            }
+                                            className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${
+                                              hasFilter ? "bg-primary/20" : ""
+                                            }`}
                                             title="Filter by status"
                                           >
                                             <Funnel
-                                              className={`h-3 w-3 ${hasFilter ? "text-primary" : "text-slate-400"
-                                                }`}
+                                              className={`h-3 w-3 ${
+                                                hasFilter
+                                                  ? "text-primary"
+                                                  : "text-slate-400"
+                                              }`}
                                             />
                                           </button>
                                         </div>
@@ -932,7 +980,6 @@ export default function page() {
                                     </th>
                                   );
                                 })}
-
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-200">
@@ -966,30 +1013,39 @@ export default function page() {
                                     className="group hover:bg-slate-50 transition-colors duration-200"
                                   >
                                     <td
-                                      onClick={(e) => handleClientNameClick(lot, e)}
+                                      onClick={(e) =>
+                                        handleClientNameClick(lot, e)
+                                      }
                                       className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[250px] min-w-[250px] max-w-[250px]"
                                       title="Click to open client"
                                     >
                                       <span>
-                                        {lot.project?.client?.client_name || "N/A"}
+                                        {lot.project?.client?.client_name ||
+                                          "N/A"}
                                       </span>
                                     </td>
                                     <td
-                                      onClick={(e) => handleProjectNameClick(lot, e)}
+                                      onClick={(e) =>
+                                        handleProjectNameClick(lot, e)
+                                      }
                                       className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-[200px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[500px] min-w-[500px] max-w-[500px]"
                                       title="Click to open project"
                                     >
-                                      {lot.project?.name || "N/A"} - {lot.lot_id}
+                                      {lot.project?.name || "N/A"} -{" "}
+                                      {lot.lot_id}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[700px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px]">
                                       {getPercentageCompleted(lot)}%
                                     </td>
                                     {stages.map((stage) => {
                                       const status = getStageStatus(lot, stage);
-                                      const boxColor = getStatusBoxColor(status);
+                                      const boxColor =
+                                        getStatusBoxColor(status);
                                       const dropdownKey = `${lot.lot_id}-${stage}`;
-                                      const isDropdownOpen = statusDropdownOpen === dropdownKey;
-                                      const dropdownPosition = statusDropdownPositions[dropdownKey];
+                                      const isDropdownOpen =
+                                        statusDropdownOpen === dropdownKey;
+                                      const dropdownPosition =
+                                        statusDropdownPositions[dropdownKey];
 
                                       return (
                                         <td
@@ -998,48 +1054,88 @@ export default function page() {
                                         >
                                           <div className="relative inline-block">
                                             <button
-                                              onClick={(e) => handleStatusSquareClick(lot, stage, e)}
+                                              onClick={(e) =>
+                                                handleStatusSquareClick(
+                                                  lot,
+                                                  stage,
+                                                  e,
+                                                )
+                                              }
                                               disabled={isUpdatingStatus}
                                               className={`inline-block w-6 h-6 rounded ${boxColor} cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
                                               title={`${formatStatus(status)} - Click to change`}
                                             ></button>
 
-                                            {isDropdownOpen && dropdownPosition && (
-                                              <div
-                                                className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 status-dropdown-container"
-                                                style={{
-                                                  top: `${dropdownPosition.top}px`,
-                                                  left: `${dropdownPosition.left}px`,
-                                                }}
-                                              >
-                                                <div className="py-1">
-                                                  <button
-                                                    onClick={() => handleStageStatusUpdate(lot, stage, "NOT_STARTED")}
-                                                    disabled={isUpdatingStatus}
-                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${status === "NOT_STARTED" ? "bg-slate-100 font-medium" : ""
+                                            {isDropdownOpen &&
+                                              dropdownPosition && (
+                                                <div
+                                                  className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 status-dropdown-container"
+                                                  style={{
+                                                    top: `${dropdownPosition.top}px`,
+                                                    left: `${dropdownPosition.left}px`,
+                                                  }}
+                                                >
+                                                  <div className="py-1">
+                                                    <button
+                                                      onClick={() =>
+                                                        handleStageStatusUpdate(
+                                                          lot,
+                                                          stage,
+                                                          "NOT_STARTED",
+                                                        )
+                                                      }
+                                                      disabled={
+                                                        isUpdatingStatus
+                                                      }
+                                                      className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                        status === "NOT_STARTED"
+                                                          ? "bg-slate-100 font-medium"
+                                                          : ""
                                                       }`}
-                                                  >
-                                                    Not Started
-                                                  </button>
-                                                  <button
-                                                    onClick={() => handleStageStatusUpdate(lot, stage, "IN_PROGRESS")}
-                                                    disabled={isUpdatingStatus}
-                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${status === "IN_PROGRESS" ? "bg-slate-100 font-medium" : ""
+                                                    >
+                                                      Not Started
+                                                    </button>
+                                                    <button
+                                                      onClick={() =>
+                                                        handleStageStatusUpdate(
+                                                          lot,
+                                                          stage,
+                                                          "IN_PROGRESS",
+                                                        )
+                                                      }
+                                                      disabled={
+                                                        isUpdatingStatus
+                                                      }
+                                                      className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                        status === "IN_PROGRESS"
+                                                          ? "bg-slate-100 font-medium"
+                                                          : ""
                                                       }`}
-                                                  >
-                                                    In Progress
-                                                  </button>
-                                                  <button
-                                                    onClick={() => handleStageStatusUpdate(lot, stage, "DONE")}
-                                                    disabled={isUpdatingStatus}
-                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${status === "DONE" ? "bg-slate-100 font-medium" : ""
+                                                    >
+                                                      In Progress
+                                                    </button>
+                                                    <button
+                                                      onClick={() =>
+                                                        handleStageStatusUpdate(
+                                                          lot,
+                                                          stage,
+                                                          "DONE",
+                                                        )
+                                                      }
+                                                      disabled={
+                                                        isUpdatingStatus
+                                                      }
+                                                      className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                        status === "DONE"
+                                                          ? "bg-slate-100 font-medium"
+                                                          : ""
                                                       }`}
-                                                  >
-                                                    Done
-                                                  </button>
+                                                    >
+                                                      Done
+                                                    </button>
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            )}
+                                              )}
                                           </div>
                                         </td>
                                       );

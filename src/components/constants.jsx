@@ -59,96 +59,54 @@ export const roleOptions = [
 ];
 
 export const deletionWarning = {
-  "users": [
+  users: [
     "module_access",
     "sessions",
     "logs",
     "material_selection",
     "materials_to_order",
-    "purchase_order"
-  ],
-
-  "employees": [
-    "users",
-    "stage_employee",
-    "lot"
-  ],
-
-  "client": [
-    "contact",
-    "project"
-  ],
-
-  "project": [
-    "lot",
-    "material_selection",
-    "materials_to_order"
-  ],
-
-  "lot": [
-    "lot_tab",
-    "stage",
-    "material_selection"
-  ],
-
-  "stage": [
-    "stage_employee"
-  ],
-
-  "lot_tab": [
-    "lot_file"
-  ],
-
-  "lot_file": [
-    "maintenance_checklist"
-  ],
-
-  "quote": [
-    "material_selection",
-    "material_selection_versions"
-  ],
-
-  "material_selection": [
-    "material_selection_versions"
-  ],
-
-  "material_selection_versions": [
-    "material_selection_version_area"
-  ],
-
-  "material_selection_version_area": [
-    "material_selection_version_area_item"
-  ],
-
-  "supplier": [
-    "contact",
-    "item",
     "purchase_order",
-    "supplier_statement"
   ],
 
-  "supplier_statement": [
-    "supplier_file"
-  ],
+  employees: ["users", "stage_employee", "lot"],
 
-  "materials_to_order": [
+  client: ["contact", "project"],
+
+  project: ["lot", "material_selection", "materials_to_order"],
+
+  lot: ["lot_tab", "stage", "material_selection"],
+
+  stage: ["stage_employee"],
+
+  lot_tab: ["lot_file"],
+
+  lot_file: ["maintenance_checklist"],
+
+  quote: ["material_selection", "material_selection_versions"],
+
+  material_selection: ["material_selection_versions"],
+
+  material_selection_versions: ["material_selection_version_area"],
+
+  material_selection_version_area: ["material_selection_version_area_item"],
+
+  supplier: ["contact", "item", "purchase_order", "supplier_statement"],
+
+  supplier_statement: ["supplier_file"],
+
+  materials_to_order: [
     "lot",
     "materials_to_order_item",
     "media",
     "purchase_order",
-    "stock_transaction"
+    "stock_transaction",
   ],
 
-  "materials_to_order_item": [
-    "purchase_order_item"
-  ],
+  materials_to_order_item: ["purchase_order_item"],
 
-  "purchase_order": [
-    "purchase_order_item",
-    "stock_transaction"
-  ],
+  purchase_order: ["purchase_order_item", "stock_transaction"],
 
-  "item": [
+  item: [
     "sheet",
     "handle",
     "hardware",
@@ -156,12 +114,8 @@ export const deletionWarning = {
     "edging_tape",
     "materials_to_order_item",
     "purchase_order_item",
-    "stock_transaction"
+    "stock_transaction",
   ],
 
-  "media": [
-    "materials_to_order",
-    "employees",
-    "item"
-  ]
-}
+  media: ["materials_to_order", "employees", "item"],
+};

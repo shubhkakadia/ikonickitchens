@@ -39,7 +39,7 @@ export default function Footer() {
           process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
           process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID_SUBSCRIBERS,
           templateParams,
-          process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
+          process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY,
         )
         .then(
           (result) => {
@@ -49,7 +49,7 @@ export default function Footer() {
           },
           (error) => {
             console.error("Error sending email:", error.text);
-          }
+          },
         );
       // Success! Clear form and show success message
       toast.dismiss(toastId);

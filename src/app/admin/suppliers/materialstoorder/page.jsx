@@ -181,7 +181,7 @@ export default function page() {
           quantity: mtoItem.quantity, // Reserve all available stock
           mto_id: mtoItem.id,
         },
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+        { headers: { Authorization: `Bearer ${sessionToken}` } },
       );
 
       if (response.data.status) {
@@ -205,24 +205,24 @@ export default function page() {
                       ...it.item,
                       quantity: Math.max(
                         0,
-                        Number(it.item.quantity || 0) - mtoItem.quantity
+                        Number(it.item.quantity || 0) - mtoItem.quantity,
                       ),
                     },
                   }
                 : it.item?.item_id === mtoItem.item.item_id
-                ? {
-                    ...it,
-                    item: {
-                      ...it.item,
-                      quantity: Math.max(
-                        0,
-                        Number(it.item.quantity || 0) - mtoItem.quantity
-                      ),
-                    },
-                  }
-                : it
+                  ? {
+                      ...it,
+                      item: {
+                        ...it.item,
+                        quantity: Math.max(
+                          0,
+                          Number(it.item.quantity || 0) - mtoItem.quantity,
+                        ),
+                      },
+                    }
+                  : it,
             ),
-          }))
+          })),
         );
       } else {
         toast.error(response.data.message || "Failed to reserve stock");
@@ -245,7 +245,7 @@ export default function page() {
     try {
       const response = await axios.delete(
         `/api/reserve_item_stock/${reservationId}`,
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+        { headers: { Authorization: `Bearer ${sessionToken}` } },
       );
 
       if (response.data.status) {
@@ -279,9 +279,9 @@ export default function page() {
                           Number(it.item.quantity || 0) + reservedQuantity,
                       },
                     }
-                  : it
+                  : it,
               ),
-            }))
+            })),
           );
         }
       } else {
@@ -289,7 +289,7 @@ export default function page() {
       }
     } catch (err) {
       toast.error(
-        err?.response?.data?.message || "Failed to delete reservation"
+        err?.response?.data?.message || "Failed to delete reservation",
       );
     } finally {
       setReservingItemId(null);
@@ -335,7 +335,7 @@ export default function page() {
           const qtyOrdered =
             it.quantity_ordered_po && Number(it.quantity_ordered_po) > 0
               ? it.quantity_ordered_po
-              : it.quantity_ordered ?? 0;
+              : (it.quantity_ordered ?? 0);
           const originalValue = String(qtyOrdered);
           newDraft[it.id] = originalValue;
           newOriginal[it.id] = originalValue;
@@ -410,7 +410,7 @@ export default function page() {
       }
     } catch (err) {
       setError(
-        err?.response?.data?.message || "Failed to fetch materials to order"
+        err?.response?.data?.message || "Failed to fetch materials to order",
       );
     } finally {
       setLoading(false);
@@ -437,11 +437,11 @@ export default function page() {
       const response = await axios.patch(
         `/api/materials_to_order_item/${mtoItemId}`,
         { quantity_ordered: parsed },
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+        { headers: { Authorization: `Bearer ${sessionToken}` } },
       );
       if (!response?.data?.status) {
         throw new Error(
-          response?.data?.message || "Failed to update quantity ordered"
+          response?.data?.message || "Failed to update quantity ordered",
         );
       }
 
@@ -464,9 +464,9 @@ export default function page() {
                   quantity_ordered: saved,
                   ordered_by: orderedBy,
                 }
-              : it
+              : it,
           ),
-        }))
+        })),
       );
 
       // Update original value to the saved value
@@ -484,7 +484,7 @@ export default function page() {
     } catch (err) {
       console.error("Failed to update quantity_ordered:", err);
       toast.error(
-        err?.response?.data?.message || err?.message || "Failed to save"
+        err?.response?.data?.message || err?.message || "Failed to save",
       );
     } finally {
       setIsSavingQuantityOrderedById((prev) => ({
@@ -557,7 +557,7 @@ export default function page() {
         const supplierItems = (mto.items || []).filter(
           (it) =>
             (it.item?.supplier?.supplier_id || it.item?.supplier_id || null) ===
-              supplierId && !reservedItemsMap[it.id] // Exclude items with reserved stock
+              supplierId && !reservedItemsMap[it.id], // Exclude items with reserved stock
         );
         return { ...mto, items: supplierItems };
       })
@@ -577,7 +577,7 @@ export default function page() {
     let list = mtosArray.filter((mto) =>
       activeTab === "active"
         ? mto.status === "DRAFT" || mto.status === "PARTIALLY_ORDERED"
-        : mto.status === "FULLY_ORDERED" || mto.status === "CLOSED"
+        : mto.status === "FULLY_ORDERED" || mto.status === "CLOSED",
     );
 
     // Search filter (project name, lot name, status)
@@ -598,7 +598,7 @@ export default function page() {
       const itemsCount = mto.items?.length || 0;
       const itemsRemainingCount =
         mto.items?.filter(
-          (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0)
+          (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0),
         ).length || 0;
       return {
         ...mto,
@@ -701,7 +701,7 @@ export default function page() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
@@ -758,7 +758,7 @@ export default function page() {
         const itemsRemaining =
           mto.__itemsRemaining ||
           mto.items?.filter(
-            (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0)
+            (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0),
           ).length ||
           0;
         const createdAtStr = mto.createdAt
@@ -797,7 +797,7 @@ export default function page() {
           // Calculate actual quantity ordered from purchase order items
           const actualQuantityOrdered = (it.ordered_items || []).reduce(
             (sum, poItem) => sum + (poItem.quantity || 0),
-            0
+            0,
           );
 
           // Build full row with all columns
@@ -966,7 +966,7 @@ export default function page() {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -1024,7 +1024,7 @@ export default function page() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -1034,7 +1034,7 @@ export default function page() {
         });
         // Remove from local state
         setMediaFiles((prev) =>
-          prev.filter((f) => f.id !== pendingDeleteMediaId)
+          prev.filter((f) => f.id !== pendingDeleteMediaId),
         );
         // Refresh MTO list
         fetchMTOs();
@@ -1089,7 +1089,7 @@ export default function page() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -1111,7 +1111,7 @@ export default function page() {
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
       }
     } catch (err) {
@@ -1120,7 +1120,7 @@ export default function page() {
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     } finally {
       setDeletingMTOId(null);
@@ -1151,6 +1151,8 @@ export default function page() {
       [section]: !prev[section],
     }));
   };
+
+  console.log(cumulativeData);
 
   return (
     <AdminRoute>
@@ -1334,7 +1336,7 @@ export default function page() {
                                       <input
                                         type="checkbox"
                                         checked={selectedColumns.includes(
-                                          column
+                                          column,
                                         )}
                                         onChange={() =>
                                           handleColumnToggle(column)
@@ -1432,7 +1434,7 @@ export default function page() {
                                         onClick={() => {
                                           openCreatePOForSupplier(
                                             supplier.supplier_name,
-                                            supplier.supplier_id
+                                            supplier.supplier_id,
                                           );
                                         }}
                                         className="cursor-pointer px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
@@ -1498,6 +1500,14 @@ export default function page() {
                                             </td>
                                             <td className="px-3 py-2">
                                               <div className="text-xs text-slate-600 space-y-1">
+                                                {item?.supplier_reference && (
+                                                  <div>
+                                                    <span className="font-medium">
+                                                      Supplier Ref:
+                                                    </span>{" "}
+                                                    {item.supplier_reference}
+                                                  </div>
+                                                )}
                                                 {item.sheet && (
                                                   <>
                                                     <div>
@@ -1647,8 +1657,8 @@ export default function page() {
                                                     item.stock_on_hand <= 0
                                                       ? "text-red-600"
                                                       : item.stock_on_hand < 10
-                                                      ? "text-yellow-600"
-                                                      : "text-green-600"
+                                                        ? "text-yellow-600"
+                                                        : "text-green-600"
                                                   }`}
                                                 >
                                                   {item.stock_on_hand}{" "}
@@ -1675,7 +1685,7 @@ export default function page() {
                                                       {source.quantity}{" "}
                                                       {item.measurement_unit}
                                                     </div>
-                                                  )
+                                                  ),
                                                 )}
                                               </div>
                                             </td>
@@ -1788,7 +1798,7 @@ export default function page() {
                                           (mto.items?.filter(
                                             (it) =>
                                               (it.quantity_ordered_po || 0) <
-                                              (it.quantity || 0)
+                                              (it.quantity || 0),
                                           ).length ||
                                             0)}
                                       </td>
@@ -1798,11 +1808,11 @@ export default function page() {
                                             mto.status === "DRAFT"
                                               ? "bg-yellow-100 text-yellow-800"
                                               : mto.status ===
-                                                "PARTIALLY_ORDERED"
-                                              ? "bg-blue-100 text-blue-800"
-                                              : mto.status === "FULLY_ORDERED"
-                                              ? "bg-green-100 text-green-800"
-                                              : "bg-gray-100 text-gray-800"
+                                                  "PARTIALLY_ORDERED"
+                                                ? "bg-blue-100 text-blue-800"
+                                                : mto.status === "FULLY_ORDERED"
+                                                  ? "bg-green-100 text-green-800"
+                                                  : "bg-gray-100 text-gray-800"
                                           }`}
                                         >
                                           {mto.status}
@@ -1841,7 +1851,7 @@ export default function page() {
                                                       </span>{" "}
                                                       {mto.createdAt
                                                         ? new Date(
-                                                            mto.createdAt
+                                                            mto.createdAt,
                                                           ).toLocaleString()
                                                         : "No date"}
                                                     </span>
@@ -1863,7 +1873,7 @@ export default function page() {
                                                       onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleOpenMediaModal(
-                                                          mto
+                                                          mto,
                                                         );
                                                       }}
                                                       className="cursor-pointer text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
@@ -1924,7 +1934,7 @@ export default function page() {
                                                     )
                                                       groups.set(
                                                         supplierName,
-                                                        []
+                                                        [],
                                                       );
                                                     groups
                                                       .get(supplierName)
@@ -1932,7 +1942,7 @@ export default function page() {
                                                   });
                                                   const orderedGroupNames =
                                                     Array.from(
-                                                      groups.keys()
+                                                      groups.keys(),
                                                     ).sort((a, b) => {
                                                       if (
                                                         a === "Unassigned" &&
@@ -1951,18 +1961,6 @@ export default function page() {
                                                       // Check if all items in this group have been fully ordered
                                                       const groupItems =
                                                         groups.get(name) || [];
-                                                      const allItemsOrdered =
-                                                        groupItems.length > 0 &&
-                                                        groupItems.every(
-                                                          (it) =>
-                                                            Number(
-                                                              it.quantity_ordered_po ||
-                                                                0
-                                                            ) >=
-                                                            Number(
-                                                              it.quantity || 0
-                                                            )
-                                                        );
 
                                                       // Check if all items are reserved
                                                       const allItemsReserved =
@@ -1971,7 +1969,7 @@ export default function page() {
                                                           (it) =>
                                                             !!reservedItemsMap[
                                                               it.id
-                                                            ]
+                                                            ],
                                                         );
 
                                                       // Show button only if there are items to order (not reserved and not fully ordered)
@@ -1983,11 +1981,12 @@ export default function page() {
                                                             ] &&
                                                             Number(
                                                               it.quantity_ordered_po ||
-                                                                0
+                                                                0,
                                                             ) <
                                                               Number(
-                                                                it.quantity || 0
-                                                              )
+                                                                it.quantity ||
+                                                                  0,
+                                                              ),
                                                         );
 
                                                       return (
@@ -2006,7 +2005,7 @@ export default function page() {
                                                                   onClick={() => {
                                                                     const firstItem =
                                                                       groups.get(
-                                                                        name
+                                                                        name,
                                                                       )?.[0];
                                                                     const supplierId =
                                                                       firstItem
@@ -2024,7 +2023,7 @@ export default function page() {
                                                                     openCreatePOForSupplier(
                                                                       name,
                                                                       supplierId,
-                                                                      mto.id
+                                                                      mto.id,
                                                                     );
                                                                   }}
                                                                   className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
@@ -2081,7 +2080,7 @@ export default function page() {
                                                                           item
                                                                             .item
                                                                             ?.quantity ??
-                                                                            0
+                                                                            0,
                                                                         );
                                                                       const measurementUnit =
                                                                         item
@@ -2102,7 +2101,7 @@ export default function page() {
                                                                       const isOrdered =
                                                                         Number(
                                                                           item.quantity_ordered_po ||
-                                                                            0
+                                                                            0,
                                                                         ) > 0;
 
                                                                       return (
@@ -2132,8 +2131,8 @@ export default function page() {
                                                                                       ?.category
                                                                                       ? `${item.item.category} item image`
                                                                                       : item.item_id
-                                                                                      ? `Item ${item.item_id} image`
-                                                                                      : "Item image"
+                                                                                        ? `Item ${item.item_id} image`
+                                                                                        : "Item image"
                                                                                   }
                                                                                   className="w-10 h-10 object-cover rounded border border-slate-200"
                                                                                   width={
@@ -2161,6 +2160,21 @@ export default function page() {
                                                                           </td>
                                                                           <td className="px-3 py-2">
                                                                             <div className="text-xs text-gray-600 space-y-1">
+                                                                              {item
+                                                                                .item
+                                                                                ?.supplier_reference && (
+                                                                                <div>
+                                                                                  <span className="font-medium">
+                                                                                    Supplier
+                                                                                    Ref:
+                                                                                  </span>{" "}
+                                                                                  {
+                                                                                    item
+                                                                                      .item
+                                                                                      .supplier_reference
+                                                                                  }
+                                                                                </div>
+                                                                              )}
                                                                               {item
                                                                                 .item
                                                                                 ?.sheet && (
@@ -2447,12 +2461,12 @@ export default function page() {
                                                                                   ).reduce(
                                                                                     (
                                                                                       sum,
-                                                                                      poItem
+                                                                                      poItem,
                                                                                     ) =>
                                                                                       sum +
                                                                                       (poItem.quantity ||
                                                                                         0),
-                                                                                    0
+                                                                                    0,
                                                                                   );
                                                                                 return (
                                                                                   actualQuantityOrdered >
@@ -2496,21 +2510,21 @@ export default function page() {
                                                                                       // If quantity_ordered_po > 0, use that value instead of quantity_ordered
                                                                                       item.quantity_ordered_po &&
                                                                                         Number(
-                                                                                          item.quantity_ordered_po
+                                                                                          item.quantity_ordered_po,
                                                                                         )
                                                                                         ? item.quantity_ordered_po
-                                                                                        : item.quantity_ordered ??
-                                                                                            0
+                                                                                        : (item.quantity_ordered ??
+                                                                                            0),
                                                                                     )
                                                                                   }
                                                                                   onChange={(
-                                                                                    e
+                                                                                    e,
                                                                                   ) =>
                                                                                     handleQuantityOrderedChange(
                                                                                       item.id,
                                                                                       e
                                                                                         .target
-                                                                                        .value
+                                                                                        .value,
                                                                                     )
                                                                                   }
                                                                                   disabled={
@@ -2520,7 +2534,7 @@ export default function page() {
                                                                                     ] ||
                                                                                     Number(
                                                                                       item.quantity_ordered_po ||
-                                                                                        0
+                                                                                        0,
                                                                                     ) >
                                                                                       0 ||
                                                                                     isReserved
@@ -2535,7 +2549,7 @@ export default function page() {
                                                                                     <button
                                                                                       onClick={() =>
                                                                                         handleSaveQuantityOrdered(
-                                                                                          item.id
+                                                                                          item.id,
                                                                                         )
                                                                                       }
                                                                                       disabled={
@@ -2552,7 +2566,7 @@ export default function page() {
                                                                                     <button
                                                                                       onClick={() =>
                                                                                         handleCancelQuantityOrdered(
-                                                                                          item.id
+                                                                                          item.id,
                                                                                         )
                                                                                       }
                                                                                       disabled={
@@ -2592,7 +2606,7 @@ export default function page() {
                                                                             <div className="flex flex-col gap-2">
                                                                               {Number(
                                                                                 item.quantity_ordered_po ||
-                                                                                  0
+                                                                                  0,
                                                                               ) >
                                                                                 0 && (
                                                                                 <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
@@ -2607,7 +2621,7 @@ export default function page() {
                                                                               )}
                                                                               {Number(
                                                                                 item.quantity_ordered_po ||
-                                                                                  0
+                                                                                  0,
                                                                               ) ===
                                                                                 0 &&
                                                                                 item.quantity_received ===
@@ -2627,11 +2641,11 @@ export default function page() {
                                                                                       !isReserved
                                                                                         ? handleReserveStock(
                                                                                             item,
-                                                                                            stockOnHand
+                                                                                            stockOnHand,
                                                                                           )
                                                                                         : handleDeleteReservation(
                                                                                             reservation.id,
-                                                                                            item.id
+                                                                                            item.id,
                                                                                           )
                                                                                     }
                                                                                     disabled={
@@ -2650,22 +2664,22 @@ export default function page() {
                                                                                         ? "Reserving..."
                                                                                         : "Deleting..."
                                                                                       : !isReserved
-                                                                                      ? "Reserve Stock"
-                                                                                      : "Unreserve"}
+                                                                                        ? "Reserve Stock"
+                                                                                        : "Unreserve"}
                                                                                   </button>
                                                                                 )}
                                                                             </div>
                                                                           </td>
                                                                         </tr>
                                                                       );
-                                                                    }
+                                                                    },
                                                                   )}
                                                               </tbody>
                                                             </table>
                                                           </div>
                                                         </div>
                                                       );
-                                                    }
+                                                    },
                                                   );
                                                 })()}
                                               </div>

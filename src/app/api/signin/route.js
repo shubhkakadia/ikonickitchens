@@ -12,9 +12,9 @@ const signinRateLimit = rateLimit({
   keyGenerator: (request) => {
     // Use IP address for rate limiting
     const forwarded = request.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0].trim() :
-      request.headers.get("x-real-ip") ||
-      "unknown";
+    const ip = forwarded
+      ? forwarded.split(",")[0].trim()
+      : request.headers.get("x-real-ip") || "unknown";
     return `signin:${ip}`;
   },
 });
@@ -36,9 +36,11 @@ export async function POST(request) {
             "Retry-After": rateLimitResult.retryAfter.toString(),
             "X-RateLimit-Limit": "5",
             "X-RateLimit-Remaining": "0",
-            "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
+            "X-RateLimit-Reset": new Date(
+              rateLimitResult.resetTime,
+            ).toISOString(),
           },
-        }
+        },
       );
     }
 
@@ -61,9 +63,11 @@ export async function POST(request) {
         headers: {
           "X-RateLimit-Limit": "5",
           "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
-          "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
+          "X-RateLimit-Reset": new Date(
+            rateLimitResult.resetTime,
+          ).toISOString(),
         },
-      }
+      },
     );
 
     // Check if user exists and password is valid
@@ -84,16 +88,19 @@ export async function POST(request) {
             headers: {
               "X-RateLimit-Limit": "5",
               "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
-              "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
+              "X-RateLimit-Reset": new Date(
+                rateLimitResult.resetTime,
+              ).toISOString(),
             },
-          }
+          },
         );
       }
     } else {
       // Perform dummy bcrypt comparison to prevent timing attacks
       // Use a valid bcrypt hash format to ensure consistent timing
       // This ensures similar response times whether user exists or not
-      const dummyHash = "$2b$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuv";
+      const dummyHash =
+        "$2b$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuv";
       await bcrypt.compare(password, dummyHash);
     }
 
@@ -140,9 +147,11 @@ export async function POST(request) {
         headers: {
           "X-RateLimit-Limit": "5",
           "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
-          "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
+          "X-RateLimit-Reset": new Date(
+            rateLimitResult.resetTime,
+          ).toISOString(),
         },
-      }
+      },
     );
   } catch (error) {
     console.error("Signin error:", error);
@@ -151,7 +160,7 @@ export async function POST(request) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

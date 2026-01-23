@@ -78,7 +78,7 @@ export async function GET(request) {
 
         // Check if this item has received purchase orders
         const hasReceivedPO = item.ordered_items?.some(
-          (orderedItem) => orderedItem.order?.status === "RECEIVED"
+          (orderedItem) => orderedItem.order?.status === "RECEIVED",
         );
 
         // Item is ready if it has reserved stock OR received PO
@@ -89,7 +89,7 @@ export async function GET(request) {
       const totalItems = mto.items.length;
       const totalQuantity = mto.items.reduce(
         (sum, item) => sum + (parseFloat(item.quantity) || 0),
-        0
+        0,
       );
 
       // Calculate how many items are received vs pending
@@ -100,7 +100,7 @@ export async function GET(request) {
         const hasReservedStock =
           item.reserve_item_stock && item.reserve_item_stock.length > 0;
         const hasReceivedPO = item.ordered_items?.some(
-          (orderedItem) => orderedItem.order?.status === "RECEIVED"
+          (orderedItem) => orderedItem.order?.status === "RECEIVED",
         );
 
         if (hasReservedStock || hasReceivedPO) {
@@ -164,7 +164,7 @@ export async function GET(request) {
         },
         message: "Used material list fetched successfully",
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching used material list:", error);
@@ -174,7 +174,7 @@ export async function GET(request) {
         message: "Internal server error",
         error: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

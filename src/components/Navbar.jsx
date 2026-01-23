@@ -58,8 +58,9 @@ export default function Navbar({ bar }) {
 
   return (
     <div
-      className={`w-full fixed top-0 left-0 z-50 ${isScrolled || bar ? "bg-gray-800/95" : "bg-gray-800/0"
-        } transition-all duration-300 ease-in-out`}
+      className={`w-full fixed top-0 left-0 z-50 ${
+        isScrolled || bar ? "bg-gray-800/95" : "bg-gray-800/0"
+      } transition-all duration-300 ease-in-out`}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-2">
@@ -142,44 +143,50 @@ export default function Navbar({ bar }) {
           >
             <div className="w-6 h-6 flex flex-col justify-center items-center">
               <span
-                className={`block w-6 h-0.5 bg-current transition-all duration-300 ease-in-out ${isOpen ? "rotate-45 translate-y-1.5" : ""
-                  }`}
+                className={`block w-6 h-0.5 bg-current transition-all duration-300 ease-in-out ${
+                  isOpen ? "rotate-45 translate-y-1.5" : ""
+                }`}
               ></span>
               <span
-                className={`block w-6 h-0.5 bg-current transition-all duration-300 ease-in-out mt-1 ${isOpen ? "opacity-0" : ""
-                  }`}
+                className={`block w-6 h-0.5 bg-current transition-all duration-300 ease-in-out mt-1 ${
+                  isOpen ? "opacity-0" : ""
+                }`}
               ></span>
               <span
-                className={`block w-6 h-0.5 bg-current transition-all duration-300 ease-in-out mt-1 ${isOpen ? "-rotate-45 -translate-y-1.5" : ""
-                  }`}
+                className={`block w-6 h-0.5 bg-current transition-all duration-300 ease-in-out mt-1 ${
+                  isOpen ? "-rotate-45 -translate-y-1.5" : ""
+                }`}
               ></span>
             </div>
           </button>
 
           {/* Mobile Menu Backdrop */}
           <div
-            className={`lg:hidden fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-              }`}
+            className={`lg:hidden fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+              isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
             onClick={() => setIsOpen(false)}
             style={{ top: "73px" }} // Adjust based on your navbar height
           />
 
           {/* Mobile Menu */}
           <div
-            className={`lg:hidden absolute top-16 right-0 w-full shadow-2xl border-b transition-all duration-300 ease-in-out transform ${isOpen
+            className={`lg:hidden absolute top-16 right-0 w-full shadow-2xl border-b transition-all duration-300 ease-in-out transform ${
+              isOpen
                 ? "opacity-100 translate-y-0 scale-100"
                 : "opacity-0 -translate-y-4 scale-95 pointer-events-none"
-              }`}
+            }`}
           >
             <nav className="space-y-1 p-6">
               {navdata.map((item, index) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`block text-white hover:text-[#B92F34] hover:bg-gray-50 font-light transition-all duration-200 py-3 px-4 rounded-lg text-base transform ${isOpen
+                  className={`block text-white hover:text-[#B92F34] hover:bg-gray-50 font-light transition-all duration-200 py-3 px-4 rounded-lg text-base transform ${
+                    isOpen
                       ? "translate-x-0 opacity-100"
                       : "translate-x-4 opacity-0"
-                    }`}
+                  }`}
                   style={{
                     transitionDelay: isOpen ? `${index * 50}ms` : "0ms",
                   }}
@@ -190,10 +197,11 @@ export default function Navbar({ bar }) {
               ))}
               <Link
                 href={"/inquiries"}
-                className={`block bg-[#B92F34] hover:bg-[#A0252A] text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 text-base mt-4 text-center ${isOpen
+                className={`block bg-[#B92F34] hover:bg-[#A0252A] text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 text-base mt-4 text-center ${
+                  isOpen
                     ? "translate-x-0 opacity-100"
                     : "translate-x-4 opacity-0"
-                  }`}
+                }`}
                 style={{
                   transitionDelay: isOpen ? "300ms" : "0ms",
                 }}

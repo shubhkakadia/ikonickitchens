@@ -120,7 +120,7 @@ export default function page() {
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-        "An error occurred while fetching supplier data"
+          "An error occurred while fetching supplier data",
       );
     } finally {
       setLoading(false);
@@ -188,7 +188,7 @@ export default function page() {
 
       const formatPhone = (phone) => {
         return phone ? formatPhoneToNational(phone) : phone;
-      }
+      };
 
       const dataToSend = {
         ...editData,
@@ -224,7 +224,7 @@ export default function page() {
       console.error("Error updating supplier:", error);
       toast.error(
         error.response?.data?.message ||
-        "Failed to update supplier. Please try again.",
+          "Failed to update supplier. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
@@ -232,7 +232,7 @@ export default function page() {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-        }
+        },
       );
     } finally {
       setIsUpdating(false);
@@ -250,7 +250,6 @@ export default function page() {
       [field]: value,
     }));
   };
-
 
   const formatValue = (value) => {
     if (
@@ -271,8 +270,9 @@ export default function page() {
     if (!name) return "?";
     const parts = name.trim().split(" ");
     if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
-    return `${parts[0][0] || ""}${parts[parts.length - 1][0] || ""
-      }`.toUpperCase();
+    return `${parts[0][0] || ""}${
+      parts[parts.length - 1][0] || ""
+    }`.toUpperCase();
   };
 
   const handleDeleteSupplierConfirm = async () => {
@@ -287,7 +287,7 @@ export default function page() {
         `/api/supplier/${supplier.supplier_id}`,
         {
           headers: { Authorization: `Bearer ${sessionToken}` },
-        }
+        },
       );
       if (!response?.data?.status) {
         toast.error(response?.data?.message || "Failed to delete supplier");
@@ -326,10 +326,7 @@ export default function page() {
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       // Category filter
-      if (
-        itemsCategoryTab !== "all" &&
-        item.category !== itemsCategoryTab
-      ) {
+      if (itemsCategoryTab !== "all" && item.category !== itemsCategoryTab) {
         return false;
       }
       // Search filter
@@ -352,7 +349,6 @@ export default function page() {
       return true;
     });
   }, [items, itemsCategoryTab, searchQuery]);
-
 
   return (
     <AdminRoute>
@@ -404,7 +400,10 @@ export default function page() {
                   </div>
                   <div className="flex gap-2">
                     {!isEditing ? (
-                      <div ref={dropdownRef} className="relative dropdown-container">
+                      <div
+                        ref={dropdownRef}
+                        className="relative dropdown-container"
+                      >
                         <button
                           onClick={() => setShowDropdown(!showDropdown)}
                           className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
@@ -494,7 +493,10 @@ export default function page() {
                                       type="email"
                                       value={editData.email || ""}
                                       onChange={(e) =>
-                                        handleInputChange("email", e.target.value)
+                                        handleInputChange(
+                                          "email",
+                                          e.target.value,
+                                        )
                                       }
                                       placeholder={supplier.email || "Email"}
                                       className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
@@ -507,19 +509,26 @@ export default function page() {
                                         type="tel"
                                         value={editData.phone || ""}
                                         onChange={(e) =>
-                                          handleInputChange("phone", e.target.value)
+                                          handleInputChange(
+                                            "phone",
+                                            e.target.value,
+                                          )
                                         }
                                         placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                                        className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${editData.phone && !validatePhone(editData.phone)
+                                        className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
+                                          editData.phone &&
+                                          !validatePhone(editData.phone)
                                             ? "border-red-500"
                                             : "border-slate-300"
-                                          }`}
+                                        }`}
                                       />
-                                      {editData.phone && !validatePhone(editData.phone) && (
-                                        <p className="mt-1 text-xs text-red-500">
-                                          Please enter a valid Australian phone number
-                                        </p>
-                                      )}
+                                      {editData.phone &&
+                                        !validatePhone(editData.phone) && (
+                                          <p className="mt-1 text-xs text-red-500">
+                                            Please enter a valid Australian
+                                            phone number
+                                          </p>
+                                        )}
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -530,22 +539,26 @@ export default function page() {
                                       onChange={(e) =>
                                         handleInputChange(
                                           "website",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
-                                      placeholder={supplier.website || "Website"}
+                                      placeholder={
+                                        supplier.website || "Website"
+                                      }
                                       className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
                                     />
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <p className="text-sm text-slate-600">ABN</p>
+                                    <p className="text-sm text-slate-600">
+                                      ABN
+                                    </p>
                                     <input
                                       type="text"
                                       value={editData.abn_number || ""}
                                       onChange={(e) =>
                                         handleInputChange(
                                           "abn_number",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       placeholder={
@@ -562,10 +575,12 @@ export default function page() {
                                       onChange={(e) =>
                                         handleInputChange(
                                           "address",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
-                                      placeholder={supplier.address || "Address"}
+                                      placeholder={
+                                        supplier.address || "Address"
+                                      }
                                       className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
                                     />
                                   </div>
@@ -574,7 +589,10 @@ export default function page() {
                                     <textarea
                                       value={editData.notes || ""}
                                       onChange={(e) =>
-                                        handleInputChange("notes", e.target.value)
+                                        handleInputChange(
+                                          "notes",
+                                          e.target.value,
+                                        )
                                       }
                                       placeholder={formatValue(supplier.notes)}
                                       rows={3}
@@ -659,10 +677,11 @@ export default function page() {
                       <nav className="flex space-x-8 px-4">
                         <button
                           onClick={() => setActiveTab("materials-to-order")}
-                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "materials-to-order"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "materials-to-order"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           <div className="flex items-center gap-2">
                             <Package className="w-4 h-4" />
@@ -676,10 +695,11 @@ export default function page() {
                         </button>
                         <button
                           onClick={() => setActiveTab("purchase-order")}
-                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "purchase-order"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "purchase-order"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           <div className="flex items-center gap-2">
                             <PackagePlus className="w-4 h-4" />
@@ -693,10 +713,11 @@ export default function page() {
                         </button>
                         <button
                           onClick={() => setActiveTab("statements")}
-                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "statements"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "statements"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           <div className="flex items-center gap-2">
                             <Receipt className="w-4 h-4" />
@@ -705,10 +726,11 @@ export default function page() {
                         </button>
                         <button
                           onClick={() => setActiveTab("cost-sheet")}
-                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "cost-sheet"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "cost-sheet"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4" />
@@ -717,10 +739,11 @@ export default function page() {
                         </button>
                         <button
                           onClick={() => setActiveTab("items")}
-                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "items"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "items"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4" />
@@ -787,10 +810,11 @@ export default function page() {
                               {/* Always show "All" tab */}
                               <button
                                 onClick={() => setItemsCategoryTab("all")}
-                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "all"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                  }`}
+                                className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                  itemsCategoryTab === "all"
+                                    ? "border-primary text-primary"
+                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                }`}
                               >
                                 All
                               </button>
@@ -798,10 +822,11 @@ export default function page() {
                               {availableCategories.SHEET && (
                                 <button
                                   onClick={() => setItemsCategoryTab("SHEET")}
-                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "SHEET"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                    }`}
+                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                    itemsCategoryTab === "SHEET"
+                                      ? "border-primary text-primary"
+                                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                                 >
                                   Sheet
                                 </button>
@@ -809,32 +834,39 @@ export default function page() {
                               {availableCategories.HANDLE && (
                                 <button
                                   onClick={() => setItemsCategoryTab("HANDLE")}
-                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "HANDLE"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                    }`}
+                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                    itemsCategoryTab === "HANDLE"
+                                      ? "border-primary text-primary"
+                                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                                 >
                                   Handle
                                 </button>
                               )}
                               {availableCategories.HARDWARE && (
                                 <button
-                                  onClick={() => setItemsCategoryTab("HARDWARE")}
-                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "HARDWARE"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                    }`}
+                                  onClick={() =>
+                                    setItemsCategoryTab("HARDWARE")
+                                  }
+                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                    itemsCategoryTab === "HARDWARE"
+                                      ? "border-primary text-primary"
+                                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                                 >
                                   Hardware
                                 </button>
                               )}
                               {availableCategories.ACCESSORY && (
                                 <button
-                                  onClick={() => setItemsCategoryTab("ACCESSORY")}
-                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "ACCESSORY"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                    }`}
+                                  onClick={() =>
+                                    setItemsCategoryTab("ACCESSORY")
+                                  }
+                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                    itemsCategoryTab === "ACCESSORY"
+                                      ? "border-primary text-primary"
+                                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                                 >
                                   Accessory
                                 </button>
@@ -844,10 +876,11 @@ export default function page() {
                                   onClick={() =>
                                     setItemsCategoryTab("EDGING_TAPE")
                                   }
-                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${itemsCategoryTab === "EDGING_TAPE"
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                                    }`}
+                                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                    itemsCategoryTab === "EDGING_TAPE"
+                                      ? "border-primary text-primary"
+                                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                  }`}
                                 >
                                   Edging Tape
                                 </button>
@@ -915,8 +948,7 @@ export default function page() {
                                               alt={item.item_id}
                                               className="w-12 h-12 object-cover rounded border border-slate-200"
                                               onError={(e) => {
-                                                e.target.style.display =
-                                                  "none";
+                                                e.target.style.display = "none";
                                                 e.target.nextSibling.style.display =
                                                   "flex";
                                               }}
@@ -1103,9 +1135,9 @@ export default function page() {
                                       <td className="px-4 py-2 whitespace-nowrap">
                                         <p className="text-xs text-slate-900">
                                           $
-                                          {parseFloat(
-                                            item.price || 0
-                                          ).toFixed(2)}
+                                          {parseFloat(item.price || 0).toFixed(
+                                            2,
+                                          )}
                                         </p>
                                       </td>
 
@@ -1147,7 +1179,6 @@ export default function page() {
           isDeleting={isDeletingSupplier}
           entityType="supplier"
         />
-
       </div>
     </AdminRoute>
   );

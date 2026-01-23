@@ -12,7 +12,7 @@ export async function POST(request) {
           status: false,
           message: "No valid session token provided",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -31,7 +31,7 @@ export async function POST(request) {
           status: false,
           message: "Session not found or already expired",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -40,7 +40,7 @@ export async function POST(request) {
         status: true,
         message: "Logout successful",
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Signout error:", error);
@@ -49,7 +49,7 @@ export async function POST(request) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

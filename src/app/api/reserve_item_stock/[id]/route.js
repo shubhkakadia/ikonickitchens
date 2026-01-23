@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
     if (!reservation) {
       return NextResponse.json(
         { status: false, message: "Stock reservation not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -46,7 +46,7 @@ export async function GET(request, { params }) {
     console.error("Error in GET /api/reserve_item_stock/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -71,7 +71,7 @@ export async function PATCH(request, { params }) {
     if (!existingReservation) {
       return NextResponse.json(
         { status: false, message: "Stock reservation not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -79,7 +79,7 @@ export async function PATCH(request, { params }) {
     if (quantity !== undefined && quantity <= 0) {
       return NextResponse.json(
         { status: false, message: "Quantity must be greater than 0" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -92,7 +92,7 @@ export async function PATCH(request, { params }) {
       if (!mto) {
         return NextResponse.json(
           { status: false, message: "Materials to order item not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
@@ -124,7 +124,7 @@ export async function PATCH(request, { params }) {
                 shortage: qtyDifference - availableQty,
               },
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
       }
@@ -170,11 +170,11 @@ export async function PATCH(request, { params }) {
       "reserve_item_stock",
       existingReservation.id,
       "UPDATE",
-      `Stock reservation updated successfully: ${existingReservation.item_id}`
+      `Stock reservation updated successfully: ${existingReservation.item_id}`,
     );
     if (!logged) {
       console.error(
-        `Failed to log stock reservation update: ${existingReservation.id} - ${existingReservation.item_id}`
+        `Failed to log stock reservation update: ${existingReservation.id} - ${existingReservation.item_id}`,
       );
     }
 
@@ -187,7 +187,7 @@ export async function PATCH(request, { params }) {
     console.error("Error in PATCH /api/reserve_item_stock/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -214,7 +214,7 @@ export async function DELETE(request, { params }) {
     if (!existingReservation) {
       return NextResponse.json(
         { status: false, message: "Stock reservation not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -233,7 +233,7 @@ export async function DELETE(request, { params }) {
               allowedStatuses: ["DRAFT", "PARTIALLY_ORDERED"],
             },
           },
-          { status: 403 }
+          { status: 403 },
         );
       }
     }
@@ -264,11 +264,11 @@ export async function DELETE(request, { params }) {
       "reserve_item_stock",
       existingReservation.id,
       "DELETE",
-      `Stock reservation deleted successfully: ${existingReservation.item_id}`
+      `Stock reservation deleted successfully: ${existingReservation.item_id}`,
     );
     if (!logged) {
       console.error(
-        `Failed to log stock reservation deletion: ${existingReservation.id} - ${existingReservation.item_id}`
+        `Failed to log stock reservation deletion: ${existingReservation.id} - ${existingReservation.item_id}`,
       );
     }
 
@@ -285,7 +285,7 @@ export async function DELETE(request, { params }) {
     console.error("Error in DELETE /api/reserve_item_stock/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

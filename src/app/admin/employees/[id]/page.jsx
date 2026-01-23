@@ -175,7 +175,7 @@ export default function EmployeeDetailPage() {
       key: "config",
       label: "Config",
       isParent: false,
-    }
+    },
   ];
 
   useEffect(() => {
@@ -225,7 +225,7 @@ export default function EmployeeDetailPage() {
   // Add this useEffect to clean up memory
   useEffect(() => {
     return () => {
-      if (imagePreview && imagePreview.startsWith('blob:')) {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreview);
       }
     };
@@ -295,7 +295,7 @@ export default function EmployeeDetailPage() {
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-        "An error occurred while fetching employee data"
+          "An error occurred while fetching employee data",
       );
     } finally {
       setLoading(false);
@@ -359,7 +359,9 @@ export default function EmployeeDetailPage() {
         formattedData.phone = formatPhoneToNational(formattedData.phone);
       }
       if (formattedData.emergency_contact_phone) {
-        formattedData.emergency_contact_phone = formatPhoneToNational(formattedData.emergency_contact_phone);
+        formattedData.emergency_contact_phone = formatPhoneToNational(
+          formattedData.emergency_contact_phone,
+        );
       }
 
       // If there's an image file, use FormData; otherwise use JSON
@@ -471,7 +473,7 @@ export default function EmployeeDetailPage() {
       console.error("Error updating employee:", error);
       toast.error(
         error.response?.data?.message ||
-        "Failed to update employee. Please try again.",
+          "Failed to update employee. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
@@ -479,7 +481,7 @@ export default function EmployeeDetailPage() {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-        }
+        },
       );
     } finally {
       setIsUpdating(false);
@@ -524,8 +526,12 @@ export default function EmployeeDetailPage() {
         role: employee.role,
         email: employee.email,
         phone: employee.phone,
-        dob: employee.dob ? new Date(employee.dob).toISOString().split('T')[0] : "",
-        join_date: employee.join_date ? new Date(employee.join_date).toISOString().split('T')[0] : "",
+        dob: employee.dob
+          ? new Date(employee.dob).toISOString().split("T")[0]
+          : "",
+        join_date: employee.join_date
+          ? new Date(employee.join_date).toISOString().split("T")[0]
+          : "",
         address: employee.address || "",
         emergency_contact_name: employee.emergency_contact_name || "",
         emergency_contact_phone: employee.emergency_contact_phone || "",
@@ -698,7 +704,7 @@ export default function EmployeeDetailPage() {
 
   // Filter role options based on search term
   const filteredRoleOptions = roleOptions.filter((role) =>
-    role.toLowerCase().includes(roleSearchTerm.toLowerCase())
+    role.toLowerCase().includes(roleSearchTerm.toLowerCase()),
   );
 
   const handleAvailabilityChange = (day, field, value) => {
@@ -944,7 +950,7 @@ export default function EmployeeDetailPage() {
 
       if (response.data.status) {
         toast.success(
-          "User account removed successfully. Employee data is preserved."
+          "User account removed successfully. Employee data is preserved.",
         );
         // Refresh employee data to update user status
         await fetchEmployee();
@@ -977,7 +983,7 @@ export default function EmployeeDetailPage() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -1006,9 +1012,7 @@ export default function EmployeeDetailPage() {
 
     // Phone validation
     if (editData.phone && !validatePhone(editData.phone)) {
-      errors.push(
-        "Phone number should be a valid Australian phone number"
-      );
+      errors.push("Phone number should be a valid Australian phone number");
     }
 
     // Name validation
@@ -1031,7 +1035,7 @@ export default function EmployeeDetailPage() {
       !validateEmergencyName(editData.emergency_contact_name)
     ) {
       errors.push(
-        "Emergency contact name should contain only letters and spaces"
+        "Emergency contact name should contain only letters and spaces",
       );
     }
 
@@ -1040,7 +1044,7 @@ export default function EmployeeDetailPage() {
       !validatePhone(editData.emergency_contact_phone)
     ) {
       errors.push(
-        "Emergency contact phone should be a valid Australian phone number"
+        "Emergency contact phone should be a valid Australian phone number",
       );
     }
 
@@ -1236,7 +1240,9 @@ export default function EmployeeDetailPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => fileInputRef.current?.click()}
+                                    onClick={() =>
+                                      fileInputRef.current?.click()
+                                    }
                                     className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white rounded-full px-3 py-1 text-xs shadow-lg hover:scale-110 transition-all duration-200 cursor-pointer"
                                   >
                                     Change
@@ -1279,7 +1285,9 @@ export default function EmployeeDetailPage() {
                             <Image
                               loading="lazy"
                               src={`/${employee.image.url}`}
-                              alt={employee.first_name + " " + employee.last_name}
+                              alt={
+                                employee.first_name + " " + employee.last_name
+                              }
                               className="w-16 h-16 rounded-full object-cover transition-transform duration-200 group-hover:scale-105 group-hover:shadow-lg"
                               width={64}
                               height={64}
@@ -1304,7 +1312,7 @@ export default function EmployeeDetailPage() {
                                   onChange={(e) =>
                                     handleInputChange(
                                       "first_name",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder={employee.first_name}
@@ -1314,7 +1322,10 @@ export default function EmployeeDetailPage() {
                                   type="text"
                                   value={editData.last_name || ""}
                                   onChange={(e) =>
-                                    handleInputChange("last_name", e.target.value)
+                                    handleInputChange(
+                                      "last_name",
+                                      e.target.value,
+                                    )
                                   }
                                   placeholder={employee.last_name}
                                   className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
@@ -1323,22 +1334,29 @@ export default function EmployeeDetailPage() {
                                   <div className="relative">
                                     <input
                                       type="text"
-                                      value={roleSearchTerm || editData.role || ""}
+                                      value={
+                                        roleSearchTerm || editData.role || ""
+                                      }
                                       onChange={handleRoleSearchChange}
-                                      onFocus={() => setIsRoleDropdownOpen(true)}
+                                      onFocus={() =>
+                                        setIsRoleDropdownOpen(true)
+                                      }
                                       className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full pr-8"
                                       placeholder="Search or type a role..."
                                     />
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        setIsRoleDropdownOpen(!isRoleDropdownOpen)
+                                        setIsRoleDropdownOpen(
+                                          !isRoleDropdownOpen,
+                                        )
                                       }
                                       className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                     >
                                       <ChevronDown
-                                        className={`w-4 h-4 transition-transform ${isRoleDropdownOpen ? "rotate-180" : ""
-                                          }`}
+                                        className={`w-4 h-4 transition-transform ${
+                                          isRoleDropdownOpen ? "rotate-180" : ""
+                                        }`}
                                       />
                                     </button>
                                   </div>
@@ -1351,31 +1369,44 @@ export default function EmployeeDetailPage() {
                                         </div>
                                       ) : filteredRoleOptions.length > 0 ? (
                                         <>
-                                          {filteredRoleOptions.map((role, index) => (
-                                            <button
-                                              key={index}
-                                              type="button"
-                                              onClick={() => handleRoleSelect(role)}
-                                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                            >
-                                              {role}
-                                            </button>
-                                          ))}
-                                          {roleSearchTerm && !filteredRoleOptions.some(r => r.toLowerCase() === roleSearchTerm.toLowerCase()) && (
-                                            <div className="border-t border-slate-200">
+                                          {filteredRoleOptions.map(
+                                            (role, index) => (
                                               <button
+                                                key={index}
                                                 type="button"
-                                                onClick={() => {
-                                                  setNewRoleValue(roleSearchTerm);
-                                                  setShowCreateRoleModal(true);
-                                                }}
-                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                onClick={() =>
+                                                  handleRoleSelect(role)
+                                                }
+                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                               >
-                                                <Plus className="w-4 h-4" />
-                                                Create "{roleSearchTerm}"
+                                                {role}
                                               </button>
-                                            </div>
+                                            ),
                                           )}
+                                          {roleSearchTerm &&
+                                            !filteredRoleOptions.some(
+                                              (r) =>
+                                                r.toLowerCase() ===
+                                                roleSearchTerm.toLowerCase(),
+                                            ) && (
+                                              <div className="border-t border-slate-200">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setNewRoleValue(
+                                                      roleSearchTerm,
+                                                    );
+                                                    setShowCreateRoleModal(
+                                                      true,
+                                                    );
+                                                  }}
+                                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                >
+                                                  <Plus className="w-4 h-4" />
+                                                  Create "{roleSearchTerm}"
+                                                </button>
+                                              </div>
+                                            )}
                                         </>
                                       ) : (
                                         <div className="px-4 py-3">
@@ -1425,19 +1456,26 @@ export default function EmployeeDetailPage() {
                                       type="tel"
                                       value={editData.phone || ""}
                                       onChange={(e) =>
-                                        handleInputChange("phone", e.target.value)
+                                        handleInputChange(
+                                          "phone",
+                                          e.target.value,
+                                        )
                                       }
                                       placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                                      className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${editData.phone && !validatePhone(editData.phone)
+                                      className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
+                                        editData.phone &&
+                                        !validatePhone(editData.phone)
                                           ? "border-red-500"
                                           : "border-slate-300"
-                                        }`}
+                                      }`}
                                     />
-                                    {editData.phone && !validatePhone(editData.phone) && (
-                                      <p className="mt-1 text-xs text-red-500">
-                                        Please enter a valid Australian phone number
-                                      </p>
-                                    )}
+                                    {editData.phone &&
+                                      !validatePhone(editData.phone) && (
+                                        <p className="mt-1 text-xs text-red-500">
+                                          Please enter a valid Australian phone
+                                          number
+                                        </p>
+                                      )}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -1446,7 +1484,10 @@ export default function EmployeeDetailPage() {
                                     type="text"
                                     value={editData.address || ""}
                                     onChange={(e) =>
-                                      handleInputChange("address", e.target.value)
+                                      handleInputChange(
+                                        "address",
+                                        e.target.value,
+                                      )
                                     }
                                     placeholder={employee.address || "Address"}
                                     className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
@@ -1627,11 +1668,11 @@ export default function EmployeeDetailPage() {
                               onChange={(e) =>
                                 handleInputChange(
                                   "emergency_contact_name",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               placeholder={formatValue(
-                                employee.emergency_contact_name
+                                employee.emergency_contact_name,
                               )}
                               className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                             />
@@ -1653,20 +1694,27 @@ export default function EmployeeDetailPage() {
                                 onChange={(e) =>
                                   handleInputChange(
                                     "emergency_contact_phone",
-                                    e.target.value
+                                    e.target.value,
                                   )
                                 }
                                 placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                                className={`w-full text-sm text-slate-800 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${editData.emergency_contact_phone && !validatePhone(editData.emergency_contact_phone)
+                                className={`w-full text-sm text-slate-800 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${
+                                  editData.emergency_contact_phone &&
+                                  !validatePhone(
+                                    editData.emergency_contact_phone,
+                                  )
                                     ? "border-red-500"
                                     : "border-slate-300"
-                                  }`}
+                                }`}
                               />
-                              {editData.emergency_contact_phone && !validatePhone(editData.emergency_contact_phone) && (
-                                <p className="mt-1 text-xs text-red-500">
-                                  Please enter a valid Australian phone number
-                                </p>
-                              )}
+                              {editData.emergency_contact_phone &&
+                                !validatePhone(
+                                  editData.emergency_contact_phone,
+                                ) && (
+                                  <p className="mt-1 text-xs text-red-500">
+                                    Please enter a valid Australian phone number
+                                  </p>
+                                )}
                             </div>
                           ) : (
                             <p className="text-sm text-slate-700">
@@ -1712,20 +1760,24 @@ export default function EmployeeDetailPage() {
                                     handleAvailabilityChange(
                                       day,
                                       "start",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   className="text-xs text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                                 />
-                                <span className="text-xs text-slate-400">-</span>
+                                <span className="text-xs text-slate-400">
+                                  -
+                                </span>
                                 <input
                                   type="time"
-                                  value={editData.availability?.[day]?.end || ""}
+                                  value={
+                                    editData.availability?.[day]?.end || ""
+                                  }
                                   onChange={(e) =>
                                     handleAvailabilityChange(
                                       day,
                                       "end",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   className="text-xs text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
@@ -1734,45 +1786,48 @@ export default function EmployeeDetailPage() {
                             </div>
                           ))
                         ) : // Show existing availability or empty state when not editing
-                          employee.availability ? (
-                            Object.entries(
-                              (() => {
-                                if (typeof employee.availability === "string") {
-                                  try {
-                                    return JSON.parse(employee.availability);
-                                  } catch (e) {
-                                    console.error("Error parsing availability:", e);
-                                    return {};
-                                  }
+                        employee.availability ? (
+                          Object.entries(
+                            (() => {
+                              if (typeof employee.availability === "string") {
+                                try {
+                                  return JSON.parse(employee.availability);
+                                } catch (e) {
+                                  console.error(
+                                    "Error parsing availability:",
+                                    e,
+                                  );
+                                  return {};
                                 }
-                                return employee.availability;
-                              })()
-                            ).map(([day, schedule]) => (
-                              <div
-                                key={day}
-                                className="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg"
-                              >
-                                <span className="text-xs font-medium text-slate-700 capitalize">
-                                  {day}
+                              }
+                              return employee.availability;
+                            })(),
+                          ).map(([day, schedule]) => (
+                            <div
+                              key={day}
+                              className="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg"
+                            >
+                              <span className="text-xs font-medium text-slate-700 capitalize">
+                                {day}
+                              </span>
+                              <div className="flex items-center gap-2 text-xs text-slate-600">
+                                <span>{formatTime(schedule.start)}</span>
+                                <span>
+                                  {formatTime(schedule.start) !== "-" &&
+                                  formatTime(schedule.end) !== "-"
+                                    ? "-"
+                                    : ""}
                                 </span>
-                                <div className="flex items-center gap-2 text-xs text-slate-600">
-                                  <span>{formatTime(schedule.start)}</span>
-                                  <span>
-                                    {formatTime(schedule.start) !== "-" &&
-                                      formatTime(schedule.end) !== "-"
-                                      ? "-"
-                                      : ""}
-                                  </span>
-                                  <span>{formatTime(schedule.end)}</span>
-                                </div>
+                                <span>{formatTime(schedule.end)}</span>
                               </div>
-                            ))
-                          ) : (
-                            <div className="text-center py-6 text-slate-500">
-                              <Clock className="w-6 h-6 mx-auto mb-2 text-slate-400" />
-                              <p className="text-sm">No work schedule set</p>
                             </div>
-                          )}
+                          ))
+                        ) : (
+                          <div className="text-center py-6 text-slate-500">
+                            <Clock className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+                            <p className="text-sm">No work schedule set</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1797,11 +1852,11 @@ export default function EmployeeDetailPage() {
                               onChange={(e) =>
                                 handleInputChange(
                                   "bank_account_name",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               placeholder={formatValue(
-                                employee.bank_account_name
+                                employee.bank_account_name,
                               )}
                               className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                             />
@@ -1822,11 +1877,11 @@ export default function EmployeeDetailPage() {
                               onChange={(e) =>
                                 handleInputChange(
                                   "bank_account_number",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               placeholder={formatValue(
-                                employee.bank_account_number
+                                employee.bank_account_number,
                               )}
                               className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                             />
@@ -1847,10 +1902,12 @@ export default function EmployeeDetailPage() {
                               onChange={(e) =>
                                 handleInputChange(
                                   "bank_account_bsb",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
-                              placeholder={formatValue(employee.bank_account_bsb)}
+                              placeholder={formatValue(
+                                employee.bank_account_bsb,
+                              )}
                               className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                             />
                           ) : (
@@ -1880,11 +1937,11 @@ export default function EmployeeDetailPage() {
                               onChange={(e) =>
                                 handleInputChange(
                                   "supper_account_name",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               placeholder={formatValue(
-                                employee.supper_account_name
+                                employee.supper_account_name,
                               )}
                               className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                             />
@@ -1905,11 +1962,11 @@ export default function EmployeeDetailPage() {
                               onChange={(e) =>
                                 handleInputChange(
                                   "supper_account_number",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               placeholder={formatValue(
-                                employee.supper_account_number
+                                employee.supper_account_number,
                               )}
                               className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                             />
@@ -1953,7 +2010,11 @@ export default function EmployeeDetailPage() {
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={editData.is_active !== undefined ? editData.is_active : true}
+                            checked={
+                              editData.is_active !== undefined
+                                ? editData.is_active
+                                : true
+                            }
                             onChange={(e) =>
                               handleInputChange("is_active", e.target.checked)
                             }
@@ -1966,12 +2027,15 @@ export default function EmployeeDetailPage() {
                       ) : (
                         <div className="flex items-center gap-2">
                           <span
-                            className={`px-3 py-1 text-xs font-medium rounded-full ${employee.is_active !== false
+                            className={`px-3 py-1 text-xs font-medium rounded-full ${
+                              employee.is_active !== false
                                 ? "bg-emerald-100 text-emerald-800"
                                 : "bg-red-100 text-red-800"
-                              }`}
+                            }`}
                           >
-                            {employee.is_active !== false ? "Current Employee" : "Former Employee"}
+                            {employee.is_active !== false
+                              ? "Current Employee"
+                              : "Former Employee"}
                           </span>
                         </div>
                       )}
@@ -2183,7 +2247,9 @@ export default function EmployeeDetailPage() {
                                       onClick={() =>
                                         toggleModuleExpansion(module.key)
                                       }
-                                      disabled={!(isEditingUser || isCreatingUser)}
+                                      disabled={
+                                        !(isEditingUser || isCreatingUser)
+                                      }
                                       className="cursor-pointer p-1 hover:bg-slate-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                       {expandedModules[module.key] ? (
@@ -2204,15 +2270,17 @@ export default function EmployeeDetailPage() {
                                     id={module.key}
                                     checked={
                                       module.children?.every(
-                                        (child) => moduleAccess[child.key] === true
+                                        (child) =>
+                                          moduleAccess[child.key] === true,
                                       ) || false
                                     }
                                     ref={(el) => {
                                       if (el && module.children) {
-                                        const checkedCount = module.children.filter(
-                                          (child) =>
-                                            moduleAccess[child.key] === true
-                                        ).length;
+                                        const checkedCount =
+                                          module.children.filter(
+                                            (child) =>
+                                              moduleAccess[child.key] === true,
+                                          ).length;
                                         el.indeterminate =
                                           checkedCount > 0 &&
                                           checkedCount < module.children.length;
@@ -2223,11 +2291,13 @@ export default function EmployeeDetailPage() {
                                       module.children?.forEach((child) => {
                                         handleModuleAccessChange(
                                           child.key,
-                                          e.target.checked
+                                          e.target.checked,
                                         );
                                       });
                                     }}
-                                    disabled={!(isEditingUser || isCreatingUser)}
+                                    disabled={
+                                      !(isEditingUser || isCreatingUser)
+                                    }
                                     className="cursor-pointer w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
                                   />
                                 </div>
@@ -2247,11 +2317,13 @@ export default function EmployeeDetailPage() {
                                         <input
                                           type="checkbox"
                                           id={child.key}
-                                          checked={moduleAccess[child.key] === true}
+                                          checked={
+                                            moduleAccess[child.key] === true
+                                          }
                                           onChange={(e) =>
                                             handleModuleAccessChange(
                                               child.key,
-                                              e.target.checked
+                                              e.target.checked,
                                             )
                                           }
                                           disabled={
@@ -2279,7 +2351,7 @@ export default function EmployeeDetailPage() {
                                   onChange={(e) =>
                                     handleModuleAccessChange(
                                       module.key,
-                                      e.target.checked
+                                      e.target.checked,
                                     )
                                   }
                                   disabled={!(isEditingUser || isCreatingUser)}
@@ -2406,8 +2478,14 @@ export default function EmployeeDetailPage() {
 
         {/* Create Role Modal */}
         {showCreateRoleModal && (
-          <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateRoleModal(false)}>
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowCreateRoleModal(false)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
                 <h2 className="text-xl font-bold text-slate-800">
                   Create New Role
@@ -2458,7 +2536,6 @@ export default function EmployeeDetailPage() {
             </div>
           </div>
         )}
-
       </div>
     </AdminRoute>
   );

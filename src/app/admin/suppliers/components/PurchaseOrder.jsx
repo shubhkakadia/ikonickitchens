@@ -82,7 +82,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
       if (response.data.status) {
         const data = response.data.data || [];
@@ -91,14 +91,14 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
       } else {
         console.error(
           "Failed to fetch purchase orders:",
-          response.data.message
+          response.data.message,
         );
         toast.error(
           response.data.message || "Failed to fetch purchase orders",
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
       }
     } catch (err) {
@@ -110,7 +110,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
-        }
+        },
       );
       setPurchaseOrders([]);
     } finally {
@@ -158,7 +158,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
             Authorization: `Bearer ${sessionToken}`,
           },
           onUploadProgress: getUploadProgressHandler(1),
-        }
+        },
       );
 
       if (response.data.status) {
@@ -225,7 +225,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -286,7 +286,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -308,7 +308,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
       }
     } catch (err) {
@@ -317,7 +317,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     } finally {
       setDeletingPOId(null);
@@ -348,7 +348,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -368,7 +368,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
       }
     } catch (err) {
@@ -377,7 +377,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     }
   };
@@ -421,7 +421,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
       const itemsCount = po.items?.length || 0;
       const totalQty = (po.items || []).reduce(
         (sum, it) => sum + (parseFloat(it.quantity) || 0),
-        0
+        0,
       );
       return { ...po, __itemsCount: itemsCount, __totalQty: totalQty };
     });
@@ -596,7 +596,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                       <td className="px-4 py-3 text-sm text-slate-700">
                         {po.ordered_at
                           ? `Ordered: ${new Date(
-                              po.ordered_at
+                              po.ordered_at,
                             ).toLocaleDateString()}`
                           : `Created: ${
                               po.createdAt
@@ -607,7 +607,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                       <td className="px-4 py-3 text-sm text-slate-700">
                         {(po.items || []).reduce(
                           (sum, it) => sum + (parseFloat(it.quantity) || 0),
-                          0
+                          0,
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-700">
@@ -619,14 +619,14 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                             po.status === "DRAFT"
                               ? "bg-yellow-100 text-yellow-800"
                               : po.status === "ORDERED"
-                              ? "bg-blue-100 text-blue-800"
-                              : po.status === "PARTIALLY_RECEIVED"
-                              ? "bg-purple-100 text-purple-800"
-                              : po.status === "FULLY_RECEIVED"
-                              ? "bg-green-100 text-green-800"
-                              : po.status === "CANCELLED"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
+                                ? "bg-blue-100 text-blue-800"
+                                : po.status === "PARTIALLY_RECEIVED"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : po.status === "FULLY_RECEIVED"
+                                    ? "bg-green-100 text-green-800"
+                                    : po.status === "CANCELLED"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-gray-100 text-gray-800"
                           }`}
                         >
                           {po.status}
@@ -660,7 +660,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                       </span>{" "}
                                       {po.createdAt
                                         ? new Date(
-                                            po.createdAt
+                                            po.createdAt,
                                           ).toLocaleString()
                                         : "No date"}
                                     </span>
@@ -673,7 +673,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                           Ordered:
                                         </span>{" "}
                                         {new Date(
-                                          po.ordered_at
+                                          po.ordered_at,
                                         ).toLocaleDateString()}
                                       </span>
                                     </div>
@@ -712,7 +712,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                           Invoice Date:
                                         </span>{" "}
                                         {new Date(
-                                          po.invoice_date
+                                          po.invoice_date,
                                         ).toLocaleDateString()}
                                       </span>
                                     </div>
@@ -1202,7 +1202,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                           <span className="text-xs text-gray-600">
                                             $
                                             {parseFloat(
-                                              item.unit_price
+                                              item.unit_price,
                                             ).toFixed(2)}
                                           </span>
                                         </td>
@@ -1211,7 +1211,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                             $
                                             {formatMoney(
                                               parseFloat(item.quantity) *
-                                                parseFloat(item.unit_price)
+                                                parseFloat(item.unit_price),
                                             )}
                                           </span>
                                         </td>
@@ -1235,8 +1235,8 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                                 sum +
                                                 parseFloat(item.quantity) *
                                                   parseFloat(item.unit_price),
-                                              0
-                                            )
+                                              0,
+                                            ),
                                           )}
                                         </span>
                                       </td>
@@ -1258,11 +1258,11 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                                   sum +
                                                   parseFloat(item.quantity) *
                                                     parseFloat(item.unit_price),
-                                                0
+                                                0,
                                               ) *
                                                 0.1 *
-                                                100
-                                            ) / 100
+                                                100,
+                                            ) / 100,
                                           )}
                                         </span>
                                       </td>
@@ -1283,7 +1283,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                                 sum +
                                                 parseFloat(item.quantity) *
                                                   parseFloat(item.unit_price),
-                                              0
+                                              0,
                                             ) +
                                               Math.ceil(
                                                 po.items.reduce(
@@ -1291,14 +1291,14 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                                     sum +
                                                     parseFloat(item.quantity) *
                                                       parseFloat(
-                                                        item.unit_price
+                                                        item.unit_price,
                                                       ),
-                                                  0
+                                                  0,
                                                 ) *
                                                   0.1 *
-                                                  100
+                                                  100,
                                               ) /
-                                                100
+                                                100,
                                           )}
                                         </span>
                                       </td>

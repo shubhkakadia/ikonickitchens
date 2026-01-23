@@ -24,7 +24,7 @@ export async function POST(request, { params }) {
     if (!mto) {
       return NextResponse.json(
         { status: false, message: "Materials to order not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -35,7 +35,7 @@ export async function POST(request, { params }) {
     if (!files || files.length === 0) {
       return NextResponse.json(
         { status: false, message: "No files provided" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -49,7 +49,7 @@ export async function POST(request, { params }) {
     if (uploadResults.successful.length === 0) {
       return NextResponse.json(
         { status: false, message: "Failed to upload files" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -66,8 +66,8 @@ export async function POST(request, { params }) {
             size: result.size,
             materials_to_orderId: id,
           },
-        })
-      )
+        }),
+      ),
     );
 
     // log all the uploaded media ids
@@ -78,9 +78,9 @@ export async function POST(request, { params }) {
           "media",
           media.id,
           "CREATE",
-          `Media uploaded successfully: ${media.filename} for MTO: ${mto.id}`
-        )
-      )
+          `Media uploaded successfully: ${media.filename} for MTO: ${mto.id}`,
+        ),
+      ),
     );
 
     const hasLoggingFailures = logged.some((log) => !log);
@@ -93,15 +93,17 @@ export async function POST(request, { params }) {
         status: true,
         message: `${uploadedMedia.length} file(s) uploaded successfully`,
         data: uploadedMedia,
-        ...(hasLoggingFailures ? { warning: "Note: Upload succeeded but some logging failed" } : {})
+        ...(hasLoggingFailures
+          ? { warning: "Note: Upload succeeded but some logging failed" }
+          : {}),
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in media upload:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -119,7 +121,7 @@ export async function DELETE(request, { params }) {
     if (!mediaId) {
       return NextResponse.json(
         { status: false, message: "mediaId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -139,7 +141,7 @@ export async function DELETE(request, { params }) {
     if (!mto) {
       return NextResponse.json(
         { status: false, message: "Materials to order not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -155,7 +157,7 @@ export async function DELETE(request, { params }) {
     if (!media) {
       return NextResponse.json(
         { status: false, message: "Media not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -171,11 +173,13 @@ export async function DELETE(request, { params }) {
       "media",
       updatedMedia.id,
       "DELETE",
-      `Media deleted successfully: ${updatedMedia.filename} for MTO: ${mto.id} (Project: ${mto.project.name})`
+      `Media deleted successfully: ${updatedMedia.filename} for MTO: ${mto.id} (Project: ${mto.project.name})`,
     );
 
     if (!logged) {
-      console.error(`Failed to log media deletion: ${updatedMedia.id} - ${updatedMedia.filename}`);
+      console.error(
+        `Failed to log media deletion: ${updatedMedia.id} - ${updatedMedia.filename}`,
+      );
     }
 
     return NextResponse.json(
@@ -186,15 +190,17 @@ export async function DELETE(request, { params }) {
           fileId: updatedMedia.id,
           filename: updatedMedia.filename,
         },
-        ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" }),
+        ...(logged
+          ? {}
+          : { warning: "Note: Deletion succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error deleting media:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

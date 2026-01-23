@@ -44,6 +44,7 @@ export async function GET(request) {
                 description: true,
                 quantity: true,
                 measurement_unit: true,
+                supplier_reference: true,
                 sheet: true,
                 handle: true,
                 hardware: true,
@@ -59,7 +60,7 @@ export async function GET(request) {
         media: { where: { is_deleted: false } },
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
@@ -69,14 +70,13 @@ export async function GET(request) {
         message: "Materials to orders fetched successfully",
         data: mtos,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/materials_to_order/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

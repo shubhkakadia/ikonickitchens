@@ -22,7 +22,7 @@ import PurchaseOrderForm from "./PurchaseOrderForm";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 
-const GroupedItemsTable = (({
+const GroupedItemsTable = ({
   items,
   mtoId,
   activeTab,
@@ -31,9 +31,8 @@ const GroupedItemsTable = (({
 }) => {
   const { getToken } = useAuth();
   const [quantityOrderedDraftById, setQuantityOrderedDraftById] = useState({});
-  const [isSavingQuantityOrderedById, setIsSavingQuantityOrderedById] = useState(
-    {}
-  );
+  const [isSavingQuantityOrderedById, setIsSavingQuantityOrderedById] =
+    useState({});
   const quantityOrderedTimersRef = useRef(new Map());
 
   // Initialize draft values (don't clobber what the user is typing)
@@ -44,9 +43,10 @@ const GroupedItemsTable = (({
       items.forEach((it) => {
         if (it?.id && next[it.id] === undefined) {
           // If quantity_ordered_po > 0, use that value instead of quantity_ordered
-          const qtyOrdered = (it.quantity_ordered_po && Number(it.quantity_ordered_po) > 0) 
-            ? it.quantity_ordered_po 
-            : (it.quantity_ordered ?? 0);
+          const qtyOrdered =
+            it.quantity_ordered_po && Number(it.quantity_ordered_po) > 0
+              ? it.quantity_ordered_po
+              : (it.quantity_ordered ?? 0);
           next[it.id] = String(qtyOrdered);
         }
       });
@@ -80,12 +80,12 @@ const GroupedItemsTable = (({
       const response = await axios.patch(
         `/api/materials_to_order_item/${mtoItemId}`,
         { quantity_ordered: parsed },
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+        { headers: { Authorization: `Bearer ${sessionToken}` } },
       );
 
       if (!response?.data?.status) {
         throw new Error(
-          response?.data?.message || "Failed to update quantity ordered"
+          response?.data?.message || "Failed to update quantity ordered",
         );
       }
 
@@ -95,17 +95,26 @@ const GroupedItemsTable = (({
         [mtoItemId]: String(saved),
       }));
 
-      if (onUpdateQuantityOrdered) onUpdateQuantityOrdered(mtoId, mtoItemId, saved);
+      if (onUpdateQuantityOrdered)
+        onUpdateQuantityOrdered(mtoId, mtoItemId, saved);
     } catch (err) {
       console.error("Failed to update quantity_ordered:", err);
-      toast.error(err?.response?.data?.message || err?.message || "Failed to save");
+      toast.error(
+        err?.response?.data?.message || err?.message || "Failed to save",
+      );
     } finally {
-      setIsSavingQuantityOrderedById((prev) => ({ ...prev, [mtoItemId]: false }));
+      setIsSavingQuantityOrderedById((prev) => ({
+        ...prev,
+        [mtoItemId]: false,
+      }));
     }
   };
 
   const handleQuantityOrderedChange = (mtoItemId, nextValue) => {
-    setQuantityOrderedDraftById((prev) => ({ ...prev, [mtoItemId]: nextValue }));
+    setQuantityOrderedDraftById((prev) => ({
+      ...prev,
+      [mtoItemId]: nextValue,
+    }));
 
     const timers = quantityOrderedTimersRef.current;
     if (timers.has(mtoItemId)) {
@@ -115,7 +124,7 @@ const GroupedItemsTable = (({
       mtoItemId,
       setTimeout(() => {
         saveQuantityOrdered(mtoItemId, nextValue);
-      }, 800)
+      }, 800),
     );
   };
 
@@ -149,282 +158,296 @@ const GroupedItemsTable = (({
       {orderedGroupNames.map((name) => {
         // Check if all items in this group have been fully ordered
         const groupItems = groups.get(name) || [];
-        const allItemsOrdered = groupItems.length > 0 && groupItems.every(
-          (it) => Number(it.quantity_ordered_po || 0) >= Number(it.quantity || 0)
-        );
-        
+        const allItemsOrdered =
+          groupItems.length > 0 &&
+          groupItems.every(
+            (it) =>
+              Number(it.quantity_ordered_po || 0) >= Number(it.quantity || 0),
+          );
+
         return (
-        <div key={name}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-semibold text-slate-700">{name}</div>
-            {activeTab === "active" && name !== "Unassigned" && !allItemsOrdered && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const firstItem = groups.get(name)?.[0];
-                  const supplierId =
-                    firstItem?.item?.supplier?.supplier_id ||
-                    firstItem?.item?.supplier_id ||
-                    null;
-                  if (!supplierId) return;
-                  onOpenPO(name, supplierId, mtoId);
-                }}
-                className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
-              >
-                <Plus className="inline w-3 h-3 mr-1" /> Create Purchase Order
-              </button>
-            )}
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border border-slate-200 rounded-lg">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Image
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Details
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quantity
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Qty Ordered
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-200">
-                {groups.get(name).map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {item.item?.image?.url ? (
-                          <Image
-                            loading="lazy"
-                            src={`/${item.item.image.url}`}
-                            alt={item.item_id || item.item?.category || "Item image"}
-                            className="w-10 h-10 object-cover rounded border border-slate-200"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                              e.target.nextSibling.style.display = "flex";
-                            }}
-                            width={40}
-                            height={40}
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                            <Package className="w-5 h-5 text-slate-400" />
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                        {item.item?.category}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="text-xs text-gray-600 space-y-1">
-                        {item.item?.sheet && (
-                          <>
-                            <div>
-                              <span className="font-medium">Brand:</span>{" "}
-                              {item.item.sheet.brand || "-"}
+          <div key={name}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-semibold text-slate-700">{name}</div>
+              {activeTab === "active" &&
+                name !== "Unassigned" &&
+                !allItemsOrdered && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const firstItem = groups.get(name)?.[0];
+                      const supplierId =
+                        firstItem?.item?.supplier?.supplier_id ||
+                        firstItem?.item?.supplier_id ||
+                        null;
+                      if (!supplierId) return;
+                      onOpenPO(name, supplierId, mtoId);
+                    }}
+                    className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
+                  >
+                    <Plus className="inline w-3 h-3 mr-1" /> Create Purchase
+                    Order
+                  </button>
+                )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border border-slate-200 rounded-lg">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Image
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Details
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Quantity
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Qty Ordered
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {groups.get(name).map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {item.item?.image?.url ? (
+                            <Image
+                              loading="lazy"
+                              src={`/${item.item.image.url}`}
+                              alt={
+                                item.item_id ||
+                                item.item?.category ||
+                                "Item image"
+                              }
+                              className="w-10 h-10 object-cover rounded border border-slate-200"
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                e.target.nextSibling.style.display = "flex";
+                              }}
+                              width={40}
+                              height={40}
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                              <Package className="w-5 h-5 text-slate-400" />
                             </div>
-                            <div>
-                              <span className="font-medium">Color:</span>{" "}
-                              {item.item.sheet.color}
-                            </div>
-                            <div>
-                              <span className="font-medium">Finish:</span>{" "}
-                              {item.item.sheet.finish}
-                            </div>
-                            <div>
-                              <span className="font-medium">Face:</span>{" "}
-                              {item.item.sheet.face || "-"}
-                            </div>
-                            <div>
-                              <span className="font-medium">Dimensions:</span>{" "}
-                              {item.item.sheet.dimensions}
-                            </div>
-                          </>
-                        )}
-                        {item.item?.handle && (
-                          <>
-                            <div>
-                              <span className="font-medium">Brand:</span>{" "}
-                              {item.item.handle.brand || "-"}
-                            </div>
-                            <div>
-                              <span className="font-medium">Color:</span>{" "}
-                              {item.item.handle.color}
-                            </div>
-                            <div>
-                              <span className="font-medium">Type:</span>{" "}
-                              {item.item.handle.type}
-                            </div>
-                            <div>
-                              <span className="font-medium">Dimensions:</span>{" "}
-                              {item.item.handle.dimensions}
-                            </div>
-                            <div>
-                              <span className="font-medium">Material:</span>{" "}
-                              {item.item.handle.material || "-"}
-                            </div>
-                          </>
-                        )}
-                        {item.item?.hardware && (
-                          <>
-                            <div>
-                              <span className="font-medium">Brand:</span>{" "}
-                              {item.item.hardware.brand || "-"}
-                            </div>
-                            <div>
-                              <span className="font-medium">Name:</span>{" "}
-                              {item.item.hardware.name}
-                            </div>
-                            <div>
-                              <span className="font-medium">Type:</span>{" "}
-                              {item.item.hardware.type}
-                            </div>
-                            <div>
-                              <span className="font-medium">Dimensions:</span>{" "}
-                              {item.item.hardware.dimensions}
-                            </div>
-                            <div>
-                              <span className="font-medium">Sub Category:</span>{" "}
-                              {item.item.hardware.sub_category}
-                            </div>
-                          </>
-                        )}
-                        {item.item?.accessory && (
-                          <>
-                            <div>
-                              <span className="font-medium">Name:</span>{" "}
-                              {item.item.accessory.name}
-                            </div>
-                          </>
-                        )}
-                        {item.item?.edging_tape && (
-                          <>
-                            <div>
-                              <span className="font-medium">Brand:</span>{" "}
-                              {item.item.edging_tape.brand || "-"}
-                            </div>
-                            <div>
-                              <span className="font-medium">Color:</span>{" "}
-                              {item.item.edging_tape.color || "-"}
-                            </div>
-                            <div>
-                              <span className="font-medium">Finish:</span>{" "}
-                              {item.item.edging_tape.finish || "-"}
-                            </div>
-                            <div>
-                              <span className="font-medium">Dimensions:</span>{" "}
-                              {item.item.edging_tape.dimensions || "-"}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="text-xs text-gray-600">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Package className="w-4 h-4 text-gray-500" />
-                          <span>
-                            <span className="font-medium">Qty:</span>{" "}
-                            {item.quantity} {item.item?.measurement_unit}
-                          </span>
+                          )}
                         </div>
-                        {item.quantity_ordered_po > 0 && (
-                          <div className="flex items-center gap-1.5 text-blue-600 text-xs">
-                            <span>Ordered: {item.quantity_ordered_po}</span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                          {item.item?.category}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="text-xs text-gray-600 space-y-1">
+                          {item.item?.sheet && (
+                            <>
+                              <div>
+                                <span className="font-medium">Brand:</span>{" "}
+                                {item.item.sheet.brand || "-"}
+                              </div>
+                              <div>
+                                <span className="font-medium">Color:</span>{" "}
+                                {item.item.sheet.color}
+                              </div>
+                              <div>
+                                <span className="font-medium">Finish:</span>{" "}
+                                {item.item.sheet.finish}
+                              </div>
+                              <div>
+                                <span className="font-medium">Face:</span>{" "}
+                                {item.item.sheet.face || "-"}
+                              </div>
+                              <div>
+                                <span className="font-medium">Dimensions:</span>{" "}
+                                {item.item.sheet.dimensions}
+                              </div>
+                            </>
+                          )}
+                          {item.item?.handle && (
+                            <>
+                              <div>
+                                <span className="font-medium">Brand:</span>{" "}
+                                {item.item.handle.brand || "-"}
+                              </div>
+                              <div>
+                                <span className="font-medium">Color:</span>{" "}
+                                {item.item.handle.color}
+                              </div>
+                              <div>
+                                <span className="font-medium">Type:</span>{" "}
+                                {item.item.handle.type}
+                              </div>
+                              <div>
+                                <span className="font-medium">Dimensions:</span>{" "}
+                                {item.item.handle.dimensions}
+                              </div>
+                              <div>
+                                <span className="font-medium">Material:</span>{" "}
+                                {item.item.handle.material || "-"}
+                              </div>
+                            </>
+                          )}
+                          {item.item?.hardware && (
+                            <>
+                              <div>
+                                <span className="font-medium">Brand:</span>{" "}
+                                {item.item.hardware.brand || "-"}
+                              </div>
+                              <div>
+                                <span className="font-medium">Name:</span>{" "}
+                                {item.item.hardware.name}
+                              </div>
+                              <div>
+                                <span className="font-medium">Type:</span>{" "}
+                                {item.item.hardware.type}
+                              </div>
+                              <div>
+                                <span className="font-medium">Dimensions:</span>{" "}
+                                {item.item.hardware.dimensions}
+                              </div>
+                              <div>
+                                <span className="font-medium">
+                                  Sub Category:
+                                </span>{" "}
+                                {item.item.hardware.sub_category}
+                              </div>
+                            </>
+                          )}
+                          {item.item?.accessory && (
+                            <>
+                              <div>
+                                <span className="font-medium">Name:</span>{" "}
+                                {item.item.accessory.name}
+                              </div>
+                            </>
+                          )}
+                          {item.item?.edging_tape && (
+                            <>
+                              <div>
+                                <span className="font-medium">Brand:</span>{" "}
+                                {item.item.edging_tape.brand || "-"}
+                              </div>
+                              <div>
+                                <span className="font-medium">Color:</span>{" "}
+                                {item.item.edging_tape.color || "-"}
+                              </div>
+                              <div>
+                                <span className="font-medium">Finish:</span>{" "}
+                                {item.item.edging_tape.finish || "-"}
+                              </div>
+                              <div>
+                                <span className="font-medium">Dimensions:</span>{" "}
+                                {item.item.edging_tape.dimensions || "-"}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="text-xs text-gray-600">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Package className="w-4 h-4 text-gray-500" />
+                            <span>
+                              <span className="font-medium">Qty:</span>{" "}
+                              {item.quantity} {item.item?.measurement_unit}
+                            </span>
                           </div>
-                        )}
-                        {item.quantity_received > 0 && (
-                          <div className="flex items-center gap-1.5 text-green-600 text-xs">
-                            <span>Received: {item.quantity_received}</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input
-                        type="number"
-                        min="0"
-                        value={
-                          quantityOrderedDraftById[item.id] ??
-                          String(
-                            // If quantity_ordered_po > 0, use that value instead of quantity_ordered
-                            (item.quantity_ordered_po && Number(item.quantity_ordered_po) > 0)
-                              ? item.quantity_ordered_po
-                              : (item.quantity_ordered ?? 0)
-                          )
-                        }
-                        onChange={(e) =>
-                          handleQuantityOrderedChange(item.id, e.target.value)
-                        }
-                        onBlur={() => {
-                          const timers = quantityOrderedTimersRef.current;
-                          if (timers.has(item.id)) {
-                            clearTimeout(timers.get(item.id));
-                            timers.delete(item.id);
-                          }
-                          const v =
+                          {item.quantity_ordered_po > 0 && (
+                            <div className="flex items-center gap-1.5 text-blue-600 text-xs">
+                              <span>Ordered: {item.quantity_ordered_po}</span>
+                            </div>
+                          )}
+                          {item.quantity_received > 0 && (
+                            <div className="flex items-center gap-1.5 text-green-600 text-xs">
+                              <span>Received: {item.quantity_received}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <input
+                          type="number"
+                          min="0"
+                          value={
                             quantityOrderedDraftById[item.id] ??
                             String(
                               // If quantity_ordered_po > 0, use that value instead of quantity_ordered
-                              (item.quantity_ordered_po && Number(item.quantity_ordered_po))
+                              item.quantity_ordered_po &&
+                                Number(item.quantity_ordered_po) > 0
                                 ? item.quantity_ordered_po
-                                : (item.quantity_ordered ?? 0)
-                            );
-                          saveQuantityOrdered(item.id, v);
-                        }}
-                        disabled={!!isSavingQuantityOrderedById[item.id] || (Number(item.quantity_ordered_po || 0) > 0)}
-                        className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
-                      />
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {Number(item.quantity_ordered_po || 0) > 0 && (
-                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                          Ordered
-                        </span>
-                      )}
-                      {item.quantity_received > 0 && (
-                        <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-                          Received
-                        </span>
-                      )}
-                      {Number(item.quantity_ordered_po || 0) === 0 &&
-                        item.quantity_received === 0 && (
-                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                            Pending
+                                : (item.quantity_ordered ?? 0),
+                            )
+                          }
+                          onChange={(e) =>
+                            handleQuantityOrderedChange(item.id, e.target.value)
+                          }
+                          onBlur={() => {
+                            const timers = quantityOrderedTimersRef.current;
+                            if (timers.has(item.id)) {
+                              clearTimeout(timers.get(item.id));
+                              timers.delete(item.id);
+                            }
+                            const v =
+                              quantityOrderedDraftById[item.id] ??
+                              String(
+                                // If quantity_ordered_po > 0, use that value instead of quantity_ordered
+                                item.quantity_ordered_po &&
+                                  Number(item.quantity_ordered_po)
+                                  ? item.quantity_ordered_po
+                                  : (item.quantity_ordered ?? 0),
+                              );
+                            saveQuantityOrdered(item.id, v);
+                          }}
+                          disabled={
+                            !!isSavingQuantityOrderedById[item.id] ||
+                            Number(item.quantity_ordered_po || 0) > 0
+                          }
+                          className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
+                        />
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {Number(item.quantity_ordered_po || 0) > 0 && (
+                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                            Ordered
                           </span>
                         )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        {item.quantity_received > 0 && (
+                          <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                            Received
+                          </span>
+                        )}
+                        {Number(item.quantity_ordered_po || 0) === 0 &&
+                          item.quantity_received === 0 && (
+                            <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
+                              Pending
+                            </span>
+                          )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
         );
       })}
     </div>
   );
-});
+};
 
-export default function MaterialsToOrder({
-  supplierId,
-  onCountChange,
-}) {
+export default function MaterialsToOrder({ supplierId, onCountChange }) {
   const { getToken } = useAuth();
   const [materialsToOrder, setMaterialsToOrder] = useState([]);
   const [loadingMTO, setLoadingMTO] = useState(false);
@@ -460,10 +483,10 @@ export default function MaterialsToOrder({
         return {
           ...mto,
           items: (mto.items || []).map((it) =>
-            it.id === mtoItemId ? { ...it, quantity_ordered: value } : it
+            it.id === mtoItemId ? { ...it, quantity_ordered: value } : it,
           ),
         };
-      })
+      }),
     );
   };
 
@@ -476,7 +499,7 @@ export default function MaterialsToOrder({
         `/api/materials_to_order/by-supplier/${supplierId}`,
         {
           headers: { Authorization: `Bearer ${sessionToken}` },
-        }
+        },
       );
       if (response.data.status) {
         const data = response.data.data || [];
@@ -491,7 +514,7 @@ export default function MaterialsToOrder({
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
-        }
+        },
       );
     } finally {
       setLoadingMTO(false);
@@ -511,7 +534,7 @@ export default function MaterialsToOrder({
         const supplierItems = (mto.items || []).filter(
           (it) =>
             (it.item?.supplier?.supplier_id || it.item?.supplier_id || null) ===
-            supplierId
+            supplierId,
         );
         return { ...mto, items: supplierItems };
       })
@@ -551,7 +574,7 @@ export default function MaterialsToOrder({
     let list = materialsToOrder.filter((mto) =>
       mtoActiveTab === "active"
         ? mto.status === "DRAFT" || mto.status === "PARTIALLY_ORDERED"
-        : mto.status === "FULLY_ORDERED" || mto.status === "CLOSED"
+        : mto.status === "FULLY_ORDERED" || mto.status === "CLOSED",
     );
 
     // Precompute counts
@@ -559,7 +582,7 @@ export default function MaterialsToOrder({
       const itemsCount = mto.items?.length || 0;
       const itemsRemainingCount =
         mto.items?.filter(
-          (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0)
+          (it) => (it.quantity_ordered_po || 0) < (it.quantity || 0),
         ).length || 0;
       return {
         ...mto,
@@ -662,7 +685,7 @@ export default function MaterialsToOrder({
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -720,7 +743,7 @@ export default function MaterialsToOrder({
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -730,7 +753,7 @@ export default function MaterialsToOrder({
         });
         // Remove from local state
         setMediaFiles((prev) =>
-          prev.filter((f) => f.id !== pendingDeleteMediaId)
+          prev.filter((f) => f.id !== pendingDeleteMediaId),
         );
         // Refresh MTO list
         fetchMaterialsToOrder();
@@ -783,19 +806,21 @@ export default function MaterialsToOrder({
         <nav className="flex space-x-6">
           <button
             onClick={() => setMtoActiveTab("active")}
-            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${mtoActiveTab === "active"
-              ? "border-primary text-primary"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
+              mtoActiveTab === "active"
+                ? "border-primary text-primary"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
           >
             Active
           </button>
           <button
             onClick={() => setMtoActiveTab("completed")}
-            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${mtoActiveTab === "completed"
-              ? "border-primary text-primary"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
+              mtoActiveTab === "completed"
+                ? "border-primary text-primary"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
           >
             Completed
           </button>
@@ -889,28 +914,31 @@ export default function MaterialsToOrder({
                         {mto.__itemsRemaining ??
                           (mto.items?.filter(
                             (it) =>
-                              (it.quantity_ordered_po || 0) < (it.quantity || 0)
+                              (it.quantity_ordered_po || 0) <
+                              (it.quantity || 0),
                           ).length ||
                             0)}
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-1 text-xs font-medium rounded ${mto.status === "DRAFT"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : mto.status === "PARTIALLY_ORDERED"
-                              ? "bg-blue-100 text-blue-800"
-                              : mto.status === "FULLY_ORDERED"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
+                          className={`px-2 py-1 text-xs font-medium rounded ${
+                            mto.status === "DRAFT"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : mto.status === "PARTIALLY_ORDERED"
+                                ? "bg-blue-100 text-blue-800"
+                                : mto.status === "FULLY_ORDERED"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-800"
+                          }`}
                         >
                           {mto.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <ChevronDown
-                          className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${openAccordionId === mto.id ? "rotate-180" : ""
-                            }`}
+                          className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${
+                            openAccordionId === mto.id ? "rotate-180" : ""
+                          }`}
                         />
                       </td>
                     </tr>
@@ -972,7 +1000,9 @@ export default function MaterialsToOrder({
                                 mtoId={mto.id}
                                 activeTab={mtoActiveTab}
                                 onOpenPO={openCreatePOForSupplier}
-                                onUpdateQuantityOrdered={handleUpdateQuantityOrdered}
+                                onUpdateQuantityOrdered={
+                                  handleUpdateQuantityOrdered
+                                }
                               />
                             )}
                           </div>
@@ -1076,8 +1106,9 @@ export default function MaterialsToOrder({
                           {title} ({files.length})
                         </span>
                         <div
-                          className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
-                            }`}
+                          className={`transform transition-transform duration-200 ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
                         >
                           <ChevronDown className="w-4 h-4" />
                         </div>
@@ -1091,16 +1122,18 @@ export default function MaterialsToOrder({
                               key={file.id}
                               onClick={() => handleViewExistingFile(file)}
                               title="Click to view file"
-                              className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
-                                }`}
+                              className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
+                                isSmall ? "w-32" : "w-40"
+                              }`}
                             >
                               {/* File Preview */}
                               <div
-                                className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
-                                  } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                                className={`w-full ${
+                                  isSmall ? "aspect-4/3" : "aspect-square"
+                                } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
                               >
                                 {file.mime_type?.includes("image") ||
-                                  file.file_type === "image" ? (
+                                file.file_type === "image" ? (
                                   <Image
                                     height={100}
                                     width={100}
@@ -1118,24 +1151,27 @@ export default function MaterialsToOrder({
                                   />
                                 ) : (
                                   <div
-                                    className={`w-full h-full flex items-center justify-center rounded-lg ${file.mime_type?.includes("pdf") ||
+                                    className={`w-full h-full flex items-center justify-center rounded-lg ${
+                                      file.mime_type?.includes("pdf") ||
                                       file.file_type === "pdf" ||
                                       file.extension === "pdf"
-                                      ? "bg-red-50"
-                                      : "bg-green-50"
-                                      }`}
+                                        ? "bg-red-50"
+                                        : "bg-green-50"
+                                    }`}
                                   >
                                     {file.mime_type?.includes("pdf") ||
-                                      file.file_type === "pdf" ||
-                                      file.extension === "pdf" ? (
+                                    file.file_type === "pdf" ||
+                                    file.extension === "pdf" ? (
                                       <FileText
-                                        className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
-                                          } text-red-600`}
+                                        className={`${
+                                          isSmall ? "w-6 h-6" : "w-8 h-8"
+                                        } text-red-600`}
                                       />
                                     ) : (
                                       <File
-                                        className={`${isSmall ? "w-6 h-6" : "w-8 h-8"
-                                          } text-green-600`}
+                                        className={`${
+                                          isSmall ? "w-6 h-6" : "w-8 h-8"
+                                        } text-green-600`}
                                       />
                                     )}
                                   </div>
@@ -1243,8 +1279,9 @@ export default function MaterialsToOrder({
                     Select Files {uploadingMedia && "(Uploading...)"}
                   </label>
                   <div
-                    className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
+                    className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+                      uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   >
                     <input
                       ref={fileInputRef}

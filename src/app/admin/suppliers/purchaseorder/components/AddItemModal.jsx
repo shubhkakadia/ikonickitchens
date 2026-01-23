@@ -6,14 +6,20 @@ import axios from "axios";
 import Image from "next/image";
 import { X, ChevronDown, Upload, Package, Plus } from "lucide-react";
 
-export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) {
+export default function AddItemModal({
+  setShowModal,
+  supplierId,
+  onItemAdded,
+}) {
   const { getToken } = useAuth();
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] = useState(false);
+  const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] =
+    useState(false);
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
-  const [isMeasuringUnitDropdownOpen, setIsMeasuringUnitDropdownOpen] = useState(false);
+  const [isMeasuringUnitDropdownOpen, setIsMeasuringUnitDropdownOpen] =
+    useState(false);
   const [isFinishDropdownOpen, setIsFinishDropdownOpen] = useState(false);
   const [isFaceDropdownOpen, setIsFaceDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("Sheet");
@@ -26,7 +32,8 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
   const [filteredSuppliers, setFilteredSuppliers] = useState([]);
   const [measuringUnitOptions, setMeasuringUnitOptions] = useState([]);
   const [loadingMeasuringUnits, setLoadingMeasuringUnits] = useState(false);
-  const [showCreateMeasuringUnitModal, setShowCreateMeasuringUnitModal] = useState(false);
+  const [showCreateMeasuringUnitModal, setShowCreateMeasuringUnitModal] =
+    useState(false);
   const [newMeasuringUnitValue, setNewMeasuringUnitValue] = useState("");
   const [isCreatingMeasuringUnit, setIsCreatingMeasuringUnit] = useState(false);
   const [finishOptions, setFinishOptions] = useState([]);
@@ -44,7 +51,13 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
   const faceAutoSetRef = useRef(false);
   const [selectedCategory, setSelectedCategory] = useState("Sheet");
   const [imagePreview, setImagePreview] = useState(null);
-  const categories = ["Sheet", "Handle", "Hardware", "Accessory", "Edging Tape"];
+  const categories = [
+    "Sheet",
+    "Handle",
+    "Hardware",
+    "Accessory",
+    "Edging Tape",
+  ];
 
   const [formData, setFormData] = useState({
     image: "",
@@ -69,7 +82,7 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
   });
 
   const filteredCategories = categories.filter((category) =>
-    category.toLowerCase().includes(searchTerm.toLowerCase())
+    category.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const hardwareSubCategories = [
@@ -89,23 +102,23 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
   ];
 
   const filteredSubCategories = hardwareSubCategories.filter((subCategory) =>
-    subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase())
+    subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase()),
   );
 
   // Face options
   const faceOptions = ["single side", "double side"];
   const filteredFaces = faceOptions.filter((face) =>
-    face.toLowerCase().includes(faceSearchTerm.toLowerCase())
+    face.toLowerCase().includes(faceSearchTerm.toLowerCase()),
   );
 
   // Measuring unit handlers
   const filteredMeasuringUnits = measuringUnitOptions.filter((unit) =>
-    unit.toLowerCase().includes(measuringUnitSearchTerm.toLowerCase())
+    unit.toLowerCase().includes(measuringUnitSearchTerm.toLowerCase()),
   );
 
   // Finish handlers
   const filteredFinishes = finishOptions.filter((finish) =>
-    finish.toLowerCase().includes(finishSearchTerm.toLowerCase())
+    finish.toLowerCase().includes(finishSearchTerm.toLowerCase()),
   );
 
   // Fetch suppliers on component mount
@@ -219,7 +232,7 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
       setFilteredSuppliers(suppliers);
     } else {
       const filtered = suppliers.filter((supplier) =>
-        supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+        supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()),
       );
       setFilteredSuppliers(filtered);
     }
@@ -233,7 +246,7 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
         supplier_id: supplierId,
       }));
       // Find supplier name and set search term
-      const supplier = suppliers.find(s => s.supplier_id === supplierId);
+      const supplier = suppliers.find((s) => s.supplier_id === supplierId);
       if (supplier) {
         setSupplierSearchTerm(supplier.name);
       }
@@ -245,9 +258,15 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
     const handleClickOutside = (event) => {
       const dropdowns = [
         { ref: dropdownRef, setIsOpen: setIsDropdownOpen },
-        { ref: subCategoryDropdownRef, setIsOpen: setIsSubCategoryDropdownOpen },
+        {
+          ref: subCategoryDropdownRef,
+          setIsOpen: setIsSubCategoryDropdownOpen,
+        },
         { ref: supplierDropdownRef, setIsOpen: setIsSupplierDropdownOpen },
-        { ref: measuringUnitDropdownRef, setIsOpen: setIsMeasuringUnitDropdownOpen },
+        {
+          ref: measuringUnitDropdownRef,
+          setIsOpen: setIsMeasuringUnitDropdownOpen,
+        },
         { ref: finishDropdownRef, setIsOpen: setIsFinishDropdownOpen },
         { ref: faceDropdownRef, setIsOpen: setIsFaceDropdownOpen },
       ];
@@ -701,7 +720,10 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
-      <div className="absolute inset-0 bg-slate-900/40" onClick={() => setShowModal(false)} />
+      <div
+        className="absolute inset-0 bg-slate-900/40"
+        onClick={() => setShowModal(false)}
+      />
 
       <div className="relative bg-white w-full max-w-4xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
         {/* Header */}
@@ -788,12 +810,16 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Package className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-bold text-slate-800">Basic Information</h3>
+                <h3 className="text-lg font-bold text-slate-800">
+                  Basic Information
+                </h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative" ref={dropdownRef}>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Category
+                  </label>
                   <div className="relative">
                     <input
                       type="text"
@@ -852,10 +878,13 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Price per Unit (including GST) <span className="text-slate-400">(Optional)</span>
+                    Price per Unit (including GST){" "}
+                    <span className="text-slate-400">(Optional)</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
+                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500">
+                      $
+                    </span>
                     <input
                       type="number"
                       name="price"
@@ -872,7 +901,8 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                 {!supplierId && (
                   <div className="relative" ref={supplierDropdownRef}>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Supplier <span className="text-slate-400">(Optional)</span>
+                      Supplier{" "}
+                      <span className="text-slate-400">(Optional)</span>
                     </label>
                     <div className="relative">
                       <input
@@ -885,7 +915,9 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                       />
                       <button
                         type="button"
-                        onClick={() => setIsSupplierDropdownOpen(!isSupplierDropdownOpen)}
+                        onClick={() =>
+                          setIsSupplierDropdownOpen(!isSupplierDropdownOpen)
+                        }
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                       >
                         <ChevronDown
@@ -904,13 +936,15 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                               onClick={() =>
                                 handleSupplierSelect(
                                   supplier.supplier_id,
-                                  supplier.name
+                                  supplier.name,
                                 )
                               }
                               className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
                             >
                               <div>
-                                <div className="font-medium">{supplier.name}</div>
+                                <div className="font-medium">
+                                  {supplier.name}
+                                </div>
                                 <div className="text-xs text-slate-500">
                                   id: {supplier.supplier_id}
                                 </div>
@@ -929,12 +963,15 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
 
                 <div className="relative" ref={measuringUnitDropdownRef}>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Measurement Unit <span className="text-slate-400">(Optional)</span>
+                    Measurement Unit{" "}
+                    <span className="text-slate-400">(Optional)</span>
                   </label>
                   <div className="relative">
                     <input
                       type="text"
-                      value={measuringUnitSearchTerm || formData.measurement_unit}
+                      value={
+                        measuringUnitSearchTerm || formData.measurement_unit
+                      }
                       onChange={handleMeasuringUnitSearchChange}
                       onFocus={() => setIsMeasuringUnitDropdownOpen(true)}
                       className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
@@ -943,13 +980,16 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                     <button
                       type="button"
                       onClick={() =>
-                        setIsMeasuringUnitDropdownOpen(!isMeasuringUnitDropdownOpen)
+                        setIsMeasuringUnitDropdownOpen(
+                          !isMeasuringUnitDropdownOpen,
+                        )
                       }
                       className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                     >
                       <ChevronDown
-                        className={`w-5 h-5 transition-transform ${isMeasuringUnitDropdownOpen ? "rotate-180" : ""
-                          }`}
+                        className={`w-5 h-5 transition-transform ${
+                          isMeasuringUnitDropdownOpen ? "rotate-180" : ""
+                        }`}
                       />
                     </button>
                   </div>
@@ -972,21 +1012,28 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                               {unit}
                             </button>
                           ))}
-                          {measuringUnitSearchTerm && !filteredMeasuringUnits.some(u => u.toLowerCase() === measuringUnitSearchTerm.toLowerCase()) && (
-                            <div className="border-t border-slate-200">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setNewMeasuringUnitValue(measuringUnitSearchTerm);
-                                  setShowCreateMeasuringUnitModal(true);
-                                }}
-                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                              >
-                                <Plus className="w-4 h-4" />
-                                Create "{measuringUnitSearchTerm}"
-                              </button>
-                            </div>
-                          )}
+                          {measuringUnitSearchTerm &&
+                            !filteredMeasuringUnits.some(
+                              (u) =>
+                                u.toLowerCase() ===
+                                measuringUnitSearchTerm.toLowerCase(),
+                            ) && (
+                              <div className="border-t border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setNewMeasuringUnitValue(
+                                      measuringUnitSearchTerm,
+                                    );
+                                    setShowCreateMeasuringUnitModal(true);
+                                  }}
+                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                  Create "{measuringUnitSearchTerm}"
+                                </button>
+                              </div>
+                            )}
                         </>
                       ) : (
                         <div className="px-4 py-3">
@@ -997,7 +1044,9 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                             <button
                               type="button"
                               onClick={() => {
-                                setNewMeasuringUnitValue(measuringUnitSearchTerm);
+                                setNewMeasuringUnitValue(
+                                  measuringUnitSearchTerm,
+                                );
                                 setShowCreateMeasuringUnitModal(true);
                               }}
                               className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -1014,7 +1063,8 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Supplier Reference <span className="text-slate-400">(Optional)</span>
+                    Supplier Reference{" "}
+                    <span className="text-slate-400">(Optional)</span>
                   </label>
                   <input
                     type="text"
@@ -1028,7 +1078,8 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Supplier Product Link <span className="text-slate-400">(Optional)</span>
+                    Supplier Product Link{" "}
+                    <span className="text-slate-400">(Optional)</span>
                   </label>
                   <input
                     type="url"
@@ -1061,170 +1112,198 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Package className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-bold text-slate-800">{selectedCategory} Details</h3>
+                  <h3 className="text-lg font-bold text-slate-800">
+                    {selectedCategory} Details
+                  </h3>
                 </div>
 
                 {selectedCategory.toLowerCase() === "sheet" && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {["brand", "color", "finish", "face", "dimensions"].map((field) => (
-                        <div key={field}>
-                          {field === "finish" ? (
-                            <div className="relative" ref={finishDropdownRef}>
-                              <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                {field}
-                              </label>
-                              <div className="relative">
-                                <input
-                                  type="text"
-                                  value={finishSearchTerm || formData.finish}
-                                  onChange={handleFinishSearchChange}
-                                  onFocus={() => setIsFinishDropdownOpen(true)}
-                                  className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                  placeholder="Search or type a finish..."
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setIsFinishDropdownOpen(!isFinishDropdownOpen)
-                                  }
-                                  className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                >
-                                  <ChevronDown
-                                    className={`w-5 h-5 transition-transform ${isFinishDropdownOpen ? "rotate-180" : ""
-                                      }`}
+                      {["brand", "color", "finish", "face", "dimensions"].map(
+                        (field) => (
+                          <div key={field}>
+                            {field === "finish" ? (
+                              <div className="relative" ref={finishDropdownRef}>
+                                <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                  {field}
+                                </label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={finishSearchTerm || formData.finish}
+                                    onChange={handleFinishSearchChange}
+                                    onFocus={() =>
+                                      setIsFinishDropdownOpen(true)
+                                    }
+                                    className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                    placeholder="Search or type a finish..."
                                   />
-                                </button>
-                              </div>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setIsFinishDropdownOpen(
+                                        !isFinishDropdownOpen,
+                                      )
+                                    }
+                                    className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                  >
+                                    <ChevronDown
+                                      className={`w-5 h-5 transition-transform ${
+                                        isFinishDropdownOpen ? "rotate-180" : ""
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
 
-                              {isFinishDropdownOpen && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                  {loadingFinishes ? (
-                                    <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                      Loading finishes...
-                                    </div>
-                                  ) : filteredFinishes.length > 0 ? (
-                                    <>
-                                      {filteredFinishes.map((finish, index) => (
-                                        <button
-                                          key={index}
-                                          type="button"
-                                          onClick={() => handleFinishSelect(finish)}
-                                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                        >
-                                          {finish}
-                                        </button>
-                                      ))}
-                                      {finishSearchTerm && !filteredFinishes.some(f => f.toLowerCase() === finishSearchTerm.toLowerCase()) && (
-                                        <div className="border-t border-slate-200">
+                                {isFinishDropdownOpen && (
+                                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                    {loadingFinishes ? (
+                                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                        Loading finishes...
+                                      </div>
+                                    ) : filteredFinishes.length > 0 ? (
+                                      <>
+                                        {filteredFinishes.map(
+                                          (finish, index) => (
+                                            <button
+                                              key={index}
+                                              type="button"
+                                              onClick={() =>
+                                                handleFinishSelect(finish)
+                                              }
+                                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                            >
+                                              {finish}
+                                            </button>
+                                          ),
+                                        )}
+                                        {finishSearchTerm &&
+                                          !filteredFinishes.some(
+                                            (f) =>
+                                              f.toLowerCase() ===
+                                              finishSearchTerm.toLowerCase(),
+                                          ) && (
+                                            <div className="border-t border-slate-200">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setNewFinishValue(
+                                                    finishSearchTerm,
+                                                  );
+                                                  setShowCreateFinishModal(
+                                                    true,
+                                                  );
+                                                }}
+                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                              >
+                                                <Plus className="w-4 h-4" />
+                                                Create "{finishSearchTerm}"
+                                              </button>
+                                            </div>
+                                          )}
+                                      </>
+                                    ) : (
+                                      <div className="px-4 py-3">
+                                        <div className="text-sm text-slate-500 mb-2">
+                                          No matching finishes found
+                                        </div>
+                                        {finishSearchTerm && (
                                           <button
                                             type="button"
                                             onClick={() => {
-                                              setNewFinishValue(finishSearchTerm);
+                                              setNewFinishValue(
+                                                finishSearchTerm,
+                                              );
                                               setShowCreateFinishModal(true);
                                             }}
-                                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                            className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
                                           >
                                             <Plus className="w-4 h-4" />
                                             Create "{finishSearchTerm}"
                                           </button>
-                                        </div>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <div className="px-4 py-3">
-                                      <div className="text-sm text-slate-500 mb-2">
-                                        No matching finishes found
+                                        )}
                                       </div>
-                                      {finishSearchTerm && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setNewFinishValue(finishSearchTerm);
-                                            setShowCreateFinishModal(true);
-                                          }}
-                                          className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
-                                        >
-                                          <Plus className="w-4 h-4" />
-                                          Create "{finishSearchTerm}"
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : field === "face" ? (
+                              <div className="relative" ref={faceDropdownRef}>
+                                <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                  {field}
+                                </label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={
+                                      faceSearchTerm || formData.face || ""
+                                    }
+                                    onChange={handleFaceSearchChange}
+                                    onFocus={() => setIsFaceDropdownOpen(true)}
+                                    disabled={formData.is_sunmica}
+                                    className={`w-full text-sm text-slate-800 px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
+                                      formData.is_sunmica
+                                        ? "bg-slate-100 cursor-not-allowed border-slate-300"
+                                        : "border-slate-300"
+                                    }`}
+                                    placeholder="Select face..."
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setIsFaceDropdownOpen(!isFaceDropdownOpen)
+                                    }
+                                    disabled={formData.is_sunmica}
+                                    className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+                                  >
+                                    <ChevronDown
+                                      className={`w-5 h-5 transition-transform ${
+                                        isFaceDropdownOpen ? "rotate-180" : ""
+                                      }`}
+                                    />
+                                  </button>
                                 </div>
-                              )}
-                            </div>
-                          ) : field === "face" ? (
-                            <div className="relative" ref={faceDropdownRef}>
-                              <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                {field}
-                              </label>
-                              <div className="relative">
+
+                                {isFaceDropdownOpen && !formData.is_sunmica && (
+                                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                    {filteredFaces.length > 0 ? (
+                                      filteredFaces.map((face, index) => (
+                                        <button
+                                          key={index}
+                                          type="button"
+                                          onClick={() => handleFaceSelect(face)}
+                                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                        >
+                                          {face}
+                                        </button>
+                                      ))
+                                    ) : (
+                                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                        No matching options found
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                  {field}
+                                </label>
                                 <input
                                   type="text"
-                                  value={faceSearchTerm || formData.face || ""}
-                                  onChange={handleFaceSearchChange}
-                                  onFocus={() => setIsFaceDropdownOpen(true)}
-                                  disabled={formData.is_sunmica}
-                                  className={`w-full text-sm text-slate-800 px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${formData.is_sunmica
-                                    ? "bg-slate-100 cursor-not-allowed border-slate-300"
-                                    : "border-slate-300"
-                                    }`}
-                                  placeholder="Select face..."
+                                  name={field}
+                                  value={formData[field]}
+                                  onChange={handleInputChange}
+                                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                  placeholder={`Enter ${field}`}
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setIsFaceDropdownOpen(!isFaceDropdownOpen)
-                                  }
-                                  disabled={formData.is_sunmica}
-                                  className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
-                                >
-                                  <ChevronDown
-                                    className={`w-5 h-5 transition-transform ${isFaceDropdownOpen ? "rotate-180" : ""
-                                      }`}
-                                  />
-                                </button>
                               </div>
-
-                              {isFaceDropdownOpen && !formData.is_sunmica && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                  {filteredFaces.length > 0 ? (
-                                    filteredFaces.map((face, index) => (
-                                      <button
-                                        key={index}
-                                        type="button"
-                                        onClick={() => handleFaceSelect(face)}
-                                        className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                      >
-                                        {face}
-                                      </button>
-                                    ))
-                                  ) : (
-                                    <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                      No matching options found
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                {field}
-                              </label>
-                              <input
-                                type="text"
-                                name={field}
-                                value={formData[field]}
-                                onChange={handleInputChange}
-                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                placeholder={`Enter ${field}`}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                            )}
+                          </div>
+                        ),
+                      )}
                     </div>
                     <div>
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -1235,11 +1314,14 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                           onChange={handleInputChange}
                           className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-2 focus:ring-primary cursor-pointer"
                         />
-                        <span className="text-sm font-medium text-slate-700">Is Sunmica</span>
+                        <span className="text-sm font-medium text-slate-700">
+                          Is Sunmica
+                        </span>
                       </label>
                       {formData.is_sunmica && (
                         <p className="mt-1 text-xs text-slate-500">
-                          Face field is automatically set to "single side" for sunmica items
+                          Face field is automatically set to "single side" for
+                          sunmica items
                         </p>
                       )}
                     </div>
@@ -1248,21 +1330,23 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
 
                 {selectedCategory.toLowerCase() === "handle" && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {["brand", "color", "type", "material", "dimensions"].map((field) => (
-                      <div key={field}>
-                        <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                          {field}
-                        </label>
-                        <input
-                          type="text"
-                          name={field}
-                          value={formData[field]}
-                          onChange={handleInputChange}
-                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                          placeholder={`Enter ${field}`}
-                        />
-                      </div>
-                    ))}
+                    {["brand", "color", "type", "material", "dimensions"].map(
+                      (field) => (
+                        <div key={field}>
+                          <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                            {field}
+                          </label>
+                          <input
+                            type="text"
+                            name={field}
+                            value={formData[field]}
+                            onChange={handleInputChange}
+                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                            placeholder={`Enter ${field}`}
+                          />
+                        </div>
+                      ),
+                    )}
                   </div>
                 )}
 
@@ -1289,12 +1373,17 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                         />
                         <button
                           type="button"
-                          onClick={() => setIsSubCategoryDropdownOpen(!isSubCategoryDropdownOpen)}
+                          onClick={() =>
+                            setIsSubCategoryDropdownOpen(
+                              !isSubCategoryDropdownOpen,
+                            )
+                          }
                           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                         >
                           <ChevronDown
-                            className={`w-5 h-5 transition-transform duration-200 ${isSubCategoryDropdownOpen ? "rotate-180" : ""
-                              }`}
+                            className={`w-5 h-5 transition-transform duration-200 ${
+                              isSubCategoryDropdownOpen ? "rotate-180" : ""
+                            }`}
                           />
                         </button>
                       </div>
@@ -1306,7 +1395,9 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                               <button
                                 key={index}
                                 type="button"
-                                onClick={() => handleSubCategorySelect(subCategory)}
+                                onClick={() =>
+                                  handleSubCategorySelect(subCategory)
+                                }
                                 className="w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
                               >
                                 {subCategory}
@@ -1343,7 +1434,9 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                 {selectedCategory.toLowerCase() === "accessory" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Item Name</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Item Name
+                      </label>
                       <input
                         type="text"
                         name="name"
@@ -1382,8 +1475,9 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                                 className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                               >
                                 <ChevronDown
-                                  className={`w-5 h-5 transition-transform ${isFinishDropdownOpen ? "rotate-180" : ""
-                                    }`}
+                                  className={`w-5 h-5 transition-transform ${
+                                    isFinishDropdownOpen ? "rotate-180" : ""
+                                  }`}
                                 />
                               </button>
                             </div>
@@ -1400,27 +1494,36 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                                       <button
                                         key={index}
                                         type="button"
-                                        onClick={() => handleFinishSelect(finish)}
+                                        onClick={() =>
+                                          handleFinishSelect(finish)
+                                        }
                                         className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                       >
                                         {finish}
                                       </button>
                                     ))}
-                                    {finishSearchTerm && !filteredFinishes.some(f => f.toLowerCase() === finishSearchTerm.toLowerCase()) && (
-                                      <div className="border-t border-slate-200">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setNewFinishValue(finishSearchTerm);
-                                            setShowCreateFinishModal(true);
-                                          }}
-                                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                        >
-                                          <Plus className="w-4 h-4" />
-                                          Create "{finishSearchTerm}"
-                                        </button>
-                                      </div>
-                                    )}
+                                    {finishSearchTerm &&
+                                      !filteredFinishes.some(
+                                        (f) =>
+                                          f.toLowerCase() ===
+                                          finishSearchTerm.toLowerCase(),
+                                      ) && (
+                                        <div className="border-t border-slate-200">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setNewFinishValue(
+                                                finishSearchTerm,
+                                              );
+                                              setShowCreateFinishModal(true);
+                                            }}
+                                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                          >
+                                            <Plus className="w-4 h-4" />
+                                            Create "{finishSearchTerm}"
+                                          </button>
+                                        </div>
+                                      )}
                                   </>
                                 ) : (
                                   <div className="px-4 py-3">
@@ -1483,10 +1586,11 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`cursor-pointer px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${isSubmitting
+                className={`cursor-pointer px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
+                  isSubmitting
                     ? "bg-slate-300 text-slate-500 cursor-not-allowed"
                     : "bg-primary text-white hover:bg-primary/90"
-                  }`}
+                }`}
               >
                 {isSubmitting ? "Adding Item..." : "Add Item"}
               </button>
@@ -1497,8 +1601,14 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
 
       {/* Create Finish Modal */}
       {showCreateFinishModal && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-100" onClick={() => setShowCreateFinishModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-100"
+          onClick={() => setShowCreateFinishModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
                 Create New Finish
@@ -1552,8 +1662,14 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
 
       {/* Create Measuring Unit Modal */}
       {showCreateMeasuringUnitModal && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-100" onClick={() => setShowCreateMeasuringUnitModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-100"
+          onClick={() => setShowCreateMeasuringUnitModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
                 Create New Measuring Unit
@@ -1594,10 +1710,14 @@ export default function AddItemModal({ setShowModal, supplierId, onItemAdded }) 
                 </button>
                 <button
                   onClick={handleCreateNewMeasuringUnit}
-                  disabled={isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()}
+                  disabled={
+                    isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()
+                  }
                   className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {isCreatingMeasuringUnit ? "Creating..." : "Create Measuring Unit"}
+                  {isCreatingMeasuringUnit
+                    ? "Creating..."
+                    : "Create Measuring Unit"}
                 </button>
               </div>
             </div>

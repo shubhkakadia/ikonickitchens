@@ -67,10 +67,11 @@ export default function CRMLayout() {
             <button
               onClick={scrollLeft}
               disabled={!canScrollLeft}
-              className={`absolute left-0 top-0 z-10 h-full w-8 bg-linear-to-r from-white to-transparent flex items-center justify-center transition-all duration-200 ${canScrollLeft
+              className={`absolute left-0 top-0 z-10 h-full w-8 bg-linear-to-r from-white to-transparent flex items-center justify-center transition-all duration-200 ${
+                canScrollLeft
                   ? "text-gray-600 hover:text-[#B92F34] hover:bg-gray-50"
                   : "text-gray-300 cursor-not-allowed"
-                }`}
+              }`}
               aria-label="Scroll tabs left"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -78,10 +79,11 @@ export default function CRMLayout() {
             <button
               onClick={scrollRight}
               disabled={!canScrollRight}
-              className={`absolute right-0 top-0 z-10 h-full w-8 bg-linear-to-l from-white to-transparent flex items-center justify-center transition-all duration-200 ${canScrollRight
+              className={`absolute right-0 top-0 z-10 h-full w-8 bg-linear-to-l from-white to-transparent flex items-center justify-center transition-all duration-200 ${
+                canScrollRight
                   ? "text-gray-600 hover:text-[#B92F34] hover:bg-gray-50"
                   : "text-gray-300 cursor-not-allowed"
-                }`}
+              }`}
               aria-label="Scroll tabs right"
             >
               <ChevronRight className="w-4 h-4" />
@@ -106,9 +108,10 @@ export default function CRMLayout() {
               className={`
                 group relative flex items-center min-w-0 max-w-xs px-4 py-3 cursor-pointer
                 transition-all duration-300 ease-in-out transform
-                ${activeTab.id === tab.id
-                  ? "bg-white border-t-2 border-[#B92F34] text-[#B92F34] shadow-sm"
-                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                ${
+                  activeTab.id === tab.id
+                    ? "bg-white border-t-2 border-[#B92F34] text-[#B92F34] shadow-sm"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 }
                 ${index === 0 ? "ml-0" : ""}
                 ${index === tabs.length - 1 ? "mr-0" : ""}
@@ -132,9 +135,10 @@ export default function CRMLayout() {
                 }}
                 className={`
                   cursor-pointer shrink-0 p-1 rounded-full transition-all duration-200
-                  ${activeTab.id === tab.id
-                    ? "text-[#B92F34] hover:bg-red-50 hover:text-red-600"
-                    : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+                  ${
+                    activeTab.id === tab.id
+                      ? "text-[#B92F34] hover:bg-red-50 hover:text-red-600"
+                      : "text-gray-400 hover:text-red-500 hover:bg-red-50"
                   }
                   group-hover:opacity-100 opacity-0
                 `}

@@ -1,5 +1,15 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { Plus, X, Save, Download, FileText, FileUp, Trash, ChevronDown, Eye } from "lucide-react";
+import {
+  Plus,
+  X,
+  Save,
+  Download,
+  FileText,
+  FileUp,
+  Trash,
+  ChevronDown,
+  Eye,
+} from "lucide-react";
 import { formData } from "./MaterialSelectionConstants";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBaseUrl } from "@/lib/baseUrl";
@@ -64,7 +74,12 @@ export default function MaterialSelection({ lot_id, project_id }) {
     return itemName;
   };
 
-  const handleApplicableChange = (sectionKey, itemName, checked, category = null) => {
+  const handleApplicableChange = (
+    sectionKey,
+    itemName,
+    checked,
+    category = null,
+  ) => {
     const itemKey = getItemKey(itemName, category);
     setApplicableItems((prev) => ({
       ...prev,
@@ -115,14 +130,14 @@ export default function MaterialSelection({ lot_id, project_id }) {
   const handleRemoveCustomItem = (sectionKey, itemId) => {
     // Get the custom item to remove from current state
     const itemToRemove = customItems[sectionKey]?.find(
-      (item) => item.id === itemId
+      (item) => item.id === itemId,
     );
 
     // First update customItems
     setCustomItems((prev) => ({
       ...prev,
       [sectionKey]: (prev[sectionKey] || []).filter(
-        (item) => item.id !== itemId
+        (item) => item.id !== itemId,
       ),
     }));
 
@@ -150,7 +165,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
   const handleCustomItemNameChange = (sectionKey, itemId, value) => {
     // Get the current item to find its old name and category
     const currentItem = customItems[sectionKey]?.find(
-      (item) => item.id === itemId
+      (item) => item.id === itemId,
     );
     const oldName = currentItem?.name;
     const category = currentItem?.category || null;
@@ -160,7 +175,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
     setCustomItems((prev) => ({
       ...prev,
       [sectionKey]: (prev[sectionKey] || []).map((item) =>
-        item.id === itemId ? { ...item, name: value } : item
+        item.id === itemId ? { ...item, name: value } : item,
       ),
     }));
 
@@ -421,7 +436,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
     const newCustomArea = {
       id: newAreaId,
       name: newAreaId,
-      originalNumber: nextNumber.toString() // Store original number for default value
+      originalNumber: nextNumber.toString(), // Store original number for default value
     };
 
     setCustomAreas((prev) => ({
@@ -519,7 +534,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
     if (activeTab === areaId) {
       // Find another custom area or default to "Kitchen"
       const remainingCustomAreas = Object.keys(customAreas).filter(
-        (id) => id !== areaId
+        (id) => id !== areaId,
       );
       if (remainingCustomAreas.length > 0) {
         setActiveTab(remainingCustomAreas[0]);
@@ -574,15 +589,13 @@ export default function MaterialSelection({ lot_id, project_id }) {
     if (activeTab === bedId) {
       // Find another bed tab or default to "Kitchen"
       const remainingBedTabs = Object.keys(bedTabs).filter(
-        (id) => id !== bedId && id.startsWith("Bed")
+        (id) => id !== bedId && id.startsWith("Bed"),
       );
       if (remainingBedTabs.length > 0) {
         setActiveTab(remainingBedTabs[0]);
       } else {
         // Find first non-bed tab from formData
-        const nonBedTabs = Object.keys(formData).filter(
-          (key) => key !== "Bed"
-        );
+        const nonBedTabs = Object.keys(formData).filter((key) => key !== "Bed");
         setActiveTab(nonBedTabs.length > 0 ? nonBedTabs[0] : "Kitchen");
       }
     }
@@ -654,7 +667,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status && response.data.data) {
@@ -677,11 +690,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
       if (error.response?.status !== 404) {
         toast.error(
           error.response?.data?.message ||
-          "Failed to fetch material selection. Please try again.",
+            "Failed to fetch material selection. Please try again.",
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
       }
     } finally {
@@ -780,8 +793,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
             if (!newApplicableItems[areaName]) {
               newApplicableItems[areaName] = {};
             }
-            newApplicableItems[areaName][itemKey] =
-              item.is_applicable || false;
+            newApplicableItems[areaName][itemKey] = item.is_applicable || false;
 
             // Set item notes
             if (item.item_notes) {
@@ -792,14 +804,17 @@ export default function MaterialSelection({ lot_id, project_id }) {
             }
 
             // For custom areas, all items are custom items
-            if (newCustomAreas[areaName] || (!formData[areaName] && !areaName.startsWith("Bed"))) {
+            if (
+              newCustomAreas[areaName] ||
+              (!formData[areaName] && !areaName.startsWith("Bed"))
+            ) {
               // It's a custom area, so all items are custom
               if (!newCustomItems[areaName]) {
                 newCustomItems[areaName] = [];
               }
               // Check if custom item already exists
               const exists = newCustomItems[areaName].some(
-                (ci) => ci.name === item.name && ci.category === item.category
+                (ci) => ci.name === item.name && ci.category === item.category,
               );
               if (!exists) {
                 newCustomItems[areaName].push({
@@ -818,7 +833,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
               const isPredefined = checkIfItemIsPredefined(
                 areaName,
                 item.name,
-                sectionItems
+                sectionItems,
               );
 
               if (!isPredefined) {
@@ -828,7 +843,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
                 }
                 // Check if custom item already exists
                 const exists = newCustomItems[areaName].some(
-                  (ci) => ci.name === item.name && ci.category === item.category
+                  (ci) =>
+                    ci.name === item.name && ci.category === item.category,
                 );
                 if (!exists) {
                   newCustomItems[areaName].push({
@@ -910,7 +926,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status && response.data.data) {
@@ -929,11 +945,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
       console.error("Error fetching version:", error);
       toast.error(
         error.response?.data?.message ||
-        "Failed to fetch version data. Please try again.",
+          "Failed to fetch version data. Please try again.",
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     } finally {
       setIsLoading(false);
@@ -952,15 +968,12 @@ export default function MaterialSelection({ lot_id, project_id }) {
       // The API might accept lot_id as a query parameter or we need to find it differently
       // For now, we'll try the standard API and handle gracefully if it fails
       try {
-        const response = await axios.get(
-          `${getBaseUrl()}/api/lot/${lot_id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${sessionToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const response = await axios.get(`${getBaseUrl()}/api/lot/${lot_id}`, {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        });
 
         if (response.data.status && response.data.data) {
           setLotData(response.data.data);
@@ -970,7 +983,9 @@ export default function MaterialSelection({ lot_id, project_id }) {
         // If API call fails, try to get lot data from material selection data
         // The material selection already includes lot info, but not startDate
         // We'll handle missing startDate gracefully in the PDF
-        console.log("Could not fetch lot details via API, will use available data");
+        console.log(
+          "Could not fetch lot details via API, will use available data",
+        );
       }
     } catch (error) {
       console.error("Error fetching lot data:", error);
@@ -999,8 +1014,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
       // Get area notes (convert empty strings to null)
       const areaNote =
         areaNotes[sectionKey] &&
-          typeof areaNotes[sectionKey] === "string" &&
-          areaNotes[sectionKey].trim() !== ""
+        typeof areaNotes[sectionKey] === "string" &&
+        areaNotes[sectionKey].trim() !== ""
           ? areaNotes[sectionKey].trim()
           : null;
 
@@ -1025,18 +1040,17 @@ export default function MaterialSelection({ lot_id, project_id }) {
       if (isCustomArea) {
         // Custom areas - only process custom items (no predefined items)
         const customAreaItems = (customItems[sectionKey] || []).filter(
-          (item) => !item.category && item.name.trim() !== ""
+          (item) => !item.category && item.name.trim() !== "",
         );
 
         customAreaItems.forEach((customItem) => {
           // Always include custom items if they have a name, regardless of applicable status or notes
           const itemKey = getItemKey(customItem.name, null);
-          const isApplicable =
-            applicableItems[sectionKey]?.[itemKey] || false;
+          const isApplicable = applicableItems[sectionKey]?.[itemKey] || false;
           const itemNote =
             notes[sectionKey]?.[itemKey] &&
-              typeof notes[sectionKey][itemKey] === "string" &&
-              notes[sectionKey][itemKey].trim() !== ""
+            typeof notes[sectionKey][itemKey] === "string" &&
+            notes[sectionKey][itemKey].trim() !== ""
               ? notes[sectionKey][itemKey].trim()
               : null;
 
@@ -1066,8 +1080,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
               applicableItems[sectionKey]?.[itemKey] || false;
             const itemNote =
               notes[sectionKey]?.[itemKey] &&
-                typeof notes[sectionKey][itemKey] === "string" &&
-                notes[sectionKey][itemKey].trim() !== ""
+              typeof notes[sectionKey][itemKey] === "string" &&
+              notes[sectionKey][itemKey].trim() !== ""
                 ? notes[sectionKey][itemKey].trim()
                 : null;
 
@@ -1082,7 +1096,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
           // Process custom items for this category - always include if they have a name
           const categoryCustomItems = (customItems[sectionKey] || []).filter(
             (item) =>
-              item.category === group.category && item.name.trim() !== ""
+              item.category === group.category && item.name.trim() !== "",
           );
 
           categoryCustomItems.forEach((customItem) => {
@@ -1092,8 +1106,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
               applicableItems[sectionKey]?.[itemKey] || false;
             const itemNote =
               notes[sectionKey]?.[itemKey] &&
-                typeof notes[sectionKey][itemKey] === "string" &&
-                notes[sectionKey][itemKey].trim() !== ""
+              typeof notes[sectionKey][itemKey] === "string" &&
+              notes[sectionKey][itemKey].trim() !== ""
                 ? notes[sectionKey][itemKey].trim()
                 : null;
 
@@ -1119,8 +1133,8 @@ export default function MaterialSelection({ lot_id, project_id }) {
               applicableItems[sectionKey]?.[itemKey] || false;
             const itemNote =
               notes[sectionKey]?.[itemKey] &&
-                typeof notes[sectionKey][itemKey] === "string" &&
-                notes[sectionKey][itemKey].trim() !== ""
+              typeof notes[sectionKey][itemKey] === "string" &&
+              notes[sectionKey][itemKey].trim() !== ""
                 ? notes[sectionKey][itemKey].trim()
                 : null;
 
@@ -1135,18 +1149,17 @@ export default function MaterialSelection({ lot_id, project_id }) {
 
         // Process custom items for regular tabs (without category) - always include if they have a name
         const regularCustomItems = (customItems[sectionKey] || []).filter(
-          (item) => !item.category && item.name.trim() !== ""
+          (item) => !item.category && item.name.trim() !== "",
         );
 
         regularCustomItems.forEach((customItem) => {
           // Always include custom items if they have a name, regardless of applicable status or notes
           const itemKey = getItemKey(customItem.name, null);
-          const isApplicable =
-            applicableItems[sectionKey]?.[itemKey] || false;
+          const isApplicable = applicableItems[sectionKey]?.[itemKey] || false;
           const itemNote =
             notes[sectionKey]?.[itemKey] &&
-              typeof notes[sectionKey][itemKey] === "string" &&
-              notes[sectionKey][itemKey].trim() !== ""
+            typeof notes[sectionKey][itemKey] === "string" &&
+            notes[sectionKey][itemKey].trim() !== ""
               ? notes[sectionKey][itemKey].trim()
               : null;
 
@@ -1224,7 +1237,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -1240,18 +1253,18 @@ export default function MaterialSelection({ lot_id, project_id }) {
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
       }
     } catch (error) {
       console.error("Error creating material selection:", error);
       toast.error(
         error.response?.data?.message ||
-        "Failed to create material selection. Please try again.",
+          "Failed to create material selection. Please try again.",
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     } finally {
       setIsCreating(false);
@@ -1262,7 +1275,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
   const versionsList = useMemo(() => {
     if (!materialSelectionData || !materialSelectionData.versions) return [];
     return materialSelectionData.versions.sort(
-      (a, b) => b.version_number - a.version_number
+      (a, b) => b.version_number - a.version_number,
     );
   }, [materialSelectionData]);
 
@@ -1295,7 +1308,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status && response.data.data) {
@@ -1433,7 +1446,14 @@ export default function MaterialSelection({ lot_id, project_id }) {
         }
 
         // Add logo (left-aligned)
-        pdf.addImage(imageDataUrl, "PNG", margin, yPosition, logoWidth, logoHeight);
+        pdf.addImage(
+          imageDataUrl,
+          "PNG",
+          margin,
+          yPosition,
+          logoWidth,
+          logoHeight,
+        );
         yPosition += logoHeight + 10;
       } catch (error) {
         console.log("Could not load logo, continuing without it:", error);
@@ -1538,7 +1558,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
         "7. This document serves as a guide and may be updated as the project progresses.",
         "8. The company reserves the right to make reasonable substitutions for unavailable materials.",
         "9. All selections are subject to final client approval before ordering.",
-        "10. Any discrepancies should be reported immediately for resolution."
+        "10. Any discrepancies should be reported immediately for resolution.",
       ];
 
       termsAndConditions.forEach((term) => {
@@ -1665,7 +1685,12 @@ export default function MaterialSelection({ lot_id, project_id }) {
             // Draw line separator at the bottom of the row (spanning full width)
             pdf.setDrawColor(200, 200, 200);
             pdf.setLineWidth(0.1);
-            pdf.line(margin, yPosition + 2, margin + contentWidth, yPosition + 2);
+            pdf.line(
+              margin,
+              yPosition + 2,
+              margin + contentWidth,
+              yPosition + 2,
+            );
 
             // Move to next row position
             yPosition += 5;
@@ -1684,7 +1709,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
 
       pdf.setFontSize(11);
       pdf.setFont("helvetica", "normal");
-      pdf.text("By signing below, I acknowledge that I have reviewed and approved the material selections", margin, yPosition);
+      pdf.text(
+        "By signing below, I acknowledge that I have reviewed and approved the material selections",
+        margin,
+        yPosition,
+      );
       yPosition += 8;
       pdf.text("as detailed in this document.", margin, yPosition);
       yPosition += 15;
@@ -1707,15 +1736,30 @@ export default function MaterialSelection({ lot_id, project_id }) {
       pdf.setFont("helvetica", "bold");
       pdf.text("Signature:", margin, signatureLineY);
       pdf.setDrawColor(0, 0, 0);
-      pdf.line(margin + 30, signatureLineY - 3, margin + 120, signatureLineY - 3);
-      pdf.line(margin + 30, signatureLineY - 2, margin + 120, signatureLineY - 2);
+      pdf.line(
+        margin + 30,
+        signatureLineY - 3,
+        margin + 120,
+        signatureLineY - 3,
+      );
+      pdf.line(
+        margin + 30,
+        signatureLineY - 2,
+        margin + 120,
+        signatureLineY - 2,
+      );
 
       // Date field
       pdf.setFont("helvetica", "bold");
       pdf.text("Date:", margin + 130, signatureLineY);
       pdf.setFont("helvetica", "normal");
       pdf.setDrawColor(0, 0, 0);
-      pdf.line(margin + 150, signatureLineY - 3, margin + 180, signatureLineY - 3);
+      pdf.line(
+        margin + 150,
+        signatureLineY - 3,
+        margin + 180,
+        signatureLineY - 3,
+      );
 
       // Get version number for filename
       const versionNumber =
@@ -1723,9 +1767,9 @@ export default function MaterialSelection({ lot_id, project_id }) {
         "1";
 
       // Generate filename
-      const filename = `Material_Selection_V${versionNumber}_${new Date()
-        .toISOString()
-        .split("T")[0]}.pdf`;
+      const filename = `Material_Selection_V${versionNumber}_${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
 
       // Save PDF
       pdf.save(filename);
@@ -1777,8 +1821,12 @@ export default function MaterialSelection({ lot_id, project_id }) {
       if (versionData.areas && Array.isArray(versionData.areas)) {
         versionData.areas.forEach((area) => {
           // Check if area has any items or notes
-          const hasItems = area.items && Array.isArray(area.items) && area.items.length > 0;
-          const hasAreaNotes = area.notes && typeof area.notes === "string" && area.notes.trim() !== "";
+          const hasItems =
+            area.items && Array.isArray(area.items) && area.items.length > 0;
+          const hasAreaNotes =
+            area.notes &&
+            typeof area.notes === "string" &&
+            area.notes.trim() !== "";
 
           if (hasItems || hasAreaNotes) {
             const areaName = area.area_name || "";
@@ -1800,15 +1848,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
               });
             } else {
               // If area only has notes but no items, add one row with area info
-              excelData.push([
-                areaName,
-                bedOption,
-                areaNote,
-                "",
-                "",
-                "",
-                "",
-              ]);
+              excelData.push([areaName, bedOption, areaNote, "", "", "", ""]);
             }
           }
         });
@@ -1824,7 +1864,10 @@ export default function MaterialSelection({ lot_id, project_id }) {
       if (hasHeights) {
         excelData.push([]); // Empty row
         excelData.push(["Heights"]); // Header
-        excelData.push(["Ceiling Height (mm)", versionData.ceiling_height || ""]);
+        excelData.push([
+          "Ceiling Height (mm)",
+          versionData.ceiling_height || "",
+        ]);
         excelData.push([
           "Bulkhead Height (mm)",
           versionData.bulkhead_height || "",
@@ -1859,9 +1902,9 @@ export default function MaterialSelection({ lot_id, project_id }) {
         "1";
 
       // Generate filename
-      const filename = `Material_Selection_V${versionNumber}_${new Date()
-        .toISOString()
-        .split("T")[0]}.xlsx`;
+      const filename = `Material_Selection_V${versionNumber}_${
+        new Date().toISOString().split("T")[0]
+      }.xlsx`;
 
       // Export file
       XLSX.writeFile(wb, filename);
@@ -1903,7 +1946,9 @@ export default function MaterialSelection({ lot_id, project_id }) {
     }
 
     if (!materialSelectionData?.id) {
-      toast.error("Please create or save material selection first before uploading files.");
+      toast.error(
+        "Please create or save material selection first before uploading files.",
+      );
       return;
     }
 
@@ -1928,7 +1973,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -1966,7 +2011,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -2227,10 +2272,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
                 <div key={sectionKey} className="flex items-center gap-1">
                   <button
                     onClick={() => setActiveTab(sectionKey)}
-                    className={`cursor-pointer px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === sectionKey
-                      ? "border-secondary text-secondary"
-                      : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
-                      }`}
+                    className={`cursor-pointer px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                      activeTab === sectionKey
+                        ? "border-secondary text-secondary"
+                        : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+                    }`}
                   >
                     {displayName}
                     {applicableCount > 0 && (
@@ -2303,70 +2349,72 @@ export default function MaterialSelection({ lot_id, project_id }) {
             >
               <div className="p-4">
                 {/* Custom Area Name Input - Show for custom areas */}
-                {isCustomArea && (isCurrentVersion || !materialSelectionData) && (
-                  <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Custom Area Name
-                    </label>
-                    <input
-                      type="text"
-                      value={customAreas[sectionKey]?.name ?? ""}
-                      onChange={(e) => {
-                        // Allow empty string during typing
-                        const newName = e.target.value;
-                        setCustomAreas((prev) => {
-                          if (prev[sectionKey]) {
-                            return {
-                              ...prev,
-                              [sectionKey]: {
-                                ...prev[sectionKey],
-                                name: newName,
-                              },
-                            };
-                          }
-                          return prev;
-                        });
-                      }}
-                      onBlur={(e) => {
-                        const newName = e.target.value.trim();
+                {isCustomArea &&
+                  (isCurrentVersion || !materialSelectionData) && (
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Custom Area Name
+                      </label>
+                      <input
+                        type="text"
+                        value={customAreas[sectionKey]?.name ?? ""}
+                        onChange={(e) => {
+                          // Allow empty string during typing
+                          const newName = e.target.value;
+                          setCustomAreas((prev) => {
+                            if (prev[sectionKey]) {
+                              return {
+                                ...prev,
+                                [sectionKey]: {
+                                  ...prev[sectionKey],
+                                  name: newName,
+                                },
+                              };
+                            }
+                            return prev;
+                          });
+                        }}
+                        onBlur={(e) => {
+                          const newName = e.target.value.trim();
 
-                        if (newName && newName !== sectionKey) {
-                          handleRenameCustomArea(sectionKey, newName);
-                        } else if (!newName) {
-                          // Use originalNumber from customAreas for default value
-                          const originalNumber = customAreas[sectionKey]?.originalNumber || "1";
-                          const defaultValue = `Custom Area ${originalNumber}`;
+                          if (newName && newName !== sectionKey) {
+                            handleRenameCustomArea(sectionKey, newName);
+                          } else if (!newName) {
+                            // Use originalNumber from customAreas for default value
+                            const originalNumber =
+                              customAreas[sectionKey]?.originalNumber || "1";
+                            const defaultValue = `Custom Area ${originalNumber}`;
 
-                          // Set to default value if empty
-                          if (defaultValue !== sectionKey) {
-                            handleRenameCustomArea(sectionKey, defaultValue);
-                          } else {
-                            // Just update the display name if it's already the default
-                            setCustomAreas((prev) => {
-                              if (prev[sectionKey]) {
-                                return {
-                                  ...prev,
-                                  [sectionKey]: {
-                                    ...prev[sectionKey],
-                                    name: defaultValue,
-                                  },
-                                };
-                              }
-                              return prev;
-                            });
+                            // Set to default value if empty
+                            if (defaultValue !== sectionKey) {
+                              handleRenameCustomArea(sectionKey, defaultValue);
+                            } else {
+                              // Just update the display name if it's already the default
+                              setCustomAreas((prev) => {
+                                if (prev[sectionKey]) {
+                                  return {
+                                    ...prev,
+                                    [sectionKey]: {
+                                      ...prev[sectionKey],
+                                      name: defaultValue,
+                                    },
+                                  };
+                                }
+                                return prev;
+                              });
+                            }
                           }
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.target.blur();
-                        }
-                      }}
-                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
-                      placeholder="Enter custom area name..."
-                    />
-                  </div>
-                )}
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.target.blur();
+                          }
+                        }}
+                        className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                        placeholder="Enter custom area name..."
+                      />
+                    </div>
+                  )}
 
                 {/* Bed Option Selection - Always show for bed tabs */}
                 {isBedTab && (
@@ -2380,10 +2428,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
                           handleSelectBedOptionForTab(sectionKey, "WIR")
                         }
                         disabled={!isCurrentVersion && materialSelectionData}
-                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${bedConfig?.option === "WIR"
-                          ? "bg-secondary text-white border-secondary"
-                          : "bg-white"
-                          }`}
+                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          bedConfig?.option === "WIR"
+                            ? "bg-secondary text-white border-secondary"
+                            : "bg-white"
+                        }`}
                       >
                         WIR
                       </button>
@@ -2392,10 +2441,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
                           handleSelectBedOptionForTab(sectionKey, "BIR")
                         }
                         disabled={!isCurrentVersion && materialSelectionData}
-                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${bedConfig?.option === "BIR"
-                          ? "bg-secondary text-white border-secondary"
-                          : "bg-white"
-                          }`}
+                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          bedConfig?.option === "BIR"
+                            ? "bg-secondary text-white border-secondary"
+                            : "bg-white"
+                        }`}
                       >
                         BIR
                       </button>
@@ -2404,10 +2454,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
                           handleSelectBedOptionForTab(sectionKey, "Both")
                         }
                         disabled={!isCurrentVersion && materialSelectionData}
-                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:text-secondary hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${bedConfig?.option === "Both"
-                          ? "bg-secondary text-white border-secondary"
-                          : "bg-white"
-                          }`}
+                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:text-secondary hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          bedConfig?.option === "Both"
+                            ? "bg-secondary text-white border-secondary"
+                            : "bg-white"
+                        }`}
                       >
                         Both
                       </button>
@@ -2440,407 +2491,418 @@ export default function MaterialSelection({ lot_id, project_id }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {isCustomArea ? (
-                        // Custom areas - show only custom items (no predefined items)
-                        (customItems[sectionKey] || [])
-                          .filter((item) => !item.category)
-                          .map((customItem) => {
-                            const itemKey = getItemKey(customItem.name, null);
-                            const isApplicable =
-                              applicableItems[sectionKey]?.[itemKey] || false;
-                            const noteValue =
-                              notes[sectionKey]?.[itemKey] || "";
+                      {isCustomArea
+                        ? // Custom areas - show only custom items (no predefined items)
+                          (customItems[sectionKey] || [])
+                            .filter((item) => !item.category)
+                            .map((customItem) => {
+                              const itemKey = getItemKey(customItem.name, null);
+                              const isApplicable =
+                                applicableItems[sectionKey]?.[itemKey] || false;
+                              const noteValue =
+                                notes[sectionKey]?.[itemKey] || "";
 
-                            return (
-                              <tr
-                                key={customItem.id}
-                                className="border-b border-slate-100 hover:bg-slate-50 transition-colors bg-blue-50/30"
-                              >
-                                <td className="py-3 px-4">
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="text"
-                                      placeholder="Enter custom name..."
-                                      value={customItem.name}
-                                      onChange={(e) =>
-                                        handleCustomItemNameChange(
-                                          sectionKey,
-                                          customItem.id,
-                                          e.target.value
-                                        )
-                                      }
-                                      disabled={
-                                        !isCurrentVersion &&
-                                        materialSelectionData
-                                      }
-                                      className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
-                                    />
-                                    <button
-                                      onClick={() =>
-                                        handleRemoveCustomItem(
-                                          sectionKey,
-                                          customItem.id
-                                        )
-                                      }
-                                      disabled={
-                                        !isCurrentVersion &&
-                                        materialSelectionData
-                                      }
-                                      className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title="Remove this item"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4">
-                                  <label
-                                    className={`flex items-center gap-2 ${!isCurrentVersion &&
-                                      materialSelectionData
-                                      ? "cursor-not-allowed"
-                                      : "cursor-pointer"
-                                      }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isApplicable}
-                                      onChange={(e) =>
-                                        handleApplicableChange(
-                                          sectionKey,
-                                          customItem.name,
-                                          e.target.checked,
-                                          null
-                                        )
-                                      }
-                                      disabled={
-                                        !isCurrentVersion &&
-                                        materialSelectionData
-                                      }
-                                      className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                    />
-                                    <span className="text-sm text-slate-600">
-                                      {isApplicable ? "Yes" : "No"}
-                                    </span>
-                                  </label>
-                                </td>
-                                <td className="py-3 px-4">
-                                  <textarea
-                                    placeholder="Add notes..."
-                                    value={noteValue}
-                                    onChange={(e) =>
-                                      handleNotesChange(
-                                        sectionKey,
-                                        customItem.name,
-                                        e.target.value,
-                                        null
-                                      )
-                                    }
-                                    disabled={
-                                      !isCurrentVersion &&
-                                      materialSelectionData
-                                    }
-                                    rows={2}
-                                    className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
-                                  />
-                                </td>
-                              </tr>
-                            );
-                          })
-                      ) : sectionKey.startsWith("Bed") &&
-                        Array.isArray(sectionItems) &&
-                        sectionItems[0]?.category ? (
-                        // Bed tabs with grouped items by category
-                        sectionItems.map((group, groupIndex) => {
-                          // Get custom items for this category
-                          const categoryCustomItems = (
-                            customItems[sectionKey] || []
-                          ).filter(
-                            (item) => item.category === group.category
-                          );
-
-                          return (
-                            <React.Fragment key={groupIndex}>
-                              {/* Category Header Row */}
-                              <tr className="bg-slate-100 border-b-2 border-slate-300">
-                                <td
-                                  colSpan={3}
-                                  className="py-3 px-4 font-semibold text-slate-800 uppercase text-sm"
+                              return (
+                                <tr
+                                  key={customItem.id}
+                                  className="border-b border-slate-100 hover:bg-slate-50 transition-colors bg-blue-50/30"
                                 >
-                                  {group.category}
-                                </td>
-                              </tr>
-                              {/* Items in this category */}
-                              {group.items.map((itemName, itemIndex) => {
-                                const itemKey = getItemKey(itemName, group.category);
-                                const isApplicable =
-                                  applicableItems[sectionKey]?.[itemKey] ||
-                                  false;
-                                const noteValue =
-                                  notes[sectionKey]?.[itemKey] || "";
-
-                                return (
-                                  <tr
-                                    key={`${groupIndex}-${itemIndex}`}
-                                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                                  >
-                                    <td className="py-3 px-4 text-slate-700">
-                                      {itemName}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                      <label
-                                        className={`flex items-center gap-2 ${!isCurrentVersion &&
-                                          materialSelectionData
-                                          ? "cursor-not-allowed"
-                                          : "cursor-pointer"
-                                          }`}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={isApplicable}
-                                          onChange={(e) =>
-                                            handleApplicableChange(
-                                              sectionKey,
-                                              itemName,
-                                              e.target.checked,
-                                              group.category
-                                            )
-                                          }
-                                          disabled={
-                                            !isCurrentVersion &&
-                                            materialSelectionData
-                                          }
-                                          className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                        />
-                                        <span className="text-sm text-slate-600">
-                                          {isApplicable ? "Yes" : "No"}
-                                        </span>
-                                      </label>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                      <textarea
-                                        placeholder="Add notes..."
-                                        value={noteValue}
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        placeholder="Enter custom name..."
+                                        value={customItem.name}
                                         onChange={(e) =>
-                                          handleNotesChange(
+                                          handleCustomItemNameChange(
                                             sectionKey,
-                                            itemName,
+                                            customItem.id,
                                             e.target.value,
-                                            group.category
                                           )
                                         }
                                         disabled={
                                           !isCurrentVersion &&
                                           materialSelectionData
                                         }
-                                        rows={2}
-                                        className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                                        className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
                                       />
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                              {/* Custom Items for this category */}
-                              {categoryCustomItems.map((customItem) => {
-                                const itemKey = getItemKey(customItem.name, customItem.category);
-                                const isApplicable =
-                                  applicableItems[sectionKey]?.[itemKey] || false;
-                                const noteValue =
-                                  notes[sectionKey]?.[itemKey] || "";
-
-                                return (
-                                  <tr
-                                    key={customItem.id}
-                                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors bg-blue-50/30"
-                                  >
-                                    <td className="py-3 px-4">
-                                      <div className="flex items-center gap-2">
-                                        <input
-                                          type="text"
-                                          placeholder="Enter custom name..."
-                                          value={customItem.name}
-                                          onChange={(e) =>
-                                            handleCustomItemNameChange(
-                                              sectionKey,
-                                              customItem.id,
-                                              e.target.value
-                                            )
-                                          }
-                                          disabled={
-                                            !isCurrentVersion &&
-                                            materialSelectionData
-                                          }
-                                          className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
-                                        />
-                                        <button
-                                          onClick={() =>
-                                            handleRemoveCustomItem(
-                                              sectionKey,
-                                              customItem.id
-                                            )
-                                          }
-                                          disabled={
-                                            !isCurrentVersion &&
-                                            materialSelectionData
-                                          }
-                                          className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                                          title="Remove this item"
-                                        >
-                                          <X className="w-4 h-4" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                      <label
-                                        className={`flex items-center gap-2 ${!isCurrentVersion &&
-                                          materialSelectionData
-                                          ? "cursor-not-allowed"
-                                          : "cursor-pointer"
-                                          }`}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={isApplicable}
-                                          onChange={(e) =>
-                                            handleApplicableChange(
-                                              sectionKey,
-                                              customItem.name,
-                                              e.target.checked,
-                                              customItem.category
-                                            )
-                                          }
-                                          disabled={
-                                            !isCurrentVersion &&
-                                            materialSelectionData
-                                          }
-                                          className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                        />
-                                        <span className="text-sm text-slate-600">
-                                          {isApplicable ? "Yes" : "No"}
-                                        </span>
-                                      </label>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                      <textarea
-                                        placeholder="Add notes..."
-                                        value={noteValue}
-                                        onChange={(e) =>
-                                          handleNotesChange(
-                                            sectionKey,
-                                            customItem.name,
-                                            e.target.value,
-                                            customItem.category
-                                          )
-                                        }
-                                        disabled={
-                                          !isCurrentVersion &&
-                                          materialSelectionData
-                                        }
-                                        rows={2}
-                                        className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
-                                      />
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                              {/* Add Custom Button for this category */}
-                              {(isCurrentVersion ||
-                                !materialSelectionData) && (
-                                  <tr>
-                                    <td colSpan={3} className="py-2 px-4">
                                       <button
                                         onClick={() =>
-                                          handleAddCustomItem(
+                                          handleRemoveCustomItem(
                                             sectionKey,
-                                            group.category
+                                            customItem.id,
                                           )
                                         }
                                         disabled={
                                           !isCurrentVersion &&
                                           materialSelectionData
                                         }
-                                        className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-secondary hover:text-secondary/80 hover:bg-secondary/10 rounded-md transition-colors border border-secondary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title="Remove this item"
                                       >
-                                        <Plus className="w-4 h-4" />
-                                        Add Custom to {group.category}
+                                        <X className="w-4 h-4" />
                                       </button>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <label
+                                      className={`flex items-center gap-2 ${
+                                        !isCurrentVersion &&
+                                        materialSelectionData
+                                          ? "cursor-not-allowed"
+                                          : "cursor-pointer"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isApplicable}
+                                        onChange={(e) =>
+                                          handleApplicableChange(
+                                            sectionKey,
+                                            customItem.name,
+                                            e.target.checked,
+                                            null,
+                                          )
+                                        }
+                                        disabled={
+                                          !isCurrentVersion &&
+                                          materialSelectionData
+                                        }
+                                        className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                      />
+                                      <span className="text-sm text-slate-600">
+                                        {isApplicable ? "Yes" : "No"}
+                                      </span>
+                                    </label>
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <textarea
+                                      placeholder="Add notes..."
+                                      value={noteValue}
+                                      onChange={(e) =>
+                                        handleNotesChange(
+                                          sectionKey,
+                                          customItem.name,
+                                          e.target.value,
+                                          null,
+                                        )
+                                      }
+                                      disabled={
+                                        !isCurrentVersion &&
+                                        materialSelectionData
+                                      }
+                                      rows={2}
+                                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })
+                        : sectionKey.startsWith("Bed") &&
+                            Array.isArray(sectionItems) &&
+                            sectionItems[0]?.category
+                          ? // Bed tabs with grouped items by category
+                            sectionItems.map((group, groupIndex) => {
+                              // Get custom items for this category
+                              const categoryCustomItems = (
+                                customItems[sectionKey] || []
+                              ).filter(
+                                (item) => item.category === group.category,
+                              );
+
+                              return (
+                                <React.Fragment key={groupIndex}>
+                                  {/* Category Header Row */}
+                                  <tr className="bg-slate-100 border-b-2 border-slate-300">
+                                    <td
+                                      colSpan={3}
+                                      className="py-3 px-4 font-semibold text-slate-800 uppercase text-sm"
+                                    >
+                                      {group.category}
                                     </td>
                                   </tr>
-                                )}
-                            </React.Fragment>
-                          );
-                        })
-                      ) : (
-                        // Regular tabs with simple array of items
-                        Array.isArray(sectionItems) &&
-                        sectionItems.map((itemName, index) => {
-                          const itemKey = getItemKey(itemName, null);
-                          const isApplicable =
-                            applicableItems[sectionKey]?.[itemKey] || false;
-                          const noteValue =
-                            notes[sectionKey]?.[itemKey] || "";
-
-                          return (
-                            <tr
-                              key={index}
-                              className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                            >
-                              <td className="py-3 px-4 text-slate-700">
-                                {itemName}
-                              </td>
-                              <td className="py-3 px-4">
-                                <label
-                                  className={`flex items-center gap-2 ${!isCurrentVersion && materialSelectionData
-                                    ? "cursor-not-allowed"
-                                    : "cursor-pointer"
-                                    }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isApplicable}
-                                    onChange={(e) =>
-                                      handleApplicableChange(
-                                        sectionKey,
-                                        itemName,
-                                        e.target.checked,
-                                        null
-                                      )
-                                    }
-                                    disabled={
-                                      !isCurrentVersion &&
-                                      materialSelectionData
-                                    }
-                                    className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                  />
-                                  <span className="text-sm text-slate-600">
-                                    {isApplicable ? "Yes" : "No"}
-                                  </span>
-                                </label>
-                              </td>
-                              <td className="py-3 px-4">
-                                <textarea
-                                  placeholder="Add notes..."
-                                  value={noteValue}
-                                  onChange={(e) =>
-                                    handleNotesChange(
-                                      sectionKey,
+                                  {/* Items in this category */}
+                                  {group.items.map((itemName, itemIndex) => {
+                                    const itemKey = getItemKey(
                                       itemName,
-                                      e.target.value,
-                                      null
-                                    )
-                                  }
-                                  disabled={
-                                    !isCurrentVersion && materialSelectionData
-                                  }
-                                  rows={2}
-                                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })
+                                      group.category,
+                                    );
+                                    const isApplicable =
+                                      applicableItems[sectionKey]?.[itemKey] ||
+                                      false;
+                                    const noteValue =
+                                      notes[sectionKey]?.[itemKey] || "";
 
-                      )}
-                      {!sectionKey.startsWith("Bed") && !isCustomArea &&
+                                    return (
+                                      <tr
+                                        key={`${groupIndex}-${itemIndex}`}
+                                        className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                                      >
+                                        <td className="py-3 px-4 text-slate-700">
+                                          {itemName}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                          <label
+                                            className={`flex items-center gap-2 ${
+                                              !isCurrentVersion &&
+                                              materialSelectionData
+                                                ? "cursor-not-allowed"
+                                                : "cursor-pointer"
+                                            }`}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isApplicable}
+                                              onChange={(e) =>
+                                                handleApplicableChange(
+                                                  sectionKey,
+                                                  itemName,
+                                                  e.target.checked,
+                                                  group.category,
+                                                )
+                                              }
+                                              disabled={
+                                                !isCurrentVersion &&
+                                                materialSelectionData
+                                              }
+                                              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                            />
+                                            <span className="text-sm text-slate-600">
+                                              {isApplicable ? "Yes" : "No"}
+                                            </span>
+                                          </label>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                          <textarea
+                                            placeholder="Add notes..."
+                                            value={noteValue}
+                                            onChange={(e) =>
+                                              handleNotesChange(
+                                                sectionKey,
+                                                itemName,
+                                                e.target.value,
+                                                group.category,
+                                              )
+                                            }
+                                            disabled={
+                                              !isCurrentVersion &&
+                                              materialSelectionData
+                                            }
+                                            rows={2}
+                                            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                                          />
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                  {/* Custom Items for this category */}
+                                  {categoryCustomItems.map((customItem) => {
+                                    const itemKey = getItemKey(
+                                      customItem.name,
+                                      customItem.category,
+                                    );
+                                    const isApplicable =
+                                      applicableItems[sectionKey]?.[itemKey] ||
+                                      false;
+                                    const noteValue =
+                                      notes[sectionKey]?.[itemKey] || "";
+
+                                    return (
+                                      <tr
+                                        key={customItem.id}
+                                        className="border-b border-slate-100 hover:bg-slate-50 transition-colors bg-blue-50/30"
+                                      >
+                                        <td className="py-3 px-4">
+                                          <div className="flex items-center gap-2">
+                                            <input
+                                              type="text"
+                                              placeholder="Enter custom name..."
+                                              value={customItem.name}
+                                              onChange={(e) =>
+                                                handleCustomItemNameChange(
+                                                  sectionKey,
+                                                  customItem.id,
+                                                  e.target.value,
+                                                )
+                                              }
+                                              disabled={
+                                                !isCurrentVersion &&
+                                                materialSelectionData
+                                              }
+                                              className="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                                            />
+                                            <button
+                                              onClick={() =>
+                                                handleRemoveCustomItem(
+                                                  sectionKey,
+                                                  customItem.id,
+                                                )
+                                              }
+                                              disabled={
+                                                !isCurrentVersion &&
+                                                materialSelectionData
+                                              }
+                                              className="cursor-pointer p-2 hover:bg-red-100 text-red-600 rounded-md transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                              title="Remove this item"
+                                            >
+                                              <X className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                          <label
+                                            className={`flex items-center gap-2 ${
+                                              !isCurrentVersion &&
+                                              materialSelectionData
+                                                ? "cursor-not-allowed"
+                                                : "cursor-pointer"
+                                            }`}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isApplicable}
+                                              onChange={(e) =>
+                                                handleApplicableChange(
+                                                  sectionKey,
+                                                  customItem.name,
+                                                  e.target.checked,
+                                                  customItem.category,
+                                                )
+                                              }
+                                              disabled={
+                                                !isCurrentVersion &&
+                                                materialSelectionData
+                                              }
+                                              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                            />
+                                            <span className="text-sm text-slate-600">
+                                              {isApplicable ? "Yes" : "No"}
+                                            </span>
+                                          </label>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                          <textarea
+                                            placeholder="Add notes..."
+                                            value={noteValue}
+                                            onChange={(e) =>
+                                              handleNotesChange(
+                                                sectionKey,
+                                                customItem.name,
+                                                e.target.value,
+                                                customItem.category,
+                                              )
+                                            }
+                                            disabled={
+                                              !isCurrentVersion &&
+                                              materialSelectionData
+                                            }
+                                            rows={2}
+                                            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                                          />
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                  {/* Add Custom Button for this category */}
+                                  {(isCurrentVersion ||
+                                    !materialSelectionData) && (
+                                    <tr>
+                                      <td colSpan={3} className="py-2 px-4">
+                                        <button
+                                          onClick={() =>
+                                            handleAddCustomItem(
+                                              sectionKey,
+                                              group.category,
+                                            )
+                                          }
+                                          disabled={
+                                            !isCurrentVersion &&
+                                            materialSelectionData
+                                          }
+                                          className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-secondary hover:text-secondary/80 hover:bg-secondary/10 rounded-md transition-colors border border-secondary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                          <Plus className="w-4 h-4" />
+                                          Add Custom to {group.category}
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })
+                          : // Regular tabs with simple array of items
+                            Array.isArray(sectionItems) &&
+                            sectionItems.map((itemName, index) => {
+                              const itemKey = getItemKey(itemName, null);
+                              const isApplicable =
+                                applicableItems[sectionKey]?.[itemKey] || false;
+                              const noteValue =
+                                notes[sectionKey]?.[itemKey] || "";
+
+                              return (
+                                <tr
+                                  key={index}
+                                  className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                                >
+                                  <td className="py-3 px-4 text-slate-700">
+                                    {itemName}
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <label
+                                      className={`flex items-center gap-2 ${
+                                        !isCurrentVersion &&
+                                        materialSelectionData
+                                          ? "cursor-not-allowed"
+                                          : "cursor-pointer"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isApplicable}
+                                        onChange={(e) =>
+                                          handleApplicableChange(
+                                            sectionKey,
+                                            itemName,
+                                            e.target.checked,
+                                            null,
+                                          )
+                                        }
+                                        disabled={
+                                          !isCurrentVersion &&
+                                          materialSelectionData
+                                        }
+                                        className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                      />
+                                      <span className="text-sm text-slate-600">
+                                        {isApplicable ? "Yes" : "No"}
+                                      </span>
+                                    </label>
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <textarea
+                                      placeholder="Add notes..."
+                                      value={noteValue}
+                                      onChange={(e) =>
+                                        handleNotesChange(
+                                          sectionKey,
+                                          itemName,
+                                          e.target.value,
+                                          null,
+                                        )
+                                      }
+                                      disabled={
+                                        !isCurrentVersion &&
+                                        materialSelectionData
+                                      }
+                                      rows={2}
+                                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                      {!sectionKey.startsWith("Bed") &&
+                        !isCustomArea &&
                         customItems[sectionKey]
                           ?.filter((item) => !item.category)
                           .map((customItem) => {
@@ -2865,7 +2927,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                         handleCustomItemNameChange(
                                           sectionKey,
                                           customItem.id,
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       disabled={
@@ -2878,7 +2940,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                       onClick={() =>
                                         handleRemoveCustomItem(
                                           sectionKey,
-                                          customItem.id
+                                          customItem.id,
                                         )
                                       }
                                       disabled={
@@ -2894,10 +2956,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                 </td>
                                 <td className="py-3 px-4">
                                   <label
-                                    className={`flex items-center gap-2 ${!isCurrentVersion && materialSelectionData
-                                      ? "cursor-not-allowed"
-                                      : "cursor-pointer"
-                                      }`}
+                                    className={`flex items-center gap-2 ${
+                                      !isCurrentVersion && materialSelectionData
+                                        ? "cursor-not-allowed"
+                                        : "cursor-pointer"
+                                    }`}
                                   >
                                     <input
                                       type="checkbox"
@@ -2907,7 +2970,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                           sectionKey,
                                           customItem.name,
                                           e.target.checked,
-                                          null
+                                          null,
                                         )
                                       }
                                       disabled={
@@ -2930,7 +2993,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                         sectionKey,
                                         customItem.name,
                                         e.target.value,
-                                        null
+                                        null,
                                       )
                                     }
                                     disabled={
@@ -3055,8 +3118,9 @@ export default function MaterialSelection({ lot_id, project_id }) {
                       {title} ({files.length})
                     </span>
                     <div
-                      className={`transform transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
-                        }`}
+                      className={`transform transition-transform duration-200 ${
+                        isExpanded ? "rotate-180" : ""
+                      }`}
                     >
                       <ChevronDown className="w-4 h-4" />
                     </div>
@@ -3070,16 +3134,18 @@ export default function MaterialSelection({ lot_id, project_id }) {
                           key={file.id}
                           onClick={() => handleViewExistingFile(file)}
                           title="Click to view file"
-                          className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${isSmall ? "w-32" : "w-40"
-                            }`}
+                          className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
+                            isSmall ? "w-32" : "w-40"
+                          }`}
                         >
                           {/* File Preview */}
                           <div
-                            className={`w-full ${isSmall ? "aspect-4/3" : "aspect-square"
-                              } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                            className={`w-full ${
+                              isSmall ? "aspect-4/3" : "aspect-square"
+                            } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
                           >
                             {file.mime_type?.includes("image") ||
-                              file.file_type === "image" ? (
+                            file.file_type === "image" ? (
                               <Image
                                 height={100}
                                 width={100}
@@ -3203,8 +3269,9 @@ export default function MaterialSelection({ lot_id, project_id }) {
                 Select Files {uploadingMedia && "(Uploading...)"}
               </label>
               <div
-                className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+                  uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
+                }`}
               >
                 <input
                   ref={fileInputRef}

@@ -22,7 +22,7 @@ export async function GET(request, { params }) {
     if (!statements) {
       return NextResponse.json(
         { status: false, message: "Statements not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
     return NextResponse.json(
@@ -31,13 +31,13 @@ export async function GET(request, { params }) {
         message: "Statements fetched successfully",
         data: statements,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/supplier/statements:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

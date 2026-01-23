@@ -68,19 +68,19 @@ export async function GET(request, { params }) {
     if (!lot) {
       return NextResponse.json(
         { status: false, message: "Lot not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     return NextResponse.json(
       { status: true, message: "Lot fetched successfully", data: lot },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/lot/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -90,8 +90,14 @@ export async function PATCH(request, { params }) {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
     const { id } = await params;
-    const { name, startDate, installationDueDate, notes, status, installer_id } =
-      await request.json();
+    const {
+      name,
+      startDate,
+      installationDueDate,
+      notes,
+      status,
+      installer_id,
+    } = await request.json();
 
     // Build update data object with only provided fields
     const updateData = {};
@@ -119,8 +125,11 @@ export async function PATCH(request, { params }) {
       const validStatuses = ["ACTIVE", "COMPLETED", "CANCELLED"];
       if (!validStatuses.includes(status)) {
         return NextResponse.json(
-          { status: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` },
-          { status: 400 }
+          {
+            status: false,
+            message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+          },
+          { status: 400 },
         );
       }
       updateData.status = status;
@@ -137,7 +146,7 @@ export async function PATCH(request, { params }) {
         if (!installerExists) {
           return NextResponse.json(
             { status: false, message: "Invalid installer selected" },
-            { status: 400 }
+            { status: 400 },
           );
         }
         updateData.installer_id = installer_id;
@@ -167,7 +176,7 @@ export async function PATCH(request, { params }) {
       "lot",
       id,
       "UPDATE",
-      `Lot updated successfully: ${lot.name} for project: ${lot.project.name}`
+      `Lot updated successfully: ${lot.name} for project: ${lot.project.name}`,
     );
     // installer assigned notification
     if (lot.installer_id !== null) {
@@ -176,19 +185,22 @@ export async function PATCH(request, { params }) {
           {
             type: "assign_installer",
             lot_id: lot.lot_id,
-            installer_name: lot.installer?.first_name + " " + lot.installer?.last_name,
+            installer_name:
+              lot.installer?.first_name + " " + lot.installer?.last_name,
             project_name: lot.project?.name,
-            url: "https://ikonickitchens.com.au/admin/site_photos"
+            url: "https://ikonickitchens.com.au/admin/site_photos",
           },
-          "assign_installer"
+          "assign_installer",
         );
-      }
-      catch (notificationError) {
-        console.error("Failed to send installer assigned notification:", notificationError);
+      } catch (notificationError) {
+        console.error(
+          "Failed to send installer assigned notification:",
+          notificationError,
+        );
         // Don't fail the request if notification fails
       }
     }
-    
+
     if (!logged) {
       console.error(`Failed to log lot update: ${id} - ${lot.name}`);
     }
@@ -197,15 +209,17 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Lot updated successfully",
         data: lot,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/lot/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -227,14 +241,14 @@ export async function DELETE(request, { params }) {
     if (!lotToDelete) {
       return NextResponse.json(
         { status: false, message: "Lot not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (lotToDelete.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Lot already deleted" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -249,7 +263,7 @@ export async function DELETE(request, { params }) {
       "lot",
       id,
       "DELETE",
-      `Lot deleted successfully: ${lotToDelete.name} for project: ${lotToDelete.project.name}`
+      `Lot deleted successfully: ${lotToDelete.name} for project: ${lotToDelete.project.name}`,
     );
     if (!logged) {
       console.error(`Failed to log lot deletion: ${id} - ${lotToDelete.name}`);
@@ -258,20 +272,20 @@ export async function DELETE(request, { params }) {
           status: true,
           message: "Lot deleted successfully",
           data: lot,
-          warning: "Note: Deletion succeeded but logging failed"
+          warning: "Note: Deletion succeeded but logging failed",
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
     return NextResponse.json(
       { status: true, message: "Lot deleted successfully", data: lot },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/lot/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

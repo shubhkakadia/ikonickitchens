@@ -17,13 +17,13 @@ export async function GET(request, { params }) {
         message: "Lot tab notes fetched successfully",
         data: lotTab,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/lot_tab_notes/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -43,7 +43,7 @@ export async function PATCH(request, { params }) {
       "lot_tab_notes",
       id,
       "UPDATE",
-      `Lot tab notes updated successfully: ${lotTab.notes}`
+      `Lot tab notes updated successfully: ${lotTab.notes}`,
     );
     if (!logged) {
       console.error(`Failed to log lot tab notes update: ${id}`);
@@ -53,15 +53,17 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Lot tab notes updated successfully",
         data: lotTab,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/lot_tab_notes/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

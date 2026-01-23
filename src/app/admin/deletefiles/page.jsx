@@ -117,7 +117,7 @@ export default function DeleteFilesPage() {
       console.error("Error fetching deleted media:", error);
       setError(
         error.response?.data?.message ||
-        "Failed to fetch deleted media. Please try again."
+          "Failed to fetch deleted media. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -145,13 +145,15 @@ export default function DeleteFilesPage() {
       if (response.data.status) {
         setDeletedRecords(response.data.data || []);
       } else {
-        setRecordsError(response.data.message || "Failed to fetch deleted records");
+        setRecordsError(
+          response.data.message || "Failed to fetch deleted records",
+        );
       }
     } catch (error) {
       console.error("Error fetching deleted records:", error);
       setRecordsError(
         error.response?.data?.message ||
-        "Failed to fetch deleted records. Please try again."
+          "Failed to fetch deleted records. Please try again.",
       );
     } finally {
       setRecordsLoading(false);
@@ -179,7 +181,7 @@ export default function DeleteFilesPage() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -193,7 +195,7 @@ export default function DeleteFilesPage() {
       console.error("Error recovering record:", error);
       toast.error(
         error.response?.data?.message ||
-        "Failed to recover record. Please try again."
+          "Failed to recover record. Please try again.",
       );
     } finally {
       setRecoveringRecordId(null);
@@ -253,7 +255,7 @@ export default function DeleteFilesPage() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -269,7 +271,7 @@ export default function DeleteFilesPage() {
       console.error("Error deleting media:", error);
       toast.error(
         error.response?.data?.message ||
-        "Failed to delete media. Please try again."
+          "Failed to delete media. Please try again.",
       );
     } finally {
       setIsDeleting(false);
@@ -348,7 +350,7 @@ export default function DeleteFilesPage() {
 
       const results = await Promise.allSettled(fetchPromises);
       const successful = results.filter(
-        (r) => r.status === "fulfilled" && r.value.success
+        (r) => r.status === "fulfilled" && r.value.success,
       ).length;
       const failed = results.length - successful;
 
@@ -364,8 +366,9 @@ export default function DeleteFilesPage() {
       const url = URL.createObjectURL(zipBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `deleted-media-${new Date().toISOString().split("T")[0]
-        }.zip`;
+      link.download = `deleted-media-${
+        new Date().toISOString().split("T")[0]
+      }.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -373,7 +376,7 @@ export default function DeleteFilesPage() {
 
       if (failed > 0) {
         toast.warning(
-          `Downloaded ${successful} file(s), ${failed} file(s) failed.`
+          `Downloaded ${successful} file(s), ${failed} file(s) failed.`,
         );
       } else {
         toast.success(`Successfully downloaded ${successful} file(s) as zip.`);
@@ -414,15 +417,16 @@ export default function DeleteFilesPage() {
         const { successfulCount, failedCount } = response.data.data;
         if (successfulCount > 0) {
           toast.success(
-            `Successfully deleted ${successfulCount} file(s)${failedCount > 0 ? `, ${failedCount} failed` : ""
-            }`
+            `Successfully deleted ${successfulCount} file(s)${
+              failedCount > 0 ? `, ${failedCount} failed` : ""
+            }`,
           );
         } else {
           toast.error("Failed to delete files. Please try again.");
         }
       } else {
         toast.error(
-          response.data.message || "Failed to delete files. Please try again."
+          response.data.message || "Failed to delete files. Please try again.",
         );
       }
 
@@ -564,7 +568,7 @@ export default function DeleteFilesPage() {
       }
     } else {
       setSelectedMediaTypes((prev) =>
-        prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+        prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
       );
     }
   };
@@ -585,7 +589,7 @@ export default function DeleteFilesPage() {
     const totalFiles = filteredMedia.length;
     const totalSpace = filteredMedia.reduce(
       (sum, file) => sum + (file.size || 0),
-      0
+      0,
     );
     return {
       totalFiles,
@@ -654,10 +658,11 @@ export default function DeleteFilesPage() {
                     <div className="flex border-b border-slate-200 shrink-0">
                       <button
                         onClick={() => setActiveTab("media")}
-                        className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "media"
-                          ? "text-primary border-b-2 border-primary"
-                          : "text-slate-600 hover:text-slate-900"
-                          }`}
+                        className={`px-6 py-3 text-sm font-medium transition-colors ${
+                          activeTab === "media"
+                            ? "text-primary border-b-2 border-primary"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
                       >
                         <div className="flex items-center gap-2">
                           <ImageIcon className="w-4 h-4" />
@@ -666,10 +671,11 @@ export default function DeleteFilesPage() {
                       </button>
                       <button
                         onClick={() => setActiveTab("records")}
-                        className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === "records"
-                          ? "text-primary border-b-2 border-primary"
-                          : "text-slate-600 hover:text-slate-900"
-                          }`}
+                        className={`px-6 py-3 text-sm font-medium transition-colors ${
+                          activeTab === "records"
+                            ? "text-primary border-b-2 border-primary"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
                       >
                         <div className="flex items-center gap-2">
                           <Database className="w-4 h-4" />
@@ -728,10 +734,11 @@ export default function DeleteFilesPage() {
 
                               <button
                                 onClick={toggleSelectionMode}
-                                className={`flex items-center gap-2 cursor-pointer transition-all duration-200 border px-3 py-2 rounded-lg text-sm font-medium ${selectionMode
-                                  ? "bg-primary text-white border-primary hover:bg-primary/90"
-                                  : "text-slate-700 border-slate-300 hover:bg-slate-100"
-                                  }`}
+                                className={`flex items-center gap-2 cursor-pointer transition-all duration-200 border px-3 py-2 rounded-lg text-sm font-medium ${
+                                  selectionMode
+                                    ? "bg-primary text-white border-primary hover:bg-primary/90"
+                                    : "text-slate-700 border-slate-300 hover:bg-slate-100"
+                                }`}
                               >
                                 {selectionMode ? (
                                   <>
@@ -755,24 +762,32 @@ export default function DeleteFilesPage() {
                                 >
                                   <Funnel className="h-4 w-4" />
                                   <span>Filter by Type</span>
-                                  {mediaTypes.length - selectedMediaTypes.length >
+                                  {mediaTypes.length -
+                                    selectedMediaTypes.length >
                                     0 && (
-                                      <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                        {mediaTypes.length -
-                                          selectedMediaTypes.length}
-                                      </span>
-                                    )}
+                                    <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                      {mediaTypes.length -
+                                        selectedMediaTypes.length}
+                                    </span>
+                                  )}
                                   <ChevronDown className="h-4 w-4" />
                                 </button>
                                 {showFilterDropdown && (
                                   <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                     <div className="py-1">
                                       <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                        <span className="font-semibold">Select All</span>
+                                        <span className="font-semibold">
+                                          Select All
+                                        </span>
                                         <input
                                           type="checkbox"
-                                          checked={selectedMediaTypes.length === mediaTypes.length}
-                                          onChange={() => handleMediaTypeToggle("Select All")}
+                                          checked={
+                                            selectedMediaTypes.length ===
+                                            mediaTypes.length
+                                          }
+                                          onChange={() =>
+                                            handleMediaTypeToggle("Select All")
+                                          }
                                           className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                         />
                                       </label>
@@ -784,8 +799,12 @@ export default function DeleteFilesPage() {
                                           <span>{type}</span>
                                           <input
                                             type="checkbox"
-                                            checked={selectedMediaTypes.includes(type)}
-                                            onChange={() => handleMediaTypeToggle(type)}
+                                            checked={selectedMediaTypes.includes(
+                                              type,
+                                            )}
+                                            onChange={() =>
+                                              handleMediaTypeToggle(type)
+                                            }
                                             className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                           />
                                         </label>
@@ -798,8 +817,8 @@ export default function DeleteFilesPage() {
                           </div>
                           <div className="flex items-center justify-between">
                             <p className="text-slate-600 text-sm py-2">
-                              View and manage deleted media files. You can download
-                              or permanently delete them.
+                              View and manage deleted media files. You can
+                              download or permanently delete them.
                             </p>
                             {/* Bulk Actions */}
                             {selectionMode && selectedFiles.length > 0 && (
@@ -865,7 +884,8 @@ export default function DeleteFilesPage() {
                                 <File className="w-16 h-16 text-slate-400 mx-auto mb-4" />
                                 <p className="text-slate-600 text-lg">
                                   {search ||
-                                    selectedMediaTypes.length !== mediaTypes.length
+                                  selectedMediaTypes.length !==
+                                    mediaTypes.length
                                     ? "No media found matching your filters"
                                     : "No deleted media found"}
                                 </p>
@@ -881,13 +901,14 @@ export default function DeleteFilesPage() {
                                     className="cursor-pointer flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900"
                                   >
                                     {selectedFiles.length ===
-                                      filteredMedia.length ? (
+                                    filteredMedia.length ? (
                                       <CheckSquare className="w-4 h-4 text-primary" />
                                     ) : (
                                       <Square className="w-4 h-4 text-slate-400" />
                                     )}
                                     <span>
-                                      {selectedFiles.length === filteredMedia.length
+                                      {selectedFiles.length ===
+                                      filteredMedia.length
                                         ? "Deselect All"
                                         : "Select All"}
                                     </span>
@@ -896,15 +917,16 @@ export default function DeleteFilesPage() {
                               )}
                               {filteredMedia.map((file) => {
                                 const isSelected = selectedFiles.some(
-                                  (f) => f.id === file.id
+                                  (f) => f.id === file.id,
                                 );
                                 return (
                                   <div
                                     key={file.id}
-                                    className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border ${isSelected
-                                      ? "border-primary ring-2 ring-primary"
-                                      : "border-slate-200"
-                                      }`}
+                                    className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border ${
+                                      isSelected
+                                        ? "border-primary ring-2 ring-primary"
+                                        : "border-slate-200"
+                                    }`}
                                   >
                                     {/* File Preview */}
                                     <div
@@ -915,10 +937,11 @@ export default function DeleteFilesPage() {
                                           handleFileSelect(file);
                                         }
                                       }}
-                                      className={`relative w-full aspect-square ${selectionMode
-                                        ? "cursor-pointer"
-                                        : "cursor-pointer"
-                                        } bg-slate-100 overflow-hidden group`}
+                                      className={`relative w-full aspect-square ${
+                                        selectionMode
+                                          ? "cursor-pointer"
+                                          : "cursor-pointer"
+                                      } bg-slate-100 overflow-hidden group`}
                                     >
                                       {getFilePreview(file)}
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
@@ -940,7 +963,9 @@ export default function DeleteFilesPage() {
                                         <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
                                           <span>{getFileTypeLabel(file)}</span>
                                           <span>•</span>
-                                          <span>{formatFileSize(file.size)}</span>
+                                          <span>
+                                            {formatFileSize(file.size)}
+                                          </span>
                                         </div>
                                         <p className="text-[10px] text-slate-400 mt-0.5 truncate">
                                           {getSourceInfo(file)}
@@ -994,7 +1019,8 @@ export default function DeleteFilesPage() {
                       <>
                         <div className="p-4 shrink-0 border-b border-slate-200">
                           <p className="text-slate-600 text-sm">
-                            View and recover deleted records. Click recover to restore a record.
+                            View and recover deleted records. Click recover to
+                            restore a record.
                           </p>
                         </div>
 
@@ -1013,7 +1039,9 @@ export default function DeleteFilesPage() {
                             <div className="flex items-center justify-center min-h-[400px]">
                               <div className="text-center max-w-md">
                                 <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                                <p className="text-red-600 mb-4">{recordsError}</p>
+                                <p className="text-red-600 mb-4">
+                                  {recordsError}
+                                </p>
                                 <button
                                   onClick={fetchDeletedRecords}
                                   className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
@@ -1081,8 +1109,12 @@ export default function DeleteFilesPage() {
                                       </td>
                                       <td className="px-4 py-3 text-sm">
                                         <button
-                                          onClick={() => handleRecoverRecord(record)}
-                                          disabled={recoveringRecordId === record.id}
+                                          onClick={() =>
+                                            handleRecoverRecord(record)
+                                          }
+                                          disabled={
+                                            recoveringRecordId === record.id
+                                          }
                                           className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                           {recoveringRecordId === record.id ? (
@@ -1156,7 +1188,6 @@ export default function DeleteFilesPage() {
           entityType="media"
         />
       )}
-
     </AdminRoute>
   );
 }

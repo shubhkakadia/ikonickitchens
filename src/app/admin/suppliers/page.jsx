@@ -66,16 +66,11 @@ export default function page() {
   // Helper function to calculate total statement due
   const calculateTotalStatementDue = (supplier) => {
     const totalStatementDue =
-      supplier.statements &&
-        Array.isArray(supplier.statements)
-        ? supplier.statements.reduce(
-          (sum, statement) => {
-            const amount =
-              parseFloat(statement.amount) || 0;
+      supplier.statements && Array.isArray(supplier.statements)
+        ? supplier.statements.reduce((sum, statement) => {
+            const amount = parseFloat(statement.amount) || 0;
             return sum + amount;
-          },
-          0
-        )
+          }, 0)
         : 0;
     return totalStatementDue;
   };
@@ -83,8 +78,7 @@ export default function page() {
   // Helper function to calculate active PO count
   const calculateActivePOCount = (supplier) => {
     const activePOCount =
-      supplier.purchase_order &&
-        Array.isArray(supplier.purchase_order)
+      supplier.purchase_order && Array.isArray(supplier.purchase_order)
         ? supplier.purchase_order.length
         : 0;
     return activePOCount;
@@ -124,7 +118,10 @@ export default function page() {
       }
 
       // Handle numeric comparisons
-      if (sortField === "total_statement_due" || sortField === "active_po_count") {
+      if (
+        sortField === "total_statement_due" ||
+        sortField === "active_po_count"
+      ) {
         if (sortOrder === "asc") {
           return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
         } else {
@@ -155,7 +152,7 @@ export default function page() {
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedSuppliers = filteredAndSortedSuppliers.slice(
     startIndex,
-    endIndex
+    endIndex,
   );
 
   useEffect(() => {
@@ -216,9 +213,7 @@ export default function page() {
     } catch (error) {
       console.error("Error fetching suppliers:", error);
       setLoading(false);
-      setError(
-        error.response?.data?.message || "Failed to fetch suppliers"
-      );
+      setError(error.response?.data?.message || "Failed to fetch suppliers");
     }
   };
 
@@ -277,7 +272,7 @@ export default function page() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
@@ -293,44 +288,47 @@ export default function page() {
   };
 
   // Column mapping for Excel export
-  const columnMap = useMemo(() => ({
-    "Supplier Name": (supplier) => supplier.name || "",
-    Email: (supplier) => supplier.email || "",
-    Phone: (supplier) => supplier.phone || "",
-    Address: (supplier) => supplier.address || "",
-    Website: (supplier) => supplier.website || "",
-    Notes: (supplier) => supplier.notes || "",
-    "Total Statement Due": (supplier) => {
-      const totalStatementDue =
-        supplier.statements && Array.isArray(supplier.statements)
-          ? supplier.statements.reduce((sum, statement) => {
-            const amount = parseFloat(statement.amount) || 0;
-            return sum + amount;
-          }, 0)
-          : 0;
-      return totalStatementDue > 0
-        ? totalStatementDue.toLocaleString("en-US", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })
-        : "0.00";
-    },
-    "Active PO Count": (supplier) => {
-      const activePOCount =
-        supplier.purchase_order && Array.isArray(supplier.purchase_order)
-          ? supplier.purchase_order.length
-          : 0;
-      return activePOCount || 0;
-    },
-    "Created At": (supplier) =>
-      supplier.createdAt
-        ? new Date(supplier.createdAt).toLocaleDateString()
-        : "",
-    "Updated At": (supplier) =>
-      supplier.updatedAt
-        ? new Date(supplier.updatedAt).toLocaleDateString()
-        : "",
-  }), []);
+  const columnMap = useMemo(
+    () => ({
+      "Supplier Name": (supplier) => supplier.name || "",
+      Email: (supplier) => supplier.email || "",
+      Phone: (supplier) => supplier.phone || "",
+      Address: (supplier) => supplier.address || "",
+      Website: (supplier) => supplier.website || "",
+      Notes: (supplier) => supplier.notes || "",
+      "Total Statement Due": (supplier) => {
+        const totalStatementDue =
+          supplier.statements && Array.isArray(supplier.statements)
+            ? supplier.statements.reduce((sum, statement) => {
+                const amount = parseFloat(statement.amount) || 0;
+                return sum + amount;
+              }, 0)
+            : 0;
+        return totalStatementDue > 0
+          ? totalStatementDue.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : "0.00";
+      },
+      "Active PO Count": (supplier) => {
+        const activePOCount =
+          supplier.purchase_order && Array.isArray(supplier.purchase_order)
+            ? supplier.purchase_order.length
+            : 0;
+        return activePOCount || 0;
+      },
+      "Created At": (supplier) =>
+        supplier.createdAt
+          ? new Date(supplier.createdAt).toLocaleDateString()
+          : "",
+      "Updated At": (supplier) =>
+        supplier.updatedAt
+          ? new Date(supplier.updatedAt).toLocaleDateString()
+          : "",
+    }),
+    [],
+  );
 
   // Initialize Excel export hook
   const { exportToExcel, isExporting } = useExcelExport({
@@ -449,7 +447,10 @@ export default function page() {
                               </div>
                             )}
                           </div>
-                          <div className="relative flex items-center" ref={columnDropdownRef}>
+                          <div
+                            className="relative flex items-center"
+                            ref={columnDropdownRef}
+                          >
                             <button
                               onClick={handleExportToExcel}
                               disabled={
@@ -457,12 +458,13 @@ export default function page() {
                                 filteredAndSortedSuppliers.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedSuppliers.length === 0 ||
                                 selectedColumns.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -479,11 +481,12 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedSuppliers.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedSuppliers.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
@@ -491,11 +494,18 @@ export default function page() {
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedColumns.length === availableColumns.length}
-                                      onChange={() => handleColumnToggle("Select All")}
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() =>
+                                        handleColumnToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -507,8 +517,12 @@ export default function page() {
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={() => handleColumnToggle(column)}
+                                        checked={selectedColumns.includes(
+                                          column,
+                                        )}
+                                        onChange={() =>
+                                          handleColumnToggle(column)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -544,7 +558,9 @@ export default function page() {
                               </th>
                               <th
                                 className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("total_statement_due")}
+                                onClick={() =>
+                                  handleSort("total_statement_due")
+                                }
                               >
                                 <div className="flex items-center gap-2">
                                   Total Statement Due
@@ -596,24 +612,26 @@ export default function page() {
                             ) : (
                               paginatedSuppliers.map((supplier) => {
                                 // Calculate total statement due
-                                const totalStatementDue = calculateTotalStatementDue(supplier);
+                                const totalStatementDue =
+                                  calculateTotalStatementDue(supplier);
 
                                 // Calculate active PO count
-                                const activePOCount = calculateActivePOCount(supplier);
+                                const activePOCount =
+                                  calculateActivePOCount(supplier);
 
                                 return (
                                   <tr
                                     key={supplier.supplier_id}
                                     onClick={() => {
                                       router.push(
-                                        `/admin/suppliers/${supplier.supplier_id}`
+                                        `/admin/suppliers/${supplier.supplier_id}`,
                                       );
                                       dispatch(
                                         replaceTab({
                                           id: uuidv4(),
                                           title: supplier.name,
                                           href: `/admin/suppliers/${supplier.supplier_id}`,
-                                        })
+                                        }),
                                       );
                                     }}
                                     className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
@@ -630,12 +648,12 @@ export default function page() {
                                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
                                       {totalStatementDue > 0
                                         ? `$${totalStatementDue.toLocaleString(
-                                          "en-US",
-                                          {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                          }
-                                        )}`
+                                            "en-US",
+                                            {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 2,
+                                            },
+                                          )}`
                                         : "-"}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">

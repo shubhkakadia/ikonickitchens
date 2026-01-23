@@ -50,19 +50,19 @@ export async function GET(request, { params }) {
     if (!project) {
       return NextResponse.json(
         { status: false, message: "Project not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     return NextResponse.json(
       { status: true, message: "Project fetched successfully", data: project },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/project/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -94,7 +94,7 @@ export async function PATCH(request, { params }) {
       "project",
       id,
       "UPDATE",
-      `Project updated successfully: ${project.name}`
+      `Project updated successfully: ${project.name}`,
     );
     if (!logged) {
       console.error(`Failed to log project update: ${id} - ${project.name}`);
@@ -104,15 +104,17 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Project updated successfully",
         data: project,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/project/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -131,14 +133,14 @@ export async function DELETE(request, { params }) {
     if (!existingProject) {
       return NextResponse.json(
         { status: false, message: "Project not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (existingProject.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Project already deleted" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -153,7 +155,7 @@ export async function DELETE(request, { params }) {
       "project",
       id,
       "DELETE",
-      `Project deleted successfully: ${project.name}`
+      `Project deleted successfully: ${project.name}`,
     );
     if (!logged) {
       console.error(`Failed to log project deletion: ${id} - ${project.name}`);
@@ -162,20 +164,20 @@ export async function DELETE(request, { params }) {
           status: true,
           message: "Project deleted successfully",
           data: project,
-          warning: "Note: Deletion succeeded but logging failed"
+          warning: "Note: Deletion succeeded but logging failed",
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
     return NextResponse.json(
       { status: true, message: "Project deleted successfully", data: project },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/project/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

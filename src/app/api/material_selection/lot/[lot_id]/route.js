@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
     if (!lot_id) {
       return NextResponse.json(
         { status: false, message: "Lot ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -75,7 +75,7 @@ export async function GET(request, { params }) {
           message: "No material selection found for this lot",
           data: null,
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
@@ -99,13 +99,13 @@ export async function GET(request, { params }) {
         message: "Material selection fetched successfully",
         data: materialSelectionWithMedia,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching material selection:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

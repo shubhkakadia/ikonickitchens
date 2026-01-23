@@ -21,13 +21,13 @@ export async function GET(request) {
         message: "Employees fetched successfully",
         data: employees,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/employee/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -2,12 +2,12 @@
 
 /**
  * Authentication Context Provider
- * 
+ *
  * This is the main React context for authentication in the application.
  * It provides authentication state and methods through the useAuth() hook.
- * 
+ *
  * For low-level token/cookie utilities, see ./auth.js
- * 
+ *
  * Usage:
  *   const { isAuthenticated, login, logout, userData } = useAuth();
  */
@@ -26,7 +26,7 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const dispatch = useDispatch();
   const { userData, loading, error, isAuthenticated } = useSelector(
-    (state) => state.loggedInUser
+    (state) => state.loggedInUser,
   );
   const [isClient, setIsClient] = useState(false);
 

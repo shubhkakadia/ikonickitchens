@@ -14,7 +14,7 @@ export async function PATCH(request) {
     if (!id || !entity_type) {
       return NextResponse.json(
         { status: false, message: "ID and entity type are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -30,7 +30,7 @@ export async function PATCH(request) {
         if (!employee) {
           return NextResponse.json(
             { status: false, message: "Employee not found" },
-            { status: 404 }
+            { status: 404 },
           );
         }
         recoveredRecord = await prisma.employees.update({
@@ -47,7 +47,7 @@ export async function PATCH(request) {
         if (!client) {
           return NextResponse.json(
             { status: false, message: "Client not found" },
-            { status: 404 }
+            { status: 404 },
           );
         }
         recoveredRecord = await prisma.client.update({
@@ -64,7 +64,7 @@ export async function PATCH(request) {
         if (!project) {
           return NextResponse.json(
             { status: false, message: "Project not found" },
-            { status: 404 }
+            { status: 404 },
           );
         }
         recoveredRecord = await prisma.project.update({
@@ -81,7 +81,7 @@ export async function PATCH(request) {
         if (!lot) {
           return NextResponse.json(
             { status: false, message: "Lot not found" },
-            { status: 404 }
+            { status: 404 },
           );
         }
         recoveredRecord = await prisma.lot.update({
@@ -98,7 +98,7 @@ export async function PATCH(request) {
         if (!item) {
           return NextResponse.json(
             { status: false, message: "Item not found" },
-            { status: 404 }
+            { status: 404 },
           );
         }
         recoveredRecord = await prisma.item.update({
@@ -115,7 +115,7 @@ export async function PATCH(request) {
         if (!supplier) {
           return NextResponse.json(
             { status: false, message: "Supplier not found" },
-            { status: 404 }
+            { status: 404 },
           );
         }
         recoveredRecord = await prisma.supplier.update({
@@ -128,7 +128,7 @@ export async function PATCH(request) {
       default:
         return NextResponse.json(
           { status: false, message: "Invalid entity type" },
-          { status: 400 }
+          { status: 400 },
         );
     }
 
@@ -138,13 +138,11 @@ export async function PATCH(request) {
       entity_type,
       entityId,
       "UPDATE",
-      `${entity_type} recovered successfully`
+      `${entity_type} recovered successfully`,
     );
 
     if (!logged) {
-      console.error(
-        `Failed to log ${entity_type} recovery: ${entityId}`
-      );
+      console.error(`Failed to log ${entity_type} recovery: ${entityId}`);
     }
 
     return NextResponse.json(
@@ -152,15 +150,17 @@ export async function PATCH(request) {
         status: true,
         message: `${entity_type} recovered successfully`,
         data: recoveredRecord,
-        ...(logged ? {} : { warning: "Note: Recovery succeeded but logging failed" }),
+        ...(logged
+          ? {}
+          : { warning: "Note: Recovery succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/deletedrecords/recover:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

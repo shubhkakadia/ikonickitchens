@@ -146,7 +146,7 @@ export default function StatementsPage() {
         id: uuidv4(),
         title: "Statements",
         href: "/admin/suppliers/statements",
-      })
+      }),
     );
   }, []);
 
@@ -273,7 +273,7 @@ export default function StatementsPage() {
   // Filter suppliers for search dropdown
   const filteredSuppliers = useMemo(() => {
     return suppliers.filter((supplier) =>
-      supplier.name?.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+      supplier.name?.toLowerCase().includes(supplierSearchTerm.toLowerCase()),
     );
   }, [suppliers, supplierSearchTerm]);
 
@@ -326,7 +326,7 @@ export default function StatementsPage() {
     let filtered = statements.filter((statement) =>
       activeTab === "pending"
         ? statement.payment_status === "PENDING"
-        : statement.payment_status === "PAID"
+        : statement.payment_status === "PAID",
     );
 
     // Apply year filter
@@ -398,7 +398,15 @@ export default function StatementsPage() {
     });
 
     return filtered;
-  }, [statements, search, sortField, sortOrder, activeTab, yearFilter, monthFilter]);
+  }, [
+    statements,
+    search,
+    sortField,
+    sortOrder,
+    activeTab,
+    yearFilter,
+    monthFilter,
+  ]);
 
   // Pagination logic
   const totalItems = filteredAndSortedStatements.length;
@@ -408,7 +416,7 @@ export default function StatementsPage() {
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedStatements = filteredAndSortedStatements.slice(
     startIndex,
-    endIndex
+    endIndex,
   );
 
   const handleSort = (field) => {
@@ -465,14 +473,19 @@ export default function StatementsPage() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
 
   // File handling functions
   const validateAndSetFile = (file) => {
-    const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+    ];
     if (!allowedTypes.includes(file.type)) {
       toast.error("Only PDF and image files are allowed", {
         position: "top-right",
@@ -742,7 +755,7 @@ export default function StatementsPage() {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -857,15 +870,22 @@ export default function StatementsPage() {
         if (statementForm.file) {
           formData.append("file", statementForm.file);
         }
-        formData.append("month_year", formatMonthYear(statementForm.month_year));
+        formData.append(
+          "month_year",
+          formatMonthYear(statementForm.month_year),
+        );
         formData.append("due_date", statementForm.due_date);
         formData.append("amount", statementForm.amount || "");
         formData.append("payment_status", statementForm.payment_status);
         formData.append("notes", statementForm.notes || "");
       }
 
-      const supplierId = isStatusOnlyUpdate ? statement.supplier_id : statementForm.supplier_id;
-      const statementId = isStatusOnlyUpdate ? statement.id : editingStatement.id;
+      const supplierId = isStatusOnlyUpdate
+        ? statement.supplier_id
+        : statementForm.supplier_id;
+      const statementId = isStatusOnlyUpdate
+        ? statement.id
+        : editingStatement.id;
 
       const response = await axios.patch(
         `/api/supplier/${supplierId}/statements/${statementId}`,
@@ -875,7 +895,7 @@ export default function StatementsPage() {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -956,7 +976,7 @@ export default function StatementsPage() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -1080,15 +1100,15 @@ export default function StatementsPage() {
                     <h1 className="text-xl font-bold text-slate-600">
                       Supplier Statements
                     </h1>
-                    <div className="flex items-center gap-2">                    
-                    <SearchBar />
-                    <button
-                      onClick={() => setShowUploadStatementModal(true)}
-                      className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-xs font-medium"
-                    >
-                      <Receipt className="w-4 h-4" />
-                      Upload Statement
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <SearchBar />
+                      <button
+                        onClick={() => setShowUploadStatementModal(true)}
+                        className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-xs font-medium"
+                      >
+                        <Receipt className="w-4 h-4" />
+                        Upload Statement
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1121,19 +1141,21 @@ export default function StatementsPage() {
                             sortOrder !== "desc" ||
                             yearFilter !== "all" ||
                             monthFilter !== "all") && (
-                              <button
-                                onClick={handleReset}
-                                className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                              >
-                                <RotateCcw className="h-4 w-4" />
-                                <span>Reset</span>
-                              </button>
-                            )}
+                            <button
+                              onClick={handleReset}
+                              className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              <span>Reset</span>
+                            </button>
+                          )}
 
                           {/* Year Filter Dropdown */}
                           <div className="relative" ref={yearDropdownRef}>
                             <button
-                              onClick={() => setYearDropdownOpen(!yearDropdownOpen)}
+                              onClick={() =>
+                                setYearDropdownOpen(!yearDropdownOpen)
+                              }
                               className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                             >
                               {yearFilter === "all" ? "All Years" : yearFilter}
@@ -1146,10 +1168,11 @@ export default function StatementsPage() {
                                     setYearFilter("all");
                                     setYearDropdownOpen(false);
                                   }}
-                                  className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${yearFilter === "all"
-                                    ? "text-primary font-medium"
-                                    : "text-slate-600"
-                                    }`}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
+                                    yearFilter === "all"
+                                      ? "text-primary font-medium"
+                                      : "text-slate-600"
+                                  }`}
                                 >
                                   All Years
                                 </button>
@@ -1160,10 +1183,11 @@ export default function StatementsPage() {
                                       setYearFilter(year);
                                       setYearDropdownOpen(false);
                                     }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${yearFilter === year
-                                      ? "text-primary font-medium"
-                                      : "text-slate-600"
-                                      }`}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
+                                      yearFilter === year
+                                        ? "text-primary font-medium"
+                                        : "text-slate-600"
+                                    }`}
                                   >
                                     {year}
                                   </button>
@@ -1181,12 +1205,15 @@ export default function StatementsPage() {
                                 }
                               }}
                               disabled={yearFilter === "all"}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${yearFilter === "all"
-                                ? "text-slate-400 bg-slate-100 border border-slate-300 cursor-not-allowed"
-                                : "text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 cursor-pointer"
-                                }`}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                yearFilter === "all"
+                                  ? "text-slate-400 bg-slate-100 border border-slate-300 cursor-not-allowed"
+                                  : "text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 cursor-pointer"
+                              }`}
                             >
-                              {monthFilter === "all" ? "All Months" : formatMonthName(monthFilter)}
+                              {monthFilter === "all"
+                                ? "All Months"
+                                : formatMonthName(monthFilter)}
                               <ChevronDown className="w-3.5 h-3.5" />
                             </button>
                             {monthDropdownOpen && yearFilter !== "all" && (
@@ -1196,10 +1223,11 @@ export default function StatementsPage() {
                                     setMonthFilter("all");
                                     setMonthDropdownOpen(false);
                                   }}
-                                  className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${monthFilter === "all"
-                                    ? "text-primary font-medium"
-                                    : "text-slate-600"
-                                    }`}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
+                                    monthFilter === "all"
+                                      ? "text-primary font-medium"
+                                      : "text-slate-600"
+                                  }`}
                                 >
                                   All Months
                                 </button>
@@ -1210,10 +1238,11 @@ export default function StatementsPage() {
                                       setMonthFilter(month.toString());
                                       setMonthDropdownOpen(false);
                                     }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${monthFilter === month.toString()
-                                      ? "text-primary font-medium"
-                                      : "text-slate-600"
-                                      }`}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
+                                      monthFilter === month.toString()
+                                        ? "text-primary font-medium"
+                                        : "text-slate-600"
+                                    }`}
                                   >
                                     {formatMonthName(month)}
                                   </button>
@@ -1241,7 +1270,9 @@ export default function StatementsPage() {
                                       onClick={() => {
                                         if (sortField === option.value) {
                                           setSortOrder(
-                                            sortOrder === "asc" ? "desc" : "asc"
+                                            sortOrder === "asc"
+                                              ? "desc"
+                                              : "asc",
                                           );
                                         } else {
                                           setSortField(option.value);
@@ -1259,7 +1290,10 @@ export default function StatementsPage() {
                             )}
                           </div>
 
-                          <div className="relative flex items-center" ref={columnDropdownRef}>
+                          <div
+                            className="relative flex items-center"
+                            ref={columnDropdownRef}
+                          >
                             <button
                               onClick={handleExportToExcel}
                               disabled={
@@ -1267,12 +1301,13 @@ export default function StatementsPage() {
                                 filteredAndSortedStatements.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedStatements.length === 0 ||
                                 selectedColumns.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -1289,11 +1324,12 @@ export default function StatementsPage() {
                                 isExporting ||
                                 filteredAndSortedStatements.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${
+                                isExporting ||
                                 filteredAndSortedStatements.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
@@ -1301,11 +1337,18 @@ export default function StatementsPage() {
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedColumns.length === availableColumns.length}
-                                      onChange={() => handleColumnToggle("Select All")}
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() =>
+                                        handleColumnToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -1317,8 +1360,12 @@ export default function StatementsPage() {
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={() => handleColumnToggle(column)}
+                                        checked={selectedColumns.includes(
+                                          column,
+                                        )}
+                                        onChange={() =>
+                                          handleColumnToggle(column)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -1336,19 +1383,21 @@ export default function StatementsPage() {
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("pending")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "pending"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "pending"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           Pending
                         </button>
                         <button
                           onClick={() => setActiveTab("paid")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "paid"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "paid"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           Paid
                         </button>
@@ -1430,8 +1479,9 @@ export default function StatementsPage() {
                             paginatedStatements.map((statement) => (
                               <Fragment key={statement.id}>
                                 <tr
-                                  className={`cursor-pointer hover:bg-slate-50 transition-colors duration-200 ${statement.notes ? "" : ""
-                                    }`}
+                                  className={`cursor-pointer hover:bg-slate-50 transition-colors duration-200 ${
+                                    statement.notes ? "" : ""
+                                  }`}
                                   onClick={() =>
                                     statement.notes && toggleNotes(statement.id)
                                   }
@@ -1464,7 +1514,7 @@ export default function StatementsPage() {
                                   </td>
                                   <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
                                     {new Date(
-                                      statement.due_date
+                                      statement.due_date,
                                     ).toLocaleDateString()}
                                   </td>
                                   <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">
@@ -1473,7 +1523,9 @@ export default function StatementsPage() {
                                   <td className="px-3 py-2 whitespace-nowrap">
                                     <div
                                       ref={(el) => {
-                                        statusDropdownRefs.current[statement.id] = el;
+                                        statusDropdownRefs.current[
+                                          statement.id
+                                        ] = el;
                                       }}
                                       onClick={(e) => e.stopPropagation()}
                                       className="relative inline-flex items-center gap-2"
@@ -1483,46 +1535,64 @@ export default function StatementsPage() {
                                           type="button"
                                           onClick={() =>
                                             setOpenStatusDropdownId(
-                                              openStatusDropdownId === statement.id
+                                              openStatusDropdownId ===
+                                                statement.id
                                                 ? null
-                                                : statement.id
+                                                : statement.id,
                                             )
                                           }
-                                          disabled={updatingStatusId === statement.id}
-                                          className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-all ${statement.payment_status === "PAID"
-                                            ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                            : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                                            } ${updatingStatusId === statement.id
+                                          disabled={
+                                            updatingStatusId === statement.id
+                                          }
+                                          className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-all ${
+                                            statement.payment_status === "PAID"
+                                              ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                              : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                                          } ${
+                                            updatingStatusId === statement.id
                                               ? "opacity-50 cursor-not-allowed"
                                               : "cursor-pointer"
-                                            }`}
+                                          }`}
                                         >
-                                          <span>{statement.payment_status}</span>
+                                          <span>
+                                            {statement.payment_status}
+                                          </span>
                                           <ChevronDown
-                                            className={`h-3 w-3 transition-transform duration-200 ${openStatusDropdownId === statement.id
-                                              ? "rotate-180"
-                                              : ""
-                                              }`}
+                                            className={`h-3 w-3 transition-transform duration-200 ${
+                                              openStatusDropdownId ===
+                                              statement.id
+                                                ? "rotate-180"
+                                                : ""
+                                            }`}
                                           />
                                         </button>
-                                        {openStatusDropdownId === statement.id && (
+                                        {openStatusDropdownId ===
+                                          statement.id && (
                                           <div className="absolute left-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
                                             <div className="py-1">
                                               <button
                                                 type="button"
                                                 onClick={() => {
-                                                  if (statement.payment_status !== "PENDING") {
-                                                    handleUpdateStatement(statement, "PENDING");
+                                                  if (
+                                                    statement.payment_status !==
+                                                    "PENDING"
+                                                  ) {
+                                                    handleUpdateStatement(
+                                                      statement,
+                                                      "PENDING",
+                                                    );
                                                   }
                                                   setOpenStatusDropdownId(null);
                                                 }}
                                                 className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center gap-2"
                                               >
                                                 <span
-                                                  className={`px-1.5 py-0.5 rounded text-xs font-medium ${statement.payment_status === "PENDING"
-                                                    ? "bg-yellow-100 text-yellow-800"
-                                                    : ""
-                                                    }`}
+                                                  className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                                    statement.payment_status ===
+                                                    "PENDING"
+                                                      ? "bg-yellow-100 text-yellow-800"
+                                                      : ""
+                                                  }`}
                                                 >
                                                   Pending
                                                 </span>
@@ -1530,18 +1600,26 @@ export default function StatementsPage() {
                                               <button
                                                 type="button"
                                                 onClick={() => {
-                                                  if (statement.payment_status !== "PAID") {
-                                                    handleUpdateStatement(statement, "PAID");
+                                                  if (
+                                                    statement.payment_status !==
+                                                    "PAID"
+                                                  ) {
+                                                    handleUpdateStatement(
+                                                      statement,
+                                                      "PAID",
+                                                    );
                                                   }
                                                   setOpenStatusDropdownId(null);
                                                 }}
                                                 className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center gap-2"
                                               >
                                                 <span
-                                                  className={`px-1.5 py-0.5 rounded text-xs font-medium ${statement.payment_status === "PAID"
-                                                    ? "bg-green-100 text-green-800"
-                                                    : ""
-                                                    }`}
+                                                  className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                                    statement.payment_status ===
+                                                    "PAID"
+                                                      ? "bg-green-100 text-green-800"
+                                                      : ""
+                                                  }`}
                                                 >
                                                   Paid
                                                 </span>
@@ -1657,9 +1735,11 @@ export default function StatementsPage() {
               onConfirm={handleDeleteStatementConfirm}
               deleteWithInput={true}
               heading="Statement"
-              message={`This will permanently delete the statement for ${statementToDelete?.month_year || ""
-                } from ${statementToDelete?.supplier?.name || ""
-                }. This action cannot be undone.`}
+              message={`This will permanently delete the statement for ${
+                statementToDelete?.month_year || ""
+              } from ${
+                statementToDelete?.supplier?.name || ""
+              }. This action cannot be undone.`}
               comparingName={statementToDelete?.month_year || ""}
               isDeleting={isDeletingStatement}
               entityType="supplier_statement"
@@ -1695,7 +1775,8 @@ export default function StatementsPage() {
                       {!isEditingStatement && (
                         <div className="relative" ref={supplierDropdownRef}>
                           <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                            Select Supplier <span className="text-red-500">*</span>
+                            Select Supplier{" "}
+                            <span className="text-red-500">*</span>
                           </label>
                           <div className="relative">
                             <input
@@ -1710,7 +1791,9 @@ export default function StatementsPage() {
                             <button
                               type="button"
                               onClick={() =>
-                                setIsSupplierDropdownOpen(!isSupplierDropdownOpen)
+                                setIsSupplierDropdownOpen(
+                                  !isSupplierDropdownOpen,
+                                )
                               }
                               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
@@ -1718,8 +1801,9 @@ export default function StatementsPage() {
                                 <div className="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"></div>
                               ) : (
                                 <ChevronDown
-                                  className={`w-5 h-5 transition-transform duration-200 ${isSupplierDropdownOpen ? "rotate-180" : ""
-                                    }`}
+                                  className={`w-5 h-5 transition-transform duration-200 ${
+                                    isSupplierDropdownOpen ? "rotate-180" : ""
+                                  }`}
                                 />
                               )}
                             </button>
@@ -1739,7 +1823,7 @@ export default function StatementsPage() {
                                     onClick={() =>
                                       handleSupplierSelect(
                                         supplier.supplier_id,
-                                        supplier.name
+                                        supplier.name,
                                       )
                                     }
                                     className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
@@ -1870,10 +1954,11 @@ export default function StatementsPage() {
                         </label>
                         {!statementForm.file ? (
                           <div
-                            className={`border-2 border-dashed rounded-lg py-8 transition-all ${isDragging
-                              ? "border-primary bg-blue-50"
-                              : "border-slate-300 hover:border-primary hover:bg-slate-50"
-                              }`}
+                            className={`border-2 border-dashed rounded-lg py-8 transition-all ${
+                              isDragging
+                                ? "border-primary bg-blue-50"
+                                : "border-slate-300 hover:border-primary hover:bg-slate-50"
+                            }`}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
@@ -1890,14 +1975,14 @@ export default function StatementsPage() {
                               className="cursor-pointer flex flex-col items-center text-center w-full h-full"
                             >
                               <FileText
-                                className={`w-8 h-8 mb-2 ${isDragging ? "text-primary" : "text-slate-400"
-                                  }`}
+                                className={`w-8 h-8 mb-2 ${
+                                  isDragging ? "text-primary" : "text-slate-400"
+                                }`}
                               />
                               <p
-                                className={`text-sm font-medium ${isDragging
-                                  ? "text-primary"
-                                  : "text-slate-700"
-                                  }`}
+                                className={`text-sm font-medium ${
+                                  isDragging ? "text-primary" : "text-slate-700"
+                                }`}
                               >
                                 {isDragging
                                   ? "Drop file here"
@@ -2028,7 +2113,7 @@ export default function StatementsPage() {
                       size: statementForm.file.size,
                       isExisting: false,
                     }}
-                    setSelectedFile={() => { }}
+                    setSelectedFile={() => {}}
                     setViewFileModal={setShowFilePreview}
                     setPageNumber={setPageNumber}
                   />

@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
     if (!version_id) {
       return NextResponse.json(
         { status: false, message: "Version ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,7 +54,7 @@ export async function GET(request, { params }) {
     if (!version) {
       return NextResponse.json(
         { status: false, message: "Version not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -64,13 +64,13 @@ export async function GET(request, { params }) {
         message: "Version fetched successfully",
         data: version,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching version:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

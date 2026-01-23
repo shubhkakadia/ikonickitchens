@@ -65,7 +65,7 @@ export default function page() {
             .includes(clientSearchTerm.toLowerCase()) ||
           client.client_id
             .toLowerCase()
-            .includes(clientSearchTerm.toLowerCase())
+            .includes(clientSearchTerm.toLowerCase()),
       );
       setFilteredClients(filtered);
     }
@@ -128,12 +128,14 @@ export default function page() {
     if (numLots > 0 && numLots <= 100) {
       const newLots = Array.from({ length: numLots }, (_, index) => {
         // Preserve existing lot data if available, otherwise create new with default lotId
-        return lots[index] || {
-          lotId: `lot ${index + 1}`,
-          clientName: "",
-          installationDueDate: "",
-          notes: "",
-        };
+        return (
+          lots[index] || {
+            lotId: `lot ${index + 1}`,
+            clientName: "",
+            installationDueDate: "",
+            notes: "",
+          }
+        );
       });
       setLots(newLots);
     } else if (numLots === 0 || value === "") {
@@ -178,16 +180,16 @@ export default function page() {
       const lotsToSend =
         lots && lots.length > 0
           ? lots.map((lot) => {
-            const fullLotId = formData.project_id
-              ? `${formData.project_id}-${lot.lotId}`
-              : lot.lotId;
-            return {
-              lotId: fullLotId,
-              clientName: lot.clientName,
-              installationDueDate: lot.installationDueDate || null,
-              notes: lot.notes || null,
-            };
-          })
+              const fullLotId = formData.project_id
+                ? `${formData.project_id}-${lot.lotId}`
+                : lot.lotId;
+              return {
+                lotId: fullLotId,
+                clientName: lot.clientName,
+                installationDueDate: lot.installationDueDate || null,
+                notes: lot.notes || null,
+              };
+            })
           : [];
 
       const data = {
@@ -366,7 +368,10 @@ export default function page() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-4">
-                        <div className="relative flex-1" ref={clientDropdownRef}>
+                        <div
+                          className="relative flex-1"
+                          ref={clientDropdownRef}
+                        >
                           <label className="block text-sm font-medium text-slate-700 mb-2">
                             Client{" "}
                             <span className="text-slate-400">(Optional)</span>
@@ -388,8 +393,9 @@ export default function page() {
                               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               <ChevronDown
-                                className={`w-5 h-5 transition-transform duration-200 ${isClientDropdownOpen ? "rotate-180" : ""
-                                  }`}
+                                className={`w-5 h-5 transition-transform duration-200 ${
+                                  isClientDropdownOpen ? "rotate-180" : ""
+                                }`}
                               />
                             </button>
                           </div>
@@ -404,7 +410,7 @@ export default function page() {
                                     onClick={() =>
                                       handleClientSelect(
                                         client.client_id,
-                                        client.client_name
+                                        client.client_name,
                                       )
                                     }
                                     className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
@@ -479,7 +485,8 @@ export default function page() {
                               <div className="flex flex-wrap gap-4">
                                 <div className="flex-1">
                                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Lot ID <span className="text-red-500">*</span>
+                                    Lot ID{" "}
+                                    <span className="text-red-500">*</span>
                                   </label>
                                   <input
                                     type="text"
@@ -488,7 +495,7 @@ export default function page() {
                                       handleLotChange(
                                         index,
                                         "lotId",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
@@ -514,7 +521,7 @@ export default function page() {
                                       handleLotChange(
                                         index,
                                         "clientName",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
@@ -533,7 +540,7 @@ export default function page() {
                                       handleLotChange(
                                         index,
                                         "installationDueDate",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
@@ -550,7 +557,7 @@ export default function page() {
                                     handleLotChange(
                                       index,
                                       "notes",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   rows={3}
@@ -570,10 +577,11 @@ export default function page() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${isLoading
-                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                        : "bg-primary/80 hover:bg-primary text-white"
-                        }`}
+                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
+                        isLoading
+                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                          : "bg-primary/80 hover:bg-primary text-white"
+                      }`}
                     >
                       {isLoading ? "Creating Project..." : "Create Project"}
                     </button>

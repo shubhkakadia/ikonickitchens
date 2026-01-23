@@ -89,7 +89,11 @@ export default function Statement({ supplierId }) {
     }
 
     // Create new object URL if preview is open and file exists
-    if (showFilePreview && statementForm.file && statementForm.file instanceof File) {
+    if (
+      showFilePreview &&
+      statementForm.file &&
+      statementForm.file instanceof File
+    ) {
       const objectURL = URL.createObjectURL(statementForm.file);
       fileObjectURLRef.current = objectURL;
       setFileObjectURL(objectURL);
@@ -121,7 +125,7 @@ export default function Statement({ supplierId }) {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -178,7 +182,12 @@ export default function Statement({ supplierId }) {
 
   // File handling functions
   const validateAndSetFile = (file) => {
-    const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+    ];
     if (!allowedTypes.includes(file.type)) {
       toast.error("Only PDF and image files are allowed", {
         position: "top-right",
@@ -313,7 +322,7 @@ export default function Statement({ supplierId }) {
             "Content-Type": "multipart/form-data",
           },
           onUploadProgress: getUploadProgressHandler(1),
-        }
+        },
       );
 
       if (response.data.status) {
@@ -419,7 +428,7 @@ export default function Statement({ supplierId }) {
           ...(hasFile && {
             onUploadProgress: getUploadProgressHandler(1),
           }),
-        }
+        },
       );
 
       if (response.data.status) {
@@ -484,7 +493,7 @@ export default function Statement({ supplierId }) {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -619,8 +628,9 @@ export default function Statement({ supplierId }) {
               {statements.map((statement) => (
                 <React.Fragment key={statement.id}>
                   <tr
-                    className={`hover:bg-slate-50 transition-colors ${statement.notes ? "cursor-pointer" : ""
-                      }`}
+                    className={`hover:bg-slate-50 transition-colors ${
+                      statement.notes ? "cursor-pointer" : ""
+                    }`}
                     onClick={() => statement.notes && toggleNotes(statement.id)}
                   >
                     <td className="px-4 py-2 whitespace-nowrap">
@@ -651,10 +661,11 @@ export default function Statement({ supplierId }) {
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span
-                        className={`text-xs px-2 py-1 rounded-full ${statement.payment_status === "PAID"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-yellow-100 text-yellow-800"
-                          }`}
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          statement.payment_status === "PAID"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
                       >
                         {statement.payment_status}
                       </span>
@@ -736,8 +747,9 @@ export default function Statement({ supplierId }) {
         onConfirm={handleDeleteStatementConfirm}
         deleteWithInput={true}
         heading="Statement"
-        message={`This will permanently delete the statement for ${statementToDelete?.month_year || ""
-          }. This action cannot be undone.`}
+        message={`This will permanently delete the statement for ${
+          statementToDelete?.month_year || ""
+        }. This action cannot be undone.`}
         comparingName={statementToDelete?.month_year || ""}
         isDeleting={isDeletingStatement}
         entityType="supplier_statement"
@@ -754,9 +766,7 @@ export default function Statement({ supplierId }) {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <h2 className="text-xl font-semibold text-slate-800">
-                {isEditingStatement
-                  ? "Edit Statement"
-                  : "Upload Statement"}
+                {isEditingStatement ? "Edit Statement" : "Upload Statement"}
               </h2>
               <button
                 onClick={resetForm}
@@ -874,10 +884,11 @@ export default function Statement({ supplierId }) {
                   </label>
                   {!statementForm.file ? (
                     <div
-                      className={`border-2 border-dashed rounded-lg py-8 transition-all ${isDragging
-                        ? "border-primary bg-blue-50"
-                        : "border-slate-300 hover:border-primary hover:bg-slate-50"
-                        }`}
+                      className={`border-2 border-dashed rounded-lg py-8 transition-all ${
+                        isDragging
+                          ? "border-primary bg-blue-50"
+                          : "border-slate-300 hover:border-primary hover:bg-slate-50"
+                      }`}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
@@ -894,14 +905,14 @@ export default function Statement({ supplierId }) {
                         className="cursor-pointer flex flex-col items-center text-center w-full h-full"
                       >
                         <FileText
-                          className={`w-8 h-8 mb-2 ${isDragging ? "text-primary" : "text-slate-400"
-                            }`}
+                          className={`w-8 h-8 mb-2 ${
+                            isDragging ? "text-primary" : "text-slate-400"
+                          }`}
                         />
                         <p
-                          className={`text-sm font-medium ${isDragging
-                            ? "text-primary"
-                            : "text-slate-700"
-                            }`}
+                          className={`text-sm font-medium ${
+                            isDragging ? "text-primary" : "text-slate-700"
+                          }`}
                         >
                           {isDragging
                             ? "Drop file here"
@@ -928,11 +939,7 @@ export default function Statement({ supplierId }) {
                             {statementForm.file.name}
                           </p>
                           <p className="text-xs text-slate-500">
-                            {(
-                              statementForm.file.size /
-                              1024 /
-                              1024
-                            ).toFixed(2)}{" "}
+                            {(statementForm.file.size / 1024 / 1024).toFixed(2)}{" "}
                             MB
                           </p>
                         </div>
@@ -966,14 +973,12 @@ export default function Statement({ supplierId }) {
                       </div>
                     </div>
                   )}
-                  {isEditingStatement &&
-                    editingStatement?.supplier_file && (
-                      <p className="mt-2 text-xs text-slate-500">
-                        Current file:{" "}
-                        {editingStatement.supplier_file.filename} (Leave
-                        empty to keep current file)
-                      </p>
-                    )}
+                  {isEditingStatement && editingStatement?.supplier_file && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Current file: {editingStatement.supplier_file.filename}{" "}
+                      (Leave empty to keep current file)
+                    </p>
+                  )}
                 </div>
 
                 {/* Notes */}
@@ -1039,7 +1044,7 @@ export default function Statement({ supplierId }) {
                 size: statementForm.file.size,
                 isExisting: false,
               }}
-              setSelectedFile={() => { }}
+              setSelectedFile={() => {}}
               setViewFileModal={setShowFilePreview}
               setPageNumber={setPageNumber}
             />

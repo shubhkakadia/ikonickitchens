@@ -5,7 +5,7 @@ import UploadProgressBar from "@/components/UploadProgressBar";
 
 /**
  * Custom hook for handling file uploads with progress tracking
- * 
+ *
  * @returns {Object} Object containing uploadProgressRef and uploadProgressToastId
  */
 export const useUploadProgress = () => {
@@ -32,7 +32,7 @@ export const useUploadProgress = () => {
         position: "top-right",
         autoClose: 5000,
         customProgressBar: true,
-      }
+      },
     );
   };
 
@@ -109,7 +109,7 @@ export const useUploadProgress = () => {
     return (progressEvent) => {
       if (progressEvent.total) {
         const progress = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
+          (progressEvent.loaded * 100) / progressEvent.total,
         );
         updateProgress(progress, fileCount);
       }
@@ -126,4 +126,3 @@ export const useUploadProgress = () => {
     getUploadProgressHandler,
   };
 };
-

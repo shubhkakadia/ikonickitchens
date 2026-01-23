@@ -53,7 +53,7 @@ export default function page() {
     notes: "",
     is_active: true,
     image: null,
-  }
+  };
 
   const availabilityInitialState = {
     monday: { start: "", end: "" },
@@ -63,7 +63,7 @@ export default function page() {
     friday: { start: "", end: "" },
     saturday: { start: "", end: "" },
     sunday: { start: "", end: "" },
-  }
+  };
 
   const daysOfWeek = [
     "monday",
@@ -143,7 +143,7 @@ export default function page() {
 
   // Filter role options based on search term
   const filteredRoleOptions = roleOptions.filter((role) =>
-    role.toLowerCase().includes(roleSearchTerm.toLowerCase())
+    role.toLowerCase().includes(roleSearchTerm.toLowerCase()),
   );
 
   // Add this inside the component
@@ -309,7 +309,7 @@ export default function page() {
 
   const formatPhone = (phone) => {
     return phone ? formatPhoneToNational(phone) : phone;
-  }
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -325,7 +325,10 @@ export default function page() {
         return;
       }
 
-      if (formData.emergency_contact_phone && !validatePhone(formData.emergency_contact_phone)) {
+      if (
+        formData.emergency_contact_phone &&
+        !validatePhone(formData.emergency_contact_phone)
+      ) {
         toast.error("Please enter a valid Australian phone number", {
           position: "top-right",
           autoClose: 3000,
@@ -389,7 +392,7 @@ export default function page() {
           ...(hasImageFile && {
             onUploadProgress: getUploadProgressHandler(1),
           }),
-        }
+        },
       );
       if (response.data.status) {
         if (hasImageFile) {
@@ -429,7 +432,7 @@ export default function page() {
       }
       toast.error(
         error.response?.data?.message ||
-        "Failed to add employee. Please try again.",
+          "Failed to add employee. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
@@ -437,7 +440,7 @@ export default function page() {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-        }
+        },
       );
     } finally {
       setIsSubmitting(false);
@@ -454,7 +457,7 @@ export default function page() {
   ];
 
   const isFormValid = requiredFields.every(
-    (field) => formData[field].trim() !== ""
+    (field) => formData[field].trim() !== "",
   );
 
   return (
@@ -625,8 +628,9 @@ export default function page() {
                               className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               <ChevronDown
-                                className={`w-5 h-5 transition-transform ${isRoleDropdownOpen ? "rotate-180" : ""
-                                  }`}
+                                className={`w-5 h-5 transition-transform ${
+                                  isRoleDropdownOpen ? "rotate-180" : ""
+                                }`}
                               />
                             </button>
                           </div>
@@ -649,21 +653,26 @@ export default function page() {
                                       {role}
                                     </button>
                                   ))}
-                                  {roleSearchTerm && !filteredRoleOptions.some(r => r.toLowerCase() === roleSearchTerm.toLowerCase()) && (
-                                    <div className="border-t border-slate-200">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setNewRoleValue(roleSearchTerm);
-                                          setShowCreateRoleModal(true);
-                                        }}
-                                        className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                      >
-                                        <Plus className="w-4 h-4" />
-                                        Create "{roleSearchTerm}"
-                                      </button>
-                                    </div>
-                                  )}
+                                  {roleSearchTerm &&
+                                    !filteredRoleOptions.some(
+                                      (r) =>
+                                        r.toLowerCase() ===
+                                        roleSearchTerm.toLowerCase(),
+                                    ) && (
+                                      <div className="border-t border-slate-200">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setNewRoleValue(roleSearchTerm);
+                                            setShowCreateRoleModal(true);
+                                          }}
+                                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                        >
+                                          <Plus className="w-4 h-4" />
+                                          Create "{roleSearchTerm}"
+                                        </button>
+                                      </div>
+                                    )}
                                 </>
                               ) : (
                                 <div className="px-4 py-3">
@@ -719,10 +728,11 @@ export default function page() {
                             name="phone"
                             value={formData.phone}
                             onChange={handleInputChange}
-                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formData.phone && !validatePhone(formData.phone)
+                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                              formData.phone && !validatePhone(formData.phone)
                                 ? "border-red-500"
                                 : "border-slate-300"
-                              }`}
+                            }`}
                             placeholder="Eg. 0400 123 456 or +61 400 123 456"
                             required
                           />
@@ -819,17 +829,22 @@ export default function page() {
                             name="emergency_contact_phone"
                             value={formData.emergency_contact_phone}
                             onChange={handleInputChange}
-                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${formData.emergency_contact_phone && !validatePhone(formData.emergency_contact_phone)
+                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                              formData.emergency_contact_phone &&
+                              !validatePhone(formData.emergency_contact_phone)
                                 ? "border-red-500"
                                 : "border-slate-300"
-                              }`}
+                            }`}
                             placeholder="Eg. 0400 123 456 or +61 400 123 456"
                           />
-                          {formData.emergency_contact_phone && !validatePhone(formData.emergency_contact_phone) && (
-                            <p className="mt-1 text-xs text-red-500">
-                              Please enter a valid Australian phone number
-                            </p>
-                          )}
+                          {formData.emergency_contact_phone &&
+                            !validatePhone(
+                              formData.emergency_contact_phone,
+                            ) && (
+                              <p className="mt-1 text-xs text-red-500">
+                                Please enter a valid Australian phone number
+                              </p>
+                            )}
                         </div>
                       </div>
                     </div>
@@ -999,7 +1014,7 @@ export default function page() {
                                         handleAvailabilityChange(
                                           day,
                                           "start",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
@@ -1016,7 +1031,7 @@ export default function page() {
                                         handleAvailabilityChange(
                                           day,
                                           "end",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
@@ -1055,7 +1070,12 @@ export default function page() {
                               type="checkbox"
                               name="is_active"
                               checked={formData.is_active}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, is_active: e.target.checked }))}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  is_active: e.target.checked,
+                                }))
+                              }
                               className="w-4 h-4 text-primary focus:ring-primary border-slate-300 rounded"
                             />
                             <span className="text-sm font-medium text-slate-700">
@@ -1074,10 +1094,11 @@ export default function page() {
                       <button
                         type="submit"
                         disabled={!isFormValid || isSubmitting}
-                        className={`cursor-pointer flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${isFormValid && !isSubmitting
-                          ? "bg-primary/80 hover:bg-primary text-white"
-                          : "bg-slate-300 text-slate-500 cursor-not-allowed"
-                          }`}
+                        className={`cursor-pointer flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
+                          isFormValid && !isSubmitting
+                            ? "bg-primary/80 hover:bg-primary text-white"
+                            : "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        }`}
                       >
                         <Save className="w-5 h-5" />
                         {isSubmitting ? "Adding Employee..." : "Add Employee"}
@@ -1093,8 +1114,14 @@ export default function page() {
 
       {/* Create Role Modal */}
       {showCreateRoleModal && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateRoleModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateRoleModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
                 Create New Role

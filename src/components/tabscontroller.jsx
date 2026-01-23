@@ -4,7 +4,12 @@ import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 
-export default function TabsController({ href, title, back = false, children }) {
+export default function TabsController({
+  href,
+  title,
+  back = false,
+  children,
+}) {
   const router = useRouter();
   const dispatch = useDispatch();
 
@@ -20,13 +25,9 @@ export default function TabsController({ href, title, back = false, children }) 
         id: uuidv4(),
         title,
         href,
-      })
+      }),
     );
   };
 
-  return (
-    <button onClick={handleClick}>
-      {children}
-    </button>
-  );
+  return <button onClick={handleClick}>{children}</button>;
 }

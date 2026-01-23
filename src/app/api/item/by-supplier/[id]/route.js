@@ -17,7 +17,11 @@ export async function GET(request, { params }) {
       select: { category: true },
     });
 
-    const uniqueCategories = [...new Set(itemsWithCategories.map(item => item.category.toLowerCase()))];
+    const uniqueCategories = [
+      ...new Set(
+        itemsWithCategories.map((item) => item.category.toLowerCase()),
+      ),
+    ];
 
     // Map category enum values to relation names
     const categoryRelationMap = {
@@ -35,7 +39,7 @@ export async function GET(request, { params }) {
     };
 
     // Only include relations for categories that actually exist
-    uniqueCategories.forEach(category => {
+    uniqueCategories.forEach((category) => {
       const relation = categoryRelationMap[category];
       if (relation) {
         include[relation] = true;
@@ -51,13 +55,13 @@ export async function GET(request, { params }) {
     });
     return NextResponse.json(
       { status: true, message: "Items fetched successfully", data: items },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/item/by-supplier/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

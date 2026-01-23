@@ -61,7 +61,6 @@ export const validateEmergencyName = (name) => {
   return nameRegex.test(name) && name.trim().length > 0;
 };
 
-
 // Bank account number validation (numbers and spaces only)
 export const validateBankAccountNumber = (accountNumber) => {
   if (!accountNumber || typeof accountNumber !== "string") return true; // Allow empty values

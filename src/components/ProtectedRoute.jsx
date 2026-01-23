@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
-import { ShieldX, Lock, Mail, LogOut, RefreshCw } from 'lucide-react';
+import { ShieldX, Lock, Mail, LogOut, RefreshCw } from "lucide-react";
 
 export default function ProtectedRoute({
   children,
@@ -17,10 +17,9 @@ export default function ProtectedRoute({
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-
   useEffect(() => {
     const checkAuth = () => {
-      // If still loading user data, wait 
+      // If still loading user data, wait
       if (loading) {
         return;
       }
@@ -133,7 +132,7 @@ function AccessDenied({ pathname }) {
                 Retry Access
               </button>
               <button
-                onClick={() => window.location.href = '/admin/dashboard'}
+                onClick={() => (window.location.href = "/admin/dashboard")}
                 className="cursor-pointer w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
               >
                 Return to Dashboard
@@ -141,20 +140,20 @@ function AccessDenied({ pathname }) {
             </div>
 
             <button
-              onClick={() => logout().then(() => router.push('/admin/login'))}
+              onClick={() => logout().then(() => router.push("/admin/login"))}
               className="cursor-pointer text-red-600 hover:text-red-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
             >
               <LogOut className="w-4 h-4" />
               Logout
             </button>
-
           </div>
 
           {/* Contact Support */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-600 mb-3">Need access?</p>
 
-            <a href="mailto:info@ikonickitchens.com.au"
+            <a
+              href="mailto:info@ikonickitchens.com.au"
               className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
             >
               <Mail className="w-4 h-4" />
@@ -190,7 +189,13 @@ export function AdminRoute({
   redirectTo = "/admin/login",
   fallback,
 }) {
-  const { getUserData, getToken, getUserType, isAuthenticated, loading: authLoading } = useAuth();
+  const {
+    getUserData,
+    getToken,
+    getUserType,
+    isAuthenticated,
+    loading: authLoading,
+  } = useAuth();
   const [moduleAccess, setModuleAccess] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -258,7 +263,7 @@ export function AdminRoute({
           setModuleAccess(response.data.data);
         }
       } catch (error) {
-        console.error('Error fetching module access:', error);
+        console.error("Error fetching module access:", error);
       } finally {
         setLoading(false);
       }
@@ -271,12 +276,12 @@ export function AdminRoute({
 
   // Handle redirects in useEffect to avoid updating Router during render
   useEffect(() => {
-    if (pathname === '/admin') {
+    if (pathname === "/admin") {
       const userData = getUserData();
       if (userData !== null) {
-        router.push('/admin/dashboard');
+        router.push("/admin/dashboard");
       } else {
-        router.push('/admin/login');
+        router.push("/admin/login");
       }
     }
   }, [pathname, router, getUserData]);
@@ -284,24 +289,25 @@ export function AdminRoute({
   // Redirect employees to site_photos page
   useEffect(() => {
     const userType = getUserType();
-    if (userType === 'employee' && pathname !== '/admin/site_photos') {
-      router.push('/admin/site_photos');
+    if (userType === "employee" && pathname !== "/admin/site_photos") {
+      router.push("/admin/site_photos");
     }
   }, [pathname, router, getUserType]);
 
   // Show loading state while redirecting from /admin
-  if (pathname === '/admin') {
+  if (pathname === "/admin") {
     return <LoadingAccess />;
   }
 
-  if (pathname === '/admin/settings') {
-    return (<ProtectedRoute
-      requiredUserType={["admin", "master-admin", "manager", "employee"]}
-      redirectTo={redirectTo}
-      fallback={fallback}
-    >
-      {children}
-    </ProtectedRoute>
+  if (pathname === "/admin/settings") {
+    return (
+      <ProtectedRoute
+        requiredUserType={["admin", "master-admin", "manager", "employee"]}
+        redirectTo={redirectTo}
+        fallback={fallback}
+      >
+        {children}
+      </ProtectedRoute>
     );
   }
 
@@ -325,8 +331,7 @@ export function AdminRoute({
   // Show access denied UI only for authenticated users without access
   if (!access) {
     return <AccessDenied pathname={pathname} />;
-  }
-  else {
+  } else {
     return (
       <ProtectedRoute
         requiredUserType={["admin", "master-admin", "manager", "employee"]}

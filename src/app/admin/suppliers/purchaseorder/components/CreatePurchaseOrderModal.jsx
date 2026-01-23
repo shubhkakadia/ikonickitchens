@@ -144,7 +144,7 @@ export default function CreatePurchaseOrderModal({
   }, []);
 
   const filteredSuppliers = suppliers.filter((supplier) =>
-    supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+    supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()),
   );
 
   const handleSupplierSearchChange = (e) => {
@@ -223,7 +223,7 @@ export default function CreatePurchaseOrderModal({
           return { ...item, [field]: value };
         }
         return item;
-      })
+      }),
     );
   };
 
@@ -306,7 +306,7 @@ export default function CreatePurchaseOrderModal({
 
     // Validate quantities
     const invalidItems = selectedItems.some(
-      (item) => !item.order_quantity || item.order_quantity <= 0
+      (item) => !item.order_quantity || item.order_quantity <= 0,
     );
     if (invalidItems) {
       toast.error("All items must have a quantity greater than 0");
@@ -323,7 +323,7 @@ export default function CreatePurchaseOrderModal({
           sum +
           (parseFloat(item.order_quantity) || 0) *
             (parseFloat(item.order_unit_price) || 0),
-        0
+        0,
       );
 
       const finalTotal = poTotal ? parseFloat(poTotal) : calculatedTotal;
@@ -386,7 +386,7 @@ export default function CreatePurchaseOrderModal({
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -399,7 +399,7 @@ export default function CreatePurchaseOrderModal({
     } catch (err) {
       console.error(err);
       toast.error(
-        err?.response?.data?.message || "Failed to create Purchase Order"
+        err?.response?.data?.message || "Failed to create Purchase Order",
       );
     } finally {
       setLoading(false);
@@ -489,7 +489,7 @@ export default function CreatePurchaseOrderModal({
                         onClick={() =>
                           handleSupplierSelect(
                             supplier.supplier_id,
-                            supplier.name
+                            supplier.name,
                           )
                         }
                         className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
@@ -638,6 +638,8 @@ export default function CreatePurchaseOrderModal({
                               item.hardware?.dimensions ||
                               item.edging_tape?.dimensions ||
                               "N/A"}{" "}
+                            • Supplier Reference:{" "}
+                            {item?.supplier_reference || "N/A"}
                           </p>
                         </div>
                         <Plus className="w-4 h-4 text-primary ml-auto" />
@@ -719,6 +721,14 @@ export default function CreatePurchaseOrderModal({
                         {/* Details Column */}
                         <td className="px-4 py-3">
                           <div className="text-xs text-slate-600 space-y-1">
+                            {item.supplier_reference && (
+                              <div>
+                                <span className="font-medium">
+                                  Supplier Ref:
+                                </span>{" "}
+                                {item.supplier_reference}
+                              </div>
+                            )}
                             {item.sheet && (
                               <>
                                 <div>
@@ -842,7 +852,7 @@ export default function CreatePurchaseOrderModal({
                               handleUpdateItem(
                                 item.item_id,
                                 "order_quantity",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className="w-20 p-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-primary outline-none"
@@ -867,7 +877,7 @@ export default function CreatePurchaseOrderModal({
                                 handleUpdateItem(
                                   item.item_id,
                                   "order_unit_price",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="w-24 p-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-primary outline-none" // Removed pl-5
@@ -880,7 +890,7 @@ export default function CreatePurchaseOrderModal({
                           $
                           {formatCurrency(
                             (parseFloat(item.order_quantity) || 0) *
-                              (parseFloat(item.order_unit_price) || 0)
+                              (parseFloat(item.order_unit_price) || 0),
                           )}
                         </td>
 
@@ -913,8 +923,8 @@ export default function CreatePurchaseOrderModal({
                             sum +
                             (parseFloat(item.order_quantity) || 0) *
                               (parseFloat(item.order_unit_price) || 0),
-                          0
-                        )
+                          0,
+                        ),
                       )}
                     </td>
                     <td></td>
@@ -958,12 +968,12 @@ export default function CreatePurchaseOrderModal({
                               sum +
                               (parseFloat(item.order_quantity) || 0) *
                                 (parseFloat(item.order_unit_price) || 0),
-                            0
+                            0,
                           ) +
                             (parseFloat(poDeliveryCharge) || 0)) *
                             0.1 *
-                            100
-                        ) / 100
+                            100,
+                        ) / 100,
                       )}
                     </td>
                     <td></td>
@@ -983,7 +993,7 @@ export default function CreatePurchaseOrderModal({
                             sum +
                             (parseFloat(item.order_quantity) || 0) *
                               (parseFloat(item.order_unit_price) || 0),
-                          0
+                          0,
                         ) +
                           (parseFloat(poDeliveryCharge) || 0) +
                           Math.ceil(
@@ -992,13 +1002,13 @@ export default function CreatePurchaseOrderModal({
                                 sum +
                                 (parseFloat(item.order_quantity) || 0) *
                                   (parseFloat(item.order_unit_price) || 0),
-                              0
+                              0,
                             ) +
                               (parseFloat(poDeliveryCharge) || 0)) *
                               0.1 *
-                              100
+                              100,
                           ) /
-                            100
+                            100,
                       )}
                     </td>
                     <td></td>

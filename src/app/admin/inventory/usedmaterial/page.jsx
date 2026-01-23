@@ -122,7 +122,7 @@ export default function page() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -186,13 +186,13 @@ export default function page() {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status) {
         const updatedMto = response?.data?.data;
         setMtos((prev) =>
-          prev.map((mto) => (mto.id === mtoId ? updatedMto || mto : mto))
+          prev.map((mto) => (mto.id === mtoId ? updatedMto || mto : mto)),
         );
         if (expandedMto === mtoId) setExpandedMto(null);
         setOpenMtoStatusDropdownId(null);
@@ -213,7 +213,7 @@ export default function page() {
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     } finally {
       setUpdatingMtoStatusId(null);
@@ -322,7 +322,7 @@ export default function page() {
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
         return;
       }
@@ -351,7 +351,7 @@ export default function page() {
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
         return;
       }
@@ -390,7 +390,7 @@ export default function page() {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -413,7 +413,7 @@ export default function page() {
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     } finally {
       setSaving(false);
@@ -519,7 +519,7 @@ export default function page() {
     setProjectSearchTerm(
       `${project.name}${
         project.client ? ` (${project.client.client_name})` : ""
-      }`
+      }`,
     );
     setIsProjectDropdownOpen(false);
   };
@@ -640,7 +640,7 @@ export default function page() {
           return { ...item, [field]: value };
         }
         return item;
-      })
+      }),
     );
   };
 
@@ -674,7 +674,7 @@ export default function page() {
 
     // Validate quantities
     const invalidItems = selectedItems.some(
-      (item) => !item.quantity || item.quantity <= 0
+      (item) => !item.quantity || item.quantity <= 0,
     );
     if (invalidItems) {
       toast.error("All items must have a quantity greater than 0", {
@@ -729,13 +729,13 @@ export default function page() {
               Authorization: `Bearer ${sessionToken}`,
               "Content-Type": "application/json",
             },
-          }
-        )
+          },
+        ),
       );
 
       const results = await Promise.allSettled(promises);
       const failed = results.filter(
-        (r) => r.status === "rejected" || !r.value?.data?.status
+        (r) => r.status === "rejected" || !r.value?.data?.status,
       );
 
       if (failed.length > 0) {
@@ -744,7 +744,7 @@ export default function page() {
           {
             position: "top-right",
             autoClose: 5000,
-          }
+          },
         );
       } else {
         toast.success("All materials used recorded successfully", {
@@ -760,7 +760,7 @@ export default function page() {
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     } finally {
       setSavingManual(false);
@@ -838,21 +838,21 @@ export default function page() {
 
   // Filter MTOs by status and readiness
   const activeMtos = mtos.filter(
-    (mto) => !Boolean(mto.used_material_completed) && mto.is_ready === true
+    (mto) => !Boolean(mto.used_material_completed) && mto.is_ready === true,
   );
   const upcomingMtos = mtos.filter(
-    (mto) => !Boolean(mto.used_material_completed) && mto.is_ready === false
+    (mto) => !Boolean(mto.used_material_completed) && mto.is_ready === false,
   );
   const completedMtos = mtos.filter((mto) =>
-    Boolean(mto.used_material_completed)
+    Boolean(mto.used_material_completed),
   );
 
   const displayedMtos =
     mtoTab === "completed"
       ? completedMtos
       : mtoTab === "upcoming"
-      ? upcomingMtos
-      : activeMtos;
+        ? upcomingMtos
+        : activeMtos;
 
   return (
     <AdminRoute>
@@ -978,7 +978,7 @@ export default function page() {
                               {displayedMtos.map((mto) => {
                                 const isExpanded = expandedMto === mto.id;
                                 const groupedItems = groupItemsByCategory(
-                                  mto.items || []
+                                  mto.items || [],
                                 );
                                 const lotIds =
                                   mto.lots && mto.lots.length > 0
@@ -1024,7 +1024,7 @@ export default function page() {
                                           Upcoming
                                         </div>
                                       ) : !Boolean(
-                                          mto.used_material_completed
+                                          mto.used_material_completed,
                                         ) ? (
                                         <div
                                           className="relative shrink-0 ml-4"
@@ -1039,7 +1039,7 @@ export default function page() {
                                                 (prev) =>
                                                   prev === mto.id
                                                     ? null
-                                                    : mto.id
+                                                    : mto.id,
                                               );
                                             }}
                                             disabled={
@@ -1064,7 +1064,7 @@ export default function page() {
                                                   e.stopPropagation();
                                                   handleUpdateMtoUsedMaterialStatus(
                                                     mto.id,
-                                                    true
+                                                    true,
                                                   );
                                                 }}
                                                 className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center justify-between"
@@ -1105,7 +1105,7 @@ export default function page() {
                                                     {getCategoryIcon(category)}
                                                     <h3 className="text-sm font-semibold text-slate-700">
                                                       {formatCategoryName(
-                                                        category
+                                                        category,
                                                       )}
                                                     </h3>
                                                     <span className="text-sm text-slate-500 ml-auto font-medium">
@@ -1116,7 +1116,7 @@ export default function page() {
                                                     {items.map((mtoItem) => {
                                                       const itemDetails =
                                                         getItemDetails(
-                                                          mtoItem.item
+                                                          mtoItem.item,
                                                         );
                                                       // Compare string input with original number value
                                                       const inputString =
@@ -1126,7 +1126,7 @@ export default function page() {
                                                       const originalValue =
                                                         String(
                                                           mtoItem.quantity_used ||
-                                                            0
+                                                            0,
                                                         );
                                                       const hasChanges =
                                                         inputString !==
@@ -1157,13 +1157,13 @@ export default function page() {
                                                                     width={64}
                                                                     height={64}
                                                                     onError={(
-                                                                      e
+                                                                      e,
                                                                     ) => {
                                                                       e.target.style.display =
                                                                         "none";
                                                                       const fallback =
                                                                         e.target.parentElement?.querySelector(
-                                                                          ".image-fallback"
+                                                                          ".image-fallback",
                                                                         );
                                                                       if (
                                                                         fallback
@@ -1372,11 +1372,11 @@ export default function page() {
                                                                         ]
                                                                       : String(
                                                                           mtoItem.quantity_used ||
-                                                                            0
+                                                                            0,
                                                                         )
                                                                   }
                                                                   onChange={(
-                                                                    e
+                                                                    e,
                                                                   ) => {
                                                                     // Store raw string value to allow empty input
                                                                     const value =
@@ -1384,7 +1384,7 @@ export default function page() {
                                                                         .value;
                                                                     handleQuantityInputChange(
                                                                       mtoItem.id,
-                                                                      value
+                                                                      value,
                                                                     );
                                                                   }}
                                                                   className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-center font-medium"
@@ -1419,11 +1419,11 @@ export default function page() {
                                                                     ""
                                                                       ? 0
                                                                       : parseFloat(
-                                                                          inputString
+                                                                          inputString,
                                                                         );
                                                                   if (
                                                                     !isNaN(
-                                                                      inputValue
+                                                                      inputValue,
                                                                     ) &&
                                                                     inputValue >
                                                                       mtoItem.quantity
@@ -1452,7 +1452,7 @@ export default function page() {
                                                                   <button
                                                                     onClick={() =>
                                                                       handleCancelEdit(
-                                                                        mtoItem.id
+                                                                        mtoItem.id,
                                                                       )
                                                                     }
                                                                     disabled={
@@ -1469,7 +1469,7 @@ export default function page() {
                                                                     onClick={() =>
                                                                       handleSaveUsage(
                                                                         mto.id,
-                                                                        mtoItem
+                                                                        mtoItem,
                                                                       )
                                                                     }
                                                                     disabled={(() => {
@@ -1494,11 +1494,11 @@ export default function page() {
                                                                         ""
                                                                           ? 0
                                                                           : parseFloat(
-                                                                              inputString
+                                                                              inputString,
                                                                             );
                                                                       return (
                                                                         !isNaN(
-                                                                          inputValue
+                                                                          inputValue,
                                                                         ) &&
                                                                         inputValue >
                                                                           mtoItem.quantity
@@ -1522,7 +1522,7 @@ export default function page() {
                                                     })}
                                                   </div>
                                                 </div>
-                                              )
+                                              ),
                                             )}
                                           </div>
                                         )}
@@ -1955,7 +1955,7 @@ export default function page() {
                                   handleUpdateItem(
                                     item.item_id,
                                     "quantity",
-                                    e.target.value
+                                    e.target.value,
                                   )
                                 }
                                 className="w-20 p-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-primary outline-none"

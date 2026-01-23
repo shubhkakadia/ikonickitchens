@@ -154,7 +154,7 @@ export default function page() {
       }
     } catch (err) {
       setError(
-        err?.response?.data?.message || "Failed to fetch purchase orders"
+        err?.response?.data?.message || "Failed to fetch purchase orders",
       );
     } finally {
       setLoading(false);
@@ -193,7 +193,7 @@ export default function page() {
       const itemsCount = po.items?.length || 0;
       const totalQty = (po.items || []).reduce(
         (sum, it) => sum + (parseFloat(it.quantity) || 0),
-        0
+        0,
       );
       return { ...po, __itemsCount: itemsCount, __totalQty: totalQty };
     });
@@ -295,7 +295,7 @@ export default function page() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
@@ -305,7 +305,7 @@ export default function page() {
       (po) =>
         po.status === "DRAFT" ||
         po.status === "ORDERED" ||
-        po.status === "PARTIALLY_RECEIVED"
+        po.status === "PARTIALLY_RECEIVED",
     );
   }, [pos]);
 
@@ -330,7 +330,7 @@ export default function page() {
       // Check if click is outside the input and dropdown
       const isClickOnInput = poInputRef.current?.contains(event.target);
       const isClickOnDropdown = event.target.closest(
-        '[data-dropdown="po-dropdown"]'
+        '[data-dropdown="po-dropdown"]',
       );
 
       if (!isClickOnInput && !isClickOnDropdown) {
@@ -446,26 +446,17 @@ export default function page() {
       return;
     }
 
-    // Validate quantities - new delivery should not exceed remaining
-    const hasInvalidQuantity = selectedPO.items?.some((item) => {
-      const newDelivery = quantityReceived[item.id] || 0;
-      const remaining = getRemaining(item);
-      return newDelivery > remaining;
-    });
-
-    if (hasInvalidQuantity) {
-      toast.error("New delivery quantity cannot exceed remaining quantity", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      return;
-    }
-
     // Filter items with new delivery quantity > 0
-    const itemsToProcess = selectedPO.items.filter((item) => {
-      const newDelivery = quantityReceived[item.id] || 0;
-      return newDelivery > 0 && (item.item?.item_id || item.item_id);
-    });
+    const itemsToProcess = selectedPO.items
+      .filter((item) => {
+        const newDelivery = quantityReceived[item.id] || 0;
+        return newDelivery > 0 && (item.item?.item_id || item.item_id);
+      })
+      .map((item) => ({
+        item_id: item.item?.item_id || item.item_id,
+        quantity: parseFloat(quantityReceived[item.id] || 0),
+        notes: `Goods received from supplier invoice`,
+      }));
 
     if (itemsToProcess.length === 0) {
       toast.warning("No items with new delivery quantities to process", {
@@ -486,60 +477,25 @@ export default function page() {
         return;
       }
 
-      // Create stock transactions for each item with new delivery
-      const transactionPromises = itemsToProcess.map((item) => {
-        const newDelivery = parseFloat(quantityReceived[item.id] || 0);
-        const itemId = item.item?.item_id || item.item_id;
+      // Use the new batch receive endpoint (atomic transaction)
+      const response = await axios.post(
+        `/api/purchase_order/received_items`,
+        {
+          purchase_order_id: selectedPOId,
+          items: itemsToProcess,
+        },
+        {
+          headers: { Authorization: `Bearer ${sessionToken}` },
+        },
+      );
 
-        if (!itemId) {
-          return Promise.reject(new Error("Missing item_id"));
-        }
-
-        return axios.post(
-          `/api/stock_transaction/create`,
-          {
-            item_id: itemId,
-            quantity: newDelivery,
-            type: "ADDED",
-            purchase_order_id: selectedPOId,
-          },
-          {
-            headers: { Authorization: `Bearer ${sessionToken}` },
-          }
-        );
-      });
-
-      // Execute all transactions in parallel with better error handling
-      const results = await Promise.allSettled(transactionPromises);
-
-      // Process results
-      const responses = results.map((result) => {
-        if (result.status === "fulfilled") {
-          return result.value;
-        } else {
-          return {
-            data: {
-              status: false,
-              message:
-                result.reason?.response?.data?.message ||
-                result.reason?.message ||
-                "Transaction failed",
-            },
-          };
-        }
-      });
-
-      // Check if all transactions succeeded
-      const allSucceeded = responses.every((res) => res.data?.status);
-      const failedCount = responses.filter((res) => !res.data?.status).length;
-
-      if (allSucceeded) {
+      if (response.data.status) {
         toast.success(
           `Materials received updated successfully for ${itemsToProcess.length} item(s)`,
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
         setShowMaterialsReceivedModal(false);
         setSelectedPOId("");
@@ -550,14 +506,12 @@ export default function page() {
         fetchPOs(); // Refresh the list
       } else {
         toast.error(
-          `Failed to update ${failedCount} of ${itemsToProcess.length} item(s)`,
+          response.data.message || "Failed to update received quantities",
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
-        // Still refresh to show partial updates
-        fetchPOs();
       }
     } catch (err) {
       toast.error(
@@ -565,7 +519,7 @@ export default function page() {
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     } finally {
       setIsSubmitting(false);
@@ -602,7 +556,7 @@ export default function page() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -666,7 +620,7 @@ export default function page() {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -727,7 +681,7 @@ export default function page() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -749,7 +703,7 @@ export default function page() {
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
       }
     } catch (err) {
@@ -758,7 +712,7 @@ export default function page() {
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     } finally {
       setDeletingPOId(null);
@@ -789,7 +743,7 @@ export default function page() {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -809,7 +763,7 @@ export default function page() {
           {
             position: "top-right",
             autoClose: 3000,
-          }
+          },
         );
       }
     } catch (err) {
@@ -818,7 +772,7 @@ export default function page() {
         {
           position: "top-right",
           autoClose: 3000,
-        }
+        },
       );
     }
   };
@@ -1215,7 +1169,7 @@ export default function page() {
                                       <input
                                         type="checkbox"
                                         checked={selectedColumns.includes(
-                                          column
+                                          column,
                                         )}
                                         onChange={() =>
                                           handleColumnToggle(column)
@@ -1360,12 +1314,12 @@ export default function page() {
                                     <td className="px-3 py-2 text-xs text-slate-700">
                                       {po.ordered_at
                                         ? `Ordered: ${new Date(
-                                            po.ordered_at
+                                            po.ordered_at,
                                           ).toLocaleDateString()}`
                                         : `Created: ${
                                             po.createdAt
                                               ? new Date(
-                                                  po.createdAt
+                                                  po.createdAt,
                                                 ).toLocaleDateString()
                                               : "-"
                                           }`}
@@ -1374,11 +1328,17 @@ export default function page() {
                                       {(po.items || []).reduce(
                                         (sum, it) =>
                                           sum + (parseFloat(it.quantity) || 0),
-                                        0
+                                        0,
                                       )}
                                     </td>
                                     <td className="px-3 py-2 text-xs text-slate-700">
-                                      ${formatMoney(po.total_amount)}
+                                      $
+                                      {formatMoney(
+                                        (parseFloat(po.total_amount) || 0) +
+                                          (parseFloat(po.delivery_charge) ||
+                                            0) *
+                                            1.1,
+                                      )}
                                     </td>
                                     <td className="px-3 py-2">
                                       <span
@@ -1386,14 +1346,15 @@ export default function page() {
                                           po.status === "DRAFT"
                                             ? "bg-yellow-100 text-yellow-800"
                                             : po.status === "ORDERED"
-                                            ? "bg-blue-100 text-blue-800"
-                                            : po.status === "PARTIALLY_RECEIVED"
-                                            ? "bg-purple-100 text-purple-800"
-                                            : po.status === "FULLY_RECEIVED"
-                                            ? "bg-green-100 text-green-800"
-                                            : po.status === "CANCELLED"
-                                            ? "bg-red-100 text-red-800"
-                                            : "bg-gray-100 text-gray-800"
+                                              ? "bg-blue-100 text-blue-800"
+                                              : po.status ===
+                                                  "PARTIALLY_RECEIVED"
+                                                ? "bg-purple-100 text-purple-800"
+                                                : po.status === "FULLY_RECEIVED"
+                                                  ? "bg-green-100 text-green-800"
+                                                  : po.status === "CANCELLED"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : "bg-gray-100 text-gray-800"
                                         }`}
                                       >
                                         {po.status}
@@ -1432,7 +1393,7 @@ export default function page() {
                                                     </span>{" "}
                                                     {po.createdAt
                                                       ? new Date(
-                                                          po.createdAt
+                                                          po.createdAt,
                                                         ).toLocaleString()
                                                       : "No date"}
                                                   </span>
@@ -1445,7 +1406,7 @@ export default function page() {
                                                         Ordered:
                                                       </span>{" "}
                                                       {new Date(
-                                                        po.ordered_at
+                                                        po.ordered_at,
                                                       ).toLocaleDateString()}
                                                     </span>
                                                   </div>
@@ -1460,7 +1421,7 @@ export default function page() {
                                                       <span className="font-semibold">
                                                         $
                                                         {formatMoney(
-                                                          po.total_amount
+                                                          po.total_amount,
                                                         )}
                                                       </span>
                                                     </span>
@@ -1476,7 +1437,7 @@ export default function page() {
                                                       <span className="font-semibold">
                                                         $
                                                         {formatMoney(
-                                                          po.delivery_charge
+                                                          po.delivery_charge,
                                                         )}
                                                       </span>
                                                     </span>
@@ -1490,7 +1451,7 @@ export default function page() {
                                                         Invoice Date:
                                                       </span>{" "}
                                                       {new Date(
-                                                        po.invoice_date
+                                                        po.invoice_date,
                                                       ).toLocaleDateString()}
                                                     </span>
                                                   </div>
@@ -1618,7 +1579,7 @@ export default function page() {
                                                           isExisting: true,
                                                         });
                                                         setShowInvoicePreview(
-                                                          true
+                                                          true,
                                                         );
                                                       }}
                                                       className="cursor-pointer px-2 py-1 border border-slate-300 rounded-lg hover:bg-slate-50 text-xs text-slate-700"
@@ -1629,7 +1590,7 @@ export default function page() {
                                                       onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleInvoiceDelete(
-                                                          po.id
+                                                          po.id,
                                                         );
                                                       }}
                                                       disabled={
@@ -1701,7 +1662,7 @@ export default function page() {
                                                           e.stopPropagation();
                                                           handleInvoiceFileChange(
                                                             po.id,
-                                                            e
+                                                            e,
                                                           );
                                                         }}
                                                         className="hidden"
@@ -1780,17 +1741,18 @@ export default function page() {
                                                   {po.items.map((item) => {
                                                     const orderedQty =
                                                       parseFloat(
-                                                        item.quantity || 0
+                                                        item.quantity || 0,
                                                       ) || 0;
                                                     const receivedQty =
                                                       parseFloat(
                                                         item.quantity_received ||
-                                                          0
+                                                          0,
                                                       ) || 0;
                                                     const remainingQty =
                                                       Math.max(
                                                         0,
-                                                        orderedQty - receivedQty
+                                                        orderedQty -
+                                                          receivedQty,
                                                       );
                                                     const measurementUnit =
                                                       item.item
@@ -1831,6 +1793,18 @@ export default function page() {
                                                         </td>
                                                         <td className="px-3 py-2">
                                                           <div className="text-xs text-gray-600 space-y-1">
+                                                            {item.item
+                                                              ?.supplier_reference && (
+                                                              <div>
+                                                                <span className="font-medium">
+                                                                  Supplier Ref:
+                                                                </span>{" "}
+                                                                {
+                                                                  item.item
+                                                                    .supplier_reference
+                                                                }
+                                                              </div>
+                                                            )}
                                                             {item.item
                                                               ?.sheet && (
                                                               <>
@@ -2130,7 +2104,7 @@ export default function page() {
                                                           <span className="text-xs text-gray-600">
                                                             $
                                                             {parseFloat(
-                                                              item.unit_price
+                                                              item.unit_price,
                                                             ).toFixed(2)}
                                                           </span>
                                                         </td>
@@ -2139,11 +2113,11 @@ export default function page() {
                                                             $
                                                             {formatMoney(
                                                               parseFloat(
-                                                                item.quantity
+                                                                item.quantity,
                                                               ) *
                                                                 parseFloat(
-                                                                  item.unit_price
-                                                                )
+                                                                  item.unit_price,
+                                                                ),
                                                             )}
                                                           </span>
                                                         </td>
@@ -2151,6 +2125,59 @@ export default function page() {
                                                     );
                                                   })}
                                                 </tbody>
+                                                <tfoot className="bg-slate-100 border-t-2 border-slate-300">
+                                                  <tr>
+                                                    <td
+                                                      colSpan="6"
+                                                      className="px-3 py-2 text-right text-xs font-medium text-slate-700"
+                                                    >
+                                                      Order Total:
+                                                    </td>
+                                                    <td className="px-3 py-2 text-xs font-semibold text-slate-900">
+                                                      $
+                                                      {formatMoney(
+                                                        po.total_amount || 0,
+                                                      )}
+                                                    </td>
+                                                  </tr>
+                                                  <tr>
+                                                    <td
+                                                      colSpan="6"
+                                                      className="px-3 py-2 text-right text-xs font-medium text-slate-700"
+                                                    >
+                                                      Delivery Charge (inc. 10%
+                                                      GST):
+                                                    </td>
+                                                    <td className="px-3 py-2 text-xs font-semibold text-slate-900">
+                                                      $
+                                                      {formatMoney(
+                                                        (parseFloat(
+                                                          po.delivery_charge,
+                                                        ) || 0) * 1.1,
+                                                      )}
+                                                    </td>
+                                                  </tr>
+                                                  <tr className="border-t-2 border-slate-400">
+                                                    <td
+                                                      colSpan="6"
+                                                      className="px-3 py-2 text-right text-sm font-bold text-slate-800"
+                                                    >
+                                                      Grand Total:
+                                                    </td>
+                                                    <td className="px-3 py-2 text-sm font-bold text-slate-900">
+                                                      $
+                                                      {formatMoney(
+                                                        (parseFloat(
+                                                          po.total_amount,
+                                                        ) || 0) +
+                                                          (parseFloat(
+                                                            po.delivery_charge,
+                                                          ) || 0) *
+                                                            1.1,
+                                                      )}
+                                                    </td>
+                                                  </tr>
+                                                </tfoot>
                                               </table>
                                             </div>
                                           )}
@@ -2377,6 +2404,14 @@ export default function page() {
                               </td>
                               <td className="px-4 py-3">
                                 <div className="text-sm text-gray-600 space-y-1">
+                                  {item.item?.supplier_reference && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Supplier Ref:
+                                      </span>{" "}
+                                      {item.item.supplier_reference}
+                                    </div>
+                                  )}
                                   {item.item?.sheet && (
                                     <>
                                       <div>
@@ -2576,42 +2611,53 @@ export default function page() {
                                 </div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max={remainingQty}
-                                  value={newDelivery || ""}
-                                  onChange={(e) =>
-                                    handleQuantityReceivedChange(
-                                      item.id,
-                                      e.target.value
-                                    )
-                                  }
-                                  className={`w-24 text-sm text-slate-800 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                    exceedsRemaining
-                                      ? "border-red-300 bg-red-50"
-                                      : "border-slate-300"
-                                  }`}
-                                  placeholder="0"
-                                />
-                                {item.item?.measurement_unit && (
-                                  <span className="text-gray-400 ml-1 text-sm">
-                                    {item.item.measurement_unit}
+                                {remainingQty === 0 ? (
+                                  <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded inline-flex items-center gap-1">
+                                    <Check className="w-3 h-3" />
+                                    Received
                                   </span>
-                                )}
-                                {exceedsRemaining && (
-                                  <div className="text-xs text-red-500 mt-1">
-                                    Exceeds remaining
-                                  </div>
+                                ) : (
+                                  <>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={remainingQty}
+                                      value={newDelivery || ""}
+                                      onChange={(e) =>
+                                        handleQuantityReceivedChange(
+                                          item.id,
+                                          e.target.value,
+                                        )
+                                      }
+                                      className={`w-24 text-sm text-slate-800 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                                        exceedsRemaining
+                                          ? "border-red-300 bg-red-50"
+                                          : "border-slate-300"
+                                      }`}
+                                      placeholder="0"
+                                    />
+                                    {item.item?.measurement_unit && (
+                                      <span className="text-gray-400 ml-1 text-sm">
+                                        {item.item.measurement_unit}
+                                      </span>
+                                    )}
+                                    {exceedsRemaining && (
+                                      <div className="text-xs text-red-500 mt-1">
+                                        Exceeds remaining
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                {isComplete && newDelivery > 0 && (
-                                  <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-                                    <Check className="w-3 h-3 inline mr-1" />
-                                    Complete
-                                  </span>
-                                )}
+                                {remainingQty > 0 &&
+                                  isComplete &&
+                                  newDelivery > 0 && (
+                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                                      <Check className="w-3 h-3 inline mr-1" />
+                                      Complete
+                                    </span>
+                                  )}
                               </td>
                             </tr>
                           );

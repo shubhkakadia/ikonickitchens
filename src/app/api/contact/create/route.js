@@ -41,25 +41,27 @@ export async function POST(request) {
       "contact",
       contact.id,
       "CREATE",
-      `Contact created successfully: ${contact.first_name} ${contact.last_name}`
+      `Contact created successfully: ${contact.first_name} ${contact.last_name}`,
     );
 
     if (!logged) {
-      console.error(`Failed to log contact creation: ${contact.id} - ${contact.first_name} ${contact.last_name}`);
+      console.error(
+        `Failed to log contact creation: ${contact.id} - ${contact.first_name} ${contact.last_name}`,
+      );
       return NextResponse.json(
         {
           status: true,
           message: "Contact created successfully",
           data: contact,
-          warning: "Note: Creation succeeded but logging failed"
+          warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
 
     return NextResponse.json(
       { status: true, message: "Contact created successfully", data: contact },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/contact/create:", error);
@@ -68,7 +70,7 @@ export async function POST(request) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

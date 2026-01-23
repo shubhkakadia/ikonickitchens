@@ -97,7 +97,7 @@ async function handleUsedTransaction(data) {
         // Use as much as we can from this reservation
         const quantityToUseFromReservation = Math.min(
           availableInReservation,
-          remainingQuantity
+          remainingQuantity,
         );
 
         // If we're using all the available quantity, delete the reservation
@@ -141,7 +141,7 @@ async function handleUsedTransaction(data) {
           });
           const available = current?.quantity ?? 0;
           throw new Error(
-            `INSUFFICIENT_INVENTORY:${item_id}:${remainingQuantity}:${available}`
+            `INSUFFICIENT_INVENTORY:${item_id}:${remainingQuantity}:${available}`,
           );
         }
       }
@@ -187,7 +187,7 @@ async function handleUsedTransaction(data) {
 
         if (updatedMto) {
           const allItemsUsed = (updatedMto.items || []).every(
-            (it) => (it.quantity_used || 0) >= it.quantity
+            (it) => (it.quantity_used || 0) >= it.quantity,
           );
 
           if (allItemsUsed && !updatedMto.used_material_completed) {
@@ -312,10 +312,10 @@ async function handleAddedTransaction(data) {
     });
 
     const allItemsReceived = updatedPO.items.every(
-      (item) => (item.quantity_received || 0) >= item.quantity
+      (item) => (item.quantity_received || 0) >= item.quantity,
     );
     const someItemsReceived = updatedPO.items.some(
-      (item) => (item.quantity_received || 0) > 0
+      (item) => (item.quantity_received || 0) > 0,
     );
 
     let newStatus = updatedPO.status;
@@ -439,7 +439,7 @@ async function handleManualUsedTransaction(data) {
         });
         const available = current?.quantity ?? 0;
         throw new Error(
-          `INSUFFICIENT_INVENTORY:${item_id}:${quantity}:${available}`
+          `INSUFFICIENT_INVENTORY:${item_id}:${quantity}:${available}`,
         );
       }
 
@@ -523,7 +523,7 @@ async function handleWastedTransaction(data) {
         });
         const available = current?.quantity ?? 0;
         throw new Error(
-          `INSUFFICIENT_INVENTORY:${item_id}:${quantity}:${available}`
+          `INSUFFICIENT_INVENTORY:${item_id}:${quantity}:${available}`,
         );
       }
 
@@ -601,7 +601,7 @@ export async function POST(request) {
           status: false,
           message: "item_id, quantity, and type are required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -611,7 +611,7 @@ export async function POST(request) {
           status: false,
           message: "quantity must be non-negative",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -642,7 +642,7 @@ export async function POST(request) {
             status: false,
             message: "purchase_order_id is required for ADDED transactions",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
       result = await handleAddedTransaction({
@@ -663,7 +663,7 @@ export async function POST(request) {
           status: false,
           message: "type must be either 'ADDED', 'USED', or 'WASTED'",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -675,7 +675,7 @@ export async function POST(request) {
           message: result?.message || "Request failed",
           data: result?.data,
         },
-        { status: result?.statusCode || 400 }
+        { status: result?.statusCode || 400 },
       );
     }
 
@@ -687,12 +687,12 @@ export async function POST(request) {
         "stock_transaction",
         logEntityId,
         "CREATE",
-        `Stock transaction created successfully: ${type} for item: ${item_id}`
+        `Stock transaction created successfully: ${type} for item: ${item_id}`,
       );
 
       if (!logged) {
         console.error(
-          `Failed to log stock transaction creation: ${logEntityId}`
+          `Failed to log stock transaction creation: ${logEntityId}`,
         );
       }
     }
@@ -758,12 +758,12 @@ export async function POST(request) {
           item_name: itemName,
           dimensions: dimensions,
         },
-        "stock_transaction_created"
+        "stock_transaction_created",
       );
     } catch (notificationError) {
       console.error(
         "Failed to send stock transaction notification:",
-        notificationError
+        notificationError,
       );
       // Don't fail the request if notification fails
     }
@@ -777,7 +777,7 @@ export async function POST(request) {
           : { warning: "Note: Creation succeeded but logging failed" }),
         data: result.data,
       },
-      { status: result.statusCode }
+      { status: result.statusCode },
     );
   } catch (error) {
     console.error("Error in POST /api/stock_transaction/create:", error);
@@ -786,7 +786,7 @@ export async function POST(request) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

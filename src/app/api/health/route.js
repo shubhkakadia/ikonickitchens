@@ -7,6 +7,6 @@ export async function GET() {
       service: "ikonickitchens",
       timestamp: new Date().toISOString(),
     },
-    { status: 200 }
+    { status: 200 },
   );
 }

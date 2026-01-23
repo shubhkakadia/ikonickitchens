@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth, getUserFromToken } from "@/lib/validators/authFromToken";
+import {
+  validateAdminAuth,
+  getUserFromToken,
+} from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 
@@ -14,7 +17,7 @@ export async function POST(request) {
     if (!session) {
       return NextResponse.json(
         { status: false, message: "Invalid session" },
-        { status: 401 }
+        { status: 401 },
       );
     }
     const createdBy_id = session.user_id;
@@ -33,12 +36,12 @@ export async function POST(request) {
           items:
             items && items.length > 0
               ? {
-                create: items.map((item) => ({
-                  item_id: item.item_id,
-                  quantity: item.quantity,
-                  notes: item.notes,
-                })),
-              }
+                  create: items.map((item) => ({
+                    item_id: item.item_id,
+                    quantity: item.quantity,
+                    notes: item.notes,
+                  })),
+                }
               : undefined,
         },
       });
@@ -95,16 +98,23 @@ export async function POST(request) {
     };
 
     const projectName = completeMto.project?.name || "No Project";
-    const logged = await withLogging(request, "materials_to_order", mto.id, "CREATE", `Materials to order created successfully${completeMto.project ? ` for project: ${projectName}` : ""}`);
+    const logged = await withLogging(
+      request,
+      "materials_to_order",
+      mto.id,
+      "CREATE",
+      `Materials to order created successfully${completeMto.project ? ` for project: ${projectName}` : ""}`,
+    );
 
     // Send notification for MTO creation
     try {
       // Get lot names
-      const lotNames = completeMto.lots && completeMto.lots.length > 0
-        ? (completeMto.lots.length === 1
-          ? completeMto.lots[0].lot_id
-          : completeMto.lots.map(l => l.lot_id).join(", "))
-        : "Unknown Lot";
+      const lotNames =
+        completeMto.lots && completeMto.lots.length > 0
+          ? completeMto.lots.length === 1
+            ? completeMto.lots[0].lot_id
+            : completeMto.lots.map((l) => l.lot_id).join(", ")
+          : "Unknown Lot";
 
       await sendNotification(
         {
@@ -112,14 +122,18 @@ export async function POST(request) {
           materials_to_order_id: mto.id,
           project_id: completeMto.project_id,
           project_name: completeMto.project?.name || "Unknown Project",
-          client_name: completeMto.project?.client?.client_name || "Unknown Client",
+          client_name:
+            completeMto.project?.client?.client_name || "Unknown Client",
           lot_name: lotNames,
           is_new: true,
         },
-        "materials_to_order_list_update"
+        "materials_to_order_list_update",
       );
     } catch (notificationError) {
-      console.error("Failed to send MTO creation notification:", notificationError);
+      console.error(
+        "Failed to send MTO creation notification:",
+        notificationError,
+      );
       // Don't fail the request if notification fails
     }
 
@@ -130,9 +144,9 @@ export async function POST(request) {
           status: true,
           message: "Materials to order created successfully",
           data: mtoWithMedia,
-          warning: "Note: Creation succeeded but logging failed"
+          warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
     return NextResponse.json(
@@ -141,13 +155,13 @@ export async function POST(request) {
         message: "Materials to order created successfully",
         data: mtoWithMedia,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/materials_to_order/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

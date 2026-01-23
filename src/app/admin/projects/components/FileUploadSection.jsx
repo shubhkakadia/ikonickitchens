@@ -1,7 +1,15 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { FileUp, FileText, File, Trash, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  FileUp,
+  FileText,
+  File,
+  Trash,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
 import TextEditor from "@/components/TextEditor/TextEditor";
@@ -24,16 +32,16 @@ const FileItemWithNotes = ({
 
   // Checkbox states for maintenance checklist
   const [preparedByOffice, setPreparedByOffice] = useState(
-    file.maintenance_checklist?.prepared_by_office || false
+    file.maintenance_checklist?.prepared_by_office || false,
   );
   const [preparedByProduction, setPreparedByProduction] = useState(
-    file.maintenance_checklist?.prepared_by_production || false
+    file.maintenance_checklist?.prepared_by_production || false,
   );
   const [deliveredToSite, setDeliveredToSite] = useState(
-    file.maintenance_checklist?.delivered_to_site || false
+    file.maintenance_checklist?.delivered_to_site || false,
   );
   const [installed, setInstalled] = useState(
-    file.maintenance_checklist?.installed || false
+    file.maintenance_checklist?.installed || false,
   );
   const checklistDebounceTimer = useRef(null);
 
@@ -54,8 +62,12 @@ const FileItemWithNotes = ({
   // Sync checkbox states when file prop changes
   useEffect(() => {
     if (file.maintenance_checklist) {
-      setPreparedByOffice(file.maintenance_checklist.prepared_by_office || false);
-      setPreparedByProduction(file.maintenance_checklist.prepared_by_production || false);
+      setPreparedByOffice(
+        file.maintenance_checklist.prepared_by_office || false,
+      );
+      setPreparedByProduction(
+        file.maintenance_checklist.prepared_by_production || false,
+      );
       setDeliveredToSite(file.maintenance_checklist.delivered_to_site || false);
       setInstalled(file.maintenance_checklist.installed || false);
     } else {
@@ -100,7 +112,7 @@ const FileItemWithNotes = ({
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -159,21 +171,26 @@ const FileItemWithNotes = ({
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (response.data.status && response.data.data) {
         // Update local state from API response
         const updatedChecklist = response.data.data;
         setPreparedByOffice(updatedChecklist.prepared_by_office || false);
-        setPreparedByProduction(updatedChecklist.prepared_by_production || false);
+        setPreparedByProduction(
+          updatedChecklist.prepared_by_production || false,
+        );
         setDeliveredToSite(updatedChecklist.delivered_to_site || false);
         setInstalled(updatedChecklist.installed || false);
 
         // Update refs
-        preparedByOfficeRef.current = updatedChecklist.prepared_by_office || false;
-        preparedByProductionRef.current = updatedChecklist.prepared_by_production || false;
-        deliveredToSiteRef.current = updatedChecklist.delivered_to_site || false;
+        preparedByOfficeRef.current =
+          updatedChecklist.prepared_by_office || false;
+        preparedByProductionRef.current =
+          updatedChecklist.prepared_by_production || false;
+        deliveredToSiteRef.current =
+          updatedChecklist.delivered_to_site || false;
         installedRef.current = updatedChecklist.installed || false;
       } else {
         toast.error(response.data.message || "Failed to save checklist");
@@ -282,8 +299,9 @@ const FileItemWithNotes = ({
             />
           ) : (
             <div
-              className={`w-full h-auto aspect-square flex items-center justify-center rounded-lg ${file.mime_type.includes("pdf") ? "bg-red-50" : "bg-green-50"
-                }`}
+              className={`w-full h-auto aspect-square flex items-center justify-center rounded-lg ${
+                file.mime_type.includes("pdf") ? "bg-red-50" : "bg-green-50"
+              }`}
             >
               {file.mime_type.includes("pdf") ? (
                 <FileText
@@ -357,46 +375,63 @@ const FileItemWithNotes = ({
       </div>
 
       {/* Maintenance Checklist Checkboxes - In Same Row - Only for Maintenance Photos Tab */}
-      {activeTab === "site_photos" && activeSitePhotoSubtab === "maintenance" && (
-        <div className="flex flex-col justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={preparedByOffice}
-              onChange={(e) => handleChecklistChange("preparedByOffice", e.target.checked)}
-              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
-            />
-            <span className="text-sm text-slate-700">Prepared by Office</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={preparedByProduction}
-              onChange={(e) => handleChecklistChange("preparedByProduction", e.target.checked)}
-              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
-            />
-            <span className="text-sm text-slate-700">Prepared by Production</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={deliveredToSite}
-              onChange={(e) => handleChecklistChange("deliveredToSite", e.target.checked)}
-              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
-            />
-            <span className="text-sm text-slate-700">Delivered to Site</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={installed}
-              onChange={(e) => handleChecklistChange("installed", e.target.checked)}
-              className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
-            />
-            <span className="text-sm text-slate-700">Installed</span>
-          </label>
-        </div>
-      )}
+      {activeTab === "site_photos" &&
+        activeSitePhotoSubtab === "maintenance" && (
+          <div
+            className="flex flex-col justify-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preparedByOffice}
+                onChange={(e) =>
+                  handleChecklistChange("preparedByOffice", e.target.checked)
+                }
+                className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+              />
+              <span className="text-sm text-slate-700">Prepared by Office</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={preparedByProduction}
+                onChange={(e) =>
+                  handleChecklistChange(
+                    "preparedByProduction",
+                    e.target.checked,
+                  )
+                }
+                className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+              />
+              <span className="text-sm text-slate-700">
+                Prepared by Production
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={deliveredToSite}
+                onChange={(e) =>
+                  handleChecklistChange("deliveredToSite", e.target.checked)
+                }
+                className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+              />
+              <span className="text-sm text-slate-700">Delivered to Site</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={installed}
+                onChange={(e) =>
+                  handleChecklistChange("installed", e.target.checked)
+                }
+                className="w-4 h-4 text-secondary border-slate-300 rounded focus:ring-2 focus:ring-secondary cursor-pointer"
+              />
+              <span className="text-sm text-slate-700">Installed</span>
+            </label>
+          </div>
+        )}
     </div>
   );
 };
@@ -437,9 +472,15 @@ export default function FileUploadSection({
       const mimeType = file.mime_type || file.type || "";
       const filename = file.filename || file.name || "";
 
-      if (mimeType.includes("image") || filename.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)) {
+      if (
+        mimeType.includes("image") ||
+        filename.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i)
+      ) {
         images.push(file);
-      } else if (mimeType.includes("video") || filename.match(/\.(mp4|webm|ogg|mov|avi)$/i)) {
+      } else if (
+        mimeType.includes("video") ||
+        filename.match(/\.(mp4|webm|ogg|mov|avi)$/i)
+      ) {
         videos.push(file);
       } else if (mimeType.includes("pdf") || filename.endsWith(".pdf")) {
         pdfs.push(file);
@@ -456,7 +497,9 @@ export default function FileUploadSection({
     const fileUrl = `/${file.url}`;
     const filteredFiles = getFilteredFiles();
     const sortedFiles = sortFilesByType(filteredFiles);
-    const currentIndex = sortedFiles.findIndex((f) => f.id === file.id || f.filename === file.filename);
+    const currentIndex = sortedFiles.findIndex(
+      (f) => f.id === file.id || f.filename === file.filename,
+    );
 
     setSelectedFile({
       name: file.filename,
@@ -474,12 +517,20 @@ export default function FileUploadSection({
   const getFilteredFiles = () => {
     let files = existingFiles;
 
-    if (activeTab === "site_photos" && activeSitePhotoSubtab === "maintenance") {
+    if (
+      activeTab === "site_photos" &&
+      activeSitePhotoSubtab === "maintenance"
+    ) {
       files = files.filter((file) => {
         const checklist = file.maintenance_checklist;
 
         // If no filters are selected, show all files
-        if (!filterPreparedByOffice && !filterPreparedByProduction && !filterDeliveredToSite && !filterInstalled) {
+        if (
+          !filterPreparedByOffice &&
+          !filterPreparedByProduction &&
+          !filterDeliveredToSite &&
+          !filterInstalled
+        ) {
           return true;
         }
 
@@ -557,7 +608,7 @@ export default function FileUploadSection({
             return (
               <div
                 key={file.id}
-                className={`p-4 ${!isInLastRow ? 'border-b border-slate-200' : ''} ${isFirstColumn ? 'border-r border-slate-200' : ''}`}
+                className={`p-4 ${!isInLastRow ? "border-b border-slate-200" : ""} ${isFirstColumn ? "border-r border-slate-200" : ""}`}
               >
                 <FileItemWithNotes
                   file={file}
@@ -580,7 +631,9 @@ export default function FileUploadSection({
   // Render carousel for Finished Site Photos
   const renderFinishedSitePhotosCarousel = () => {
     // Only show images in the carousel
-    const imageFiles = filteredFiles.filter((file) => file.mime_type.includes("image"));
+    const imageFiles = filteredFiles.filter((file) =>
+      file.mime_type.includes("image"),
+    );
 
     if (imageFiles.length === 0) {
       return (
@@ -595,13 +648,13 @@ export default function FileUploadSection({
 
     const goToPrevious = () => {
       setCurrentImageIndex((prevIndex) =>
-        prevIndex === 0 ? imageFiles.length - 1 : prevIndex - 1
+        prevIndex === 0 ? imageFiles.length - 1 : prevIndex - 1,
       );
     };
 
     const goToNext = () => {
       setCurrentImageIndex((prevIndex) =>
-        prevIndex === imageFiles.length - 1 ? 0 : prevIndex + 1
+        prevIndex === imageFiles.length - 1 ? 0 : prevIndex + 1,
       );
     };
 
@@ -679,10 +732,11 @@ export default function FileUploadSection({
               {imageFiles.map((file, index) => (
                 <div
                   key={file.id}
-                  className={`m-2 relative shrink-0 w-24 h-24 rounded-lg overflow-hidden cursor-pointer border-2 transition-all group ${index === currentImageIndex
-                    ? "border-secondary shadow-lg scale-105"
-                    : "border-slate-300 hover:border-slate-400"
-                    }`}
+                  className={`m-2 relative shrink-0 w-24 h-24 rounded-lg overflow-hidden cursor-pointer border-2 transition-all group ${
+                    index === currentImageIndex
+                      ? "border-secondary shadow-lg scale-105"
+                      : "border-slate-300 hover:border-slate-400"
+                  }`}
                   onClick={() => goToImage(index)}
                 >
                   <Image
@@ -721,7 +775,7 @@ export default function FileUploadSection({
     if (!selectedLotData?.tabs || !getTabEnum) return "";
     const tabEnum = getTabEnum(activeTab);
     const tab = selectedLotData.tabs.find(
-      (tab) => tab.tab.toLowerCase() === tabEnum.toLowerCase()
+      (tab) => tab.tab.toLowerCase() === tabEnum.toLowerCase(),
     );
     return tab?.notes || "";
   };
@@ -772,8 +826,9 @@ export default function FileUploadSection({
             Select Files {isSavingUpload && "(Uploading...)"}
           </label>
           <div
-            className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${isSavingUpload ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+            className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+              isSavingUpload ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             <input
               type="file"
@@ -836,4 +891,3 @@ export default function FileUploadSection({
     </div>
   );
 }
-

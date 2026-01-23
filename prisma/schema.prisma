@@ -737,18 +737,19 @@ model reserve_item_stock {
 }
 
 model meeting {
-  id            String                 @id @default(uuid())
-  date_time     DateTime
-  date_time_end DateTime?
-  title         String
-  notes         String?
-  remainder     String?
-  participants  users[]
-  lots          lot[]
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  id                String    @id @default(uuid())
+  date_time         DateTime
+  date_time_end     DateTime?
+  title             String
+  notes             String?
+  remainder         String?
+  participants      users[]
+  lots              lot[]
+  remainder_1h_sent Boolean   @default(false)
+  remainder_1d_sent Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
-
 
 enum LogAction {
   CREATE

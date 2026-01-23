@@ -94,44 +94,47 @@ export default function page() {
   }, []);
 
   // Column mapping for Excel export
-  const columnMap = useMemo(() => ({
-    "Employee ID": (employee) => employee.employee_id || "",
-    "First Name": (employee) => employee.first_name || "",
-    "Last Name": (employee) => employee.last_name || "",
-    Email: (employee) => employee.email || "",
-    Phone: (employee) => employee.phone || "",
-    Role: (employee) => employee.role || "",
-    "Date of Birth": (employee) =>
-      employee.dob ? new Date(employee.dob).toLocaleDateString() : "",
-    "Join Date": (employee) =>
-      employee.join_date
-        ? new Date(employee.join_date).toLocaleDateString()
-        : "",
-    Address: (employee) => employee.address || "",
-    "Emergency Contact Name": (employee) =>
-      employee.emergency_contact_name || "",
-    "Emergency Contact Phone": (employee) =>
-      employee.emergency_contact_phone || "",
-    "Bank Account Name": (employee) => employee.bank_account_name || "",
-    "Bank Account Number": (employee) => employee.bank_account_number || "",
-    "Bank Account BSB": (employee) => employee.bank_account_bsb || "",
-    "Super Account Name": (employee) => employee.supper_account_name || "",
-    "Super Account Number": (employee) =>
-      employee.supper_account_number || "",
-    "TFN Number": (employee) => employee.tfn_number || "",
-    Education: (employee) => employee.education || "",
-    Availability: (employee) =>
-      employee.availability ? JSON.stringify(employee.availability) : "",
-    Notes: (employee) => employee.notes || "",
-    "Created At": (employee) =>
-      employee.createdAt
-        ? new Date(employee.createdAt).toLocaleDateString()
-        : "",
-    "Updated At": (employee) =>
-      employee.updatedAt
-        ? new Date(employee.updatedAt).toLocaleDateString()
-        : "",
-  }), []);
+  const columnMap = useMemo(
+    () => ({
+      "Employee ID": (employee) => employee.employee_id || "",
+      "First Name": (employee) => employee.first_name || "",
+      "Last Name": (employee) => employee.last_name || "",
+      Email: (employee) => employee.email || "",
+      Phone: (employee) => employee.phone || "",
+      Role: (employee) => employee.role || "",
+      "Date of Birth": (employee) =>
+        employee.dob ? new Date(employee.dob).toLocaleDateString() : "",
+      "Join Date": (employee) =>
+        employee.join_date
+          ? new Date(employee.join_date).toLocaleDateString()
+          : "",
+      Address: (employee) => employee.address || "",
+      "Emergency Contact Name": (employee) =>
+        employee.emergency_contact_name || "",
+      "Emergency Contact Phone": (employee) =>
+        employee.emergency_contact_phone || "",
+      "Bank Account Name": (employee) => employee.bank_account_name || "",
+      "Bank Account Number": (employee) => employee.bank_account_number || "",
+      "Bank Account BSB": (employee) => employee.bank_account_bsb || "",
+      "Super Account Name": (employee) => employee.supper_account_name || "",
+      "Super Account Number": (employee) =>
+        employee.supper_account_number || "",
+      "TFN Number": (employee) => employee.tfn_number || "",
+      Education: (employee) => employee.education || "",
+      Availability: (employee) =>
+        employee.availability ? JSON.stringify(employee.availability) : "",
+      Notes: (employee) => employee.notes || "",
+      "Created At": (employee) =>
+        employee.createdAt
+          ? new Date(employee.createdAt).toLocaleDateString()
+          : "",
+      "Updated At": (employee) =>
+        employee.updatedAt
+          ? new Date(employee.updatedAt).toLocaleDateString()
+          : "",
+    }),
+    [],
+  );
 
   // Initialize Excel export hook
   const { exportToExcel, isExporting } = useExcelExport({
@@ -171,7 +174,10 @@ export default function page() {
       if (search) {
         const searchLower = search.toLowerCase();
         const matchesSearch =
-          (employee.employee_id || "").toString().toLowerCase().includes(searchLower) ||
+          (employee.employee_id || "")
+            .toString()
+            .toLowerCase()
+            .includes(searchLower) ||
           (employee.first_name || "").toLowerCase().includes(searchLower) ||
           (employee.last_name || "").toLowerCase().includes(searchLower) ||
           (employee.email || "").toLowerCase().includes(searchLower) ||
@@ -224,7 +230,7 @@ export default function page() {
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedEmployees = filteredAndSortedEmployees.slice(
     startIndex,
-    endIndex
+    endIndex,
   );
 
   // Reset to first page when search, tab, or items per page changes
@@ -268,7 +274,7 @@ export default function page() {
       }
     } else {
       setSelectedRoles((prev) =>
-        prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+        prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
       );
     }
   };
@@ -286,7 +292,7 @@ export default function page() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
@@ -340,9 +346,10 @@ export default function page() {
       }
 
       // Use different endpoint based on active tab
-      const endpoint = activeTab === "inactive"
-        ? "/api/employee/all_inactive"
-        : "/api/employee/all";
+      const endpoint =
+        activeTab === "inactive"
+          ? "/api/employee/all_inactive"
+          : "/api/employee/all";
 
       let config = {
         method: "get",
@@ -368,7 +375,9 @@ export default function page() {
         .catch((error) => {
           setLoading(false);
           console.error("Error fetching employees:", error);
-          setError(error.response?.data?.message || "Failed to fetch employees");
+          setError(
+            error.response?.data?.message || "Failed to fetch employees",
+          );
         });
     } catch (error) {
       console.error("Error fetching employees:", error);
@@ -414,8 +423,8 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-700">
                       Employees
                     </h1>
-                    <div className="flex items-center gap-2">                    
-                    <SearchBar />
+                    <div className="flex items-center gap-2">
+                      <SearchBar />
                       <TabsController
                         href="/admin/employees/addemployee"
                         title="Add Employee"
@@ -424,8 +433,8 @@ export default function page() {
                           <Plus className="h-4 w-4" />
                           Add Employee
                         </div>
-                      </TabsController></div>
-
+                      </TabsController>
+                    </div>
                   </div>
                 </div>
 
@@ -461,7 +470,7 @@ export default function page() {
                             <button
                               onClick={() =>
                                 setShowRoleFilterDropdown(
-                                  !showRoleFilterDropdown
+                                  !showRoleFilterDropdown,
                                 )
                               }
                               className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
@@ -470,20 +479,27 @@ export default function page() {
                               <span>Filter by Role</span>
                               {distinctRoles.length - selectedRoles.length >
                                 0 && (
-                                  <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                    {distinctRoles.length - selectedRoles.length}
-                                  </span>
-                                )}
+                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                  {distinctRoles.length - selectedRoles.length}
+                                </span>
+                              )}
                             </button>
                             {showRoleFilterDropdown && (
                               <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedRoles.length === distinctRoles.length}
-                                      onChange={() => handleRoleToggle("Select All")}
+                                      checked={
+                                        selectedRoles.length ===
+                                        distinctRoles.length
+                                      }
+                                      onChange={() =>
+                                        handleRoleToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -555,12 +571,13 @@ export default function page() {
                                 filteredAndSortedEmployees.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedEmployees.length === 0 ||
                                 selectedColumns.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -577,11 +594,12 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedEmployees.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedEmployees.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
@@ -589,11 +607,18 @@ export default function page() {
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedColumns.length === availableColumns.length}
-                                      onChange={() => handleColumnToggle("Select All")}
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() =>
+                                        handleColumnToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -605,8 +630,12 @@ export default function page() {
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={() => handleColumnToggle(column)}
+                                        checked={selectedColumns.includes(
+                                          column,
+                                        )}
+                                        onChange={() =>
+                                          handleColumnToggle(column)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -624,19 +653,21 @@ export default function page() {
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("active")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "active"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "active"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           Current
                         </button>
                         <button
                           onClick={() => setActiveTab("inactive")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "inactive"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "inactive"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           Former
                         </button>
@@ -736,14 +767,14 @@ export default function page() {
                                   key={e.id}
                                   onClick={() => {
                                     router.push(
-                                      `/admin/employees/${e.employee_id}`
+                                      `/admin/employees/${e.employee_id}`,
                                     );
                                     dispatch(
                                       replaceTab({
                                         id: uuidv4(),
                                         title: e.first_name + " " + e.last_name,
                                         href: `/admin/employees/${e.employee_id}`,
-                                      })
+                                      }),
                                     );
                                   }}
                                   className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"

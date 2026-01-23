@@ -7,13 +7,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
-import {
-  Plus,
-  Search,
-  Trash2,
-  X,
-  Loader2,
-} from "lucide-react";
+import { Plus, Search, Trash2, X, Loader2 } from "lucide-react";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import SearchBar from "@/components/SearchBar";
 
@@ -95,7 +89,7 @@ export default function ConfigPage() {
     return data.filter(
       (item) =>
         item.value?.toLowerCase().includes(searchLower) ||
-        item.category?.toLowerCase().includes(searchLower)
+        item.category?.toLowerCase().includes(searchLower),
     );
   }, [data, search]);
 
@@ -299,8 +293,10 @@ export default function ConfigPage() {
                   </h1>
 
                   <p className="text-slate-600">
-                    Manage role, hardware, measuring unit, and finish configurations
-                  </p></div>
+                    Manage role, hardware, measuring unit, and finish
+                    configurations
+                  </p>
+                </div>
 
                 <SearchBar />
               </div>
@@ -313,10 +309,11 @@ export default function ConfigPage() {
                       <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                          ? "border-secondary text-secondary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                          }`}
+                        className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                          activeTab === tab.id
+                            ? "border-secondary text-secondary"
+                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                        }`}
                       >
                         {tab.label}
                       </button>
@@ -345,7 +342,14 @@ export default function ConfigPage() {
                       className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm shrink-0"
                     >
                       <Plus className="h-4 w-4" />
-                      Add {activeTab === "role" ? "Role" : activeTab === "hardware" ? "Hardware" : activeTab === "measuring_unit" ? "Measuring Unit" : "Finish"}
+                      Add{" "}
+                      {activeTab === "role"
+                        ? "Role"
+                        : activeTab === "hardware"
+                          ? "Hardware"
+                          : activeTab === "measuring_unit"
+                            ? "Measuring Unit"
+                            : "Finish"}
                     </button>
                   </div>
                 </div>
@@ -411,7 +415,9 @@ export default function ConfigPage() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                                 {item.createdAt
-                                  ? new Date(item.createdAt).toLocaleDateString()
+                                  ? new Date(
+                                      item.createdAt,
+                                    ).toLocaleDateString()
                                   : "N/A"}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -452,20 +458,22 @@ export default function ConfigPage() {
                         Previous
                       </button>
                       <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                          (page) => (
-                            <button
-                              key={page}
-                              onClick={() => setCurrentPage(page)}
-                              className={`cursor-pointer px-3 py-1 text-sm font-medium rounded ${currentPage === page
+                        {Array.from(
+                          { length: totalPages },
+                          (_, i) => i + 1,
+                        ).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`cursor-pointer px-3 py-1 text-sm font-medium rounded ${
+                              currentPage === page
                                 ? "bg-primary text-white"
                                 : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
-                                }`}
-                            >
-                              {page}
-                            </button>
-                          )
-                        )}
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
                       </div>
                       <button
                         onClick={() => setCurrentPage(currentPage + 1)}
@@ -485,11 +493,24 @@ export default function ConfigPage() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50" onClick={closeModals}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={closeModals}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
-                Add {activeTab === "role" ? "Role" : activeTab === "hardware" ? "Hardware" : activeTab === "measuring_unit" ? "Measuring Unit" : "Finish"}
+                Add{" "}
+                {activeTab === "role"
+                  ? "Role"
+                  : activeTab === "hardware"
+                    ? "Hardware"
+                    : activeTab === "measuring_unit"
+                      ? "Measuring Unit"
+                      : "Finish"}
               </h2>
               <button
                 onClick={closeModals}
@@ -526,9 +547,7 @@ export default function ConfigPage() {
                   disabled={isSubmitting || !formData.value?.trim()}
                   className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {isSubmitting && (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  )}
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   Create
                 </button>
               </div>

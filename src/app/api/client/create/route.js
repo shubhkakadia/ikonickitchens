@@ -28,7 +28,7 @@ export async function POST(request) {
           status: false,
           message: "Client already exists by this client id: " + client_name,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -42,7 +42,7 @@ export async function POST(request) {
               status: false,
               message: "First Name and Last Name are required for all contacts",
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
       }
@@ -50,7 +50,7 @@ export async function POST(request) {
 
     const formatPhone = (phone) => {
       return phone ? formatPhoneToNational(phone) : phone;
-    }
+    };
 
     // Use transaction to create client and contacts atomically
     const result = await prisma.$transaction(async (tx) => {
@@ -78,7 +78,8 @@ export async function POST(request) {
               email: contact.email || null,
               phone: contact.phone || null,
               role: contact.role || null,
-              preferred_contact_method: contact.preferred_contact_method || null,
+              preferred_contact_method:
+                contact.preferred_contact_method || null,
               notes: contact.notes || null,
               client_id: client.client_id,
             },
@@ -98,7 +99,7 @@ export async function POST(request) {
       "client",
       client.client_id,
       "CREATE",
-      `Client created successfully: ${client.client_name}`
+      `Client created successfully: ${client.client_name}`,
     );
 
     // Log contact creations
@@ -108,7 +109,7 @@ export async function POST(request) {
         "contact",
         contact.id,
         "CREATE",
-        `Contact created successfully: ${contact.first_name} ${contact.last_name} for client: ${client.client_name}`
+        `Contact created successfully: ${contact.first_name} ${contact.last_name} for client: ${client.client_name}`,
       );
     }
 
@@ -124,7 +125,7 @@ export async function POST(request) {
 
     if (!logged) {
       console.error(
-        `Failed to log client creation: ${client.client_id} - ${client.client_name}`
+        `Failed to log client creation: ${client.client_id} - ${client.client_name}`,
       );
       responseData.warning = "Note: Creation succeeded but logging failed";
     }
@@ -134,7 +135,7 @@ export async function POST(request) {
     console.error("Error in POST /api/client/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

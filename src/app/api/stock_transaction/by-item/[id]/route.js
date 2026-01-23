@@ -23,13 +23,13 @@ export async function GET(request, { params }) {
         message: "Stock transactions fetched successfully",
         data: stockTransactions,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching stock transactions by item:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

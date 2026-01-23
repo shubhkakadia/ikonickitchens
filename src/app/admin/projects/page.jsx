@@ -66,7 +66,6 @@ export default function page() {
   // Initialize selected columns with all columns
   const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
 
-
   // Filter and sort projects
   const filteredAndSortedProjects = useMemo(() => {
     let filtered = projects.filter((project) => {
@@ -77,7 +76,9 @@ export default function page() {
           // Projects with no lots are shown in active
         } else {
           // Project must have at least one ACTIVE lot
-          const hasActiveLot = project.lots.some((lot) => lot.status === "ACTIVE");
+          const hasActiveLot = project.lots.some(
+            (lot) => lot.status === "ACTIVE",
+          );
           if (!hasActiveLot) return false;
         }
       } else if (activeTab === "completed") {
@@ -85,14 +86,18 @@ export default function page() {
         if (!project.lots || project.lots.length === 0) {
           return false; // Projects with no lots are not shown in completed
         }
-        const allCompleted = project.lots.every((lot) => lot.status === "COMPLETED");
+        const allCompleted = project.lots.every(
+          (lot) => lot.status === "COMPLETED",
+        );
         if (!allCompleted) return false;
       } else if (activeTab === "cancelled") {
         // Show projects where ALL lots are CANCELLED (and project has at least one lot)
         if (!project.lots || project.lots.length === 0) {
           return false; // Projects with no lots are not shown in cancelled
         }
-        const allCancelled = project.lots.every((lot) => lot.status === "CANCELLED");
+        const allCancelled = project.lots.every(
+          (lot) => lot.status === "CANCELLED",
+        );
         if (!allCancelled) return false;
       }
 
@@ -206,7 +211,7 @@ export default function page() {
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedProjects = filteredAndSortedProjects.slice(
     startIndex,
-    endIndex
+    endIndex,
   );
 
   useEffect(() => {
@@ -264,20 +269,20 @@ export default function page() {
               ...new Set(
                 response.data.data
                   .map((project) => project.client?.client_name)
-                  .filter(Boolean)
+                  .filter(Boolean),
               ),
             ];
             const types = [
               ...new Set(
                 response.data.data
                   .map((project) => project.client?.client_type)
-                  .filter(Boolean)
+                  .filter(Boolean),
               ),
             ];
 
             // Add "Unassigned" option if there are projects without clients
             const hasUnassignedProjects = response.data.data.some(
-              (project) => !project.client?.client_name
+              (project) => !project.client?.client_name,
             );
 
             if (hasUnassignedProjects) {
@@ -333,7 +338,7 @@ export default function page() {
       setSelectedClientName((prev) =>
         prev.includes(clientName)
           ? prev.filter((name) => name !== clientName)
-          : [...prev, clientName]
+          : [...prev, clientName],
       );
     }
   };
@@ -351,7 +356,7 @@ export default function page() {
       setSelectedClientType((prev) =>
         prev.includes(clientType)
           ? prev.filter((type) => type !== clientType)
-          : [...prev, clientType]
+          : [...prev, clientType],
       );
     }
   };
@@ -369,7 +374,7 @@ export default function page() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
@@ -417,22 +422,24 @@ export default function page() {
   };
 
   // Column mapping for Excel export
-  const columnMap = useMemo(() => ({
-    "Project ID": (project) => project.project_id || "",
-    "Project Name": (project) => project.name || "",
-    "Number of Lots": (project) => (project.lots ? project.lots.length : 0),
-    Client: (project) =>
-      project.client?.client_name || "No client assigned",
-    "Client Type": (project) => project.client?.client_type || "",
-    "Created At": (project) =>
-      project.createdAt
-        ? new Date(project.createdAt).toLocaleDateString()
-        : "",
-    "Updated At": (project) =>
-      project.updatedAt
-        ? new Date(project.updatedAt).toLocaleDateString()
-        : "",
-  }), []);
+  const columnMap = useMemo(
+    () => ({
+      "Project ID": (project) => project.project_id || "",
+      "Project Name": (project) => project.name || "",
+      "Number of Lots": (project) => (project.lots ? project.lots.length : 0),
+      Client: (project) => project.client?.client_name || "No client assigned",
+      "Client Type": (project) => project.client?.client_type || "",
+      "Created At": (project) =>
+        project.createdAt
+          ? new Date(project.createdAt).toLocaleDateString()
+          : "",
+      "Updated At": (project) =>
+        project.updatedAt
+          ? new Date(project.updatedAt).toLocaleDateString()
+          : "",
+    }),
+    [],
+  );
 
   // Initialize Excel export hook
   const { exportToExcel, isExporting } = useExcelExport({
@@ -488,18 +495,18 @@ export default function page() {
                     <h1 className="text-xl font-bold text-slate-700">
                       Projects
                     </h1>
-                    <div className="flex items-center gap-2">                    
-                    <SearchBar />
-                    <TabsController
-                      href="/admin/projects/addproject"
-                      title="Add Project"
-                    >
-                      <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
-                        <Plus className="h-4 w-4" />
-                        Add Project
-                      </div>
-                    </TabsController>
-                  </div>
+                    <div className="flex items-center gap-2">
+                      <SearchBar />
+                      <TabsController
+                        href="/admin/projects/addproject"
+                        title="Add Project"
+                      >
+                        <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
+                          <Plus className="h-4 w-4" />
+                          Add Project
+                        </div>
+                      </TabsController>
+                    </div>
                   </div>
                 </div>
 
@@ -536,7 +543,7 @@ export default function page() {
                             <button
                               onClick={() =>
                                 setShowClientTypeFilterDropdown(
-                                  !showClientTypeFilterDropdown
+                                  !showClientTypeFilterDropdown,
                                 )
                               }
                               className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
@@ -546,21 +553,28 @@ export default function page() {
                               {distinctClientType.length -
                                 selectedClientType.length >
                                 0 && (
-                                  <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                    {distinctClientType.length -
-                                      selectedClientType.length}
-                                  </span>
-                                )}
+                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                  {distinctClientType.length -
+                                    selectedClientType.length}
+                                </span>
+                              )}
                             </button>
                             {showClientTypeFilterDropdown && (
                               <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedClientType.length === distinctClientType.length}
-                                      onChange={() => handleClientTypeToggle("Select All")}
+                                      checked={
+                                        selectedClientType.length ===
+                                        distinctClientType.length
+                                      }
+                                      onChange={() =>
+                                        handleClientTypeToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -572,8 +586,12 @@ export default function page() {
                                       <span>{role}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedClientType.includes(role)}
-                                        onChange={() => handleClientTypeToggle(role)}
+                                        checked={selectedClientType.includes(
+                                          role,
+                                        )}
+                                        onChange={() =>
+                                          handleClientTypeToggle(role)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -587,7 +605,7 @@ export default function page() {
                             <button
                               onClick={() =>
                                 setShowClientNameFilterDropdown(
-                                  !showClientNameFilterDropdown
+                                  !showClientNameFilterDropdown,
                                 )
                               }
                               className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
@@ -597,21 +615,28 @@ export default function page() {
                               {distinctClientName.length -
                                 selectedClientName.length >
                                 0 && (
-                                  <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                    {distinctClientName.length -
-                                      selectedClientName.length}
-                                  </span>
-                                )}
+                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                  {distinctClientName.length -
+                                    selectedClientName.length}
+                                </span>
+                              )}
                             </button>
                             {showClientNameFilterDropdown && (
                               <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedClientName.length === distinctClientName.length}
-                                      onChange={() => handleClientNameToggle("Select All")}
+                                      checked={
+                                        selectedClientName.length ===
+                                        distinctClientName.length
+                                      }
+                                      onChange={() =>
+                                        handleClientNameToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -623,8 +648,12 @@ export default function page() {
                                       <span>{name}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedClientName.includes(name)}
-                                        onChange={() => handleClientNameToggle(name)}
+                                        checked={selectedClientName.includes(
+                                          name,
+                                        )}
+                                        onChange={() =>
+                                          handleClientNameToggle(name)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -684,12 +713,13 @@ export default function page() {
                                 filteredAndSortedProjects.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedProjects.length === 0 ||
                                 selectedColumns.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -706,11 +736,12 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedProjects.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedProjects.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
@@ -718,11 +749,18 @@ export default function page() {
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedColumns.length === availableColumns.length}
-                                      onChange={() => handleColumnToggle("Select All")}
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() =>
+                                        handleColumnToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -734,8 +772,12 @@ export default function page() {
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={() => handleColumnToggle(column)}
+                                        checked={selectedColumns.includes(
+                                          column,
+                                        )}
+                                        onChange={() =>
+                                          handleColumnToggle(column)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -753,28 +795,31 @@ export default function page() {
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("active")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "active"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "active"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           Active
                         </button>
                         <button
                           onClick={() => setActiveTab("completed")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "completed"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "completed"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           Completed
                         </button>
                         <button
                           onClick={() => setActiveTab("cancelled")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "cancelled"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "cancelled"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           Cancelled
                         </button>
@@ -864,14 +909,14 @@ export default function page() {
                                     key={project.id}
                                     onClick={() => {
                                       router.push(
-                                        `/admin/projects/${project.project_id}`
+                                        `/admin/projects/${project.project_id}`,
                                       );
                                       dispatch(
                                         replaceTab({
                                           id: uuidv4(),
                                           title: project.name,
                                           href: `/admin/projects/${project.project_id}`,
-                                        })
+                                        }),
                                       );
                                     }}
                                     className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"

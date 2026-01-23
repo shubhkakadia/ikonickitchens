@@ -21,7 +21,7 @@ export async function POST(request) {
       "lot_tab_notes",
       lotTab.id,
       "CREATE",
-      `Lot tab notes saved successfully: ${lotTab.notes}`
+      `Lot tab notes saved successfully: ${lotTab.notes}`,
     );
     if (!logged) {
       console.error(`Failed to log lot tab notes creation: ${lotTab.id}`);
@@ -30,9 +30,9 @@ export async function POST(request) {
           status: true,
           message: "Lot tab notes saved successfully",
           data: lotTab,
-          warning: "Note: Creation succeeded but logging failed"
+          warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
     return NextResponse.json(
@@ -41,13 +41,13 @@ export async function POST(request) {
         message: "Lot tab notes saved successfully",
         data: lotTab,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/lot_tab_notes/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

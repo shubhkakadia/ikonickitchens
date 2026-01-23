@@ -51,46 +51,46 @@ export const loginUser = (formdata) => async (dispatch) => {
 // Action to handle user logout
 export const logoutUser =
   (token = null) =>
-    async (dispatch) => {
-      dispatch(setUserLoading(true));
+  async (dispatch) => {
+    dispatch(setUserLoading(true));
 
-      // Use provided token or get from cookies
-      const authToken = token || getAuthToken();
+    // Use provided token or get from cookies
+    const authToken = token || getAuthToken();
 
-      try {
-        if (authToken) {
-          const response = await axios.post(
-            `/api/signout`,
-            {}, // empty body (since fetch POST has no body)
-            {
-              headers: {
-                Authorization: `Bearer ${authToken}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
+    try {
+      if (authToken) {
+        const response = await axios.post(
+          `/api/signout`,
+          {}, // empty body (since fetch POST has no body)
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
 
-          const data = await response.data;
+        const data = await response.data;
 
-          if (data.status) {
-            console.log("Signout successful:", data.message);
-          } else {
-            console.error("Signout failed:", data.message);
-          }
+        if (data.status) {
+          console.log("Signout successful:", data.message);
         } else {
-          console.warn(
-            "No auth token found for logout - clearing local state only"
-          );
+          console.error("Signout failed:", data.message);
         }
-      } catch (error) {
-        console.error("Signout API error:", error);
-      } finally {
-        // Clear both cookie and Redux state regardless of API success
-        clearAuthToken();
-        dispatch(clearUserData());
-        dispatch(setUserLoading(false));
+      } else {
+        console.warn(
+          "No auth token found for logout - clearing local state only",
+        );
       }
-    };
+    } catch (error) {
+      console.error("Signout API error:", error);
+    } finally {
+      // Clear both cookie and Redux state regardless of API success
+      clearAuthToken();
+      dispatch(clearUserData());
+      dispatch(setUserLoading(false));
+    }
+  };
 
 // Action to restore user session from cookies (on app start)
 export const restoreSession = () => async (dispatch) => {

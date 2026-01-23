@@ -10,9 +10,9 @@ import {
 
 /**
  * PaginationFooter Component
- * 
+ *
  * A reusable pagination component that handles all pagination calculations and UI.
- * 
+ *
  * @param {Object} props
  * @param {number} props.totalItems - Total number of items to paginate
  * @param {number} props.itemsPerPage - Number of items per page (0 means show all)
@@ -98,9 +98,7 @@ export default function PaginationFooter({
                   }
                   className="cursor-pointer flex items-center gap-2 px-2 py-1 text-sm border border-slate-300 rounded-lg hover:bg-white transition-colors duration-200 bg-white font-medium"
                 >
-                  <span>
-                    {itemsPerPage === 0 ? "All" : itemsPerPage}
-                  </span>
+                  <span>{itemsPerPage === 0 ? "All" : itemsPerPage}</span>
                   <ChevronDown className="h-4 w-4" />
                 </button>
                 {showItemsPerPageDropdown && (
@@ -157,36 +155,34 @@ export default function PaginationFooter({
 
             {/* Page numbers */}
             <div className="flex items-center gap-1">
-              {Array.from(
-                { length: Math.min(5, totalPages) },
-                (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
 
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${currentPage === pageNum
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${
+                      currentPage === pageNum
                         ? "bg-primary text-white shadow-sm"
                         : "text-slate-600 hover:bg-white"
-                        }`}
-                      aria-label={`Page ${pageNum}`}
-                      aria-current={currentPage === pageNum ? "page" : undefined}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                }
-              )}
+                    }`}
+                    aria-label={`Page ${pageNum}`}
+                    aria-current={currentPage === pageNum ? "page" : undefined}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
             </div>
 
             <button

@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 
 /**
  * Custom hook for exporting data to Excel
- * 
+ *
  * @param {Object} config - Configuration object
  * @param {Object} config.columnMap - Map of column names to data extraction functions
  * @param {Object} [config.columnWidths] - Optional map of column names to widths (default: 15 for all columns)
@@ -35,11 +35,14 @@ export const useExcelExport = ({
   const exportToExcel = async (data, options = {}) => {
     // Validate data
     if (!data || data.length === 0) {
-      toast.warning("No data to export. Please adjust your filters or add data.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.warning(
+        "No data to export. Please adjust your filters or add data.",
+        {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        },
+      );
       return;
     }
 
@@ -106,7 +109,8 @@ export const useExcelExport = ({
 
       // Generate filename with current date
       const currentDate = new Date().toISOString().split("T")[0];
-      const filename = options.customFilename || `${filenamePrefix}_${currentDate}.xlsx`;
+      const filename =
+        options.customFilename || `${filenamePrefix}_${currentDate}.xlsx`;
 
       // Save the file
       XLSX.writeFile(wb, filename);
@@ -118,7 +122,7 @@ export const useExcelExport = ({
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
-        }
+        },
       );
     } catch (error) {
       console.error("Error exporting to Excel:", error);
@@ -137,4 +141,3 @@ export const useExcelExport = ({
     isExporting,
   };
 };
-

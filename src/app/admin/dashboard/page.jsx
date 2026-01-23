@@ -35,8 +35,9 @@ import {
   Tooltip,
   Legend,
   Filler,
+  BarElement,
 } from "chart.js";
-import { Doughnut } from "react-chartjs-2";
+import { Doughnut, Bar } from "react-chartjs-2";
 import Sidebar from "../../../components/sidebar";
 import SearchBar from "@/components/SearchBar";
 
@@ -50,7 +51,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  BarElement,
 );
 
 // Color palette for charts
@@ -74,6 +76,44 @@ const SUPPLIER_COLORS = {
   other: "#F59E0B",
 };
 
+const barChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: false,
+    },
+    tooltip: {
+      backgroundColor: "#1e293b",
+      titleFont: { size: 13 },
+      bodyFont: { size: 12 },
+      padding: 12,
+      cornerRadius: 8,
+    },
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      grid: {
+        color: "#f1f5f9",
+      },
+      ticks: {
+        font: { size: 11 },
+        color: "#64748b",
+      },
+    },
+    x: {
+      grid: {
+        display: false,
+      },
+      ticks: {
+        font: { size: 11 },
+        color: "#64748b",
+      },
+    },
+  },
+};
+
 // KPI Card Component
 const KPICard = ({
   title,
@@ -86,7 +126,7 @@ const KPICard = ({
 }) => (
   <div
     onClick={onClick}
-    className={`bg-white rounded-lg border border-slate-200 p-3 shadow-sm hover:shadow-md transition-all duration-300 group ${onClick ? 'cursor-pointer' : ''}`}
+    className={`bg-white rounded-lg border border-slate-200 p-3 transition-all duration-300 group ${onClick ? "cursor-pointer" : ""}`}
   >
     <div className="flex items-start justify-between">
       <div className="flex-1">
@@ -97,7 +137,9 @@ const KPICard = ({
           {prefix}
           {typeof value === "number" ? value.toLocaleString() : value}
         </h3>
-        {subtitle && <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>}
+        {subtitle && (
+          <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>
+        )}
       </div>
       <div
         className={`p-2 rounded-lg ${color} transition-transform duration-300 group-hover:scale-110`}
@@ -111,7 +153,7 @@ const KPICard = ({
 // Chart Card Wrapper Component
 const ChartCard = ({ title, children, className = "" }) => (
   <div
-    className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden ${className}`}
+    className={`bg-white rounded-xl border border-slate-200 overflow-hidden ${className}`}
   >
     <div className="px-5 py-4 border-b border-slate-100">
       <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
@@ -210,9 +252,11 @@ export default function page() {
   const [logsData, setLogsData] = useState([]);
   const [logsLoading, setLogsLoading] = useState(true);
   const [dashboardYearFilter, setDashboardYearFilter] = useState("all");
-  const [dashboardYearDropdownOpen, setDashboardYearDropdownOpen] = useState(false);
+  const [dashboardYearDropdownOpen, setDashboardYearDropdownOpen] =
+    useState(false);
   const [dashboardMonthFilter, setDashboardMonthFilter] = useState("all");
-  const [dashboardMonthDropdownOpen, setDashboardMonthDropdownOpen] = useState(false);
+  const [dashboardMonthDropdownOpen, setDashboardMonthDropdownOpen] =
+    useState(false);
   const [storageUsage, setStorageUsage] = useState(null);
   const [storageLoading, setStorageLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -232,7 +276,8 @@ export default function page() {
       }
 
       // Prepare month and year for API request
-      const month = dashboardMonthFilter === "all" ? "all" : dashboardMonthFilter;
+      const month =
+        dashboardMonthFilter === "all" ? "all" : dashboardMonthFilter;
       const year = dashboardYearFilter === "all" ? "all" : dashboardYearFilter;
 
       const response = await axios.post(
@@ -245,7 +290,7 @@ export default function page() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -257,7 +302,7 @@ export default function page() {
       console.error("Dashboard API Error:", err);
       setError(
         err.response?.data?.message ||
-        "An error occurred while fetching dashboard data"
+          "An error occurred while fetching dashboard data",
       );
     } finally {
       setLoading(false);
@@ -319,7 +364,7 @@ export default function page() {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
-        }
+        },
       );
 
       if (response.data.status) {
@@ -445,7 +490,6 @@ export default function page() {
     return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   };
 
-
   // Format month_year to readable format
   const formatMonthYear = (monthYear) => {
     const [year, month] = monthYear.split("-");
@@ -496,7 +540,6 @@ export default function page() {
     });
   };
 
-
   // Transform lotsByStage for Chart.js doughnut chart
   const getLotsByStageChartData = () => {
     if (!dashboardData?.lotsByStage || dashboardData.lotsByStage.length === 0)
@@ -504,14 +547,14 @@ export default function page() {
 
     return {
       labels: dashboardData.lotsByStage.map(
-        (item) => item.name.charAt(0).toUpperCase() + item.name.slice(1)
+        (item) => item.name.charAt(0).toUpperCase() + item.name.slice(1),
       ),
       datasets: [
         {
           data: dashboardData.lotsByStage.map((item) => item._count),
           backgroundColor: CHART_COLORS.slice(
             0,
-            dashboardData.lotsByStage.length
+            dashboardData.lotsByStage.length,
           ),
           borderColor: "#fff",
           borderWidth: 2,
@@ -527,14 +570,14 @@ export default function page() {
 
     return {
       labels: dashboardData.MTOsByStatus.map((item) =>
-        item.status.replace(/_/g, " ")
+        item.status.replace(/_/g, " "),
       ),
       datasets: [
         {
           data: dashboardData.MTOsByStatus.map((item) => item._count),
           backgroundColor: CHART_COLORS.slice(
             0,
-            dashboardData.MTOsByStatus.length
+            dashboardData.MTOsByStatus.length,
           ),
           borderColor: "#fff",
           borderWidth: 2,
@@ -553,14 +596,14 @@ export default function page() {
 
     return {
       labels: dashboardData.purchaseOrdersByStatus.map((item) =>
-        item.status.replace(/_/g, " ")
+        item.status.replace(/_/g, " "),
       ),
       datasets: [
         {
           data: dashboardData.purchaseOrdersByStatus.map((item) => item._count),
           backgroundColor: CHART_COLORS.slice(
             0,
-            dashboardData.purchaseOrdersByStatus.length
+            dashboardData.purchaseOrdersByStatus.length,
           ),
           borderColor: "#fff",
           borderWidth: 2,
@@ -568,7 +611,6 @@ export default function page() {
       ],
     };
   };
-
 
   // Get filtered and sorted stages due (by least days left first)
   const getSortedStagesDue = () => {
@@ -642,6 +684,46 @@ export default function page() {
     },
   };
 
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: "#1e293b",
+        titleFont: { size: 13 },
+        bodyFont: { size: 12 },
+        padding: 12,
+        cornerRadius: 8,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: "#f1f5f9",
+        },
+        ticks: {
+          font: {
+            size: 11,
+          },
+        },
+      },
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            size: 11,
+          },
+        },
+      },
+    },
+  };
+
   return (
     <AdminRoute>
       <div className="flex h-screen bg-tertiary">
@@ -677,7 +759,7 @@ export default function page() {
                 </div>
               </div>
             ) : (
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-4">
                 {/* Header with Greeting */}
                 <div className="flex items-center justify-between mb-8">
                   <div>
@@ -690,9 +772,11 @@ export default function page() {
                           {employeeData && (
                             <span className="text-secondary">
                               {employeeData.first_name}
-                              {employeeData.last_name && ` ${employeeData.last_name}`}
+                              {employeeData.last_name &&
+                                ` ${employeeData.last_name}`}
                             </span>
-                          )}</h1>
+                          )}
+                        </h1>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-slate-600">
@@ -718,27 +802,35 @@ export default function page() {
                         <div className="flex items-center gap-2">
                           <Database className="w-4 h-4 text-blue-600" />
                           <span className="text-xs text-slate-600">
-                            DB: {formatStorageSize(storageUsage.database?.size_mb || 0)}
+                            DB:{" "}
+                            {formatStorageSize(
+                              storageUsage.database?.size_mb || 0,
+                            )}
                           </span>
                         </div>
                         <div className="w-px h-4 bg-slate-300"></div>
                         <div className="flex items-center gap-2">
                           <HardDrive className="w-4 h-4 text-emerald-600" />
                           <span className="text-xs text-slate-600">
-                            Files: {formatStorageSize(storageUsage.uploads?.size_mb || 0)}
+                            Files:{" "}
+                            {formatStorageSize(
+                              storageUsage.uploads?.size_mb || 0,
+                            )}
                           </span>
                         </div>
                         <div className="w-px h-4 bg-slate-300"></div>
                         <span className="text-xs font-semibold text-slate-700">
-                          Total: {formatStorageSize(
+                          Total:{" "}
+                          {formatStorageSize(
                             (storageUsage.database?.size_mb || 0) +
-                            (storageUsage.uploads?.size_mb || 0)
+                              (storageUsage.uploads?.size_mb || 0),
                           )}
                         </span>
                       </div>
                     ) : null}
                     {/* Reset Filters Button - Only show when filters are applied */}
-                    {(dashboardYearFilter !== "all" || dashboardMonthFilter !== "all") && (
+                    {(dashboardYearFilter !== "all" ||
+                      dashboardMonthFilter !== "all") && (
                       <button
                         onClick={() => {
                           setDashboardYearFilter("all");
@@ -756,23 +848,30 @@ export default function page() {
                     {/* Year Filter Dropdown */}
                     <div className="relative dashboard-year-dropdown-container">
                       <button
-                        onClick={() => setDashboardYearDropdownOpen(!dashboardYearDropdownOpen)}
+                        onClick={() =>
+                          setDashboardYearDropdownOpen(
+                            !dashboardYearDropdownOpen,
+                          )
+                        }
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
                       >
-                        {dashboardYearFilter === "all" ? "All Years" : dashboardYearFilter}
+                        {dashboardYearFilter === "all"
+                          ? "All Years"
+                          : dashboardYearFilter}
                         <ChevronDown className="w-4 h-4" />
                       </button>
                       {dashboardYearDropdownOpen && (
-                        <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                        <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg z-10">
                           <button
                             onClick={() => {
                               setDashboardYearFilter("all");
                               setDashboardYearDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${dashboardYearFilter === "all"
-                              ? "text-secondary font-medium"
-                              : "text-slate-600"
-                              }`}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
+                              dashboardYearFilter === "all"
+                                ? "text-secondary font-medium"
+                                : "text-slate-600"
+                            }`}
                           >
                             All Years
                           </button>
@@ -783,10 +882,11 @@ export default function page() {
                                 setDashboardYearFilter(year);
                                 setDashboardYearDropdownOpen(false);
                               }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${dashboardYearFilter === year
-                                ? "text-secondary font-medium"
-                                : "text-slate-600"
-                                }`}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
+                                dashboardYearFilter === year
+                                  ? "text-secondary font-medium"
+                                  : "text-slate-600"
+                              }`}
                             >
                               {year}
                             </button>
@@ -799,49 +899,57 @@ export default function page() {
                       <button
                         onClick={() => {
                           if (dashboardYearFilter !== "all") {
-                            setDashboardMonthDropdownOpen(!dashboardMonthDropdownOpen);
+                            setDashboardMonthDropdownOpen(
+                              !dashboardMonthDropdownOpen,
+                            );
                           }
                         }}
                         disabled={dashboardYearFilter === "all"}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${dashboardYearFilter === "all"
-                          ? "text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed"
-                          : "text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer"
-                          }`}
+                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          dashboardYearFilter === "all"
+                            ? "text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed"
+                            : "text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                        }`}
                       >
-                        {dashboardMonthFilter === "all" ? "All Months" : formatMonthName(dashboardMonthFilter)}
+                        {dashboardMonthFilter === "all"
+                          ? "All Months"
+                          : formatMonthName(dashboardMonthFilter)}
                         <ChevronDown className="w-4 h-4" />
                       </button>
-                      {dashboardMonthDropdownOpen && dashboardYearFilter !== "all" && (
-                        <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                          <button
-                            onClick={() => {
-                              setDashboardMonthFilter("all");
-                              setDashboardMonthDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${dashboardMonthFilter === "all"
-                              ? "text-secondary font-medium"
-                              : "text-slate-600"
-                              }`}
-                          >
-                            All Months
-                          </button>
-                          {getAvailableMonthsForYear().map((month) => (
+                      {dashboardMonthDropdownOpen &&
+                        dashboardYearFilter !== "all" && (
+                          <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg z-10">
                             <button
-                              key={month}
                               onClick={() => {
-                                setDashboardMonthFilter(month.toString());
+                                setDashboardMonthFilter("all");
                                 setDashboardMonthDropdownOpen(false);
                               }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${dashboardMonthFilter === month.toString()
-                                ? "text-secondary font-medium"
-                                : "text-slate-600"
-                                }`}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
+                                dashboardMonthFilter === "all"
+                                  ? "text-secondary font-medium"
+                                  : "text-slate-600"
+                              }`}
                             >
-                              {formatMonthName(month)}
+                              All Months
                             </button>
-                          ))}
-                        </div>
-                      )}
+                            {getAvailableMonthsForYear().map((month) => (
+                              <button
+                                key={month}
+                                onClick={() => {
+                                  setDashboardMonthFilter(month.toString());
+                                  setDashboardMonthDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
+                                  dashboardMonthFilter === month.toString()
+                                    ? "text-secondary font-medium"
+                                    : "text-slate-600"
+                                }`}
+                              >
+                                {formatMonthName(month)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                     </div>
                     <button
                       onClick={() => {
@@ -855,159 +963,315 @@ export default function page() {
                     </button>
                   </div>
                 </div>
+                <div className="flex gap-4">
+                  <div className="flex-3 space-y-4">
+                    {/* KPI Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                      <KPICard
+                        title="Active Projects"
+                        value={dashboardData?.activeProjects || 0}
+                        icon={FolderKanban}
+                        color="bg-linear-to-br from-blue-500 to-blue-600"
+                        subtitle="Currently in progress"
+                        onClick={() => router.push("/admin/projects")}
+                      />
+                      <KPICard
+                        title="Active Lots"
+                        value={dashboardData?.activeLots || 0}
+                        icon={Layers}
+                        color="bg-linear-to-br from-emerald-500 to-emerald-600"
+                        subtitle="Across all projects"
+                      />
+                      <KPICard
+                        title="Active MTOs"
+                        value={dashboardData?.activeMTOs || 0}
+                        icon={ClipboardList}
+                        color="bg-linear-to-br from-violet-500 to-violet-600"
+                        subtitle="Materials to order"
+                        onClick={() =>
+                          router.push("/admin/suppliers/materialstoorder")
+                        }
+                      />
+                      <KPICard
+                        title="Purchase Orders"
+                        value={dashboardData?.activePurchaseOrders || 0}
+                        icon={ShoppingCart}
+                        color="bg-linear-to-br from-amber-500 to-amber-600"
+                        subtitle="Active orders"
+                        onClick={() =>
+                          router.push("/admin/suppliers/purchaseorder")
+                        }
+                      />
+                      <KPICard
+                        title="Projects Completed"
+                        value={dashboardData?.projectsCompletedThisMonth || 0}
+                        icon={Target}
+                        color="bg-linear-to-br from-green-500 to-green-600"
+                        subtitle="This month"
+                      />
+                      {/* <KPICard
+                        title="Avg Project Duration"
+                        value={
+                          dashboardData?.averageProjectDuration > 0
+                            ? dashboardData.averageProjectDuration
+                            : 0
+                        }
+                        icon={Clock}
+                        color="bg-linear-to-br from-rose-500 to-rose-600"
+                        subtitle={
+                          dashboardData?.averageProjectDuration > 0
+                            ? `${dashboardData.averageProjectDuration} days`
+                            : "No completed projects"
+                        }
+                      /> */}
+                    </div>
 
-                {/* KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-                  <KPICard
-                    title="Active Projects"
-                    value={dashboardData?.activeProjects || 0}
-                    icon={FolderKanban}
-                    color="bg-linear-to-br from-blue-500 to-blue-600"
-                    subtitle="Currently in progress"
-                    onClick={() => router.push("/admin/projects")}
-                  />
-                  <KPICard
-                    title="Active Lots"
-                    value={dashboardData?.activeLots || 0}
-                    icon={Layers}
-                    color="bg-linear-to-br from-emerald-500 to-emerald-600"
-                    subtitle="Across all projects"
-                  />
-                  <KPICard
-                    title="Active MTOs"
-                    value={dashboardData?.activeMTOs || 0}
-                    icon={ClipboardList}
-                    color="bg-linear-to-br from-violet-500 to-violet-600"
-                    subtitle="Materials to order"
-                    onClick={() => router.push("/admin/suppliers/materialstoorder")}
-                  />
-                  <KPICard
-                    title="Purchase Orders"
-                    value={dashboardData?.activePurchaseOrders || 0}
-                    icon={ShoppingCart}
-                    color="bg-linear-to-br from-amber-500 to-amber-600"
-                    subtitle="Active orders"
-                    onClick={() => router.push("/admin/suppliers/purchaseorder")}
-                  />
-                  <KPICard
-                    title="Projects Completed"
-                    value={dashboardData?.projectsCompletedThisMonth || 0}
-                    icon={Target}
-                    color="bg-linear-to-br from-green-500 to-green-600"
-                    subtitle="This month"
-                  />
-                  <KPICard
-                    title="Avg Project Duration"
-                    value={dashboardData?.averageProjectDuration > 0 ? dashboardData.averageProjectDuration : 0}
-                    icon={Clock}
-                    color="bg-linear-to-br from-rose-500 to-rose-600"
-                    subtitle={dashboardData?.averageProjectDuration > 0 ? `${dashboardData.averageProjectDuration} days` : "No completed projects"}
-                  />
-                </div>
-
-                {/* Stages Due */}
-                <ChartCard title="Upcoming Stage Deadlines">
-                  {sortedStagesDue.length > 0 ? (
-                    <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-                      <table className="w-full">
-                        <thead className="sticky top-0 bg-white">
-                          <tr className="border-b border-slate-100">
-                            <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                              Stage
-                            </th>
-                            <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                              Project / Lot
-                            </th>
-                            <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                              Status
-                            </th>
-                            <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                              Due Date
-                            </th>
-                            <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                              Time Left
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sortedStagesDue.map((stage) => {
-                            const daysLeft = getDaysLeft(stage.endDate);
-                            const badge = getDaysLeftBadge(daysLeft);
-                            return (
-                              <tr
-                                key={stage.stage_id}
-                                className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-                              >
-                                <td className="py-3 px-3">
-                                  <span className="inline-flex items-center gap-2">
-                                    <Calendar className="w-4 h-4 text-slate-400" />
-                                    <span className="text-sm font-medium text-slate-700 capitalize">
-                                      {stage.name}
-                                    </span>
-                                  </span>
-                                </td>
-                                <td className="py-3 px-3 text-sm text-slate-600">
-                                  {stage.lot?.project?.name ? (
-                                    <span>
-                                      <span className="font-medium">{stage.lot.project.name}</span>
-                                      <span className="text-slate-400 mx-1">/</span>
-                                      <span>{stage.lot_id}</span>
-                                    </span>
-                                  ) : (
-                                    stage.lot_id
-                                  )}
-                                </td>
-                                <td className="py-3 px-3">
-                                  <span
-                                    className={`text-[10px] font-semibold px-2 py-1 rounded-full uppercase ${getStatusColor(
-                                      stage.status
-                                    )}`}
+                    {/* Stages Due */}
+                    <ChartCard title="Upcoming Stage Deadlines">
+                      {sortedStagesDue.length > 0 ? (
+                        <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                          <table className="w-full">
+                            <thead className="sticky top-0 bg-white">
+                              <tr className="border-b border-slate-100">
+                                <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                  Stage
+                                </th>
+                                <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                  Project / Lot
+                                </th>
+                                <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                  Status
+                                </th>
+                                <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                  Due Date
+                                </th>
+                                <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                  Time Left
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sortedStagesDue.map((stage) => {
+                                const daysLeft = getDaysLeft(stage.endDate);
+                                const badge = getDaysLeftBadge(daysLeft);
+                                return (
+                                  <tr
+                                    key={stage.stage_id}
+                                    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
                                   >
-                                    {stage.status?.replace(/_/g, " ")}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-3 text-sm text-slate-600">
-                                  {stage.endDate &&
-                                    new Date(stage.endDate).getFullYear() > 2000
-                                    ? new Date(
-                                      stage.endDate
+                                    <td className="py-3 px-3">
+                                      <span className="inline-flex items-center gap-2">
+                                        <Calendar className="w-4 h-4 text-slate-400" />
+                                        <span className="text-sm font-medium text-slate-700 capitalize">
+                                          {stage.name}
+                                        </span>
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-3 text-sm text-slate-600">
+                                      {stage.lot?.project?.name ? (
+                                        <span>
+                                          <span className="font-medium">
+                                            {stage.lot.project.name}
+                                          </span>
+                                          <span className="text-slate-400 mx-1">
+                                            /
+                                          </span>
+                                          <span>{stage.lot_id}</span>
+                                        </span>
+                                      ) : (
+                                        stage.lot_id
+                                      )}
+                                    </td>
+                                    <td className="py-3 px-3">
+                                      <span
+                                        className={`text-[10px] font-semibold px-2 py-1 rounded-full uppercase ${getStatusColor(
+                                          stage.status,
+                                        )}`}
+                                      >
+                                        {stage.status?.replace(/_/g, " ")}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-3 text-sm text-slate-600">
+                                      {stage.endDate &&
+                                      new Date(stage.endDate).getFullYear() >
+                                        2000
+                                        ? new Date(
+                                            stage.endDate,
+                                          ).toLocaleDateString("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                          })
+                                        : "-"}
+                                    </td>
+                                    <td className="py-3 px-3 text-right">
+                                      <span
+                                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${badge.color}`}
+                                      >
+                                        <Clock className="w-3 h-3" />
+                                        {badge.text}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="py-12 text-center text-slate-400 text-sm">
+                          No upcoming stage deadlines
+                        </div>
+                      )}
+                    </ChartCard>
+                  </div>
+                  <div className="flex-1">
+                    {/* Upcoming Meetings */}
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-full">
+                      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-slate-700">
+                          Upcoming Meetings
+                        </h3>
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                      </div>
+                      <div className="divide-y divide-slate-100 flex-1 overflow-y-auto">
+                        {dashboardData?.upcomingMeetings &&
+                        dashboardData.upcomingMeetings.length > 0 ? (
+                          dashboardData.upcomingMeetings.map((meeting) => (
+                            <div
+                              key={meeting.id}
+                              className="p-4 hover:bg-slate-50 transition-colors"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="shrink-0 w-10 text-center bg-slate-100 rounded-lg p-1">
+                                  <span className="block text-[10px] font-bold text-slate-500 uppercase">
+                                    {new Date(
+                                      meeting.date_time,
                                     ).toLocaleDateString("en-US", {
                                       month: "short",
-                                      day: "numeric",
-                                      year: "numeric",
-                                    })
-                                    : "-"}
-                                </td>
-                                <td className="py-3 px-3 text-right">
-                                  <span
-                                    className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${badge.color}`}
-                                  >
-                                    <Clock className="w-3 h-3" />
-                                    {badge.text}
+                                    })}
                                   </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                  <span className="block text-sm font-bold text-slate-800">
+                                    {new Date(meeting.date_time).getDate()}
+                                  </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-xs font-semibold text-slate-800 line-clamp-1">
+                                    {meeting.title}
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
+                                    <Clock className="w-3 h-3" />
+                                    {new Date(
+                                      meeting.date_time,
+                                    ).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </div>
+                                  {meeting.lots && meeting.lots.length > 0 && (
+                                    <div className="flex items-center gap-1 mt-1.5 overflow-hidden">
+                                      {meeting.lots.slice(0, 2).map((l) => (
+                                        <span
+                                          key={l.lot_id}
+                                          className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-50 text-blue-600 truncate max-w-20"
+                                        >
+                                          {l.lot_id}
+                                        </span>
+                                      ))}
+                                      {meeting.lots.length > 2 && (
+                                        <span className="text-[9px] text-slate-400">
+                                          +{meeting.lots.length - 2}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {meeting.participants &&
+                                    meeting.participants.length > 0 && (
+                                      <div className="flex items-center gap-1 mt-2">
+                                        <div className="flex -space-x-2">
+                                          {meeting.participants
+                                            .slice(0, 3)
+                                            .map((participant) => (
+                                              <div
+                                                key={participant.id}
+                                                className="relative group"
+                                                title={`${participant.employee?.first_name || ""} ${participant.employee?.last_name || participant.username}`}
+                                              >
+                                                {participant.employee?.image ? (
+                                                  <img
+                                                    src={
+                                                      participant.employee.image
+                                                    }
+                                                    alt={`${participant.employee.first_name} ${participant.employee.last_name}`}
+                                                    className="w-6 h-6 rounded-full border-2 border-white object-cover"
+                                                  />
+                                                ) : (
+                                                  <div className="w-6 h-6 rounded-full border-2 border-white bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                                                    <span className="text-[10px] font-bold text-white">
+                                                      {participant.employee
+                                                        ?.first_name?.[0] ||
+                                                        participant
+                                                          .username?.[0] ||
+                                                        "?"}
+                                                    </span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                        </div>
+                                        {meeting.participants.length > 3 && (
+                                          <span className="text-[9px] text-slate-400 ml-1">
+                                            +{meeting.participants.length - 3}
+                                          </span>
+                                        )}
+                                        <span className="text-[9px] text-slate-500 ml-1">
+                                          {meeting.participants
+                                            .slice(0, 2)
+                                            .map((p, idx) => (
+                                              <span key={p.id}>
+                                                {idx > 0 && ", "}
+                                                {p.employee?.first_name ||
+                                                  p.username}
+                                              </span>
+                                            ))}
+                                          {meeting.participants.length > 2 &&
+                                            "..."}
+                                        </span>
+                                      </div>
+                                    )}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-8 text-center">
+                            <p className="text-xs text-slate-500">
+                              No upcoming meetings
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3 border-t border-slate-100 bg-slate-50">
+                        <button
+                          onClick={() => router.push("/admin/calendar")}
+                          className="cursor-pointer w-full py-2 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-white rounded-lg border border-slate-200 transition-all text-center"
+                        >
+                          View All Meetings
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="py-12 text-center text-slate-400 text-sm">
-                      No upcoming stage deadlines
-                    </div>
-                  )}
-                </ChartCard>
+                  </div>
+                </div>
 
-                {/* Status Charts */}
+                {/* Upcoming Meetings & Status Charts */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Lots by Stage */}
                   <ChartCard title="Lots by Stage">
                     {lotsByStageChartData ? (
                       <div style={{ height: "250px" }}>
-                        <Doughnut
+                        <Bar
                           data={lotsByStageChartData}
-                          options={doughnutChartOptions}
+                          options={barChartOptions}
                         />
                       </div>
                     ) : (
@@ -1162,7 +1426,7 @@ export default function page() {
                               <div className="flex items-center gap-2 mb-1">
                                 <span
                                   className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase ${getActionColor(
-                                    log.action
+                                    log.action,
                                   )}`}
                                 >
                                   {log.action}

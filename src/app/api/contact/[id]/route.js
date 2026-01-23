@@ -13,13 +13,13 @@ export async function GET(request, { params }) {
     });
     return NextResponse.json(
       { status: true, message: "Contact fetched successfully", data: contact },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/contact/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -60,25 +60,29 @@ export async function PATCH(request, { params }) {
       "contact",
       id,
       "UPDATE",
-      `Contact updated successfully: ${contact.first_name} ${contact.last_name}`
+      `Contact updated successfully: ${contact.first_name} ${contact.last_name}`,
     );
     if (!logged) {
-      console.error(`Failed to log contact update: ${id} - ${contact.first_name} ${contact.last_name}`);
+      console.error(
+        `Failed to log contact update: ${id} - ${contact.first_name} ${contact.last_name}`,
+      );
     }
     return NextResponse.json(
       {
         status: true,
         message: "Contact updated successfully",
         data: contact,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/contact/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -96,28 +100,30 @@ export async function DELETE(request, { params }) {
       "contact",
       id,
       "DELETE",
-      `Contact deleted successfully: ${contact.first_name} ${contact.last_name}`
+      `Contact deleted successfully: ${contact.first_name} ${contact.last_name}`,
     );
     if (!logged) {
-      console.error(`Failed to log contact deletion: ${id} - ${contact.first_name} ${contact.last_name}`);
+      console.error(
+        `Failed to log contact deletion: ${id} - ${contact.first_name} ${contact.last_name}`,
+      );
       return NextResponse.json(
         {
           status: true,
           message: "Contact deleted successfully",
-          warning: "Note: Deletion succeeded but logging failed"
+          warning: "Note: Deletion succeeded but logging failed",
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
     return NextResponse.json(
       { status: true, message: "Contact deleted successfully" },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/contact/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

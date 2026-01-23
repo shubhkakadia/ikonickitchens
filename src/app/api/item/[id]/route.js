@@ -56,7 +56,7 @@ export async function GET(request, { params }) {
     if (!item) {
       return NextResponse.json(
         { status: false, message: "Item not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -106,13 +106,13 @@ export async function GET(request, { params }) {
         message: "Item fetched successfully",
         data: itemWithTransactions,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/item/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -132,7 +132,7 @@ export async function PATCH(request, { params }) {
           message: "Failed to parse form data",
           error: parseError.message,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const { id } = await params;
@@ -169,7 +169,7 @@ export async function PATCH(request, { params }) {
     if (!existingItem) {
       return NextResponse.json(
         { status: false, message: "Item does not exist" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -274,7 +274,7 @@ export async function PATCH(request, { params }) {
             // Log but don't fail the entire operation if old image deletion fails
             console.error(
               "Error deleting old image (non-critical):",
-              deleteError
+              deleteError,
             );
           }
         }
@@ -298,7 +298,7 @@ export async function PATCH(request, { params }) {
             message: "Failed to upload image",
             error: error.message,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -457,7 +457,7 @@ export async function PATCH(request, { params }) {
       "item",
       id,
       "UPDATE",
-      `Item updated successfully: ${completeItem.name}`
+      `Item updated successfully: ${completeItem.name}`,
     );
     if (!logged) {
       console.error(`Failed to log item update: ${id} - ${completeItem.name}`);
@@ -472,13 +472,13 @@ export async function PATCH(request, { params }) {
           ? {}
           : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/item/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -497,14 +497,14 @@ export async function DELETE(request, { params }) {
     if (!item) {
       return NextResponse.json(
         { status: false, message: "Item not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (item.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Item already deleted" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -533,13 +533,13 @@ export async function DELETE(request, { params }) {
       "item",
       id,
       "DELETE",
-      `Item deleted successfully: ${item.description || item.item_id}`
+      `Item deleted successfully: ${item.description || item.item_id}`,
     );
     if (!logged) {
       console.error(
         `Failed to log item deletion: ${id} - ${
           item.description || item.item_id
-        }`
+        }`,
       );
     }
 
@@ -552,13 +552,13 @@ export async function DELETE(request, { params }) {
           ? {}
           : { warning: "Note: Deletion succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/item/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -19,13 +19,13 @@ export default function Carousel({ images = [], projectTitle = "" }) {
 
   const goToPrevious = () => {
     setCurrentIndex((prevIndex) =>
-      prevIndex === 0 ? images.length - 1 : prevIndex - 1
+      prevIndex === 0 ? images.length - 1 : prevIndex - 1,
     );
   };
 
   const goToNext = () => {
     setCurrentIndex((prevIndex) =>
-      prevIndex === images.length - 1 ? 0 : prevIndex + 1
+      prevIndex === images.length - 1 ? 0 : prevIndex + 1,
     );
   };
 
@@ -54,10 +54,11 @@ export default function Carousel({ images = [], projectTitle = "" }) {
           {images.map((image, index) => (
             <div
               key={index}
-              className={`absolute inset-0 transition-all duration-700 ease-in-out ${index === currentIndex
+              className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+                index === currentIndex
                   ? "opacity-100 scale-100"
                   : "opacity-0 scale-105"
-                }`}
+              }`}
             >
               <Image
                 loading="lazy"
@@ -139,10 +140,11 @@ export default function Carousel({ images = [], projectTitle = "" }) {
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#B92F34] focus:ring-offset-2 ${index === currentIndex
+              className={`relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#B92F34] focus:ring-offset-2 ${
+                index === currentIndex
                   ? "ring-2 ring-[#B92F34] scale-105"
                   : "opacity-70 hover:opacity-100"
-                }`}
+              }`}
               aria-label={`Go to image ${index + 1}`}
             >
               <Image

@@ -15,6 +15,7 @@ export async function GET(request, { params }) {
       where: { item_id: id },
     });
 
+    
     if (!item) {
       return NextResponse.json(
         { status: false, message: "Item not found" },

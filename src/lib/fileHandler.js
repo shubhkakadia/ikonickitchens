@@ -1,4 +1,3 @@
-
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
@@ -127,7 +126,7 @@ export async function uploadFile(file, options = {}) {
   // Validate file size
   if (maxSize && file.size > maxSize) {
     throw new Error(
-      `File size exceeds maximum allowed size of ${maxSize} bytes`
+      `File size exceeds maximum allowed size of ${maxSize} bytes`,
     );
   }
 
@@ -202,7 +201,7 @@ export async function uploadFile(file, options = {}) {
     if (!scanResult.clean) {
       // File is infected and has been deleted by scanFile
       throw new Error(
-        `File contains malware: ${scanResult.viruses?.join(", ") || "unknown threat"}`
+        `File contains malware: ${scanResult.viruses?.join(", ") || "unknown threat"}`,
       );
     }
   } catch (error) {

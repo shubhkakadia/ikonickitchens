@@ -17,7 +17,7 @@ export async function POST(request) {
           status: false,
           message: "Category and value are required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -34,11 +34,13 @@ export async function POST(request) {
       "constants_config",
       config.id,
       "CREATE",
-      `Config created successfully: ${config.category}`
+      `Config created successfully: ${config.category}`,
     );
 
     if (!logged) {
-      console.error(`Failed to log config creation: ${config.id} - ${config.category}`);
+      console.error(
+        `Failed to log config creation: ${config.id} - ${config.category}`,
+      );
       return NextResponse.json(
         {
           status: true,
@@ -46,13 +48,13 @@ export async function POST(request) {
           data: config,
           warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
 
     return NextResponse.json(
       { status: true, message: "Config created successfully", data: config },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/config/create:", error);
@@ -61,7 +63,7 @@ export async function POST(request) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

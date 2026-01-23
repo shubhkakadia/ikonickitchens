@@ -26,7 +26,7 @@ export async function POST(request) {
           status: false,
           message: "Project already exists by this project id: " + project_id,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -41,7 +41,7 @@ export async function POST(request) {
             status: false,
             message: "Client not found with client id: " + client_id,
           },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
@@ -56,7 +56,7 @@ export async function POST(request) {
               status: false,
               message: "Lot ID and Client Name are required for all lots",
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
       }
@@ -105,7 +105,7 @@ export async function POST(request) {
       "project",
       project.project_id,
       "CREATE",
-      `Project created successfully: ${project.name}`
+      `Project created successfully: ${project.name}`,
     );
 
     // Log lot creations
@@ -115,7 +115,7 @@ export async function POST(request) {
         "lot",
         lot.lot_id,
         "CREATE",
-        `Lot created successfully: ${lot.name} for project: ${project.name}`
+        `Lot created successfully: ${lot.name} for project: ${project.name}`,
       );
     }
 
@@ -131,7 +131,7 @@ export async function POST(request) {
 
     if (!logged) {
       console.error(
-        `Failed to log project creation: ${project.project_id} - ${project.name}`
+        `Failed to log project creation: ${project.project_id} - ${project.name}`,
       );
       responseData.warning = "Note: Creation succeeded but logging failed";
     }
@@ -141,7 +141,7 @@ export async function POST(request) {
     console.error("Error in POST /api/project/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error", error: error.message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

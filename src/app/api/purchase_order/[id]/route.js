@@ -44,13 +44,13 @@ export async function GET(request, { params }) {
         message: "Purchase order fetched successfully",
         data: po,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/purchase_order/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -71,7 +71,7 @@ export async function PATCH(request, { params }) {
     if (!existing) {
       return NextResponse.json(
         { status: false, message: "Purchase order not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -97,20 +97,20 @@ export async function PATCH(request, { params }) {
       body.ordered_at = ordered_at;
       body.total_amount =
         total_amount_raw !== null &&
-          total_amount_raw !== undefined &&
-          total_amount_raw !== ""
+        total_amount_raw !== undefined &&
+        total_amount_raw !== ""
           ? Number(total_amount_raw)
           : undefined;
       body.delivery_charge =
         delivery_charge_raw !== null &&
-          delivery_charge_raw !== undefined &&
-          delivery_charge_raw !== ""
+        delivery_charge_raw !== undefined &&
+        delivery_charge_raw !== ""
           ? Number(delivery_charge_raw)
           : undefined;
       body.invoice_date =
         invoice_date_raw !== null &&
-          invoice_date_raw !== undefined &&
-          invoice_date_raw !== ""
+        invoice_date_raw !== undefined &&
+        invoice_date_raw !== ""
           ? new Date(invoice_date_raw)
           : undefined;
       body.notes = notes;
@@ -208,7 +208,7 @@ export async function PATCH(request, { params }) {
             item.new_delivery !== null &&
             parseFloat(item.new_delivery || 0) > 0) ||
           (item.quantity_received !== undefined &&
-            item.quantity_received !== null)
+            item.quantity_received !== null),
       );
 
       if (itemsToUpdate.length > 0) {
@@ -228,7 +228,7 @@ export async function PATCH(request, { params }) {
 
         // Create a map for quick lookup
         const existingItemsMap = new Map(
-          existingItems.map((item) => [item.id, item])
+          existingItems.map((item) => [item.id, item]),
         );
 
         // Update purchase_order_item and item inventory
@@ -240,7 +240,7 @@ export async function PATCH(request, { params }) {
 
           const currentReceived = parseInt(
             existingItem.quantity_received || 0,
-            10
+            10,
           );
 
           // Support both formats: quantity_received (total) or new_delivery (incremental)
@@ -253,7 +253,7 @@ export async function PATCH(request, { params }) {
           ) {
             // Frontend sends total quantity_received
             newTotalReceived = Math.floor(
-              parseFloat(itemUpdate.quantity_received || 0)
+              parseFloat(itemUpdate.quantity_received || 0),
             );
             newDelivery = newTotalReceived - currentReceived;
           } else if (
@@ -310,10 +310,10 @@ export async function PATCH(request, { params }) {
       });
 
       const allItemsReceived = updatedPO.items.every(
-        (item) => (item.quantity_received || 0) >= item.quantity
+        (item) => (item.quantity_received || 0) >= item.quantity,
       );
       const someItemsReceived = updatedPO.items.some(
-        (item) => (item.quantity_received || 0) > 0
+        (item) => (item.quantity_received || 0) > 0,
       );
 
       let newStatus = existing.status;
@@ -387,16 +387,25 @@ export async function PATCH(request, { params }) {
           message: "Received quantities updated successfully",
           data: finalPO,
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
     if (body.status !== undefined) {
       // Validate status value
-      const validStatuses = ["DRAFT", "ORDERED", "PARTIALLY_RECEIVED", "FULLY_RECEIVED", "CANCELLED"];
+      const validStatuses = [
+        "DRAFT",
+        "ORDERED",
+        "PARTIALLY_RECEIVED",
+        "FULLY_RECEIVED",
+        "CANCELLED",
+      ];
       if (!validStatuses.includes(body.status)) {
         return NextResponse.json(
-          { status: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` },
-          { status: 400 }
+          {
+            status: false,
+            message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+          },
+          { status: 400 },
         );
       }
       updateData.status = body.status;
@@ -441,10 +450,10 @@ export async function PATCH(request, { params }) {
 
           // Create maps for efficient lookup
           const existingById = new Map(
-            existingItems.map((item) => [item.id, item])
+            existingItems.map((item) => [item.id, item]),
           );
           const existingByItemId = new Map(
-            existingItems.map((item) => [item.item_id, item])
+            existingItems.map((item) => [item.item_id, item]),
           );
           const incomingItemIds = new Set();
 
@@ -456,8 +465,8 @@ export async function PATCH(request, { params }) {
               notes: item.notes || null,
               unit_price:
                 item.unit_price !== undefined &&
-                  item.unit_price !== null &&
-                  item.unit_price !== ""
+                item.unit_price !== null &&
+                item.unit_price !== ""
                   ? Number(item.unit_price)
                   : null,
             };
@@ -494,7 +503,7 @@ export async function PATCH(request, { params }) {
 
           // Delete items that are no longer in the incoming list
           const itemsToDelete = existingItems.filter(
-            (item) => !incomingItemIds.has(item.id)
+            (item) => !incomingItemIds.has(item.id),
           );
           if (itemsToDelete.length > 0) {
             await tx.purchase_order_item.deleteMany({
@@ -551,7 +560,7 @@ export async function PATCH(request, { params }) {
       "purchase_order",
       id,
       "UPDATE",
-      `Purchase order updated successfully for project: ${updated.mto?.project?.name}`
+      `Purchase order updated successfully for project: ${updated.mto?.project?.name}`,
     );
     if (!logged) {
       console.error(`Failed to log purchase order update: ${id}`);
@@ -561,15 +570,17 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Purchase order updated successfully",
         data: updated,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/purchase_order/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -594,7 +605,7 @@ export async function DELETE(request, { params }) {
       "purchase_order",
       id,
       "DELETE",
-      `Purchase order deleted successfully for project: ${po.mto?.project?.name}`
+      `Purchase order deleted successfully for project: ${po.mto?.project?.name}`,
     );
     if (!logged) {
       console.error(`Failed to log purchase order deletion: ${id}`);
@@ -603,9 +614,9 @@ export async function DELETE(request, { params }) {
           status: true,
           message: "Purchase order deleted successfully",
           data: po,
-          warning: "Note: Deletion succeeded but logging failed"
+          warning: "Note: Deletion succeeded but logging failed",
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
     return NextResponse.json(
@@ -614,13 +625,13 @@ export async function DELETE(request, { params }) {
         message: "Purchase order deleted successfully",
         data: po,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/purchase_order/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

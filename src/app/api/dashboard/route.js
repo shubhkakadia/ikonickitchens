@@ -42,7 +42,11 @@ function normalizeMonth(month) {
   }
 
   // If it's already in two-digit format (e.g., "01", "11")
-  if (/^\d{2}$/.test(month.toString()) && parseInt(month, 10) >= 1 && parseInt(month, 10) <= 12) {
+  if (
+    /^\d{2}$/.test(month.toString()) &&
+    parseInt(month, 10) >= 1 &&
+    parseInt(month, 10) <= 12
+  ) {
     return month.toString();
   }
 
@@ -125,7 +129,9 @@ function buildDateRangeFilter(year, month) {
     const nextYear = monthNum === 12 ? parseInt(year) + 1 : year;
     return {
       gte: adelaideLocalToUTC(`${year}-${normalizedMonth}-01`),
-      lt: adelaideLocalToUTC(`${nextYear}-${String(nextMonth).padStart(2, "0")}-01`),
+      lt: adelaideLocalToUTC(
+        `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`,
+      ),
     };
   }
 
@@ -158,6 +164,8 @@ export async function POST(request) {
       topstagesDue: {},
       projectsCompletedThisMonth: 0,
       averageProjectDuration: 0,
+      upcomingMeetings: [],
+      recentLogs: [],
     };
 
     // Build all where clauses first (no database calls yet)
@@ -165,45 +173,43 @@ export async function POST(request) {
       lots: {
         some: {
           status: "ACTIVE",
-          ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
-            OR: [
-              { startDate: dateRangeFilter },
-              { createdAt: dateRangeFilter },
-            ],
-          }),
+          ...(dateRangeFilter &&
+            Object.keys(dateRangeFilter).length > 0 && {
+              OR: [
+                { startDate: dateRangeFilter },
+                { createdAt: dateRangeFilter },
+              ],
+            }),
         },
       },
     };
 
     const activeLotsWhere = {
       status: "ACTIVE",
-      ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
-        OR: [
-          { startDate: dateRangeFilter },
-          { createdAt: dateRangeFilter },
-        ],
-      }),
+      ...(dateRangeFilter &&
+        Object.keys(dateRangeFilter).length > 0 && {
+          OR: [{ startDate: dateRangeFilter }, { createdAt: dateRangeFilter }],
+        }),
     };
 
     const activeMTOsWhere = {
       status: {
         in: ["DRAFT", "PARTIALLY_ORDERED"],
       },
-      ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
-        createdAt: dateRangeFilter,
-      }),
+      ...(dateRangeFilter &&
+        Object.keys(dateRangeFilter).length > 0 && {
+          createdAt: dateRangeFilter,
+        }),
     };
 
     const activePurchaseOrdersWhere = {
       status: {
         in: ["DRAFT", "ORDERED", "PARTIALLY_RECEIVED"],
       },
-      ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
-        OR: [
-          { createdAt: dateRangeFilter },
-          { ordered_at: dateRangeFilter },
-        ],
-      }),
+      ...(dateRangeFilter &&
+        Object.keys(dateRangeFilter).length > 0 && {
+          OR: [{ createdAt: dateRangeFilter }, { ordered_at: dateRangeFilter }],
+        }),
     };
 
     // Filter supplier statements based on month and year
@@ -236,33 +242,31 @@ export async function POST(request) {
       lot: {
         status: "ACTIVE",
       },
-      ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
-        OR: [
-          { startDate: dateRangeFilter },
-          { endDate: dateRangeFilter },
-        ],
-      }),
+      ...(dateRangeFilter &&
+        Object.keys(dateRangeFilter).length > 0 && {
+          OR: [{ startDate: dateRangeFilter }, { endDate: dateRangeFilter }],
+        }),
     };
 
     const mtosByStatusWhere = {
-      ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
-        createdAt: dateRangeFilter,
-      }),
+      ...(dateRangeFilter &&
+        Object.keys(dateRangeFilter).length > 0 && {
+          createdAt: dateRangeFilter,
+        }),
     };
 
     const posByStatusWhere = {
-      ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
-        OR: [
-          { createdAt: dateRangeFilter },
-          { ordered_at: dateRangeFilter },
-        ],
-      }),
+      ...(dateRangeFilter &&
+        Object.keys(dateRangeFilter).length > 0 && {
+          OR: [{ createdAt: dateRangeFilter }, { ordered_at: dateRangeFilter }],
+        }),
     };
 
     const stockTransactionsWhere = {
-      ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
-        createdAt: dateRangeFilter,
-      }),
+      ...(dateRangeFilter &&
+        Object.keys(dateRangeFilter).length > 0 && {
+          createdAt: dateRangeFilter,
+        }),
     };
 
     const topstagesDueWhere = {
@@ -270,9 +274,10 @@ export async function POST(request) {
       lot: {
         status: "ACTIVE",
       },
-      ...(dateRangeFilter && Object.keys(dateRangeFilter).length > 0 && {
-        endDate: dateRangeFilter,
-      }),
+      ...(dateRangeFilter &&
+        Object.keys(dateRangeFilter).length > 0 && {
+          endDate: dateRangeFilter,
+        }),
     };
 
     // Projects Completed This Month - projects with at least one completed lot this month
@@ -320,6 +325,8 @@ export async function POST(request) {
       topstagesDue,
       projectsCompletedThisMonth,
       completedProjects,
+      upcomingMeetings,
+      recentLogs,
     ] = await Promise.all([
       prisma.project.count({ where: activeProjectsWhere }),
       prisma.lot.count({ where: activeLotsWhere }),
@@ -390,6 +397,62 @@ export async function POST(request) {
           },
         },
       }),
+      prisma.meeting.findMany({
+        where: {
+          date_time: {
+            gte: new Date(),
+          },
+        },
+        orderBy: {
+          date_time: "asc",
+        },
+        take: 5,
+        include: {
+          participants: {
+            select: {
+              id: true,
+              username: true,
+              employee: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+          lots: {
+            select: {
+              lot_id: true,
+              project: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.logs.findMany({
+        take: 10,
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          user: {
+            select: {
+              username: true,
+              employee: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+        },
+      }),
     ]);
 
     // Assign results to dashboard data
@@ -403,6 +466,8 @@ export async function POST(request) {
     dashboardData.purchaseOrdersByStatus = purchaseOrdersByStatus;
     dashboardData.topstagesDue = topstagesDue;
     dashboardData.projectsCompletedThisMonth = projectsCompletedThisMonth;
+    dashboardData.upcomingMeetings = upcomingMeetings;
+    dashboardData.recentLogs = recentLogs;
 
     // Calculate average project duration
     if (completedProjects.length > 0) {
@@ -410,7 +475,9 @@ export async function POST(request) {
         .map((project) => {
           if (!project.lots || project.lots.length === 0) return null;
 
-          const completedLots = project.lots.filter((lot) => lot.startDate && lot.updatedAt);
+          const completedLots = project.lots.filter(
+            (lot) => lot.startDate && lot.updatedAt,
+          );
           if (completedLots.length === 0) return null;
 
           // Find earliest start date and latest completion date
@@ -421,18 +488,22 @@ export async function POST(request) {
             .map((lot) => new Date(lot.updatedAt))
             .filter((date) => !isNaN(date.getTime()));
 
-          if (startDates.length === 0 || completionDates.length === 0) return null;
+          if (startDates.length === 0 || completionDates.length === 0)
+            return null;
 
           const earliestStart = new Date(Math.min(...startDates));
           const latestCompletion = new Date(Math.max(...completionDates));
-          const durationDays = (latestCompletion - earliestStart) / (1000 * 60 * 60 * 24);
+          const durationDays =
+            (latestCompletion - earliestStart) / (1000 * 60 * 60 * 24);
 
           return durationDays > 0 ? durationDays : null;
         })
         .filter((duration) => duration !== null);
 
       if (projectDurations.length > 0) {
-        const averageDuration = projectDurations.reduce((sum, duration) => sum + duration, 0) / projectDurations.length;
+        const averageDuration =
+          projectDurations.reduce((sum, duration) => sum + duration, 0) /
+          projectDurations.length;
         dashboardData.averageProjectDuration = Math.round(averageDuration);
       } else {
         dashboardData.averageProjectDuration = 0;
@@ -449,23 +520,24 @@ export async function POST(request) {
     dashboardData.top10itemsCount = top10itemsCount;
 
     // Only fetch details for the top 10 items
-    dashboardData.top10items = top10itemsCount.length > 0
-      ? await prisma.item.findMany({
-        where: {
-          item_id: {
-            in: top10itemsCount.map((item) => item.item_id),
-          },
-        },
-        include: {
-          image: true,
-          sheet: true,
-          handle: true,
-          hardware: true,
-          accessory: true,
-          edging_tape: true,
-        },
-      })
-      : [];
+    dashboardData.top10items =
+      top10itemsCount.length > 0
+        ? await prisma.item.findMany({
+            where: {
+              item_id: {
+                in: top10itemsCount.map((item) => item.item_id),
+              },
+            },
+            include: {
+              image: true,
+              sheet: true,
+              handle: true,
+              hardware: true,
+              accessory: true,
+              edging_tape: true,
+            },
+          })
+        : [];
 
     return NextResponse.json(
       {
@@ -473,13 +545,13 @@ export async function POST(request) {
         message: "Dashboard fetched successfully",
         data: dashboardData,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/dashboard:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

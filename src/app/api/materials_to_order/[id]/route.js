@@ -60,13 +60,13 @@ export async function GET(request, { params }) {
         message: "Materials to order fetched successfully",
         data: mtoWithMedia,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/materials_to_order/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -201,7 +201,7 @@ export async function PATCH(request, { params }) {
             });
             const available = current?.quantity ?? 0;
             throw new Error(
-              `INSUFFICIENT_INVENTORY:${it.item_id}:${remaining}:${available}`
+              `INSUFFICIENT_INVENTORY:${it.item_id}:${remaining}:${available}`,
             );
           }
 
@@ -251,19 +251,20 @@ export async function PATCH(request, { params }) {
       "materials_to_order",
       id,
       "UPDATE",
-      `Materials to order updated successfully for project: ${projectName}`
+      `Materials to order updated successfully for project: ${projectName}`,
     );
-    
+
     // Send notification for MTO update (only if items or status changed)
     if (data.items !== undefined || data.status !== undefined) {
       try {
         // Get lot names
-        const lotNames = mto.lots && mto.lots.length > 0
-          ? (mto.lots.length === 1 
-              ? mto.lots[0].lot_id 
-              : mto.lots.map(l => l.lot_id).join(", "))
-          : "Unknown Lot";
-        
+        const lotNames =
+          mto.lots && mto.lots.length > 0
+            ? mto.lots.length === 1
+              ? mto.lots[0].lot_id
+              : mto.lots.map((l) => l.lot_id).join(", ")
+            : "Unknown Lot";
+
         await sendNotification(
           {
             type: "material_to_order",
@@ -274,14 +275,17 @@ export async function PATCH(request, { params }) {
             lot_name: lotNames,
             is_new: false,
           },
-          "materials_to_order_list_update"
+          "materials_to_order_list_update",
         );
       } catch (notificationError) {
-        console.error("Failed to send MTO update notification:", notificationError);
+        console.error(
+          "Failed to send MTO update notification:",
+          notificationError,
+        );
         // Don't fail the request if notification fails
       }
     }
-    
+
     if (!logged) {
       console.error(`Failed to log materials to order update: ${id}`);
     }
@@ -290,9 +294,11 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Materials to order updated successfully",
         data: mtoWithMedia,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     const msg = error?.message || "";
@@ -303,7 +309,7 @@ export async function PATCH(request, { params }) {
           status: false,
           message: `Not enough quantity in inventory. Available: ${available}, Requested: ${requested}`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -314,21 +320,21 @@ export async function PATCH(request, { params }) {
           message:
             "This MTO is already completed for used material and cannot be moved back to active.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (msg === "Materials to order not found") {
       return NextResponse.json(
         { status: false, message: msg },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     console.error("Error in PATCH /api/materials_to_order/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -368,7 +374,7 @@ export async function DELETE(request, { params }) {
       "materials_to_order",
       id,
       "DELETE",
-      `Materials to order deleted successfully for project: ${mtoForLogging?.project?.name || 'Unknown'}`
+      `Materials to order deleted successfully for project: ${mtoForLogging?.project?.name || "Unknown"}`,
     );
     if (!logged) {
       console.error(`Failed to log materials to order deletion: ${id}`);
@@ -379,15 +385,17 @@ export async function DELETE(request, { params }) {
         status: true,
         message: "Materials to order deleted successfully",
         data: mto,
-        ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Deletion succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/materials_to_order/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

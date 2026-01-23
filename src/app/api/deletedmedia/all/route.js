@@ -41,13 +41,13 @@ export async function GET(request) {
         message: "Deleted media fetched successfully",
         data: deletedMedia,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/deletedmedia/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -65,7 +65,7 @@ export async function DELETE(request) {
     if (!filenames || !Array.isArray(filenames) || filenames.length === 0) {
       return NextResponse.json(
         { status: false, message: "Filenames array is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -122,11 +122,11 @@ export async function DELETE(request) {
         } catch (fileError) {
           console.error(
             `❌ Error deleting file from disk: ${decodedFilename}`,
-            fileError
+            fileError,
           );
           console.error(
             "Attempted path:",
-            path.join(process.cwd(), deletedMedia.url)
+            path.join(process.cwd(), deletedMedia.url),
           );
           // Continue with database deletion even if file deletion fails
         }
@@ -159,11 +159,13 @@ export async function DELETE(request) {
           entityType,
           deletedMedia.id,
           "DELETE",
-          `${entityType} deleted successfully: ${deletedMedia.filename}`
+          `${entityType} deleted successfully: ${deletedMedia.filename}`,
         );
 
         if (!logged) {
-          console.error(`Failed to log ${entityType} deletion: ${deletedMedia.id} - ${deletedMedia.filename}`);
+          console.error(
+            `Failed to log ${entityType} deletion: ${deletedMedia.id} - ${deletedMedia.filename}`,
+          );
         }
 
         // Deletion succeeded, so mark as successful even if logging failed
@@ -171,7 +173,9 @@ export async function DELETE(request) {
           success: true,
           filename: decodedFilename,
           fileDeletedFromDisk: fileDeleted,
-          ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" })
+          ...(logged
+            ? {}
+            : { warning: "Note: Deletion succeeded but logging failed" }),
         };
       } catch (error) {
         console.error(`Error deleting file ${filename}:`, error);
@@ -185,13 +189,13 @@ export async function DELETE(request) {
 
     // Process all files in parallel using Promise.all
     const deletionResults = await Promise.all(
-      filenames.map(filename => processFileDeletion(filename))
+      filenames.map((filename) => processFileDeletion(filename)),
     );
 
     // Separate successful and failed results
     const results = {
-      successful: deletionResults.filter(r => r.success),
-      failed: deletionResults.filter(r => !r.success),
+      successful: deletionResults.filter((r) => r.success),
+      failed: deletionResults.filter((r) => !r.success),
     };
 
     // Return results
@@ -212,14 +216,13 @@ export async function DELETE(request) {
           failedCount: results.failed.length,
         },
       },
-      { status: hasSuccess ? 200 : hasFailures ? 207 : 200 } // 207 Multi-Status if partial success
+      { status: hasSuccess ? 200 : hasFailures ? 207 : 200 }, // 207 Multi-Status if partial success
     );
   } catch (error) {
     console.error("Error in DELETE /api/deletedmedia/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

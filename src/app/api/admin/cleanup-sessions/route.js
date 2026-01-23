@@ -19,7 +19,7 @@ export const POST = withAdminAuth(async (request, sessionData) => {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 });

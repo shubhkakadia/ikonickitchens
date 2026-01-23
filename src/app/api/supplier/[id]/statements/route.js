@@ -29,7 +29,7 @@ export async function GET(request, { params }) {
     if (!supplier) {
       return NextResponse.json(
         { status: false, message: "Supplier not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -52,7 +52,7 @@ export async function GET(request, { params }) {
         message: "Statements fetched successfully",
         data: statements,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching statements:", error);
@@ -61,7 +61,7 @@ export async function GET(request, { params }) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -81,7 +81,7 @@ export async function POST(request, { params }) {
     if (!supplier) {
       return NextResponse.json(
         { status: false, message: "Supplier not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -98,28 +98,28 @@ export async function POST(request, { params }) {
     if (!file) {
       return NextResponse.json(
         { status: false, message: "File is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!month_year) {
       return NextResponse.json(
         { status: false, message: "Month/Year is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!due_date) {
       return NextResponse.json(
         { status: false, message: "Due date is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!payment_status || !["PENDING", "PAID"].includes(payment_status)) {
       return NextResponse.json(
         { status: false, message: "Payment status must be PENDING or PAID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -171,7 +171,7 @@ export async function POST(request, { params }) {
       } catch (deleteError) {
         console.error(
           `Failed to clean up uploaded file after transaction failure: ${uploadResult.relativePath}`,
-          deleteError
+          deleteError,
         );
       }
       // Re-throw the original transaction error
@@ -183,9 +183,9 @@ export async function POST(request, { params }) {
       "supplier_statement",
       statement.id,
       "CREATE",
-      `Statement uploaded successfully: ${statement.month_year} for supplier: ${supplier.name}`
+      `Statement uploaded successfully: ${statement.month_year} for supplier: ${supplier.name}`,
     );
-    
+
     // Send notification for supplier statement creation
     try {
       // Format due date
@@ -204,7 +204,7 @@ export async function POST(request, { params }) {
           formattedDueDate = String(statement.due_date);
         }
       }
-      
+
       await sendNotification(
         {
           type: "supplier_statement",
@@ -215,23 +215,28 @@ export async function POST(request, { params }) {
           amount: statement.amount || "N/A",
           due_date: formattedDueDate,
         },
-        "supplier_statement_added"
+        "supplier_statement_added",
       );
     } catch (notificationError) {
-      console.error("Failed to send supplier statement notification:", notificationError);
+      console.error(
+        "Failed to send supplier statement notification:",
+        notificationError,
+      );
       // Don't fail the request if notification fails
     }
-    
+
     if (!logged) {
-      console.error(`Failed to log statement upload: ${statement.id} - ${statement.month_year}`);
+      console.error(
+        `Failed to log statement upload: ${statement.id} - ${statement.month_year}`,
+      );
       return NextResponse.json(
         {
           status: true,
           message: "Statement uploaded successfully",
           data: statement,
-          warning: "Note: Creation succeeded but logging failed"
+          warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
     return NextResponse.json(
@@ -240,7 +245,7 @@ export async function POST(request, { params }) {
         message: "Statement uploaded successfully",
         data: statement,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error uploading statement:", error);
@@ -249,7 +254,7 @@ export async function POST(request, { params }) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

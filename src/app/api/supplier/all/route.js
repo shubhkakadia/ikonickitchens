@@ -48,21 +48,19 @@ export async function GET(request) {
       },
     });
 
-
     return NextResponse.json(
       {
         status: true,
         message: "Suppliers fetched successfully",
         data: suppliers,
-
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/supplier/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -20,9 +20,9 @@ export function rateLimit(options = {}) {
     keyGenerator = (request) => {
       // Default: use IP address
       const forwarded = request.headers.get("x-forwarded-for");
-      const ip = forwarded ? forwarded.split(",")[0].trim() :
-        request.headers.get("x-real-ip") ||
-        "unknown";
+      const ip = forwarded
+        ? forwarded.split(",")[0].trim()
+        : request.headers.get("x-real-ip") || "unknown";
       return ip;
     },
   } = options;
@@ -46,7 +46,8 @@ export function rateLimit(options = {}) {
     rateLimitStore.set(key, entry);
 
     // Clean up old entries periodically (every 5 minutes)
-    if (Math.random() < 0.01) { // 1% chance on each request
+    if (Math.random() < 0.01) {
+      // 1% chance on each request
       const cutoff = now - windowMs;
       for (const [k, v] of rateLimitStore.entries()) {
         if (v.resetTime < cutoff) {

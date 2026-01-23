@@ -121,7 +121,7 @@ export default function page() {
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-        "An error occurred while fetching client data"
+          "An error occurred while fetching client data",
       );
     } finally {
       setLoading(false);
@@ -159,7 +159,7 @@ export default function page() {
 
       const formatPhone = (phone) => {
         return phone ? formatPhoneToNational(phone) : phone;
-      }
+      };
 
       const dataToSend = {
         ...editData,
@@ -195,7 +195,7 @@ export default function page() {
       console.error("Error updating client:", error);
       toast.error(
         error.response?.data?.message ||
-        "Failed to update client. Please try again.",
+          "Failed to update client. Please try again.",
         {
           position: "top-right",
           autoClose: 5000,
@@ -203,7 +203,7 @@ export default function page() {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-        }
+        },
       );
     } finally {
       setIsUpdating(false);
@@ -241,8 +241,9 @@ export default function page() {
     if (!name) return "?";
     const parts = name.trim().split(" ");
     if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
-    return `${parts[0][0] || ""}${parts[parts.length - 1][0] || ""
-      }`.toUpperCase();
+    return `${parts[0][0] || ""}${
+      parts[parts.length - 1][0] || ""
+    }`.toUpperCase();
   };
 
   const formatDate = (dateString) => {
@@ -482,12 +483,14 @@ export default function page() {
     if (numLots > 0 && numLots <= 100) {
       const newLots = Array.from({ length: numLots }, (_, index) => {
         // Preserve existing lot data if available, otherwise create new with default lotId
-        return lots[index] || {
-          lotId: `lot ${index + 1}`,
-          clientName: "",
-          installationDueDate: "",
-          notes: "",
-        };
+        return (
+          lots[index] || {
+            lotId: `lot ${index + 1}`,
+            clientName: "",
+            installationDueDate: "",
+            notes: "",
+          }
+        );
       });
       setLots(newLots);
     } else if (numLots === 0 || value === "") {
@@ -536,16 +539,16 @@ export default function page() {
       const lotsToSend =
         lots && lots.length > 0
           ? lots.map((lot) => {
-            const fullLotId = newProject.project_id
-              ? `${newProject.project_id}-${lot.lotId}`
-              : lot.lotId;
-            return {
-              lotId: fullLotId,
-              clientName: lot.clientName,
-              installationDueDate: lot.installationDueDate || null,
-              notes: lot.notes || null,
-            };
-          })
+              const fullLotId = newProject.project_id
+                ? `${newProject.project_id}-${lot.lotId}`
+                : lot.lotId;
+              return {
+                lotId: fullLotId,
+                clientName: lot.clientName,
+                installationDueDate: lot.installationDueDate || null,
+                notes: lot.notes || null,
+              };
+            })
           : [];
 
       const data = {
@@ -593,12 +596,12 @@ export default function page() {
       console.error("Create project failed", err);
       toast.error(
         err?.response?.data?.message ||
-        "An error occurred while creating the project",
+          "An error occurred while creating the project",
         {
           position: "top-right",
           autoClose: 5000,
           hideProgressBar: false,
-        }
+        },
       );
     } finally {
       setIsCreatingProject(false);
@@ -732,7 +735,7 @@ export default function page() {
                                     onChange={(e) =>
                                       handleInputChange(
                                         "client_name",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     placeholder={client.client_name}
@@ -743,7 +746,7 @@ export default function page() {
                                     onChange={(e) =>
                                       handleInputChange(
                                         "client_type",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
@@ -766,7 +769,7 @@ export default function page() {
                                       onChange={(e) =>
                                         handleInputChange(
                                           "client_email",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       placeholder={
@@ -784,20 +787,26 @@ export default function page() {
                                         onChange={(e) =>
                                           handleInputChange(
                                             "client_phone",
-                                            e.target.value
+                                            e.target.value,
                                           )
                                         }
                                         placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                                        className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${editData.client_phone && !validatePhone(editData.client_phone)
+                                        className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
+                                          editData.client_phone &&
+                                          !validatePhone(editData.client_phone)
                                             ? "border-red-500"
                                             : "border-slate-300"
-                                          }`}
+                                        }`}
                                       />
-                                      {editData.client_phone && !validatePhone(editData.client_phone) && (
-                                        <p className="mt-1 text-xs text-red-500">
-                                          Please enter a valid Australian phone number
-                                        </p>
-                                      )}
+                                      {editData.client_phone &&
+                                        !validatePhone(
+                                          editData.client_phone,
+                                        ) && (
+                                          <p className="mt-1 text-xs text-red-500">
+                                            Please enter a valid Australian
+                                            phone number
+                                          </p>
+                                        )}
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -808,7 +817,7 @@ export default function page() {
                                       onChange={(e) =>
                                         handleInputChange(
                                           "client_website",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       placeholder={
@@ -825,7 +834,7 @@ export default function page() {
                                       onChange={(e) =>
                                         handleInputChange(
                                           "client_address",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       placeholder={
@@ -841,11 +850,11 @@ export default function page() {
                                       onChange={(e) =>
                                         handleInputChange(
                                           "client_notes",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       placeholder={formatValue(
-                                        client.client_notes
+                                        client.client_notes,
                                       )}
                                       rows={3}
                                       className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
@@ -952,10 +961,11 @@ export default function page() {
                             setActiveTab("ACTIVE");
                             setCurrentPage(1);
                           }}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "ACTIVE"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "ACTIVE"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           <div className="flex items-center gap-2">
                             Active
@@ -971,10 +981,11 @@ export default function page() {
                             setActiveTab("COMPLETED");
                             setCurrentPage(1);
                           }}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "COMPLETED"
-                            ? "border-primary text-primary"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === "COMPLETED"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          }`}
                         >
                           <div className="flex items-center gap-2">
                             Completed
@@ -1060,8 +1071,8 @@ export default function page() {
                     </div>
 
                     {!client?.projects ||
-                      client.projects.length === 0 ||
-                      filteredAndSortedProjects.length === 0 ? (
+                    client.projects.length === 0 ||
+                    filteredAndSortedProjects.length === 0 ? (
                       <div className="text-center py-8 text-slate-500">
                         <Building className="w-8 h-8 mx-auto mb-2 text-slate-400" />
                         <p>
@@ -1093,12 +1104,12 @@ export default function page() {
                             <tbody className="bg-white divide-y divide-slate-200">
                               {currentProjects.map((project) => {
                                 const isExpanded = expandedProjects.has(
-                                  project.project_id
+                                  project.project_id,
                                 );
                                 const allLots = project.lots || [];
                                 // Filter lots based on active tab
                                 const filteredLots = allLots.filter(
-                                  (lot) => lot.status === activeTab
+                                  (lot) => lot.status === activeTab,
                                 );
                                 // For display in table row, show count of filtered lots
                                 const lots = filteredLots;
@@ -1110,7 +1121,7 @@ export default function page() {
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             toggleProjectExpansion(
-                                              project.project_id
+                                              project.project_id,
                                             );
                                           }}
                                           className="flex items-center gap-2 text-xs font-medium text-slate-900 hover:text-primary transition-colors"
@@ -1127,7 +1138,7 @@ export default function page() {
                                         className="px-4 py-2 whitespace-nowrap text-xs text-slate-600 cursor-pointer"
                                         onClick={() =>
                                           router.push(
-                                            `/admin/projects/${project.project_id}`
+                                            `/admin/projects/${project.project_id}`,
                                           )
                                         }
                                       >
@@ -1139,7 +1150,7 @@ export default function page() {
                                         className="px-4 py-2 whitespace-nowrap text-xs text-slate-600 cursor-pointer"
                                         onClick={() =>
                                           router.push(
-                                            `/admin/projects/${project.project_id}`
+                                            `/admin/projects/${project.project_id}`,
                                           )
                                         }
                                       >
@@ -1152,7 +1163,7 @@ export default function page() {
                                         className="px-4 py-2 whitespace-nowrap text-xs text-slate-600 cursor-pointer"
                                         onClick={() =>
                                           router.push(
-                                            `/admin/projects/${project.project_id}`
+                                            `/admin/projects/${project.project_id}`,
                                           )
                                         }
                                       >
@@ -1204,14 +1215,14 @@ export default function page() {
                                                     {lots.map((lot) => {
                                                       const stageStatus =
                                                         getStageStatusSummary(
-                                                          lot.stages
+                                                          lot.stages,
                                                         );
                                                       return (
                                                         <tr
                                                           key={lot.id}
                                                           onClick={() =>
                                                             router.push(
-                                                              `/admin/projects/${project.project_id}`
+                                                              `/admin/projects/${project.project_id}`,
                                                             )
                                                           }
                                                           className="cursor-pointer hover:bg-slate-50 transition-colors"
@@ -1226,20 +1237,20 @@ export default function page() {
                                                             <div className="flex items-center gap-1.5">
                                                               <Calendar className="w-3 h-3 text-slate-400" />
                                                               {formatDate(
-                                                                lot.startDate
+                                                                lot.startDate,
                                                               )}
                                                             </div>
                                                           </td>
                                                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-600">
                                                             <div className="flex items-center gap-1.5">
                                                               {isInstallationDueSoon(
-                                                                lot.installationDueDate
+                                                                lot.installationDueDate,
                                                               ) ? (
                                                                 <>
                                                                   <AlertTriangle className="w-3 h-3 text-yellow-500" />
                                                                   <span className="text-yellow-600 font-medium">
                                                                     {formatDate(
-                                                                      lot.installationDueDate
+                                                                      lot.installationDueDate,
                                                                     )}
                                                                   </span>
                                                                 </>
@@ -1247,7 +1258,7 @@ export default function page() {
                                                                 <>
                                                                   <Calendar className="w-3 h-3 text-slate-400" />
                                                                   {formatDate(
-                                                                    lot.installationDueDate
+                                                                    lot.installationDueDate,
                                                                   )}
                                                                 </>
                                                               )}
@@ -1285,7 +1296,7 @@ export default function page() {
                               Showing {startIndex + 1} to{" "}
                               {Math.min(
                                 endIndex,
-                                filteredAndSortedProjects.length
+                                filteredAndSortedProjects.length,
                               )}{" "}
                               of {filteredAndSortedProjects.length} results
                             </div>
@@ -1302,15 +1313,16 @@ export default function page() {
                               <div className="flex items-center gap-1">
                                 {Array.from(
                                   { length: totalPages },
-                                  (_, i) => i + 1
+                                  (_, i) => i + 1,
                                 ).map((page) => (
                                   <button
                                     key={page}
                                     onClick={() => handlePageChange(page)}
-                                    className={`px-2 py-1 text-xs font-medium rounded ${currentPage === page
-                                      ? "bg-primary text-white"
-                                      : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
-                                      }`}
+                                    className={`px-2 py-1 text-xs font-medium rounded ${
+                                      currentPage === page
+                                        ? "bg-primary text-white"
+                                        : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
+                                    }`}
                                   >
                                     {page}
                                   </button>
@@ -1491,7 +1503,8 @@ export default function page() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
                                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Lot ID <span className="text-red-500">*</span>
+                                    Lot ID{" "}
+                                    <span className="text-red-500">*</span>
                                   </label>
                                   <input
                                     type="text"
@@ -1500,7 +1513,7 @@ export default function page() {
                                       handleLotChange(
                                         index,
                                         "lotId",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
@@ -1526,7 +1539,7 @@ export default function page() {
                                       handleLotChange(
                                         index,
                                         "clientName",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
@@ -1546,7 +1559,7 @@ export default function page() {
                                     handleLotChange(
                                       index,
                                       "installationDueDate",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
@@ -1562,7 +1575,7 @@ export default function page() {
                                     handleLotChange(
                                       index,
                                       "notes",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   rows={2}
@@ -1607,7 +1620,6 @@ export default function page() {
             </div>
           </div>
         )}
-
       </div>
     </AdminRoute>
   );

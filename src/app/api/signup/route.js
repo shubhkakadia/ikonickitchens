@@ -25,7 +25,7 @@ export async function POST(request) {
           status: false,
           message: "Username already exists",
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -43,7 +43,7 @@ export async function POST(request) {
             message:
               "Employee ID does not exist. Please provide a valid employee ID or leave it empty.",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -58,7 +58,7 @@ export async function POST(request) {
             status: false,
             message: "Employee ID is already linked to another user",
           },
-          { status: 409 }
+          { status: 409 },
         );
       }
     }
@@ -123,7 +123,7 @@ export async function POST(request) {
           status: false,
           message: "Internal server error while creating user or module access",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -132,18 +132,20 @@ export async function POST(request) {
       "user",
       newUser.id,
       "CREATE",
-      `User created successfully: ${newUser.username}`
+      `User created successfully: ${newUser.username}`,
     );
     if (!logged) {
-      console.error(`Failed to log user creation: ${newUser.id} - ${newUser.username}`);
+      console.error(
+        `Failed to log user creation: ${newUser.id} - ${newUser.username}`,
+      );
       return NextResponse.json(
         {
           status: true,
           message: "User created successfully",
           data: { user: newUser, module_access: moduleAccess },
-          warning: "Note: Creation succeeded but logging failed"
+          warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
     return NextResponse.json(
@@ -152,7 +154,7 @@ export async function POST(request) {
         message: "User created successfully",
         data: { user: newUser, module_access: moduleAccess },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Signup error:", error);
@@ -161,7 +163,7 @@ export async function POST(request) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

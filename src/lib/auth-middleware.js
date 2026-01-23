@@ -12,7 +12,7 @@ export function withAuth(handler) {
             status: false,
             message: authResult.error,
           },
-          { status: authResult.statusCode }
+          { status: authResult.statusCode },
         );
       }
 
@@ -26,7 +26,7 @@ export function withAuth(handler) {
           message: "Authentication failed",
           error: error.message,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   };
@@ -41,7 +41,7 @@ export function withUserType(allowedTypes) {
             status: false,
             message: "Insufficient permissions",
           },
-          { status: 403 }
+          { status: 403 },
         );
       }
 
@@ -51,6 +51,5 @@ export function withUserType(allowedTypes) {
 }
 
 export const withAdminAuth = withUserType(["admin", "master-admin"]);
-
 
 export const withMasterAdminAuth = withUserType(["master-admin"]);

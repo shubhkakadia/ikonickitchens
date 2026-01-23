@@ -2,7 +2,20 @@
 import { AdminRoute } from "@/components/ProtectedRoute";
 import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
-import { ChevronLeft, User, ChevronDown, Edit, Trash2, Plus, X, Mail, Phone, IdCardLanyard, NotebookText, PhoneCall } from "lucide-react";
+import {
+  ChevronLeft,
+  User,
+  ChevronDown,
+  Edit,
+  Trash2,
+  Plus,
+  X,
+  Mail,
+  Phone,
+  IdCardLanyard,
+  NotebookText,
+  PhoneCall,
+} from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 import Sidebar from "@/components/sidebar";
 import axios from "axios";
@@ -51,7 +64,7 @@ export default function page() {
 
   // Filter client types based on search term
   const filteredClientTypes = client_types.filter((type) =>
-    type.toLowerCase().includes(searchTerm.toLowerCase())
+    type.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Close dropdown when clicking outside
@@ -110,19 +123,22 @@ export default function page() {
       const contactsToSend =
         contacts && contacts.length > 0
           ? contacts.map((contact) => ({
-            first_name: contact.first_name,
-            last_name: contact.last_name,
-            email: contact.email || null,
-            phone: contact.phone ? formatPhoneToNational(contact.phone) : null,
-            role: contact.role || null,
-            preferred_contact_method: contact.preferred_contact_method || null,
-            notes: contact.notes || null,
-          }))
+              first_name: contact.first_name,
+              last_name: contact.last_name,
+              email: contact.email || null,
+              phone: contact.phone
+                ? formatPhoneToNational(contact.phone)
+                : null,
+              role: contact.role || null,
+              preferred_contact_method:
+                contact.preferred_contact_method || null,
+              notes: contact.notes || null,
+            }))
           : [];
 
       const formatPhone = (phone) => {
         return phone ? formatPhoneToNational(phone) : phone;
-      }
+      };
 
       const data = {
         client_type: formData.client_type.toLowerCase(),
@@ -306,7 +322,9 @@ export default function page() {
       // Format phone number before saving
       const formattedContact = {
         ...contactDraft,
-        phone: contactDraft.phone ? formatPhoneToNational(contactDraft.phone) : contactDraft.phone,
+        phone: contactDraft.phone
+          ? formatPhoneToNational(contactDraft.phone)
+          : contactDraft.phone,
       };
 
       if (editingContactIndex !== null) {
@@ -339,11 +357,16 @@ export default function page() {
       }
     } catch (err) {
       console.error("Save contact failed", err);
-      toast.error(editingContactIndex !== null ? "Failed to update contact" : "Failed to add contact", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.error(
+        editingContactIndex !== null
+          ? "Failed to update contact"
+          : "Failed to add contact",
+        {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+        },
+      );
     } finally {
       setIsSavingContact(false);
     }
@@ -404,7 +427,9 @@ export default function page() {
                           required
                         />
                         {errors.client_name && (
-                          <p className="text-red-500 text-xs mt-1">{errors.client_name}</p>
+                          <p className="text-red-500 text-xs mt-1">
+                            {errors.client_name}
+                          </p>
                         )}
                       </div>
                       <div className="relative" ref={dropdownRef}>
@@ -422,7 +447,9 @@ export default function page() {
                             required
                           />
                           {errors.client_type && (
-                            <p className="text-red-500 text-xs mt-1">{errors.client_type}</p>
+                            <p className="text-red-500 text-xs mt-1">
+                              {errors.client_type}
+                            </p>
                           )}
                           <button
                             type="button"
@@ -430,8 +457,9 @@ export default function page() {
                             className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                           >
                             <ChevronDown
-                              className={`w-5 h-5 transition-transform ${isDropdownOpen ? "rotate-180" : ""
-                                }`}
+                              className={`w-5 h-5 transition-transform ${
+                                isDropdownOpen ? "rotate-180" : ""
+                              }`}
                             />
                           </button>
                         </div>
@@ -491,17 +519,21 @@ export default function page() {
                           name="client_phone"
                           value={formData.client_phone}
                           onChange={handleInputChange}
-                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${formData.client_phone && !validatePhone(formData.client_phone)
+                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
+                            formData.client_phone &&
+                            !validatePhone(formData.client_phone)
                               ? "border-red-500"
                               : "border-slate-300"
-                            }`}
+                          }`}
                           placeholder="Eg. 0400 123 456 or +61 400 123 456"
                         />
-                        {formData.client_phone && !validatePhone(formData.client_phone) && (
-                          <p className="mt-1 text-xs text-red-500">
-                            {errors.client_phone || "Please enter a valid Australian phone number"}
-                          </p>
-                        )}
+                        {formData.client_phone &&
+                          !validatePhone(formData.client_phone) && (
+                            <p className="mt-1 text-xs text-red-500">
+                              {errors.client_phone ||
+                                "Please enter a valid Australian phone number"}
+                            </p>
+                          )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -608,19 +640,25 @@ export default function page() {
                                   {contact.email && (
                                     <div className="flex items-center gap-2">
                                       <Mail className="w-4 h-4 text-slate-500" />
-                                      <span className="text-slate-700">{contact.email}</span>
+                                      <span className="text-slate-700">
+                                        {contact.email}
+                                      </span>
                                     </div>
                                   )}
                                   {contact.phone && (
                                     <div className="flex items-center gap-2">
                                       <Phone className="w-4 h-4 text-slate-500" />
-                                      <span className="text-slate-700">{contact.phone}</span>
+                                      <span className="text-slate-700">
+                                        {contact.phone}
+                                      </span>
                                     </div>
                                   )}
                                   {contact.role && (
                                     <div className="flex items-center gap-2">
                                       <IdCardLanyard className="w-4 h-4 text-slate-500" />
-                                      <span className="text-slate-700">{contact.role}</span>
+                                      <span className="text-slate-700">
+                                        {contact.role}
+                                      </span>
                                     </div>
                                   )}
                                   {contact.preferred_contact_method && (
@@ -635,7 +673,9 @@ export default function page() {
                                 {contact.notes && (
                                   <div className="mt-2 flex items-start gap-2">
                                     <NotebookText className="w-4 h-4 text-slate-500 mt-0.5" />
-                                    <p className="text-sm text-slate-700">{contact.notes}</p>
+                                    <p className="text-sm text-slate-700">
+                                      {contact.notes}
+                                    </p>
                                   </div>
                                 )}
                               </div>
@@ -669,10 +709,11 @@ export default function page() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${isLoading
-                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                        : "bg-primary/80 hover:bg-primary text-white"
-                        }`}
+                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
+                        isLoading
+                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                          : "bg-primary/80 hover:bg-primary text-white"
+                      }`}
                     >
                       {isLoading ? "Creating Client..." : "Create Client"}
                     </button>
@@ -699,7 +740,9 @@ export default function page() {
                 </div>
                 <div>
                   <div className="text-lg font-semibold text-slate-700">
-                    {editingContactIndex !== null ? "Edit Contact" : "Add Contact"}
+                    {editingContactIndex !== null
+                      ? "Edit Contact"
+                      : "Add Contact"}
                   </div>
                   <div className="text-xs text-slate-500">
                     Client: {formData.client_name || "New Client"}
@@ -779,10 +822,11 @@ export default function page() {
                         phone: e.target.value,
                       })
                     }
-                    className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${contactDraft.phone && !validatePhone(contactDraft.phone)
+                    className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
+                      contactDraft.phone && !validatePhone(contactDraft.phone)
                         ? "border-red-500"
                         : "border-slate-300"
-                      }`}
+                    }`}
                     placeholder="e.g. +61 434 888 999"
                   />
                   {contactDraft.phone && !validatePhone(contactDraft.phone) && (
@@ -860,14 +904,17 @@ export default function page() {
                 className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSavingContact
-                  ? (editingContactIndex !== null ? "Updating..." : "Adding...")
-                  : (editingContactIndex !== null ? "Update Contact" : "Add Contact")}
+                  ? editingContactIndex !== null
+                    ? "Updating..."
+                    : "Adding..."
+                  : editingContactIndex !== null
+                    ? "Update Contact"
+                    : "Add Contact"}
               </button>
             </div>
           </div>
         </div>
       )}
-
     </AdminRoute>
   );
 }

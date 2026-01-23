@@ -13,13 +13,13 @@ export async function GET(request) {
         message: "Contacts fetched successfully",
         data: contacts,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/contact/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

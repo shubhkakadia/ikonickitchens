@@ -58,7 +58,7 @@ export async function POST(request) {
           message:
             "Employee already exists by this employee id: " + employee_id,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -74,7 +74,7 @@ export async function POST(request) {
           console.error("Error parsing availability JSON:", error);
           return NextResponse.json(
             { status: false, message: "Invalid availability data format" },
-            { status: 400 }
+            { status: 400 },
           );
         }
       } else if (typeof availability === "object" && availability !== null) {
@@ -84,7 +84,13 @@ export async function POST(request) {
     }
 
     // Parse is_active - handle string "true"/"false" or boolean
-    const isActiveValue = is_active === "true" || is_active === true || is_active === undefined || is_active === null ? true : false;
+    const isActiveValue =
+      is_active === "true" ||
+      is_active === true ||
+      is_active === undefined ||
+      is_active === null
+        ? true
+        : false;
 
     // Format phone numbers to national format before saving
     const formattedPhone = phone ? formatPhoneToNational(phone) : phone;
@@ -94,7 +100,7 @@ export async function POST(request) {
 
     const formatPhone = (phone) => {
       return phone ? formatPhoneToNational(phone) : phone;
-    }
+    };
 
     // Create employee first (without image_id)
     const employee = await prisma.employees.create({
@@ -174,26 +180,30 @@ export async function POST(request) {
       "employee",
       employee.id,
       "CREATE",
-      `Employee created successfully: ${employee.first_name} ${employee.last_name}`
+      `Employee created successfully: ${employee.first_name} ${employee.last_name}`,
     );
     if (!logged) {
-      console.error(`Failed to log employee creation: ${employee.id} - ${employee.first_name} ${employee.last_name}`);
+      console.error(
+        `Failed to log employee creation: ${employee.id} - ${employee.first_name} ${employee.last_name}`,
+      );
     }
 
     return NextResponse.json(
       {
         status: true,
         message: "Employee created successfully",
-        ...(logged ? {} : { warning: "Note: Creation succeeded but logging failed" }),
+        ...(logged
+          ? {}
+          : { warning: "Note: Creation succeeded but logging failed" }),
         data: updatedEmployee,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/employee/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

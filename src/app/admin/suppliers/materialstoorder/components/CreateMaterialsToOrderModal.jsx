@@ -7,7 +7,10 @@ import Image from "next/image";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import AddItemModal from "@/app/admin/suppliers/purchaseorder/components/AddItemModal";
 
-export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess }) {
+export default function CreateMaterialsToOrderModal({
+  setShowModal,
+  onSuccess,
+}) {
   const { getToken, userData } = useAuth();
 
   // Data States
@@ -92,7 +95,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
   };
 
   // Filter items based on search
-  const filteredItems = allItems.filter(item => {
+  const filteredItems = allItems.filter((item) => {
     if (!itemSearch) return false;
     const searchLower = itemSearch.toLowerCase();
 
@@ -128,38 +131,48 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
 
   const handleAddItem = (item) => {
     // Check if already added
-    if (selectedItems.some(i => i.item_id === item.item_id)) {
+    if (selectedItems.some((i) => i.item_id === item.item_id)) {
       toast.info("Item already added");
       return;
     }
 
-    setSelectedItems(prev => [...prev, {
-      ...item,
-      item_id: item.item_id,
-      stock_quantity: item.quantity, // Preserve original stock quantity
-      quantity: 1, // Default order quantity
-    }]);
+    setSelectedItems((prev) => [
+      ...prev,
+      {
+        ...item,
+        item_id: item.item_id,
+        stock_quantity: item.quantity, // Preserve original stock quantity
+        quantity: 1, // Default order quantity
+      },
+    ]);
     setItemSearch("");
     setShowItemSearchResults(false);
   };
 
   const handleUpdateItem = (itemId, field, value) => {
-    setSelectedItems(prev => prev.map(item => {
-      if (item.item_id === itemId) {
-        return { ...item, [field]: value };
-      }
-      return item;
-    }));
+    setSelectedItems((prev) =>
+      prev.map((item) => {
+        if (item.item_id === itemId) {
+          return { ...item, [field]: value };
+        }
+        return item;
+      }),
+    );
   };
 
   const handleRemoveItem = (itemId) => {
-    setSelectedItems(prev => prev.filter(item => item.item_id !== itemId));
+    setSelectedItems((prev) => prev.filter((item) => item.item_id !== itemId));
   };
 
   const [isDragging, setIsDragging] = useState(false);
 
   const validateAndAddFile = (file) => {
-    const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+    ];
     if (!allowedTypes.includes(file.type)) {
       toast.error("Only PDF and image files are allowed");
       return;
@@ -170,7 +183,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
       return;
     }
 
-    setUploadedFiles(prev => [...prev, file]);
+    setUploadedFiles((prev) => [...prev, file]);
   };
 
   const handleDragOver = (e) => {
@@ -191,16 +204,16 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
     setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files || []);
-    files.forEach(file => validateAndAddFile(file));
+    files.forEach((file) => validateAndAddFile(file));
   };
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
-    files.forEach(file => validateAndAddFile(file));
+    files.forEach((file) => validateAndAddFile(file));
   };
 
   const handleRemoveFile = (index) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleViewFile = (file) => {
@@ -215,7 +228,9 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
     }
 
     // Validate quantities
-    const invalidItems = selectedItems.some(item => !item.quantity || item.quantity <= 0);
+    const invalidItems = selectedItems.some(
+      (item) => !item.quantity || item.quantity <= 0,
+    );
     if (invalidItems) {
       toast.error("All items must have a quantity greater than 0");
       return;
@@ -230,7 +245,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
       const requestData = {
         notes: mtoNotes || null,
         createdBy_id: userData?.user?.id || null,
-        items: selectedItems.map(item => ({
+        items: selectedItems.map((item) => ({
           item_id: item.item_id,
           quantity: parseInt(item.quantity),
           notes: "",
@@ -238,12 +253,16 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
         lot_ids: [], // Can be empty for now
       };
 
-      const response = await axios.post("/api/materials_to_order/create", requestData, {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          "Content-Type": "application/json",
+      const response = await axios.post(
+        "/api/materials_to_order/create",
+        requestData,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (response.data.status) {
         const mtoId = response.data.data.id;
@@ -251,7 +270,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
         // Upload files if any
         if (uploadedFiles.length > 0) {
           const formData = new FormData();
-          uploadedFiles.forEach(file => {
+          uploadedFiles.forEach((file) => {
             formData.append("files", file);
           });
 
@@ -263,7 +282,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                 Authorization: `Bearer ${sessionToken}`,
                 "Content-Type": "multipart/form-data",
               },
-            }
+            },
           );
         }
 
@@ -271,35 +290,49 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
         if (onSuccess) onSuccess();
         setShowModal(false);
       } else {
-        toast.error(response.data.message || "Failed to create Materials to Order");
+        toast.error(
+          response.data.message || "Failed to create Materials to Order",
+        );
       }
-
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Failed to create Materials to Order");
+      toast.error(
+        err?.response?.data?.message || "Failed to create Materials to Order",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const getItemDisplayName = (item) => {
-    if (item.sheet) return `${item.sheet.brand} ${item.sheet.color} ${item.sheet.finish}`;
-    if (item.handle) return `${item.handle.brand} ${item.handle.color} ${item.handle.type}`;
+    if (item.sheet)
+      return `${item.sheet.brand} ${item.sheet.color} ${item.sheet.finish}`;
+    if (item.handle)
+      return `${item.handle.brand} ${item.handle.color} ${item.handle.type}`;
     if (item.hardware) return `${item.hardware.brand} ${item.hardware.name}`;
     if (item.accessory) return item.accessory.name;
-    if (item.edging_tape) return `${item.edging_tape.brand} ${item.edging_tape.color}`;
+    if (item.edging_tape)
+      return `${item.edging_tape.brand} ${item.edging_tape.color}`;
     return item.description || "Item";
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
-      <div className="absolute inset-0 bg-slate-900/40" onClick={() => setShowModal(false)} />
+      <div
+        className="absolute inset-0 bg-slate-900/40"
+        onClick={() => setShowModal(false)}
+      />
 
       <div className="relative bg-white w-full max-w-6xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
-          <h2 className="text-xl font-semibold text-slate-800">Create Materials to Order</h2>
-          <button onClick={() => setShowModal(false)} className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          <h2 className="text-xl font-semibold text-slate-800">
+            Create Materials to Order
+          </h2>
+          <button
+            onClick={() => setShowModal(false)}
+            className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          >
             <X className="w-5 h-5 text-slate-600" />
           </button>
         </div>
@@ -309,7 +342,9 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
           {/* Item Selection & List */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Items</h3>
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+                Items
+              </h3>
             </div>
 
             {/* Category Dropdown and Search Bar */}
@@ -342,7 +377,11 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                   <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
-                    placeholder={selectedCategory ? "Search items by name, category, brand..." : "Please select a category first"}
+                    placeholder={
+                      selectedCategory
+                        ? "Search items by name, category, brand..."
+                        : "Please select a category first"
+                    }
                     value={itemSearch}
                     onChange={(e) => {
                       setItemSearch(e.target.value);
@@ -362,7 +401,9 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                 {showItemSearchResults && itemSearch && selectedCategory && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
                     {loadingItems ? (
-                      <div className="p-4 text-center text-slate-500 text-sm">Loading items...</div>
+                      <div className="p-4 text-center text-slate-500 text-sm">
+                        Loading items...
+                      </div>
                     ) : filteredItems.length === 0 ? (
                       <div className="p-4 text-center space-y-3">
                         <p className="text-slate-500 text-sm">No items found</p>
@@ -375,7 +416,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                         </button>
                       </div>
                     ) : (
-                      filteredItems.map(item => (
+                      filteredItems.map((item) => (
                         <div
                           key={item.item_id}
                           onClick={() => handleAddItem(item)}
@@ -383,14 +424,32 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                         >
                           <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
                             {item.image?.url ? (
-                              <Image src={`/${item.image.url}`} alt="Item" width={40} height={40} className="w-full h-full object-cover" />
+                              <Image
+                                src={`/${item.image.url}`}
+                                alt="Item"
+                                width={40}
+                                height={40}
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
                               <Package className="w-5 h-5 text-slate-400" />
                             )}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-800">{getItemDisplayName(item)}</p>
-                            <p className="text-xs text-slate-500">{item.category} • Stock: {item.quantity} {item.measurement_unit}</p>
+                            <p className="text-sm font-medium text-slate-800">
+                              {getItemDisplayName(item)}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {item.category} • Stock: {item.quantity}{" "}
+                              {item.measurement_unit} • Dimensions:{" "}
+                              {item.sheet?.dimensions ||
+                                item.handle?.dimensions ||
+                                item.hardware?.dimensions ||
+                                item.edging_tape?.dimensions ||
+                                "N/A"}{" "}
+                              • Supplier Reference:{" "}
+                              {item?.supplier_reference || "N/A"}
+                            </p>
                           </div>
                           <Plus className="w-4 h-4 text-primary ml-auto" />
                         </div>
@@ -406,18 +465,33 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Image</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Category</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Details</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">In Stock</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Quantity</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Image
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Category
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Details
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      In Stock
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Quantity
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {selectedItems.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-4 py-8 text-center text-slate-500 text-sm">
+                      <td
+                        colSpan="6"
+                        className="px-4 py-8 text-center text-slate-500 text-sm"
+                      >
                         No items selected. Search and add items above.
                       </td>
                     </tr>
@@ -428,7 +502,13 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                         <td className="px-4 py-3">
                           <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
                             {item.image?.url ? (
-                              <Image src={`/${item.image.url}`} alt="Item" width={40} height={40} className="w-full h-full object-cover" />
+                              <Image
+                                src={`/${item.image.url}`}
+                                alt="Item"
+                                width={40}
+                                height={40}
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
                               <Package className="w-5 h-5 text-slate-400" />
                             )}
@@ -445,52 +525,126 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                         {/* Details Column */}
                         <td className="px-4 py-3">
                           <div className="text-xs text-slate-600 space-y-1">
+                            {item?.supplier_reference && (
+                              <div>
+                                <span className="font-medium">
+                                  Supplier Ref:
+                                </span>{" "}
+                                {item.supplier_reference}
+                              </div>
+                            )}
                             {item.sheet && (
                               <>
-                                <div><span className="font-medium">Color:</span> {item.sheet.color}</div>
-                                <div><span className="font-medium">Finish:</span> {item.sheet.finish}</div>
-                                <div><span className="font-medium">Face:</span> {item.sheet.face || "-"}</div>
-                                <div><span className="font-medium">Dimensions:</span> {item.sheet.dimensions}</div>
+                                <div>
+                                  <span className="font-medium">Color:</span>{" "}
+                                  {item.sheet.color}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Finish:</span>{" "}
+                                  {item.sheet.finish}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Face:</span>{" "}
+                                  {item.sheet.face || "-"}
+                                </div>
+                                <div>
+                                  <span className="font-medium">
+                                    Dimensions:
+                                  </span>{" "}
+                                  {item.sheet.dimensions}
+                                </div>
                               </>
                             )}
                             {item.handle && (
                               <>
-                                <div><span className="font-medium">Color:</span> {item.handle.color}</div>
-                                <div><span className="font-medium">Type:</span> {item.handle.type}</div>
-                                <div><span className="font-medium">Dimensions:</span> {item.handle.dimensions}</div>
-                                <div><span className="font-medium">Material:</span> {item.handle.material || "-"}</div>
+                                <div>
+                                  <span className="font-medium">Color:</span>{" "}
+                                  {item.handle.color}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Type:</span>{" "}
+                                  {item.handle.type}
+                                </div>
+                                <div>
+                                  <span className="font-medium">
+                                    Dimensions:
+                                  </span>{" "}
+                                  {item.handle.dimensions}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Material:</span>{" "}
+                                  {item.handle.material || "-"}
+                                </div>
                               </>
                             )}
                             {item.hardware && (
                               <>
-                                <div><span className="font-medium">Name:</span> {item.hardware.name}</div>
-                                <div><span className="font-medium">Type:</span> {item.hardware.type}</div>
-                                <div><span className="font-medium">Dimensions:</span> {item.hardware.dimensions}</div>
-                                <div><span className="font-medium">Sub Category:</span> {item.hardware.sub_category}</div>
+                                <div>
+                                  <span className="font-medium">Name:</span>{" "}
+                                  {item.hardware.name}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Type:</span>{" "}
+                                  {item.hardware.type}
+                                </div>
+                                <div>
+                                  <span className="font-medium">
+                                    Dimensions:
+                                  </span>{" "}
+                                  {item.hardware.dimensions}
+                                </div>
+                                <div>
+                                  <span className="font-medium">
+                                    Sub Category:
+                                  </span>{" "}
+                                  {item.hardware.sub_category}
+                                </div>
                               </>
                             )}
                             {item.accessory && (
                               <>
-                                <div><span className="font-medium">Name:</span> {item.accessory.name}</div>
+                                <div>
+                                  <span className="font-medium">Name:</span>{" "}
+                                  {item.accessory.name}
+                                </div>
                               </>
                             )}
                             {item.edging_tape && (
                               <>
-                                <div><span className="font-medium">Brand:</span> {item.edging_tape.brand || "-"}</div>
-                                <div><span className="font-medium">Color:</span> {item.edging_tape.color || "-"}</div>
-                                <div><span className="font-medium">Finish:</span> {item.edging_tape.finish || "-"}</div>
-                                <div><span className="font-medium">Dimensions:</span> {item.edging_tape.dimensions || "-"}</div>
+                                <div>
+                                  <span className="font-medium">Brand:</span>{" "}
+                                  {item.edging_tape.brand || "-"}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Color:</span>{" "}
+                                  {item.edging_tape.color || "-"}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Finish:</span>{" "}
+                                  {item.edging_tape.finish || "-"}
+                                </div>
+                                <div>
+                                  <span className="font-medium">
+                                    Dimensions:
+                                  </span>{" "}
+                                  {item.edging_tape.dimensions || "-"}
+                                </div>
                               </>
                             )}
-                            {!item.sheet && !item.handle && !item.hardware && !item.accessory && !item.edging_tape && (
-                              <div>{item.description || "-"}</div>
-                            )}
+                            {!item.sheet &&
+                              !item.handle &&
+                              !item.hardware &&
+                              !item.accessory &&
+                              !item.edging_tape && (
+                                <div>{item.description || "-"}</div>
+                              )}
                           </div>
                         </td>
 
                         {/* In Stock Column */}
                         <td className="px-4 py-3 text-sm text-slate-600">
-                          {item.stock_quantity ?? item.quantity} {item.measurement_unit}
+                          {item.stock_quantity ?? item.quantity}{" "}
+                          {item.measurement_unit}
                         </td>
 
                         {/* Quantity Column */}
@@ -499,7 +653,13 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                             type="number"
                             min="1"
                             value={item.quantity}
-                            onChange={(e) => handleUpdateItem(item.item_id, "quantity", e.target.value)}
+                            onChange={(e) =>
+                              handleUpdateItem(
+                                item.item_id,
+                                "quantity",
+                                e.target.value,
+                              )
+                            }
                             className="w-20 p-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-primary outline-none"
                           />
                         </td>
@@ -541,46 +701,68 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
               />
               {uploadedFiles.length === 0 ? (
                 <div
-                  className={`border-2 border-dashed rounded-lg py-8 transition-all ${isDragging
-                    ? "border-primary bg-blue-50"
-                    : "border-slate-300 hover:border-primary hover:bg-slate-50"
-                    }`}
+                  className={`border-2 border-dashed rounded-lg py-8 transition-all ${
+                    isDragging
+                      ? "border-primary bg-blue-50"
+                      : "border-slate-300 hover:border-primary hover:bg-slate-50"
+                  }`}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <div className="cursor-pointer flex flex-col items-center text-center w-full h-full">
-                    <FileText className={`w-8 h-8 mb-2 ${isDragging ? "text-primary" : "text-slate-400"}`} />
-                    <p className={`text-sm font-medium ${isDragging ? "text-primary" : "text-slate-700"}`}>
-                      {isDragging ? "Drop files here" : "Click to upload or drag and drop"}
+                    <FileText
+                      className={`w-8 h-8 mb-2 ${isDragging ? "text-primary" : "text-slate-400"}`}
+                    />
+                    <p
+                      className={`text-sm font-medium ${isDragging ? "text-primary" : "text-slate-700"}`}
+                    >
+                      {isDragging
+                        ? "Drop files here"
+                        : "Click to upload or drag and drop"}
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {uploadedFiles.map((file, index) => (
-                    <div key={index} className="border border-slate-200 rounded-lg p-3 flex items-center justify-between bg-slate-50">
+                    <div
+                      key={index}
+                      className="border border-slate-200 rounded-lg p-3 flex items-center justify-between bg-slate-50"
+                    >
                       <div className="flex items-center gap-3 overflow-hidden flex-1">
                         {file.type.startsWith("image/") ? (
-                          <img src={URL.createObjectURL(file)} alt="Preview" className="w-10 h-10 rounded object-cover border border-slate-200" />
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt="Preview"
+                            className="w-10 h-10 rounded object-cover border border-slate-200"
+                          />
                         ) : (
                           <div className="w-10 h-10 bg-white rounded border border-slate-200 flex items-center justify-center">
                             <FileText className="w-5 h-5 text-slate-400" />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
-                          <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                          <p className="text-sm font-medium text-slate-800 truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleViewFile(file)}
-                          className="cursor-pointer p-1.5 hover:bg-white rounded border border-transparent hover:border-slate-200 transition-colors">
+                        <button
+                          onClick={() => handleViewFile(file)}
+                          className="cursor-pointer p-1.5 hover:bg-white rounded border border-transparent hover:border-slate-200 transition-colors"
+                        >
                           <Eye className="w-4 h-4 text-slate-600" />
                         </button>
-                        <button onClick={() => handleRemoveFile(index)}
-                          className="cursor-pointer p-1.5 hover:bg-red-50 rounded border border-transparent hover:border-red-100 transition-colors">
+                        <button
+                          onClick={() => handleRemoveFile(index)}
+                          className="cursor-pointer p-1.5 hover:bg-red-50 rounded border border-transparent hover:border-red-100 transition-colors"
+                        >
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </button>
                       </div>
@@ -631,7 +813,9 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
                 <div className="cursor-pointer animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
                 Creating...
               </>
-            ) : "Create Materials to Order"}
+            ) : (
+              "Create Materials to Order"
+            )}
           </button>
         </div>
       </div>
@@ -640,7 +824,7 @@ export default function CreateMaterialsToOrderModal({ setShowModal, onSuccess })
       {showFilePreview && previewFile && (
         <ViewMedia
           selectedFile={previewFile}
-          setSelectedFile={() => { }}
+          setSelectedFile={() => {}}
           setViewFileModal={setShowFilePreview}
           setPageNumber={setPageNumber}
         />

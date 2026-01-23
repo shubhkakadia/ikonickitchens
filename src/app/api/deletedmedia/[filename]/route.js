@@ -16,7 +16,7 @@ export async function DELETE(request, { params }) {
     if (!filename) {
       return NextResponse.json(
         { status: false, message: "Filename is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -56,7 +56,7 @@ export async function DELETE(request, { params }) {
     if (!deletedMedia) {
       return NextResponse.json(
         { status: false, message: "Deleted media not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -70,7 +70,7 @@ export async function DELETE(request, { params }) {
       console.error("❌ Error deleting file from disk:", fileError);
       console.error(
         "Attempted path:",
-        path.join(process.cwd(), deletedMedia.url)
+        path.join(process.cwd(), deletedMedia.url),
       );
       // Continue with database deletion even if file deletion fails
     }
@@ -101,10 +101,12 @@ export async function DELETE(request, { params }) {
       entityType,
       deletedMedia.id,
       "DELETE",
-      `${entityType} deleted successfully: ${deletedMedia.filename}`
+      `${entityType} deleted successfully: ${deletedMedia.filename}`,
     );
     if (!logged) {
-      console.error(`Failed to log ${entityType} deletion: ${deletedMedia.id} - ${deletedMedia.filename}`);
+      console.error(
+        `Failed to log ${entityType} deletion: ${deletedMedia.id} - ${deletedMedia.filename}`,
+      );
     }
 
     return NextResponse.json(
@@ -113,15 +115,17 @@ export async function DELETE(request, { params }) {
         message: "Media permanently deleted",
         filename: deletedMedia.filename,
         fileDeletedFromDisk: fileDeleted,
-        ...(logged ? {} : { warning: "Note: Deletion succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Deletion succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Delete error:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

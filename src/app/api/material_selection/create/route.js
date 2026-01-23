@@ -33,7 +33,7 @@ export async function POST(request) {
     if (!session) {
       return NextResponse.json(
         { status: false, message: "Invalid session" },
-        { status: 401 }
+        { status: 401 },
       );
     }
     const user_id = session.user_id;
@@ -49,7 +49,7 @@ export async function POST(request) {
           status: false,
           message: "User not found with id: " + user_id,
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -71,7 +71,7 @@ export async function POST(request) {
     if (!lot_id) {
       return NextResponse.json(
         { status: false, message: "lot_id is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -89,7 +89,7 @@ export async function POST(request) {
           status: false,
           message: "Lot not found with id: " + lot_id,
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -105,7 +105,7 @@ export async function POST(request) {
             status: false,
             message: "Project not found with id: " + project_id,
           },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
@@ -122,7 +122,7 @@ export async function POST(request) {
             status: false,
             message: "Quote not found with id: " + quote_id,
           },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
@@ -137,7 +137,7 @@ export async function POST(request) {
               status: false,
               message: `Area at index ${i} is missing required field: area_name`,
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
@@ -151,7 +151,7 @@ export async function POST(request) {
                   status: false,
                   message: `Item at index ${j} in area "${area.area_name}" is missing required field: name`,
                 },
-                { status: 400 }
+                { status: 400 },
               );
             }
           }
@@ -263,26 +263,26 @@ export async function POST(request) {
         // Handle Decimal fields - convert empty strings to null, otherwise use the value
         ceiling_height:
           ceiling_height !== undefined &&
-            ceiling_height !== null &&
-            ceiling_height !== ""
+          ceiling_height !== null &&
+          ceiling_height !== ""
             ? ceiling_height
             : null,
         bulkhead_height:
           bulkhead_height !== undefined &&
-            bulkhead_height !== null &&
-            bulkhead_height !== ""
+          bulkhead_height !== null &&
+          bulkhead_height !== ""
             ? bulkhead_height
             : null,
         kicker_height:
           kicker_height !== undefined &&
-            kicker_height !== null &&
-            kicker_height !== ""
+          kicker_height !== null &&
+          kicker_height !== ""
             ? kicker_height
             : null,
         cabinetry_height:
           cabinetry_height !== undefined &&
-            cabinetry_height !== null &&
-            cabinetry_height !== ""
+          cabinetry_height !== null &&
+          cabinetry_height !== ""
             ? cabinetry_height
             : null,
         // Add nested areas if provided
@@ -341,10 +341,12 @@ export async function POST(request) {
       "material_selection",
       result.material_selection.id,
       "CREATE",
-      `Material selection and version created successfully for lot: ${lot.name} for project: ${lot.project.name}`
+      `Material selection and version created successfully for lot: ${lot.name} for project: ${lot.project.name}`,
     );
     if (!logged) {
-      console.error(`Failed to log material selection creation: ${result.material_selection.id}`);
+      console.error(
+        `Failed to log material selection creation: ${result.material_selection.id}`,
+      );
       return NextResponse.json(
         {
           status: true,
@@ -352,7 +354,7 @@ export async function POST(request) {
           data: resultWithMedia,
           warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
     return NextResponse.json(
@@ -361,13 +363,13 @@ export async function POST(request) {
         message: "Material selection and version created successfully",
         data: resultWithMedia,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error creating material selection version:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

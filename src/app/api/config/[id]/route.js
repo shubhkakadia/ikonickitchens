@@ -16,19 +16,19 @@ export async function GET(request, { params }) {
     if (!config) {
       return NextResponse.json(
         { status: false, message: "Config not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     return NextResponse.json(
       { status: true, message: "Config fetched successfully", data: config },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/config/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -49,7 +49,7 @@ export async function PATCH(request, { params }) {
     if (!existingConfig) {
       return NextResponse.json(
         { status: false, message: "Config not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -68,7 +68,7 @@ export async function PATCH(request, { params }) {
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { status: false, message: "No fields to update" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -82,7 +82,7 @@ export async function PATCH(request, { params }) {
       "constants_config",
       id,
       "UPDATE",
-      `Config updated successfully: ${config.category}`
+      `Config updated successfully: ${config.category}`,
     );
 
     if (!logged) {
@@ -94,15 +94,17 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Config updated successfully",
         data: config,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" }),
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/config/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -122,7 +124,7 @@ export async function DELETE(request, { params }) {
     if (!existingConfig) {
       return NextResponse.json(
         { status: false, message: "Config not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -136,11 +138,13 @@ export async function DELETE(request, { params }) {
       "constants_config",
       id,
       "DELETE",
-      `Config deleted successfully: ${config.category}`
+      `Config deleted successfully: ${config.category}`,
     );
 
     if (!logged) {
-      console.error(`Failed to log config deletion: ${id} - ${config.category}`);
+      console.error(
+        `Failed to log config deletion: ${id} - ${config.category}`,
+      );
       return NextResponse.json(
         {
           status: true,
@@ -148,19 +152,19 @@ export async function DELETE(request, { params }) {
           data: config,
           warning: "Note: Deletion succeeded but logging failed",
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
     return NextResponse.json(
       { status: true, message: "Config deleted successfully", data: config },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/config/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

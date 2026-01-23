@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/db";
 import { getUserFromToken } from "@/lib/validators/authFromToken";
 
-export async function withLogging(req, entityType, entityId, action, description) {
+export async function withLogging(
+  req,
+  entityType,
+  entityId,
+  action,
+  description,
+) {
   try {
     const session = await getUserFromToken(req);
     if (session && action) {

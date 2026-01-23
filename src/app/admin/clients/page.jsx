@@ -235,7 +235,7 @@ export default function page() {
               ...new Set(
                 response.data.data
                   .map((client) => client.client_type)
-                  .filter(Boolean)
+                  .filter(Boolean),
               ),
             ];
             setDistinctClientType(types);
@@ -255,30 +255,29 @@ export default function page() {
   };
 
   // Column mapping for Excel export
-  const columnMap = useMemo(() => ({
-    "Client ID": (client) => client.client_id || "",
-    "Client Name": (client) => client.client_name || "",
-    "Client Email": (client) => client.client_email || "",
-    "Client Phone": (client) => client.client_phone || "",
-    "Client Type": (client) => client.client_type || "",
-    "Number of Projects": (client) =>
-      client.projects ? client.projects.length : 0,
-    "Client Address": (client) => client.client_address || "",
-    "Client Website": (client) => client.client_website || "",
-    "Client Notes": (client) => client.client_notes || "",
-    "Contact Name": (client) => client.contacts[0]?.first_name || "",
-    "Contact Email": (client) => client.contacts[0]?.email || "",
-    "Contact Phone": (client) => client.contacts[0]?.phone || "",
-    "Contact Notes": (client) => client.contacts[0]?.notes || "",
-    "Client Created At": (client) =>
-      client.createdAt
-        ? new Date(client.createdAt).toLocaleDateString()
-        : "",
-    "Client Updated At": (client) =>
-      client.updatedAt
-        ? new Date(client.updatedAt).toLocaleDateString()
-        : "",
-  }), []);
+  const columnMap = useMemo(
+    () => ({
+      "Client ID": (client) => client.client_id || "",
+      "Client Name": (client) => client.client_name || "",
+      "Client Email": (client) => client.client_email || "",
+      "Client Phone": (client) => client.client_phone || "",
+      "Client Type": (client) => client.client_type || "",
+      "Number of Projects": (client) =>
+        client.projects ? client.projects.length : 0,
+      "Client Address": (client) => client.client_address || "",
+      "Client Website": (client) => client.client_website || "",
+      "Client Notes": (client) => client.client_notes || "",
+      "Contact Name": (client) => client.contacts[0]?.first_name || "",
+      "Contact Email": (client) => client.contacts[0]?.email || "",
+      "Contact Phone": (client) => client.contacts[0]?.phone || "",
+      "Contact Notes": (client) => client.contacts[0]?.notes || "",
+      "Client Created At": (client) =>
+        client.createdAt ? new Date(client.createdAt).toLocaleDateString() : "",
+      "Client Updated At": (client) =>
+        client.updatedAt ? new Date(client.updatedAt).toLocaleDateString() : "",
+    }),
+    [],
+  );
 
   // Initialize Excel export hook
   const { exportToExcel, isExporting } = useExcelExport({
@@ -321,7 +320,7 @@ export default function page() {
       setSelectedClientType((prev) =>
         prev.includes(clientType)
           ? prev.filter((type) => type !== clientType)
-          : [...prev, clientType]
+          : [...prev, clientType],
       );
     }
   };
@@ -339,7 +338,7 @@ export default function page() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
@@ -473,7 +472,7 @@ export default function page() {
                             <button
                               onClick={() =>
                                 setShowClientTypeFilterDropdown(
-                                  !showClientTypeFilterDropdown
+                                  !showClientTypeFilterDropdown,
                                 )
                               }
                               className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
@@ -483,21 +482,28 @@ export default function page() {
                               {distinctClientType.length -
                                 selectedClientType.length >
                                 0 && (
-                                  <span className="bg-primary text-white text-xs font-semibold px-2 py-1 rounded-full">
-                                    {distinctClientType.length -
-                                      selectedClientType.length}
-                                  </span>
-                                )}
+                                <span className="bg-primary text-white text-xs font-semibold px-2 py-1 rounded-full">
+                                  {distinctClientType.length -
+                                    selectedClientType.length}
+                                </span>
+                              )}
                             </button>
                             {showClientTypeFilterDropdown && (
                               <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedClientType.length === distinctClientType.length}
-                                      onChange={() => handleClientTypeToggle("Select All")}
+                                      checked={
+                                        selectedClientType.length ===
+                                        distinctClientType.length
+                                      }
+                                      onChange={() =>
+                                        handleClientTypeToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -509,8 +515,12 @@ export default function page() {
                                       <span>{role}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedClientType.includes(role)}
-                                        onChange={() => handleClientTypeToggle(role)}
+                                        checked={selectedClientType.includes(
+                                          role,
+                                        )}
+                                        onChange={() =>
+                                          handleClientTypeToggle(role)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -581,12 +591,13 @@ export default function page() {
                                 filteredAndSortedClients.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedClients.length === 0 ||
                                 selectedColumns.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -603,11 +614,12 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedClients.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedClients.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
@@ -615,11 +627,18 @@ export default function page() {
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedColumns.length === availableColumns.length}
-                                      onChange={() => handleColumnToggle("Select All")}
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() =>
+                                        handleColumnToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -631,8 +650,12 @@ export default function page() {
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={() => handleColumnToggle(column)}
+                                        checked={selectedColumns.includes(
+                                          column,
+                                        )}
+                                        onChange={() =>
+                                          handleColumnToggle(column)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -730,14 +753,14 @@ export default function page() {
                                   className="hover:bg-slate-50 transition-colors duration-200 cursor-pointer"
                                   onClick={() => {
                                     router.push(
-                                      `/admin/clients/${e.client_id}`
+                                      `/admin/clients/${e.client_id}`,
                                     );
                                     dispatch(
                                       replaceTab({
                                         id: uuidv4(),
                                         title: e.client_name,
                                         href: `/admin/clients/${e.client_id}`,
-                                      })
+                                      }),
                                     );
                                   }}
                                 >

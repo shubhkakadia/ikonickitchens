@@ -23,18 +23,18 @@ export async function GET(request, { params }) {
     if (!user) {
       return NextResponse.json(
         { status: false, message: "User not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
     return NextResponse.json(
       { status: true, message: "User fetched successfully", data: user },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in GET /api/user/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -66,7 +66,7 @@ export async function PATCH(request, { params }) {
       // If both fail, return error
       return NextResponse.json(
         { status: false, message: "User not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -74,12 +74,12 @@ export async function PATCH(request, { params }) {
     if (old_password && password) {
       const isValidPassword = await bcrypt.compare(
         old_password,
-        existingUser.password
+        existingUser.password,
       );
       if (!isValidPassword) {
         return NextResponse.json(
           { status: false, message: "Current password is incorrect" },
-          { status: 401 }
+          { status: 401 },
         );
       }
     }
@@ -153,7 +153,7 @@ export async function PATCH(request, { params }) {
       console.error("Error updating user:", error);
       return NextResponse.json(
         { status: false, message: "User not updated" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -162,7 +162,7 @@ export async function PATCH(request, { params }) {
       "user",
       id,
       "UPDATE",
-      `User updated successfully: ${user.employee?.first_name} ${user.employee?.last_name}`
+      `User updated successfully: ${user.employee?.first_name} ${user.employee?.last_name}`,
     );
     if (!logged) {
       console.error(`Failed to log user update: ${id}`);
@@ -172,15 +172,17 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "User updated successfully",
         data: user,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in PATCH /api/user/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -206,29 +208,31 @@ export async function DELETE(request, { params }) {
       "user",
       id,
       "DELETE",
-      `User deleted successfully: ${user.employee?.first_name} ${user.employee?.last_name}`
+      `User deleted successfully: ${user.employee?.first_name} ${user.employee?.last_name}`,
     );
     if (!logged) {
-      console.error(`Failed to log user deletion: ${id} - ${user.employee?.first_name} ${user.employee?.last_name}`);
+      console.error(
+        `Failed to log user deletion: ${id} - ${user.employee?.first_name} ${user.employee?.last_name}`,
+      );
       return NextResponse.json(
         {
           status: true,
           message: "User deleted successfully",
           data: user,
-          warning: "Note: Deletion succeeded but logging failed"
+          warning: "Note: Deletion succeeded but logging failed",
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
     return NextResponse.json(
       { status: true, message: "User deleted successfully", data: user },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in DELETE /api/user/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -80,16 +80,19 @@ export default function page() {
   }, []);
 
   // Column mapping for Excel export
-  const columnMap = useMemo(() => ({
-    "Date/Time": (log) =>
-      log.createdAt ? formatDateTime(log.createdAt) : "",
-    "Entity Type": (log) => log.entity_type || "",
-    Action: (log) => log.action || "",
-    Description: (log) => log.description || "",
-    "Entity ID": (log) => log.entity_id || "",
-    Username: (log) => log.user?.username || "",
-    ID: (log) => log.id || "",
-  }), []);
+  const columnMap = useMemo(
+    () => ({
+      "Date/Time": (log) =>
+        log.createdAt ? formatDateTime(log.createdAt) : "",
+      "Entity Type": (log) => log.entity_type || "",
+      Action: (log) => log.action || "",
+      Description: (log) => log.description || "",
+      "Entity ID": (log) => log.entity_id || "",
+      Username: (log) => log.user?.username || "",
+      ID: (log) => log.id || "",
+    }),
+    [],
+  );
 
   // Initialize Excel export hook
   const { exportToExcel, isExporting } = useExcelExport({
@@ -287,7 +290,7 @@ export default function page() {
       }
     } else {
       setSelectedEntityTypes((prev) =>
-        prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+        prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
       );
     }
   };
@@ -303,7 +306,7 @@ export default function page() {
       setSelectedActions((prev) =>
         prev.includes(action)
           ? prev.filter((a) => a !== action)
-          : [...prev, action]
+          : [...prev, action],
       );
     }
   };
@@ -333,7 +336,7 @@ export default function page() {
       setSelectedColumns((prev) =>
         prev.includes(column)
           ? prev.filter((c) => c !== column)
-          : [...prev, column]
+          : [...prev, column],
       );
     }
   };
@@ -516,7 +519,9 @@ export default function page() {
                           <div className="relative dropdown-container">
                             <button
                               onClick={() =>
-                                setShowDateFilterDropdown(!showDateFilterDropdown)
+                                setShowDateFilterDropdown(
+                                  !showDateFilterDropdown,
+                                )
                               }
                               className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                             >
@@ -538,7 +543,9 @@ export default function page() {
                                     <input
                                       type="date"
                                       value={startDate}
-                                      onChange={(e) => setStartDate(e.target.value)}
+                                      onChange={(e) =>
+                                        setStartDate(e.target.value)
+                                      }
                                       max={endDate || undefined}
                                       className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
                                     />
@@ -550,7 +557,9 @@ export default function page() {
                                     <input
                                       type="date"
                                       value={endDate}
-                                      onChange={(e) => setEndDate(e.target.value)}
+                                      onChange={(e) =>
+                                        setEndDate(e.target.value)
+                                      }
                                       min={startDate || undefined}
                                       className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
                                     />
@@ -575,7 +584,7 @@ export default function page() {
                             <button
                               onClick={() =>
                                 setShowEntityTypeFilterDropdown(
-                                  !showEntityTypeFilterDropdown
+                                  !showEntityTypeFilterDropdown,
                                 )
                               }
                               className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
@@ -585,21 +594,28 @@ export default function page() {
                               {distinctEntityTypes.length -
                                 selectedEntityTypes.length >
                                 0 && (
-                                  <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                    {distinctEntityTypes.length -
-                                      selectedEntityTypes.length}
-                                  </span>
-                                )}
+                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                  {distinctEntityTypes.length -
+                                    selectedEntityTypes.length}
+                                </span>
+                              )}
                             </button>
                             {showEntityTypeFilterDropdown && (
                               <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedEntityTypes.length === distinctEntityTypes.length}
-                                      onChange={() => handleEntityTypeToggle("Select All")}
+                                      checked={
+                                        selectedEntityTypes.length ===
+                                        distinctEntityTypes.length
+                                      }
+                                      onChange={() =>
+                                        handleEntityTypeToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -611,8 +627,12 @@ export default function page() {
                                       <span>{type}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedEntityTypes.includes(type)}
-                                        onChange={() => handleEntityTypeToggle(type)}
+                                        checked={selectedEntityTypes.includes(
+                                          type,
+                                        )}
+                                        onChange={() =>
+                                          handleEntityTypeToggle(type)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -626,7 +646,7 @@ export default function page() {
                             <button
                               onClick={() =>
                                 setShowActionFilterDropdown(
-                                  !showActionFilterDropdown
+                                  !showActionFilterDropdown,
                                 )
                               }
                               className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
@@ -635,21 +655,28 @@ export default function page() {
                               <span>Action</span>
                               {distinctActions.length - selectedActions.length >
                                 0 && (
-                                  <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                    {distinctActions.length -
-                                      selectedActions.length}
-                                  </span>
-                                )}
+                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                  {distinctActions.length -
+                                    selectedActions.length}
+                                </span>
+                              )}
                             </button>
                             {showActionFilterDropdown && (
                               <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedActions.length === distinctActions.length}
-                                      onChange={() => handleActionToggle("Select All")}
+                                      checked={
+                                        selectedActions.length ===
+                                        distinctActions.length
+                                      }
+                                      onChange={() =>
+                                        handleActionToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -661,8 +688,12 @@ export default function page() {
                                       <span>{action}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedActions.includes(action)}
-                                        onChange={() => handleActionToggle(action)}
+                                        checked={selectedActions.includes(
+                                          action,
+                                        )}
+                                        onChange={() =>
+                                          handleActionToggle(action)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -715,12 +746,13 @@ export default function page() {
                                 filteredAndSortedLogs.length === 0 ||
                                 selectedColumns.length === 0
                               }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedLogs.length === 0 ||
                                 selectedColumns.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <Sheet className="h-4 w-4" />
                               <span>
@@ -737,11 +769,12 @@ export default function page() {
                                 isExporting ||
                                 filteredAndSortedLogs.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${isExporting ||
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                                isExporting ||
                                 filteredAndSortedLogs.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                                }`}
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer hover:bg-slate-100"
+                              }`}
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
@@ -749,11 +782,18 @@ export default function page() {
                               <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                                 <div className="py-1">
                                   <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">Select All</span>
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
                                     <input
                                       type="checkbox"
-                                      checked={selectedColumns.length === availableColumns.length}
-                                      onChange={() => handleColumnToggle("Select All")}
+                                      checked={
+                                        selectedColumns.length ===
+                                        availableColumns.length
+                                      }
+                                      onChange={() =>
+                                        handleColumnToggle("Select All")
+                                      }
                                       className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                     />
                                   </label>
@@ -765,8 +805,12 @@ export default function page() {
                                       <span>{column}</span>
                                       <input
                                         type="checkbox"
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={() => handleColumnToggle(column)}
+                                        checked={selectedColumns.includes(
+                                          column,
+                                        )}
+                                        onChange={() =>
+                                          handleColumnToggle(column)
+                                        }
                                         className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                                       />
                                     </label>
@@ -870,7 +914,7 @@ export default function page() {
                                   <td className="px-4 py-3 text-sm">
                                     <span
                                       className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border ${getActionColor(
-                                        log.action
+                                        log.action,
                                       )}`}
                                     >
                                       {log.action || "-"}

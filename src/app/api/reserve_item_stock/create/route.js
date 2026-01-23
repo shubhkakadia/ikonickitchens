@@ -15,7 +15,7 @@ export async function POST(request) {
     if (!session) {
       return NextResponse.json(
         { status: false, message: "Invalid session" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -30,7 +30,7 @@ export async function POST(request) {
           status: false,
           message: "item_id, quantity, and mto_id are required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -38,7 +38,7 @@ export async function POST(request) {
     if (quantity <= 0) {
       return NextResponse.json(
         { status: false, message: "Quantity must be greater than 0" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -50,7 +50,7 @@ export async function POST(request) {
     if (!item) {
       return NextResponse.json(
         { status: false, message: "Item not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -62,7 +62,7 @@ export async function POST(request) {
     if (!mto) {
       return NextResponse.json(
         { status: false, message: "Materials to order item not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -81,7 +81,7 @@ export async function POST(request) {
             shortage: requestedQty - availableQty,
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -116,11 +116,11 @@ export async function POST(request) {
       "reserve_item_stock",
       reservation.id,
       "CREATE",
-      `Stock reservation created successfully: ${reservation.item_id}`
+      `Stock reservation created successfully: ${reservation.item_id}`,
     );
     if (!logged) {
       console.error(
-        `Failed to log employee creation: ${employee.id} - ${employee.first_name} ${employee.last_name}`
+        `Failed to log employee creation: ${employee.id} - ${employee.first_name} ${employee.last_name}`,
       );
     }
 
@@ -133,13 +133,13 @@ export async function POST(request) {
         message: "Stock reservation created successfully",
         data: reservation,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/reserve_item_stock/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

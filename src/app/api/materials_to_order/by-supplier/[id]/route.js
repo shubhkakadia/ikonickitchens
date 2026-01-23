@@ -73,7 +73,7 @@ export async function GET(request, { params }) {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
@@ -83,13 +83,16 @@ export async function GET(request, { params }) {
         message: "Materials to orders fetched successfully",
         data: mtos,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/materials_to_order/by-supplier/[id]:", error);
+    console.error(
+      "Error in GET /api/materials_to_order/by-supplier/[id]:",
+      error,
+    );
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

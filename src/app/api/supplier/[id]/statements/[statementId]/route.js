@@ -25,7 +25,7 @@ export async function PATCH(request, { params }) {
     if (!existingStatement) {
       return NextResponse.json(
         { status: false, message: "Statement not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -35,7 +35,7 @@ export async function PATCH(request, { params }) {
           status: false,
           message: "Statement does not belong to this supplier",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -67,7 +67,7 @@ export async function PATCH(request, { params }) {
     if (payment_status && !["PENDING", "PAID"].includes(payment_status)) {
       return NextResponse.json(
         { status: false, message: "Payment status must be PENDING or PAID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -173,19 +173,23 @@ export async function PATCH(request, { params }) {
       "supplier_statement",
       statementId,
       "UPDATE",
-      `Statement updated successfully: ${updatedStatement.month_year} for supplier: ${updatedStatement.supplier.name}`
+      `Statement updated successfully: ${updatedStatement.month_year} for supplier: ${updatedStatement.supplier.name}`,
     );
     if (!logged) {
-      console.error(`Failed to log statement update: ${statementId} - ${updatedStatement.month_year}`);
+      console.error(
+        `Failed to log statement update: ${statementId} - ${updatedStatement.month_year}`,
+      );
     }
     return NextResponse.json(
       {
         status: true,
         message: "Statement updated successfully",
         data: updatedStatement,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" })
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error updating statement:", error);
@@ -194,7 +198,7 @@ export async function PATCH(request, { params }) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -222,7 +226,7 @@ export async function DELETE(request, { params }) {
     if (!statement) {
       return NextResponse.json(
         { status: false, message: "Statement not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -232,7 +236,7 @@ export async function DELETE(request, { params }) {
           status: false,
           message: "Statement does not belong to this supplier",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -254,17 +258,19 @@ export async function DELETE(request, { params }) {
       "supplier_statement",
       statementId,
       "DELETE",
-      `Statement deleted successfully: ${statement.month_year} for supplier: ${statement.supplier.name}`
+      `Statement deleted successfully: ${statement.month_year} for supplier: ${statement.supplier.name}`,
     );
     if (!logged) {
-      console.error(`Failed to log statement deletion: ${statementId} - ${statement.month_year}`);
+      console.error(
+        `Failed to log statement deletion: ${statementId} - ${statement.month_year}`,
+      );
       return NextResponse.json(
         {
           status: true,
           message: "Statement deleted successfully",
-          warning: "Note: Deletion succeeded but logging failed"
+          warning: "Note: Deletion succeeded but logging failed",
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
     return NextResponse.json(
@@ -272,7 +278,7 @@ export async function DELETE(request, { params }) {
         status: true,
         message: "Statement deleted successfully",
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error deleting statement:", error);
@@ -281,7 +287,7 @@ export async function DELETE(request, { params }) {
         status: false,
         message: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

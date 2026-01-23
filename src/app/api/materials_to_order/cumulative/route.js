@@ -110,6 +110,7 @@ export async function GET(request) {
             item_id: itemId,
             category: item.category,
             description: item.description,
+            supplier_reference: item.supplier_reference,
             image: item.image,
             sheet: item.sheet,
             handle: item.handle,
@@ -143,7 +144,7 @@ export async function GET(request) {
 
     // Sort by supplier name
     cumulativeData.sort((a, b) =>
-      a.supplier_name.localeCompare(b.supplier_name)
+      a.supplier_name.localeCompare(b.supplier_name),
     );
 
     return NextResponse.json(
@@ -152,7 +153,7 @@ export async function GET(request) {
         data: cumulativeData,
         message: "Cumulative materials fetched successfully",
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching cumulative materials:", error);
@@ -162,7 +163,7 @@ export async function GET(request) {
         message: "Internal server error",
         error: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

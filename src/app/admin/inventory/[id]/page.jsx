@@ -136,18 +136,18 @@ export default function page() {
   const sortedStockTransactions = React.useMemo(() => {
     const transactions = item?.stock_transactions ?? [];
     return [...transactions].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
   }, [item?.stock_transactions]);
 
   const stockTxTotalPages = Math.ceil(
-    sortedStockTransactions.length / stock_tx_item_per_page
+    sortedStockTransactions.length / stock_tx_item_per_page,
   );
   const stockTxStartIndex = (stockTxCurrentPage - 1) * stock_tx_item_per_page;
   const stockTxEndIndex = stockTxStartIndex + stock_tx_item_per_page;
   const currentStockTransactions = sortedStockTransactions.slice(
     stockTxStartIndex,
-    stockTxEndIndex
+    stockTxEndIndex,
   );
 
   const handleStockTxPageChange = (page) => {
@@ -156,13 +156,13 @@ export default function page() {
   };
 
   const filteredSubCategories = hardwareSubCategories.filter((subCategory) =>
-    subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase())
+    subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase()),
   );
 
   // Face options
   const faceOptions = ["single side", "double side"];
   const filteredFaces = faceOptions.filter((face) =>
-    face.toLowerCase().includes(faceSearchTerm.toLowerCase())
+    face.toLowerCase().includes(faceSearchTerm.toLowerCase()),
   );
 
   // Fetch hardware sub categories from config API
@@ -391,7 +391,7 @@ export default function page() {
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-          "An error occurred while fetching item data"
+          "An error occurred while fetching item data",
       );
     } finally {
       setLoading(false);
@@ -484,7 +484,7 @@ export default function page() {
             const response = await axios.request(config);
             if (response.data.status && response.data.data) {
               const subCategories = response.data.data.map(
-                (item) => item.value
+                (item) => item.value,
               );
               setHardwareSubCategories(subCategories);
             }
@@ -516,7 +516,7 @@ export default function page() {
   };
 
   const filteredSuppliers = suppliers.filter((supplier) =>
-    supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+    supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()),
   );
 
   const handleSupplierSelect = (supplier) => {
@@ -531,7 +531,7 @@ export default function page() {
 
   // Measuring unit handlers
   const filteredMeasuringUnits = measuringUnitOptions.filter((unit) =>
-    unit.toLowerCase().includes(measuringUnitSearchTerm.toLowerCase())
+    unit.toLowerCase().includes(measuringUnitSearchTerm.toLowerCase()),
   );
 
   const handleMeasuringUnitSelect = (unit) => {
@@ -549,7 +549,7 @@ export default function page() {
 
   // Finish handlers
   const filteredFinishes = finishOptions.filter((finish) =>
-    finish.toLowerCase().includes(finishSearchTerm.toLowerCase())
+    finish.toLowerCase().includes(finishSearchTerm.toLowerCase()),
   );
 
   const handleFinishSelect = (finish) => {
@@ -894,7 +894,7 @@ export default function page() {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: true,
-        }
+        },
       );
     } finally {
       setIsUpdating(false);
@@ -1126,7 +1126,7 @@ export default function page() {
                       {finishSearchTerm &&
                         !filteredFinishes.some(
                           (f) =>
-                            f.toLowerCase() === finishSearchTerm.toLowerCase()
+                            f.toLowerCase() === finishSearchTerm.toLowerCase(),
                         ) && (
                           <div className="border-t border-slate-200">
                             <button
@@ -1422,7 +1422,7 @@ export default function page() {
                           !filteredSubCategories.some(
                             (sc) =>
                               sc.toLowerCase() ===
-                              subCategorySearchTerm.toLowerCase()
+                              subCategorySearchTerm.toLowerCase(),
                           ) && (
                             <div className="border-t border-slate-200">
                               <button
@@ -1601,7 +1601,7 @@ export default function page() {
                       {finishSearchTerm &&
                         !filteredFinishes.some(
                           (f) =>
-                            f.toLowerCase() === finishSearchTerm.toLowerCase()
+                            f.toLowerCase() === finishSearchTerm.toLowerCase(),
                         ) && (
                           <div className="border-t border-slate-200">
                             <button
@@ -1892,7 +1892,7 @@ export default function page() {
                                     onChange={(e) =>
                                       handleInputChange(
                                         "description",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     placeholder={formatValue(item.description)}
@@ -1919,7 +1919,7 @@ export default function page() {
                                       onChange={(e) =>
                                         handleInputChange(
                                           "quantity",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       placeholder={formatValue(item.quantity)}
@@ -1953,7 +1953,7 @@ export default function page() {
                                         onChange={(e) =>
                                           handleInputChange(
                                             "price",
-                                            e.target.value
+                                            e.target.value,
                                           )
                                         }
                                         placeholder={formatValue(item.price)}
@@ -2015,7 +2015,7 @@ export default function page() {
                                         type="button"
                                         onClick={() =>
                                           setIsSupplierDropdownOpen(
-                                            !isSupplierDropdownOpen
+                                            !isSupplierDropdownOpen,
                                           )
                                         }
                                         className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
@@ -2039,7 +2039,7 @@ export default function page() {
                                                   type="button"
                                                   onClick={() =>
                                                     handleSupplierSelect(
-                                                      supplier
+                                                      supplier,
                                                     )
                                                   }
                                                   className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
@@ -2051,7 +2051,7 @@ export default function page() {
                                                     {supplier.supplier_id}
                                                   </div>
                                                 </button>
-                                              )
+                                              ),
                                             )
                                           ) : (
                                             <div className="px-3 py-2 text-xs text-slate-500 text-center">
@@ -2068,7 +2068,7 @@ export default function page() {
                                           className="text-sm text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors"
                                           onClick={() =>
                                             router.push(
-                                              `/admin/suppliers/${item.supplier.supplier_id}`
+                                              `/admin/suppliers/${item.supplier.supplier_id}`,
                                             )
                                           }
                                         >
@@ -2109,7 +2109,7 @@ export default function page() {
                                             setIsMeasuringUnitDropdownOpen(true)
                                           }
                                           placeholder={formatValue(
-                                            item.measurement_unit
+                                            item.measurement_unit,
                                           )}
                                           className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                                         />
@@ -2117,7 +2117,7 @@ export default function page() {
                                           type="button"
                                           onClick={() =>
                                             setIsMeasuringUnitDropdownOpen(
-                                              !isMeasuringUnitDropdownOpen
+                                              !isMeasuringUnitDropdownOpen,
                                             )
                                           }
                                           className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
@@ -2148,30 +2148,30 @@ export default function page() {
                                                     type="button"
                                                     onClick={() =>
                                                       handleMeasuringUnitSelect(
-                                                        unit
+                                                        unit,
                                                       )
                                                     }
                                                     className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                                   >
                                                     {unit}
                                                   </button>
-                                                )
+                                                ),
                                               )}
                                               {measuringUnitSearchTerm &&
                                                 !filteredMeasuringUnits.some(
                                                   (u) =>
                                                     u.toLowerCase() ===
-                                                    measuringUnitSearchTerm.toLowerCase()
+                                                    measuringUnitSearchTerm.toLowerCase(),
                                                 ) && (
                                                   <div className="border-t border-slate-200">
                                                     <button
                                                       type="button"
                                                       onClick={() => {
                                                         setNewMeasuringUnitValue(
-                                                          measuringUnitSearchTerm
+                                                          measuringUnitSearchTerm,
                                                         );
                                                         setShowCreateMeasuringUnitModal(
-                                                          true
+                                                          true,
                                                         );
                                                       }}
                                                       className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
@@ -2194,10 +2194,10 @@ export default function page() {
                                                   type="button"
                                                   onClick={() => {
                                                     setNewMeasuringUnitValue(
-                                                      measuringUnitSearchTerm
+                                                      measuringUnitSearchTerm,
                                                     );
                                                     setShowCreateMeasuringUnitModal(
-                                                      true
+                                                      true,
                                                     );
                                                   }}
                                                   className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -2235,11 +2235,11 @@ export default function page() {
                                       onChange={(e) =>
                                         handleInputChange(
                                           "supplier_reference",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       placeholder={formatValue(
-                                        item.supplier_reference
+                                        item.supplier_reference,
                                       )}
                                       className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                                     />
@@ -2265,11 +2265,11 @@ export default function page() {
                                       onChange={(e) =>
                                         handleInputChange(
                                           "supplier_product_link",
-                                          e.target.value
+                                          e.target.value,
                                         )
                                       }
                                       placeholder={formatValue(
-                                        item.supplier_product_link
+                                        item.supplier_product_link,
                                       )}
                                       className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                                     />
@@ -2286,7 +2286,7 @@ export default function page() {
                                           40
                                             ? `${item.supplier_product_link.substring(
                                                 0,
-                                                40
+                                                40,
                                               )}...`
                                             : item.supplier_product_link}
                                         </a>
@@ -2312,7 +2312,7 @@ export default function page() {
                               sum +
                               (reservation.quantity -
                                 reservation.used_quantity),
-                            0
+                            0,
                           );
 
                           return (
@@ -2412,7 +2412,7 @@ export default function page() {
                                             </td>
                                           </tr>
                                         );
-                                      }
+                                      },
                                     )}
                                   </tbody>
                                 </table>
@@ -2473,7 +2473,7 @@ export default function page() {
                                             {transaction.notes && (
                                               <div className="flex items-center">
                                                 {expandedNotes.has(
-                                                  transaction.id
+                                                  transaction.id,
                                                 ) ? (
                                                   <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
                                                 ) : (
@@ -2484,7 +2484,7 @@ export default function page() {
                                           </td>
                                           <td className="py-2 px-3 text-slate-700">
                                             {new Date(
-                                              transaction.createdAt
+                                              transaction.createdAt,
                                             ).toLocaleString("en-US", {
                                               year: "numeric",
                                               month: "short",
@@ -2499,8 +2499,8 @@ export default function page() {
                                                 transaction.type === "ADDED"
                                                   ? "bg-emerald-100 text-emerald-800"
                                                   : transaction.type === "USED"
-                                                  ? "bg-blue-100 text-blue-800"
-                                                  : "bg-red-100 text-red-800"
+                                                    ? "bg-blue-100 text-blue-800"
+                                                    : "bg-red-100 text-red-800"
                                               }`}
                                             >
                                               {transaction.type}
@@ -2580,7 +2580,7 @@ export default function page() {
                                             </tr>
                                           )}
                                       </React.Fragment>
-                                    )
+                                    ),
                                   )}
                                 </tbody>
                               </table>
@@ -2593,7 +2593,7 @@ export default function page() {
                                   Showing {stockTxStartIndex + 1} to{" "}
                                   {Math.min(
                                     stockTxEndIndex,
-                                    sortedStockTransactions.length
+                                    sortedStockTransactions.length,
                                   )}{" "}
                                   of {sortedStockTransactions.length} results
                                 </div>
@@ -2601,7 +2601,7 @@ export default function page() {
                                   <button
                                     onClick={() =>
                                       handleStockTxPageChange(
-                                        stockTxCurrentPage - 1
+                                        stockTxCurrentPage - 1,
                                       )
                                     }
                                     disabled={stockTxCurrentPage === 1}
@@ -2612,7 +2612,7 @@ export default function page() {
                                   <div className="flex items-center gap-1">
                                     {Array.from(
                                       { length: stockTxTotalPages },
-                                      (_, i) => i + 1
+                                      (_, i) => i + 1,
                                     ).map((page) => (
                                       <button
                                         key={page}
@@ -2632,7 +2632,7 @@ export default function page() {
                                   <button
                                     onClick={() =>
                                       handleStockTxPageChange(
-                                        stockTxCurrentPage + 1
+                                        stockTxCurrentPage + 1,
                                       )
                                     }
                                     disabled={

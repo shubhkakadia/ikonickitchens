@@ -22,7 +22,7 @@ export default function GalleryPage({ title, description, images }) {
           }
         });
       },
-      { threshold: 0.1, rootMargin: "50px" }
+      { threshold: 0.1, rootMargin: "50px" },
     );
 
     imageRefs.current.forEach((ref) => {
@@ -71,14 +71,16 @@ export default function GalleryPage({ title, description, images }) {
       <div className="pt-32 pb-16 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <h1
-            className={`text-4xl md:text-6xl font-bold text-gray-900 mb-6 transition-all duration-1000 ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-              }`}
+            className={`text-4xl md:text-6xl font-bold text-gray-900 mb-6 transition-all duration-1000 ${
+              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}
           >
             Luxury <span className="text-gradient">{title}</span> Designs
           </h1>
           <p
-            className={`text-xl text-gray-600 max-w-3xl mx-auto mb-12 transition-all duration-1000 delay-300 ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-              }`}
+            className={`text-xl text-gray-600 max-w-3xl mx-auto mb-12 transition-all duration-1000 delay-300 ${
+              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}
           >
             {description}
           </p>
@@ -137,10 +139,11 @@ export default function GalleryPage({ title, description, images }) {
                 key={index}
                 ref={(el) => (imageRefs.current[index] = el)}
                 data-index={index}
-                className={`group cursor-pointer transition-all duration-700 ${visibleImages.includes(index)
-                  ? "opacity-100 translate-y-0 scale-100"
-                  : "opacity-0 translate-y-8 scale-95"
-                  }`}
+                className={`group cursor-pointer transition-all duration-700 ${
+                  visibleImages.includes(index)
+                    ? "opacity-100 translate-y-0 scale-100"
+                    : "opacity-0 translate-y-8 scale-95"
+                }`}
                 style={{
                   transitionDelay: `${index * 100}ms`,
                   animationDelay: `${index * 100}ms`,

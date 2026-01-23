@@ -29,13 +29,13 @@ const tabsSlice = createSlice({
 
       // Find the current active tab
       const currentActiveTab = state.tabs.find(
-        (tab) => tab.id === state.activeTab.id
+        (tab) => tab.id === state.activeTab.id,
       );
 
       // If there's an active tab, replace it with the new one
       if (currentActiveTab) {
         const activeTabIndex = state.tabs.findIndex(
-          (tab) => tab.id === state.activeTab.id
+          (tab) => tab.id === state.activeTab.id,
         );
         state.tabs[activeTabIndex] = { id, title, href };
         state.activeTab = { id, title, href };

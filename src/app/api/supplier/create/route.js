@@ -8,8 +8,16 @@ export async function POST(request) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    const { name, email, phone, address, notes, website, abn_number, contacts } =
-      await request.json();
+    const {
+      name,
+      email,
+      phone,
+      address,
+      notes,
+      website,
+      abn_number,
+      contacts,
+    } = await request.json();
     const existingSupplier = await prisma.supplier.findUnique({
       where: { name },
     });
@@ -19,7 +27,7 @@ export async function POST(request) {
           status: false,
           message: "Supplier already exists by this name: " + name,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -33,7 +41,7 @@ export async function POST(request) {
               status: false,
               message: "First Name and Last Name are required for all contacts",
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
       }
@@ -41,13 +49,21 @@ export async function POST(request) {
 
     const formatPhone = (phone) => {
       return phone ? formatPhoneToNational(phone) : phone;
-    }
+    };
 
     // Use transaction to create supplier and contacts atomically
     const result = await prisma.$transaction(async (tx) => {
       // Create the supplier
       const supplier = await tx.supplier.create({
-        data: { name, email, phone: formatPhone(phone), address, notes, website, abn_number },
+        data: {
+          name,
+          email,
+          phone: formatPhone(phone),
+          address,
+          notes,
+          website,
+          abn_number,
+        },
       });
 
       // Create contacts if provided
@@ -61,7 +77,8 @@ export async function POST(request) {
               email: contact.email || null,
               phone: contact.phone || null,
               role: contact.role || null,
-              preferred_contact_method: contact.preferred_contact_method || null,
+              preferred_contact_method:
+                contact.preferred_contact_method || null,
               notes: contact.notes || null,
               supplier_id: supplier.supplier_id,
             },
@@ -81,7 +98,7 @@ export async function POST(request) {
       "supplier",
       supplier.supplier_id,
       "CREATE",
-      `Supplier created successfully: ${supplier.name}`
+      `Supplier created successfully: ${supplier.name}`,
     );
 
     // Log contact creations
@@ -91,7 +108,7 @@ export async function POST(request) {
         "contact",
         contact.id,
         "CREATE",
-        `Contact created successfully: ${contact.first_name} ${contact.last_name} for supplier: ${supplier.name}`
+        `Contact created successfully: ${contact.first_name} ${contact.last_name} for supplier: ${supplier.name}`,
       );
     }
 
@@ -107,7 +124,7 @@ export async function POST(request) {
 
     if (!logged) {
       console.error(
-        `Failed to log supplier creation: ${supplier.supplier_id} - ${supplier.name}`
+        `Failed to log supplier creation: ${supplier.supplier_id} - ${supplier.name}`,
       );
       responseData.warning = "Note: Creation succeeded but logging failed";
     }
@@ -117,7 +134,7 @@ export async function POST(request) {
     console.error("Error in POST /api/supplier/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

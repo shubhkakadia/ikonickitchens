@@ -358,10 +358,29 @@ export default function EmployeeDetailPage() {
       if (formattedData.phone) {
         formattedData.phone = formatPhoneToNational(formattedData.phone);
       }
+      if (formattedData.phone_secondary) {
+        formattedData.phone_secondary = formatPhoneToNational(
+          formattedData.phone_secondary,
+        );
+      }
       if (formattedData.emergency_contact_phone) {
         formattedData.emergency_contact_phone = formatPhoneToNational(
           formattedData.emergency_contact_phone,
         );
+      }
+
+      // Check if primary and secondary phone are the same
+      if (
+        formattedData.phone &&
+        formattedData.phone_secondary &&
+        formattedData.phone === formattedData.phone_secondary
+      ) {
+        toast.error("Primary and secondary phone numbers cannot be the same", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        setIsUpdating(false);
+        return;
       }
 
       // If there's an image file, use FormData; otherwise use JSON
@@ -526,6 +545,7 @@ export default function EmployeeDetailPage() {
         role: employee.role,
         email: employee.email,
         phone: employee.phone,
+        phone_secondary: employee.phone_secondary || "",
         dob: employee.dob
           ? new Date(employee.dob).toISOString().split("T")[0]
           : "",
@@ -1463,8 +1483,16 @@ export default function EmployeeDetailPage() {
                                       }
                                       placeholder="Eg. 0400 123 456 or +61 400 123 456"
                                       className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
-                                        editData.phone &&
-                                        !validatePhone(editData.phone)
+                                        (editData.phone &&
+                                          !validatePhone(editData.phone)) ||
+                                        (editData.phone &&
+                                          editData.phone_secondary &&
+                                          formatPhoneToNational(
+                                            editData.phone,
+                                          ) ===
+                                            formatPhoneToNational(
+                                              editData.phone_secondary,
+                                            ))
                                           ? "border-red-500"
                                           : "border-slate-300"
                                       }`}
@@ -1474,6 +1502,73 @@ export default function EmployeeDetailPage() {
                                         <p className="mt-1 text-xs text-red-500">
                                           Please enter a valid Australian phone
                                           number
+                                        </p>
+                                      )}
+                                    {editData.phone &&
+                                      editData.phone_secondary &&
+                                      validatePhone(editData.phone) &&
+                                      validatePhone(editData.phone_secondary) &&
+                                      formatPhoneToNational(editData.phone) ===
+                                        formatPhoneToNational(
+                                          editData.phone_secondary,
+                                        ) && (
+                                        <p className="mt-1 text-xs text-red-500">
+                                          Primary and secondary phone cannot be
+                                          the same
+                                        </p>
+                                      )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Phone className="w-4 h-4 text-slate-600" />
+                                  <div className="flex-1">
+                                    <input
+                                      type="tel"
+                                      value={editData.phone_secondary || ""}
+                                      onChange={(e) =>
+                                        handleInputChange(
+                                          "phone_secondary",
+                                          e.target.value,
+                                        )
+                                      }
+                                      placeholder="Secondary Phone (optional)"
+                                      className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
+                                        (editData.phone_secondary &&
+                                          !validatePhone(
+                                            editData.phone_secondary,
+                                          )) ||
+                                        (editData.phone &&
+                                          editData.phone_secondary &&
+                                          formatPhoneToNational(
+                                            editData.phone,
+                                          ) ===
+                                            formatPhoneToNational(
+                                              editData.phone_secondary,
+                                            ))
+                                          ? "border-red-500"
+                                          : "border-slate-300"
+                                      }`}
+                                    />
+                                    {editData.phone_secondary &&
+                                      !validatePhone(
+                                        editData.phone_secondary,
+                                      ) && (
+                                        <p className="mt-1 text-xs text-red-500">
+                                          Please enter a valid Australian phone
+                                          number
+                                        </p>
+                                      )}
+                                    {editData.phone &&
+                                      editData.phone_secondary &&
+                                      validatePhone(editData.phone) &&
+                                      validatePhone(editData.phone_secondary) &&
+                                      formatPhoneToNational(editData.phone) ===
+                                        formatPhoneToNational(
+                                          editData.phone_secondary,
+                                        ) && (
+                                        <p className="mt-1 text-xs text-red-500">
+                                          Primary and secondary phone cannot be
+                                          the same
                                         </p>
                                       )}
                                   </div>
@@ -1522,6 +1617,15 @@ export default function EmployeeDetailPage() {
                                     <Phone className="w-3.5 h-3.5" />
                                     {formatValue(employee.phone)}
                                   </div>
+                                  {employee.phone_secondary && (
+                                    <div className="flex items-center gap-1.5 text-slate-600">
+                                      <Phone className="w-3.5 h-3.5" />
+                                      {formatValue(employee.phone_secondary)}
+                                      <span className="text-xs text-slate-400">
+                                        (Secondary)
+                                      </span>
+                                    </div>
+                                  )}
                                   <div className="flex items-center gap-1.5 text-slate-600 text-sm">
                                     <MapPin className="w-3.5 h-3.5" />
                                     {formatValue(employee.address)}

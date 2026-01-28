@@ -36,6 +36,7 @@ export default function page() {
     role: "",
     email: "",
     phone: "",
+    phone_secondary: "",
     dob: "",
     join_date: "",
     address: "",
@@ -329,7 +330,33 @@ export default function page() {
         formData.emergency_contact_phone &&
         !validatePhone(formData.emergency_contact_phone)
       ) {
-        toast.error("Please enter a valid Australian phone number", {
+        toast.error("Please enter a valid emergency contact phone number", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (
+        formData.phone_secondary &&
+        !validatePhone(formData.phone_secondary)
+      ) {
+        toast.error("Please enter a valid secondary phone number", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check if primary and secondary phone are the same
+      if (
+        formData.phone &&
+        formData.phone_secondary &&
+        formatPhone(formData.phone) === formatPhone(formData.phone_secondary)
+      ) {
+        toast.error("Primary and secondary phone numbers cannot be the same", {
           position: "top-right",
           autoClose: 3000,
         });
@@ -367,6 +394,9 @@ export default function page() {
           formDataToSend.append(key, formData[key] ? "true" : "false");
         } else if (key === "phone") {
           // Use formatted phone number
+          formDataToSend.append(key, formatPhone(formData[key]));
+        } else if (key === "phone_secondary") {
+          // Use formatted secondary phone number
           formDataToSend.append(key, formatPhone(formData[key]));
         } else if (key === "emergency_contact_phone") {
           // Use formatted emergency contact phone number
@@ -729,7 +759,12 @@ export default function page() {
                             value={formData.phone}
                             onChange={handleInputChange}
                             className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
-                              formData.phone && !validatePhone(formData.phone)
+                              (formData.phone &&
+                                !validatePhone(formData.phone)) ||
+                              (formData.phone &&
+                                formData.phone_secondary &&
+                                formatPhone(formData.phone) ===
+                                  formatPhone(formData.phone_secondary))
                                 ? "border-red-500"
                                 : "border-slate-300"
                             }`}
@@ -741,6 +776,58 @@ export default function page() {
                               Please enter a valid Australian phone number
                             </p>
                           )}
+                          {formData.phone &&
+                            formData.phone_secondary &&
+                            validatePhone(formData.phone) &&
+                            validatePhone(formData.phone_secondary) &&
+                            formatPhone(formData.phone) ===
+                              formatPhone(formData.phone_secondary) && (
+                              <p className="mt-1 text-xs text-red-500">
+                                Primary and secondary phone cannot be the same
+                              </p>
+                            )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            <div className="flex items-center gap-1">
+                              <Phone className="w-4 h-4 text-slate-600" />
+                              Secondary Phone
+                            </div>
+                          </label>
+                          <input
+                            type="tel"
+                            name="phone_secondary"
+                            value={formData.phone_secondary}
+                            onChange={handleInputChange}
+                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                              (formData.phone_secondary &&
+                                !validatePhone(formData.phone_secondary)) ||
+                              (formData.phone &&
+                                formData.phone_secondary &&
+                                formatPhone(formData.phone) ===
+                                  formatPhone(formData.phone_secondary))
+                                ? "border-red-500"
+                                : "border-slate-300"
+                            }`}
+                            placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                          />
+                          {formData.phone_secondary &&
+                            !validatePhone(formData.phone_secondary) && (
+                              <p className="mt-1 text-xs text-red-500">
+                                Please enter a valid Australian phone number
+                              </p>
+                            )}
+                          {formData.phone &&
+                            formData.phone_secondary &&
+                            validatePhone(formData.phone) &&
+                            validatePhone(formData.phone_secondary) &&
+                            formatPhone(formData.phone) ===
+                              formatPhone(formData.phone_secondary) && (
+                              <p className="mt-1 text-xs text-red-500">
+                                Primary and secondary phone cannot be the same
+                              </p>
+                            )}
                         </div>
 
                         <div>

@@ -344,6 +344,7 @@ async function getUsersToNotify(templateName, record = {}) {
             employee: {
               select: {
                 phone: true,
+                phone_secondary: true,
                 first_name: true,
                 last_name: true,
               },
@@ -354,25 +355,48 @@ async function getUsersToNotify(templateName, record = {}) {
     });
 
     // Filter to only include users with phone numbers and active status
-    return notificationConfigs
-      .filter((config) => {
-        const user = config.user;
-        return (
-          user &&
-          user.is_active &&
-          user.employee &&
-          user.employee.phone &&
-          // Double-check that the specific notification type is enabled
-          config[configField] === true
-        );
-      })
-      .map((config) => ({
-        userId: config.user_id,
-        phone: formatPhone(config.user.employee.phone),
-        firstName: config.user.employee.first_name,
-        lastName: config.user.employee.last_name,
-        notificationConfig: config,
-      }));
+    // Also create separate entries for secondary phone numbers
+    const users = [];
+
+    notificationConfigs.forEach((config) => {
+      const user = config.user;
+
+      if (
+        user &&
+        user.is_active &&
+        user.employee &&
+        config[configField] === true
+      ) {
+        // Add primary phone if exists
+        if (user.employee.phone) {
+          users.push({
+            userId: config.user_id,
+            phone: formatPhone(user.employee.phone),
+            firstName: user.employee.first_name,
+            lastName: user.employee.last_name,
+            notificationConfig: config,
+          });
+        }
+
+        // Add secondary phone if exists and different from primary
+        if (
+          user.employee.phone_secondary &&
+          formatPhone(user.employee.phone_secondary) !==
+            formatPhone(user.employee.phone || "")
+        ) {
+          users.push({
+            userId: config.user_id,
+            phone: formatPhone(user.employee.phone_secondary),
+            firstName: user.employee.first_name,
+            lastName: user.employee.last_name,
+            notificationConfig: config,
+            isSecondaryPhone: true,
+          });
+        }
+      }
+    });
+
+    return users;
   } catch (error) {
     console.error("Error fetching users to notify:", error);
     return [];

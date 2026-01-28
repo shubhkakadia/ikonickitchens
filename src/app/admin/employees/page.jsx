@@ -56,6 +56,7 @@ export default function page() {
     "Last Name",
     "Email",
     "Phone",
+    "Secondary Phone",
     "Role",
     "Date of Birth",
     "Join Date",
@@ -101,6 +102,7 @@ export default function page() {
       "Last Name": (employee) => employee.last_name || "",
       Email: (employee) => employee.email || "",
       Phone: (employee) => employee.phone || "",
+      "Secondary Phone": (employee) => employee.phone_secondary || "",
       Role: (employee) => employee.role || "",
       "Date of Birth": (employee) =>
         employee.dob ? new Date(employee.dob).toLocaleDateString() : "",
@@ -182,6 +184,9 @@ export default function page() {
           (employee.last_name || "").toLowerCase().includes(searchLower) ||
           (employee.email || "").toLowerCase().includes(searchLower) ||
           (employee.phone || "").toLowerCase().includes(searchLower) ||
+          (employee.phone_secondary || "")
+            .toLowerCase()
+            .includes(searchLower) ||
           (employee.role || "").toLowerCase().includes(searchLower);
         if (!matchesSearch) return false;
       }

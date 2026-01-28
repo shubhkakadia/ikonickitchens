@@ -93,6 +93,7 @@ model employees {
   role                    String
   email                   String
   phone                   String
+  phone_secondary         String?
   dob                     DateTime?
   join_date               DateTime?
   address                 String?          @db.LongText

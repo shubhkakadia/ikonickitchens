@@ -36,7 +36,7 @@ export default function page() {
   const [sortOrder, setSortOrder] = useState("asc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -676,7 +676,7 @@ export default function page() {
                         currentPage={currentPage}
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
-                        itemsPerPageOptions={[25, 50, 100, 0]}
+                        itemsPerPageOptions={[50, 100, 250, 0]}
                         showItemsPerPage={true}
                       />
                     )}

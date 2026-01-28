@@ -22,8 +22,9 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
+import { setActiveTab } from "@/state/reducer/projectTabs";
 import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
@@ -50,7 +51,9 @@ export default function page() {
   const [showClientTypeFilterDropdown, setShowClientTypeFilterDropdown] =
     useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
-  const [activeTab, setActiveTab] = useState("active");
+
+  // Get activeTab from Redux instead of local state
+  const activeTab = useSelector((state) => state.projectTabs.activeTab);
 
   // Define all available columns for export
   const availableColumns = [
@@ -794,7 +797,7 @@ export default function page() {
                     <div className="px-4 shrink-0 border-b border-slate-200">
                       <nav className="flex space-x-6">
                         <button
-                          onClick={() => setActiveTab("active")}
+                          onClick={() => dispatch(setActiveTab("active"))}
                           className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
                             activeTab === "active"
                               ? "border-primary text-primary"
@@ -804,7 +807,7 @@ export default function page() {
                           Active
                         </button>
                         <button
-                          onClick={() => setActiveTab("completed")}
+                          onClick={() => dispatch(setActiveTab("completed"))}
                           className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
                             activeTab === "completed"
                               ? "border-primary text-primary"
@@ -814,7 +817,7 @@ export default function page() {
                           Completed
                         </button>
                         <button
-                          onClick={() => setActiveTab("cancelled")}
+                          onClick={() => dispatch(setActiveTab("cancelled"))}
                           className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
                             activeTab === "cancelled"
                               ? "border-primary text-primary"

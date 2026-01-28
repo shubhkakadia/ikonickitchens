@@ -816,6 +816,8 @@ export default function page() {
                                   </td>
                                   <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
                                     {e.phone || "-"}
+                                    <br />
+                                    {e.phone_secondary || "-"}
                                   </td>
                                   <td className="px-4 py-3 text-sm">
                                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 border border-slate-200">

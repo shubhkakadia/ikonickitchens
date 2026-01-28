@@ -7,6 +7,7 @@ import tabs from "../reducer/tabs";
 import xero from "../reducer/xeroCredentials";
 import sidebar from "../reducer/sidebar";
 import inventoryTabs from "../reducer/inventoryTabs";
+import projectTabs from "../reducer/projectTabs";
 
 const rootReducer = combineReducers({
   loggedInUser: loggedInUser,
@@ -14,6 +15,7 @@ const rootReducer = combineReducers({
   xero: xero,
   sidebar: sidebar,
   inventoryTabs: inventoryTabs,
+  projectTabs: projectTabs,
 });
 
 const persistConfig = {

@@ -32,7 +32,7 @@ export default function page() {
   const [sortField, setSortField] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(100);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showEntityTypeFilterDropdown, setShowEntityTypeFilterDropdown] =
     useState(false);
@@ -952,7 +952,7 @@ export default function page() {
                         currentPage={currentPage}
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
-                        itemsPerPageOptions={[25, 50, 100, 0]}
+                        itemsPerPageOptions={[100, 250, 500, 0]}
                         showItemsPerPage={true}
                       />
                     )}

@@ -478,11 +478,41 @@ export default function page() {
     const rect = button.getBoundingClientRect();
     const dropdownKey = `${lot.lot_id}-${stage}`;
 
+    // Standard left alignment
+    // Use viewport coordinates for fixed positioning
+    let leftPosition = rect.left;
+
+    // Check if dropdown will go off screen (w-40 is 160px)
+    const dropdownWidth = 160;
+    const windowWidth = window.innerWidth;
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+
+    // Add a small buffer (10px) and account for scrollbar
+    if (leftPosition + dropdownWidth > windowWidth - scrollbarWidth - 10) {
+      // Align right edge of dropdown with right edge of button
+      leftPosition = rect.right - dropdownWidth;
+    }
+
+    // Vertical alignment
+    const dropdownHeight = 200; // Estimate height with buffer
+    const windowHeight = window.innerHeight;
+
+    let topPosition = rect.bottom + 4;
+    let bottomPosition = null;
+
+    if (topPosition + dropdownHeight > windowHeight) {
+      // Position above the button
+      topPosition = null;
+      bottomPosition = windowHeight - rect.top + 4;
+    }
+
     setStatusDropdownPositions((prev) => ({
       ...prev,
       [dropdownKey]: {
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
+        top: topPosition,
+        bottom: bottomPosition,
+        left: leftPosition,
       },
     }));
 
@@ -1071,7 +1101,13 @@ export default function page() {
                                                 <div
                                                   className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 status-dropdown-container"
                                                   style={{
-                                                    top: `${dropdownPosition.top}px`,
+                                                    top: dropdownPosition.top
+                                                      ? `${dropdownPosition.top}px`
+                                                      : "auto",
+                                                    bottom:
+                                                      dropdownPosition.bottom
+                                                        ? `${dropdownPosition.bottom}px`
+                                                        : "auto",
                                                     left: `${dropdownPosition.left}px`,
                                                   }}
                                                 >

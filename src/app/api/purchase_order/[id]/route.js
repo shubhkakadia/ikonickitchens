@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import path from "path";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";

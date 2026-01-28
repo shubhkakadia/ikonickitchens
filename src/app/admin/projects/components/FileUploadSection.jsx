@@ -278,14 +278,14 @@ const FileItemWithNotes = ({
     <div className="gap-4 flex items-start">
       <div
         className="relative group cursor-pointer"
-        style={{ width: "125px" }}
+        style={{ width: "350px" }}
         onClick={() => handleViewExistingFile(file)}
       >
-        <div className="w-full h-auto aspect-square rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50 hover:bg-slate-100 transition-colors">
+        <div className="w-full h-[120px] rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50 hover:bg-slate-100 transition-colors">
           {file.mime_type.includes("image") ? (
             <Image
-              height={140}
-              width={140}
+              height={120}
+              width={300}
               src={`/${file.url}`}
               alt={file.filename}
               className="w-full h-full object-cover rounded-lg"
@@ -299,7 +299,7 @@ const FileItemWithNotes = ({
             />
           ) : (
             <div
-              className={`w-full h-auto aspect-square flex items-center justify-center rounded-lg ${
+              className={`w-full h-[120px] flex items-center justify-center rounded-lg ${
                 file.mime_type.includes("pdf") ? "bg-red-50" : "bg-green-50"
               }`}
             >

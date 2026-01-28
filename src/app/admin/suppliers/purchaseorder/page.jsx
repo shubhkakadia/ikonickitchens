@@ -49,7 +49,7 @@ export default function page() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showCreatePOModal, setShowCreatePOModal] = useState(false);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
@@ -119,6 +119,10 @@ export default function page() {
   const [deletingPOId, setDeletingPOId] = useState(null);
   const [showDeletePOModal, setShowDeletePOModal] = useState(false);
   const [poPendingDelete, setPoPendingDelete] = useState(null);
+  // Editable notes state
+  const [editableNotes, setEditableNotes] = useState({});
+  const [saveStatus, setSaveStatus] = useState({});
+  const notesDebounceTimers = useRef({});
 
   const formatMoney = (value) => {
     const num = Number(value || 0);
@@ -131,6 +135,15 @@ export default function page() {
 
   useEffect(() => {
     fetchPOs();
+  }, []);
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(notesDebounceTimers.current).forEach((timer) => {
+        if (timer) clearTimeout(timer);
+      });
+    };
   }, []);
 
   const fetchPOs = async () => {
@@ -784,6 +797,75 @@ export default function page() {
     setQuantityReceived({});
     setPoSearchTerm("");
     setIsPODropdownOpen(false);
+  };
+
+  // Save notes to API
+  const saveNotes = async (poId, notesValue) => {
+    try {
+      setSaveStatus((prev) => ({ ...prev, [poId]: "saving" }));
+
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        setSaveStatus((prev) => ({ ...prev, [poId]: "idle" }));
+        return;
+      }
+
+      const response = await axios.patch(
+        `/api/purchase_order/${poId}`,
+        { notes: notesValue },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (response.data.status) {
+        setSaveStatus((prev) => ({ ...prev, [poId]: "saved" }));
+        // Update the PO in the state with the new notes
+        setPos((prevPos) =>
+          prevPos.map((po) =>
+            po.id === poId ? { ...po, notes: notesValue } : po,
+          ),
+        );
+        setTimeout(() => {
+          setSaveStatus((prev) => ({ ...prev, [poId]: "idle" }));
+        }, 2000);
+      } else {
+        toast.error(response.data.message || "Failed to save notes", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        setSaveStatus((prev) => ({ ...prev, [poId]: "idle" }));
+      }
+    } catch (error) {
+      console.error("Error saving notes:", error);
+      toast.error("Failed to save notes. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      setSaveStatus((prev) => ({ ...prev, [poId]: "idle" }));
+    }
+  };
+
+  // Debounced handler for notes changes
+  const handleNotesChange = (poId, value) => {
+    setEditableNotes((prev) => ({ ...prev, [poId]: value }));
+
+    // Clear existing timer
+    if (notesDebounceTimers.current[poId]) {
+      clearTimeout(notesDebounceTimers.current[poId]);
+    }
+
+    // Set new timer (1 second debounce)
+    notesDebounceTimers.current[poId] = setTimeout(() => {
+      saveNotes(poId, value);
+    }, 1000);
   };
 
   const handleExportToExcel = async () => {
@@ -1523,17 +1605,49 @@ export default function page() {
                                                 </button>
                                               </div>
                                             </div>
-                                            {po.notes && (
-                                              <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
-                                                <NotebookText className="w-4 h-4 mt-0.5" />
-                                                <span>
-                                                  <span className="font-medium">
-                                                    Notes:
-                                                  </span>{" "}
-                                                  {po.notes}
-                                                </span>
+                                            {/* Editable Notes Section */}
+                                            <div className="mt-2 relative">
+                                              <div className="flex items-start gap-2 text-xs text-gray-600">
+                                                <NotebookText className="w-4 h-4 mt-2" />
+                                                <div className="flex-1 relative">
+                                                  <textarea
+                                                    rows="2"
+                                                    value={
+                                                      editableNotes[po.id] !==
+                                                      undefined
+                                                        ? editableNotes[po.id]
+                                                        : po.notes || ""
+                                                    }
+                                                    onChange={(e) =>
+                                                      handleNotesChange(
+                                                        po.id,
+                                                        e.target.value,
+                                                      )
+                                                    }
+                                                    onClick={(e) =>
+                                                      e.stopPropagation()
+                                                    }
+                                                    className="w-full border border-slate-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent text-xs"
+                                                    placeholder="Add notes for this purchase order..."
+                                                  />
+                                                  {/* Save status indicator */}
+                                                  {saveStatus[po.id] ===
+                                                    "saving" && (
+                                                    <span className="absolute bottom-2 right-2 text-xs text-slate-500 font-medium flex items-center gap-1 bg-white px-1 rounded">
+                                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-500"></div>
+                                                      Saving...
+                                                    </span>
+                                                  )}
+                                                  {saveStatus[po.id] ===
+                                                    "saved" && (
+                                                    <span className="absolute bottom-2 right-2 text-xs text-green-600 font-medium flex items-center gap-1 bg-white px-1 rounded">
+                                                      <Check className="w-3 h-3" />
+                                                      Saved!
+                                                    </span>
+                                                  )}
+                                                </div>
                                               </div>
-                                            )}
+                                            </div>
                                             {/* Invoice Section */}
                                             {po.invoice_url ? (
                                               <div className="mt-2">
@@ -2201,7 +2315,7 @@ export default function page() {
                         currentPage={currentPage}
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
-                        itemsPerPageOptions={[25, 50, 100, 0]}
+                        itemsPerPageOptions={[50, 100, 250, 0]}
                         showItemsPerPage={true}
                       />
                     )}

@@ -150,6 +150,11 @@ export async function GET(request, { params }) {
     const fileSize = stat.size;
     const range = request.headers.get("range");
 
+    // Check if download query parameter is present
+    const url = new URL(request.url);
+    const forceDownload = url.searchParams.get("download") === "true";
+    const filename = path.basename(normalized);
+
     if (range) {
       const parts = range.replace(/bytes=/, "").split("-");
       const start = parseInt(parts[0], 10);
@@ -163,6 +168,9 @@ export async function GET(request, { params }) {
         "Content-Type": mimeType,
         "Cache-Control": "public, max-age=31536000, immutable",
       };
+      if (forceDownload) {
+        head["Content-Disposition"] = `attachment; filename="${filename}"`;
+      }
       return new NextResponse(file, { status: 206, headers: head });
     } else {
       const head = {
@@ -170,6 +178,9 @@ export async function GET(request, { params }) {
         "Content-Type": mimeType,
         "Cache-Control": "public, max-age=31536000, immutable",
       };
+      if (forceDownload) {
+        head["Content-Disposition"] = `attachment; filename="${filename}"`;
+      }
       const file = fs.createReadStream(normalized);
       return new NextResponse(file, { status: 200, headers: head });
     }

@@ -49,6 +49,21 @@ export async function GET(request, { params }) {
             },
           },
         },
+        tabs: {
+          where: {
+            tab: "CABINETRY_DRAWINGS",
+          },
+          include: {
+            files: {
+              where: {
+                is_deleted: false,
+              },
+              orderBy: {
+                createdAt: "asc",
+              },
+            },
+          },
+        },
       },
       orderBy: {
         project: {

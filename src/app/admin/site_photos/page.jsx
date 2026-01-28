@@ -84,6 +84,7 @@ export default function SitePhotosPage() {
   const [editingFileNotes, setEditingFileNotes] = useState({});
   const [deletingFile, setDeletingFile] = useState(null);
   const [pendingUploads, setPendingUploads] = useState(null); // { lot, tabKind, files: [{ file, notes, preview }], currentIndex }
+  const [activeLotTab, setActiveLotTab] = useState({}); // Track active tab for each lot { [lotId]: 'cabinetry' | 'upload' }
   const [searchTerm, setSearchTerm] = useState("");
   const [employeeRole, setEmployeeRole] = useState(null);
   const [showSupportDropdown, setShowSupportDropdown] = useState(false);
@@ -205,12 +206,24 @@ export default function SitePhotosPage() {
     if (employeeRole !== null) {
       const allowedTabs = getAllowedTabs();
       const defaultTab = allowedTabs[0] || TAB_KINDS.DELIVERY;
-      // Only update if current selection is not in allowed tabs
+      // Always update to ensure we have a valid selection
+      // If current selection is not in allowed tabs, switch to default
       if (!allowedTabs.includes(selectedPhotoType)) {
         setSelectedPhotoType(defaultTab);
       }
     }
   }, [employeeRole]);
+
+  // Safeguard: If selectedPhotoType is ever invalid for current user, reset it
+  useEffect(() => {
+    if (employeeRole !== null) {
+      const allowedTabs = getAllowedTabs();
+      if (selectedPhotoType && !allowedTabs.includes(selectedPhotoType)) {
+        const defaultTab = allowedTabs[0] || TAB_KINDS.DELIVERY;
+        setSelectedPhotoType(defaultTab);
+      }
+    }
+  }, [selectedPhotoType, employeeRole]);
 
   const handleLogout = async () => {
     try {
@@ -374,10 +387,8 @@ export default function SitePhotosPage() {
         });
         setFileNotes(fileNotesState);
 
-        // Set default photo type (use first allowed tab)
-        const allowedTabs = getAllowedTabs();
-        const defaultTab = allowedTabs[0] || TAB_KINDS.DELIVERY;
-        setSelectedPhotoType(defaultTab);
+        // Don't set default photo type here to avoid race condition with employee role loading
+        // The useEffect watching employeeRole will handle setting the default photo type
       } else {
         toast.error(response.data.message || "Failed to fetch lots");
       }
@@ -430,9 +441,20 @@ export default function SitePhotosPage() {
     } else {
       // Open the clicked lot immediately and fetch data in parallel
       setExpandedLot(lotId);
+      // Set default tab to cabinetry if not already set
+      if (!activeLotTab[lotId]) {
+        setActiveLotTab((prev) => ({ ...prev, [lotId]: "cabinetry" }));
+      }
       // Fetch detailed lot data in the background (don't await)
       fetchLotDetails(lotId);
     }
+  };
+
+  const getCabinetryDrawings = (lot) => {
+    const cabinetryTab = lot.tabs?.find(
+      (tab) => tab.tab === "CABINETRY_DRAWINGS",
+    );
+    return cabinetryTab?.files?.filter((file) => !file.is_deleted) || [];
   };
 
   const getTabForLot = (lot, tabKind) => {
@@ -919,6 +941,34 @@ export default function SitePhotosPage() {
     }
   };
 
+  const handleDownloadFile = async (file) => {
+    try {
+      const fileUrl = getFileUrl(file);
+      if (!fileUrl) {
+        toast.error("File URL not available");
+        return;
+      }
+
+      // For iOS Safari compatibility, open the download URL in a new window
+      // The server should send proper Content-Disposition headers
+      const downloadUrl = `${fileUrl}?download=true`;
+
+      // Try programmatic download first
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = file.filename || "download";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      toast.error("Failed to download file. Please try again.");
+    }
+  };
+
   const getFileUrl = (file) => {
     if (!file.url) return null;
     // Remove 'mediauploads/' prefix if present, as the API route expects segments after mediauploads
@@ -1176,140 +1226,263 @@ export default function SitePhotosPage() {
                         </div>
                       ) : (
                         <>
-                          {/* Tab Content */}
-                          <div className="p-4">
-                            {/* Upload Section */}
-                            <div className="mb-4">
-                              <label
-                                className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                                  uploading[`${lot.id}_${selectedPhotoType}`]
-                                    ? "border-gray-300 bg-gray-50 cursor-not-allowed pointer-events-none"
-                                    : "border-primary hover:border-primary/70 hover:bg-primary/5"
-                                }`}
-                              >
-                                <input
-                                  ref={(el) => {
-                                    const key = `${lot.id}_${selectedPhotoType}`;
-                                    fileInputRefs.current[key] = el;
-                                  }}
-                                  type="file"
-                                  accept={
-                                    selectedPhotoType ===
-                                      TAB_KINDS.SITE_PHOTOS ||
-                                    selectedPhotoType ===
-                                      TAB_KINDS.MEASUREMENT_PHOTOS
-                                      ? "image/*,video/*,image/heic,image/heif,.heic,.heif,.pdf,application/pdf"
-                                      : "image/*,video/*,image/heic,image/heif,.heic,.heif"
-                                  }
-                                  multiple
-                                  onChange={(e) =>
-                                    handleFileSelect(lot, selectedPhotoType, e)
-                                  }
-                                  className="hidden"
-                                  disabled={
-                                    uploading[`${lot.id}_${selectedPhotoType}`]
-                                  }
-                                />
-                                {uploading[`${lot.id}_${selectedPhotoType}`] ? (
-                                  <div className="flex flex-col items-center justify-center w-full px-4">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                                      <span className="text-sm text-gray-500">
-                                        Uploading...{" "}
-                                        {uploadProgressState[
-                                          `${lot.id}_${selectedPhotoType}`
-                                        ] || 0}
-                                        %
-                                      </span>
-                                    </div>
-                                    <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                      <div
-                                        className="h-full bg-primary transition-all duration-300 ease-out"
-                                        style={{
-                                          width: `${uploadProgressState[`${lot.id}_${selectedPhotoType}`] || 0}%`,
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <Camera className="w-5 h-5 text-primary" />
-                                    <span className="text-sm font-medium text-primary">
-                                      Take/Select Photos
-                                    </span>
-                                  </>
-                                )}
-                              </label>
-                            </div>
-
-                            {/* Files Grid */}
-                            {(() => {
-                              const files = getFilesForTab(
-                                lot,
-                                selectedPhotoType,
-                              );
-                              if (files.length === 0) {
-                                return (
-                                  <div className="text-center py-8 text-gray-500">
-                                    <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                    <p className="text-sm">
-                                      No files uploaded yet
-                                    </p>
-                                  </div>
-                                );
+                          {/* Tab Switcher */}
+                          <div className="flex border-b border-gray-200">
+                            <button
+                              onClick={() =>
+                                setActiveLotTab((prev) => ({
+                                  ...prev,
+                                  [lot.id]: "cabinetry",
+                                }))
                               }
+                              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                                activeLotTab[lot.id] === "cabinetry"
+                                  ? "text-primary border-b-2 border-primary bg-primary/5"
+                                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                              }`}
+                            >
+                              Cabinetry Drawings
+                            </button>
+                            <button
+                              onClick={() =>
+                                setActiveLotTab((prev) => ({
+                                  ...prev,
+                                  [lot.id]: "upload",
+                                }))
+                              }
+                              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                                activeLotTab[lot.id] === "upload"
+                                  ? "text-primary border-b-2 border-primary bg-primary/5"
+                                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                              }`}
+                            >
+                              Upload
+                            </button>
+                          </div>
 
-                              return (
-                                <div className="grid grid-cols-3 gap-2 mb-4">
-                                  {files.map((file) => {
-                                    const fileUrl = getFileUrl(file);
-                                    const hasNotes =
-                                      fileNotes[file.id] &&
-                                      fileNotes[file.id].trim() !== "";
-                                    return (
-                                      <div
-                                        key={file.id}
-                                        onClick={() => openFileModal(file, lot)}
-                                        className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group cursor-pointer"
-                                      >
-                                        {file.file_kind === "PHOTO" &&
-                                        fileUrl ? (
-                                          <img
-                                            src={fileUrl}
-                                            alt={file.filename}
-                                            className="w-full h-full object-cover"
-                                          />
-                                        ) : file.file_kind === "VIDEO" &&
-                                          fileUrl ? (
-                                          <video
-                                            src={fileUrl}
-                                            className="w-full h-full object-cover"
-                                            muted
-                                            playsInline
-                                          />
-                                        ) : (
-                                          <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                          {/* Cabinetry Drawings Tab Content */}
+                          {activeLotTab[lot.id] === "cabinetry" && (
+                            <div className="p-4">
+                              {(() => {
+                                const cabinetryDrawings =
+                                  getCabinetryDrawings(lot);
+                                if (cabinetryDrawings.length === 0) {
+                                  return (
+                                    <div className="text-center py-12 text-gray-500">
+                                      <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                      <p className="text-sm font-medium">
+                                        No cabinetry drawings available
+                                      </p>
+                                      <p className="text-xs mt-1">
+                                        Contact admin to get the drawings. If
+                                        you are the admin, upload the drawings
+                                        using admin portal.
+                                      </p>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <div className="space-y-3">
+                                    {cabinetryDrawings.map((file) => {
+                                      const fileUrl = getFileUrl(file);
+                                      return (
+                                        <div
+                                          key={file.id}
+                                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                                        >
+                                          {/* File Icon */}
+                                          <div className="shrink-0 w-10 h-10 bg-white rounded-lg border border-gray-300 flex items-center justify-center">
                                             {getFileIcon(file.file_kind)}
                                           </div>
-                                        )}
-                                        {file.file_kind === "VIDEO" && (
-                                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                            <Video className="w-8 h-8 text-white" />
+
+                                          {/* File Info */}
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 truncate">
+                                              {file.filename}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                              {file.file_kind} •{" "}
+                                              {file.size
+                                                ? `${(file.size / 1024).toFixed(1)} KB`
+                                                : "Unknown size"}
+                                            </p>
                                           </div>
-                                        )}
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                        {hasNotes && (
-                                          <div className="absolute top-1 right-1 bg-primary/90 text-white rounded-full p-1">
-                                            <FileText className="w-3 h-3" />
+
+                                          {/* Action Buttons */}
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              onClick={() =>
+                                                window.open(fileUrl, "_blank")
+                                              }
+                                              className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
+                                            >
+                                              View
+                                            </button>
+                                            <button
+                                              onClick={() =>
+                                                handleDownloadFile(file)
+                                              }
+                                              className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                                            >
+                                              Download
+                                            </button>
                                           </div>
-                                        )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {/* Upload Tab Content */}
+                          {activeLotTab[lot.id] === "upload" && (
+                            <div className="p-4">
+                              {/* Upload Section */}
+                              <div className="mb-4">
+                                <label
+                                  className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                                    uploading[`${lot.id}_${selectedPhotoType}`]
+                                      ? "border-gray-300 bg-gray-50 cursor-not-allowed pointer-events-none"
+                                      : "border-primary hover:border-primary/70 hover:bg-primary/5"
+                                  }`}
+                                >
+                                  <input
+                                    ref={(el) => {
+                                      const key = `${lot.id}_${selectedPhotoType}`;
+                                      fileInputRefs.current[key] = el;
+                                    }}
+                                    type="file"
+                                    accept={
+                                      selectedPhotoType ===
+                                        TAB_KINDS.SITE_PHOTOS ||
+                                      selectedPhotoType ===
+                                        TAB_KINDS.MEASUREMENT_PHOTOS
+                                        ? "image/*,video/*,image/heic,image/heif,.heic,.heif,.pdf,application/pdf"
+                                        : "image/*,video/*,image/heic,image/heif,.heic,.heif"
+                                    }
+                                    multiple
+                                    onChange={(e) =>
+                                      handleFileSelect(
+                                        lot,
+                                        selectedPhotoType,
+                                        e,
+                                      )
+                                    }
+                                    className="hidden"
+                                    disabled={
+                                      uploading[
+                                        `${lot.id}_${selectedPhotoType}`
+                                      ]
+                                    }
+                                  />
+                                  {uploading[
+                                    `${lot.id}_${selectedPhotoType}`
+                                  ] ? (
+                                    <div className="flex flex-col items-center justify-center w-full px-4">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                                        <span className="text-sm text-gray-500">
+                                          Uploading...{" "}
+                                          {uploadProgressState[
+                                            `${lot.id}_${selectedPhotoType}`
+                                          ] || 0}
+                                          %
+                                        </span>
                                       </div>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-                          </div>
+                                      <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                          className="h-full bg-primary transition-all duration-300 ease-out"
+                                          style={{
+                                            width: `${uploadProgressState[`${lot.id}_${selectedPhotoType}`] || 0}%`,
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <Camera className="w-5 h-5 text-primary" />
+                                      <span className="text-sm font-medium text-primary">
+                                        Take/Select Photos
+                                      </span>
+                                    </>
+                                  )}
+                                </label>
+                              </div>
+
+                              {/* Files Grid */}
+                              {(() => {
+                                const files = getFilesForTab(
+                                  lot,
+                                  selectedPhotoType,
+                                );
+                                if (files.length === 0) {
+                                  return (
+                                    <div className="text-center py-8 text-gray-500">
+                                      <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                      <p className="text-sm">
+                                        No files uploaded yet
+                                      </p>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <div className="grid grid-cols-3 gap-2 mb-4">
+                                    {files.map((file) => {
+                                      const fileUrl = getFileUrl(file);
+                                      const hasNotes =
+                                        fileNotes[file.id] &&
+                                        fileNotes[file.id].trim() !== "";
+                                      return (
+                                        <div
+                                          key={file.id}
+                                          onClick={() =>
+                                            openFileModal(file, lot)
+                                          }
+                                          className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group cursor-pointer"
+                                        >
+                                          {file.file_kind === "PHOTO" &&
+                                          fileUrl ? (
+                                            <img
+                                              src={fileUrl}
+                                              alt={file.filename}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          ) : file.file_kind === "VIDEO" &&
+                                            fileUrl ? (
+                                            <video
+                                              src={fileUrl}
+                                              className="w-full h-full object-cover"
+                                              muted
+                                              playsInline
+                                            />
+                                          ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                              {getFileIcon(file.file_kind)}
+                                            </div>
+                                          )}
+                                          {file.file_kind === "VIDEO" && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                              <Video className="w-8 h-8 text-white" />
+                                            </div>
+                                          )}
+                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                                          {hasNotes && (
+                                            <div className="absolute top-1 right-1 bg-primary/90 text-white rounded-full p-1">
+                                              <FileText className="w-3 h-3" />
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
                         </>
                       )}
                     </div>

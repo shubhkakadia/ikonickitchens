@@ -97,10 +97,15 @@ export default function StatementsPage() {
   const columnDropdownRef = useRef(null);
   const supplierDropdownRef = useRef(null);
   const supplierFilterDropdownRef = useRef(null);
+  const dueInDropdownRef = useRef(null);
+  const paymentStatusDropdownRef = useRef(null);
 
   // Supplier search state for modal
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
+  const [isDueInDropdownOpen, setIsDueInDropdownOpen] = useState(false);
+  const [isPaymentStatusDropdownOpen, setIsPaymentStatusDropdownOpen] =
+    useState(false);
 
   // File upload states
   const [filePreview, setFilePreview] = useState(null);
@@ -198,6 +203,18 @@ export default function StatementsPage() {
         !supplierFilterDropdownRef.current.contains(event.target)
       ) {
         setShowSupplierFilterDropdown(false);
+      }
+      if (
+        dueInDropdownRef.current &&
+        !dueInDropdownRef.current.contains(event.target)
+      ) {
+        setIsDueInDropdownOpen(false);
+      }
+      if (
+        paymentStatusDropdownRef.current &&
+        !paymentStatusDropdownRef.current.contains(event.target)
+      ) {
+        setIsPaymentStatusDropdownOpen(false);
       }
       // Check status dropdowns
       let clickedOutsideAllStatusDropdowns = true;
@@ -1118,6 +1135,8 @@ export default function StatementsPage() {
     });
     setSupplierSearchTerm("");
     setIsSupplierDropdownOpen(false);
+    setIsDueInDropdownOpen(false);
+    setIsPaymentStatusDropdownOpen(false);
     setFilePreview(null);
     setIsDragging(false);
     setShowFilePreview(false);
@@ -2005,21 +2024,93 @@ export default function StatementsPage() {
                         />
                       </div>
 
-                      <div>
+                      <div className="relative" ref={dueInDropdownRef}>
                         <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
                           Due In
                         </label>
-                        <select
-                          value={dueIn}
-                          onChange={(e) => handleDueInChange(e.target.value)}
-                          className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                        >
-                          <option value="1 week">1 Week</option>
-                          <option value="2 weeks">2 Weeks</option>
-                          <option value="3 weeks">3 Weeks</option>
-                          <option value="4 weeks">4 Weeks</option>
-                          <option value="custom">Custom</option>
-                        </select>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setIsDueInDropdownOpen(!isDueInDropdownOpen)
+                            }
+                            className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none text-left"
+                          >
+                            {dueIn === "1 week" && "1 Week"}
+                            {dueIn === "2 weeks" && "2 Weeks"}
+                            {dueIn === "3 weeks" && "3 Weeks"}
+                            {dueIn === "4 weeks" && "4 Weeks"}
+                            {dueIn === "custom" && "Custom"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setIsDueInDropdownOpen(!isDueInDropdownOpen)
+                            }
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            <ChevronDown
+                              className={`w-5 h-5 transition-transform duration-200 ${
+                                isDueInDropdownOpen ? "rotate-180" : ""
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {isDueInDropdownOpen && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleDueInChange("1 week");
+                                setIsDueInDropdownOpen(false);
+                              }}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                            >
+                              1 Week
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleDueInChange("2 weeks");
+                                setIsDueInDropdownOpen(false);
+                              }}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors"
+                            >
+                              2 Weeks
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleDueInChange("3 weeks");
+                                setIsDueInDropdownOpen(false);
+                              }}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors"
+                            >
+                              3 Weeks
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleDueInChange("4 weeks");
+                                setIsDueInDropdownOpen(false);
+                              }}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors"
+                            >
+                              4 Weeks
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleDueInChange("custom");
+                                setIsDueInDropdownOpen(false);
+                              }}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors last:rounded-b-lg"
+                            >
+                              Custom
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -2094,23 +2185,71 @@ export default function StatementsPage() {
                         </div>
                       </div>
 
-                      <div>
+                      <div className="relative" ref={paymentStatusDropdownRef}>
                         <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
                           Payment Status <span className="text-red-500">*</span>
                         </label>
-                        <select
-                          value={statementForm.payment_status}
-                          onChange={(e) =>
-                            setStatementForm({
-                              ...statementForm,
-                              payment_status: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                        >
-                          <option value="PENDING">Pending</option>
-                          <option value="PAID">Paid</option>
-                        </select>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setIsPaymentStatusDropdownOpen(
+                                !isPaymentStatusDropdownOpen,
+                              )
+                            }
+                            className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none text-left"
+                          >
+                            {statementForm.payment_status === "PENDING"
+                              ? "Pending"
+                              : "Paid"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setIsPaymentStatusDropdownOpen(
+                                !isPaymentStatusDropdownOpen,
+                              )
+                            }
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            <ChevronDown
+                              className={`w-5 h-5 transition-transform duration-200 ${
+                                isPaymentStatusDropdownOpen ? "rotate-180" : ""
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {isPaymentStatusDropdownOpen && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStatementForm({
+                                  ...statementForm,
+                                  payment_status: "PENDING",
+                                });
+                                setIsPaymentStatusDropdownOpen(false);
+                              }}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                            >
+                              Pending
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStatementForm({
+                                  ...statementForm,
+                                  payment_status: "PAID",
+                                });
+                                setIsPaymentStatusDropdownOpen(false);
+                              }}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors last:rounded-b-lg"
+                            >
+                              Paid
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 

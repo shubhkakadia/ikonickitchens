@@ -417,6 +417,28 @@ export default function page() {
     }
   };
 
+  // Handle clicking on item image to view in modal
+  const handleImageClick = (imageObj) => {
+    if (!imageObj?.url) return;
+
+    // Ensure URL starts with / for proper Next.js Image handling
+    const formattedUrl = imageObj.url.startsWith("/")
+      ? imageObj.url
+      : `/${imageObj.url}`;
+
+    // Create a file object compatible with ViewMedia component
+    const fileObj = {
+      url: formattedUrl,
+      type: "image/jpeg", // ViewMedia checks for selectedFile.type?.includes("image")
+      name: imageObj.filename || imageObj.name || "Item Image",
+      size: imageObj.size || 0,
+      isExisting: true,
+    };
+
+    setSelectedFile(fileObj);
+    setViewFileModal(true);
+  };
+
   const saveQuantityOrdered = async (mtoItemId, rawValue) => {
     const sessionToken = getToken();
     if (!sessionToken) {
@@ -1152,8 +1174,6 @@ export default function page() {
     }));
   };
 
-  console.log(cumulativeData);
-
   return (
     <AdminRoute>
       <div className="flex h-screen bg-tertiary">
@@ -1482,9 +1502,14 @@ export default function page() {
                                                     alt={
                                                       item.category || "Item"
                                                     }
-                                                    className="w-10 h-10 object-cover rounded border border-slate-200"
+                                                    className="w-10 h-10 object-cover rounded border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
                                                     width={40}
                                                     height={40}
+                                                    onClick={() =>
+                                                      handleImageClick(
+                                                        item.image,
+                                                      )
+                                                    }
                                                   />
                                                 ) : (
                                                   <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
@@ -2134,12 +2159,19 @@ export default function page() {
                                                                                         ? `Item ${item.item_id} image`
                                                                                         : "Item image"
                                                                                   }
-                                                                                  className="w-10 h-10 object-cover rounded border border-slate-200"
+                                                                                  className="w-10 h-10 object-cover rounded border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
                                                                                   width={
                                                                                     40
                                                                                   }
                                                                                   height={
                                                                                     40
+                                                                                  }
+                                                                                  onClick={() =>
+                                                                                    handleImageClick(
+                                                                                      item
+                                                                                        .item
+                                                                                        .image,
+                                                                                    )
                                                                                   }
                                                                                 />
                                                                               ) : (

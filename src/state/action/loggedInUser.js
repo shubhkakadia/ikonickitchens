@@ -36,7 +36,11 @@ export const loginUser = (formdata) => async (dispatch) => {
       return { success: true, data: response.data };
     } else {
       dispatch(setUserError(response.data.message || "Login failed"));
-      return { success: false, error: response.data.message };
+      return {
+        success: false,
+        error: response.data.message,
+        retryAfter: response.data.retryAfter, // Pass through retryAfter for rate limiting
+      };
     }
   } catch (error) {
     const errorMessage =

@@ -29,6 +29,7 @@ import {
   Trash2,
   AlertTriangle,
   Plus,
+  Funnel,
 } from "lucide-react";
 import { pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -48,6 +49,9 @@ export default function page() {
   const [sortField, setSortField] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [showSupplierFilterDropdown, setShowSupplierFilterDropdown] =
+    useState(false);
+  const [selectedSuppliers, setSelectedSuppliers] = useState([]);
   const [showCreatePOModal, setShowCreatePOModal] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
@@ -98,6 +102,7 @@ export default function page() {
   const poDropdownRef = useRef(null);
   const poInputRef = useRef(null);
   const sortDropdownRef = useRef(null);
+  const supplierDropdownRef = useRef(null);
   const [dropdownPosition, setDropdownPosition] = useState({
     top: 0,
     left: 0,
@@ -123,6 +128,9 @@ export default function page() {
   const [editableNotes, setEditableNotes] = useState({});
   const [saveStatus, setSaveStatus] = useState({});
   const notesDebounceTimers = useRef({});
+  // ViewMedia state for item images
+  const [viewFileModal, setViewFileModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const formatMoney = (value) => {
     const num = Number(value || 0);
@@ -174,6 +182,45 @@ export default function page() {
     }
   };
 
+  // Handle clicking on item image to view in modal
+  const handleImageClick = (imageObj) => {
+    if (!imageObj?.url) return;
+
+    // Ensure URL starts with / for proper Next.js Image handling
+    const formattedUrl = imageObj.url.startsWith("/")
+      ? imageObj.url
+      : `/${imageObj.url}`;
+
+    // Create a file object compatible with ViewMedia component
+    const fileObj = {
+      url: formattedUrl,
+      type: "image/jpeg", // ViewMedia checks for selectedFile.type?.includes("image")
+      name: imageObj.filename || imageObj.name || "Item Image",
+      size: imageObj.size || 0,
+      isExisting: true,
+    };
+
+    setSelectedFile(fileObj);
+    setViewFileModal(true);
+  };
+
+  // Get distinct suppliers from POs
+  const distinctSuppliers = useMemo(() => {
+    const suppliers = [
+      ...new Set(pos.map((po) => po.supplier?.name).filter((name) => name)),
+    ];
+    return suppliers.sort();
+  }, [pos]);
+
+  // Initialize selectedSuppliers with all suppliers
+  useEffect(() => {
+    if (distinctSuppliers.length > 0) {
+      setSelectedSuppliers([...distinctSuppliers]);
+    } else {
+      setSelectedSuppliers([]);
+    }
+  }, [distinctSuppliers]);
+
   const filteredAndSortedPOs = useMemo(() => {
     let list = (pos || []).filter((po) => {
       if (activeTab === "active") {
@@ -189,6 +236,14 @@ export default function page() {
       }
       return false;
     });
+
+    // Supplier filter
+    if (selectedSuppliers.length > 0) {
+      list = list.filter((po) => {
+        const supplierName = po.supplier?.name;
+        return supplierName && selectedSuppliers.includes(supplierName);
+      });
+    }
 
     if (search) {
       const q = search.toLowerCase();
@@ -247,7 +302,7 @@ export default function page() {
     });
 
     return withCounts;
-  }, [pos, activeTab, search, sortField, sortOrder]);
+  }, [pos, activeTab, search, sortField, sortOrder, selectedSuppliers]);
 
   // Pagination
   const totalItems = filteredAndSortedPOs.length;
@@ -292,7 +347,26 @@ export default function page() {
     setSortField("date");
     setSortOrder("desc");
     setActiveTab("active");
+    setSelectedSuppliers([...distinctSuppliers]); // Reset to all suppliers selected
     setCurrentPage(1);
+  };
+
+  const handleSupplierToggle = (supplier) => {
+    if (supplier === "Select All") {
+      if (selectedSuppliers.length === distinctSuppliers.length) {
+        // If all suppliers are selected, unselect all
+        setSelectedSuppliers([]);
+      } else {
+        // If not all suppliers are selected, select all
+        setSelectedSuppliers([...distinctSuppliers]);
+      }
+    } else {
+      setSelectedSuppliers((prev) =>
+        prev.includes(supplier)
+          ? prev.filter((s) => s !== supplier)
+          : [...prev, supplier],
+      );
+    }
   };
 
   const handleColumnToggle = (column) => {
@@ -402,6 +476,33 @@ export default function page() {
       };
     }
   }, [showSortDropdown]);
+
+  // close filter by supplier dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        supplierDropdownRef.current &&
+        !supplierDropdownRef.current.contains(event.target)
+      ) {
+        setShowSupplierFilterDropdown(false);
+      }
+    };
+
+    if (showSupplierFilterDropdown) {
+      // Use setTimeout to avoid immediate closure
+      setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+      }, 0);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    } else {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showSupplierFilterDropdown]);
 
   const handlePOSelect = (poId) => {
     setSelectedPOId(poId);
@@ -1130,7 +1231,8 @@ export default function page() {
                           {(search !== "" ||
                             sortField !== "date" ||
                             sortOrder !== "desc" ||
-                            activeTab !== "active") && (
+                            selectedSuppliers.length !==
+                              distinctSuppliers.length) && (
                             <button
                               onClick={handleReset}
                               className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
@@ -1139,6 +1241,71 @@ export default function page() {
                               <span>Reset</span>
                             </button>
                           )}
+
+                          <div
+                            className="relative dropdown-container"
+                            ref={supplierDropdownRef}
+                          >
+                            <button
+                              onClick={() =>
+                                setShowSupplierFilterDropdown(
+                                  !showSupplierFilterDropdown,
+                                )
+                              }
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                            >
+                              <Funnel className="h-4 w-4" />
+                              <span>Filter by Supplier</span>
+                              {distinctSuppliers.length -
+                                selectedSuppliers.length >
+                                0 && (
+                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                  {distinctSuppliers.length -
+                                    selectedSuppliers.length}
+                                </span>
+                              )}
+                            </button>
+                            {showSupplierFilterDropdown && (
+                              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                <div className="py-1">
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedSuppliers.length ===
+                                        distinctSuppliers.length
+                                      }
+                                      onChange={() =>
+                                        handleSupplierToggle("Select All")
+                                      }
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </label>
+                                  {distinctSuppliers.map((supplier) => (
+                                    <label
+                                      key={supplier}
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                    >
+                                      <span>{supplier}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedSuppliers.includes(
+                                          supplier,
+                                        )}
+                                        onChange={() =>
+                                          handleSupplierToggle(supplier)
+                                        }
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
 
                           <div
                             className="relative dropdown-container"
@@ -1888,9 +2055,15 @@ export default function page() {
                                                                   item.item
                                                                     .item_id
                                                                 }
-                                                                className="w-10 h-10 object-cover rounded border border-slate-200"
+                                                                className="w-10 h-10 object-cover rounded border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
                                                                 width={40}
                                                                 height={40}
+                                                                onClick={() =>
+                                                                  handleImageClick(
+                                                                    item.item
+                                                                      .image,
+                                                                  )
+                                                                }
                                                               />
                                                             ) : (
                                                               <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
@@ -2860,6 +3033,16 @@ export default function page() {
         <CreatePurchaseOrderModal
           setShowModal={setShowCreatePOModal}
           onSuccess={fetchPOs}
+        />
+      )}
+
+      {/* Item Image Viewer Modal */}
+      {viewFileModal && selectedFile && (
+        <ViewMedia
+          selectedFile={selectedFile}
+          setSelectedFile={setSelectedFile}
+          setViewFileModal={setViewFileModal}
+          setPageNumber={setPageNumber}
         />
       )}
     </AdminRoute>

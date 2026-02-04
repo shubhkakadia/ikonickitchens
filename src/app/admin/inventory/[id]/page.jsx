@@ -827,7 +827,7 @@ export default function page() {
         // Convert boolean to string for FormData
         if (typeof value === "boolean") {
           formDataToSend.append(key, value.toString());
-        } else if (value !== null && value !== undefined && value !== "") {
+        } else if (value !== null && value !== undefined) {
           formDataToSend.append(key, value);
         }
       });

@@ -28,7 +28,8 @@ export default function page() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [focusedFields, setFocusedFields] = useState({});
-  const [errorType, setErrorType] = useState(null); // 'not_found', 'inactive', 'invalid_password'
+  const [errorType, setErrorType] = useState(null); // 'not_found', 'inactive', 'invalid_password', 'rate_limit'
+  const [retryAfter, setRetryAfter] = useState(null); // Store retry seconds
   const { login, isAuthenticated, getUserType, loading } = useAuth();
 
   useEffect(() => {
@@ -118,13 +119,28 @@ export default function page() {
         // Handle different error types based on the message
         const errorMessage = result.error || "Login failed. Please try again.";
 
-        if (
+        // Check for rate limiting with retryAfter
+        if (result.retryAfter) {
+          setErrorType("rate_limit");
+          setRetryAfter(result.retryAfter);
+        } else if (
           errorMessage === "User not found" ||
           errorMessage === "Invalid password"
         ) {
           setErrorType("invalid_credentials");
         } else if (errorMessage === "User account is not active") {
           setErrorType("inactive");
+        } else if (
+          errorMessage.includes("Too many") ||
+          errorMessage.includes("rate limit")
+        ) {
+          // Fallback check for rate limiting messages
+          setErrorType("rate_limit");
+          // Try to extract seconds from error message if retryAfter not in result
+          const match = errorMessage.match(/(\d+)\s*second/i);
+          if (match) {
+            setRetryAfter(parseInt(match[1]));
+          }
         } else {
           setErrorType("general");
           setErrors({
@@ -282,6 +298,46 @@ export default function page() {
             {/* Professional Error Messages */}
             {errorType && (
               <div className="mt-6">
+                {errorType === "rate_limit" && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 shadow-sm">
+                    <div className="flex items-start">
+                      <div className="shrink-0">
+                        <AlertCircle className="h-6 w-6 text-orange-500" />
+                      </div>
+                      <div className="ml-3 flex-1">
+                        <h3 className="text-sm font-semibold text-orange-800 mb-2">
+                          Too Many Login Attempts
+                        </h3>
+                        <p className="text-sm text-orange-700 mb-3">
+                          Your account has been temporarily locked due to
+                          multiple failed login attempts.
+                        </p>
+                        {retryAfter && (
+                          <div className="bg-orange-100 rounded-lg p-4">
+                            <p className="text-sm font-medium text-orange-800 mb-1">
+                              Please wait before trying again:
+                            </p>
+                            <div className="flex items-center mt-2">
+                              <div className="bg-orange-200 rounded-lg px-4 py-2">
+                                <span className="text-2xl font-bold text-orange-900">
+                                  {retryAfter}
+                                </span>
+                                <span className="text-sm text-orange-700 ml-2">
+                                  {retryAfter === 1 ? "second" : "seconds"}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-orange-600 mt-3">
+                              This security measure protects your account from
+                              unauthorized access attempts.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {errorType === "invalid_credentials" && (
                   <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
                     <div className="flex items-start">

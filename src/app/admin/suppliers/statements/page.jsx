@@ -20,6 +20,7 @@ import {
   Sheet,
   AlertTriangle,
   FileText,
+  Funnel,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -87,11 +88,15 @@ export default function StatementsPage() {
   const [activeTab, setActiveTab] = useState("pending");
   const [isExporting, setIsExporting] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const [showSupplierFilterDropdown, setShowSupplierFilterDropdown] =
+    useState(false);
+  const [selectedSuppliers, setSelectedSuppliers] = useState([]);
 
   // Refs for dropdown containers
   const sortDropdownRef = useRef(null);
   const columnDropdownRef = useRef(null);
   const supplierDropdownRef = useRef(null);
+  const supplierFilterDropdownRef = useRef(null);
 
   // Supplier search state for modal
   const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
@@ -188,6 +193,12 @@ export default function StatementsPage() {
       ) {
         setMonthDropdownOpen(false);
       }
+      if (
+        supplierFilterDropdownRef.current &&
+        !supplierFilterDropdownRef.current.contains(event.target)
+      ) {
+        setShowSupplierFilterDropdown(false);
+      }
       // Check status dropdowns
       let clickedOutsideAllStatusDropdowns = true;
       Object.values(statusDropdownRefs.current).forEach((ref) => {
@@ -277,6 +288,27 @@ export default function StatementsPage() {
     );
   }, [suppliers, supplierSearchTerm]);
 
+  // Get distinct suppliers from statements
+  const distinctSuppliers = useMemo(() => {
+    const supplierNames = [
+      ...new Set(
+        statements
+          .map((statement) => statement.supplier?.name)
+          .filter((name) => name),
+      ),
+    ];
+    return supplierNames.sort();
+  }, [statements]);
+
+  // Initialize selectedSuppliers with all suppliers
+  useEffect(() => {
+    if (distinctSuppliers.length > 0) {
+      setSelectedSuppliers([...distinctSuppliers]);
+    } else {
+      setSelectedSuppliers([]);
+    }
+  }, [distinctSuppliers]);
+
   const fetchStatements = async () => {
     try {
       setLoading(true);
@@ -347,6 +379,14 @@ export default function StatementsPage() {
       });
     }
 
+    // Apply supplier filter
+    if (selectedSuppliers.length > 0) {
+      filtered = filtered.filter((statement) => {
+        const supplierName = statement.supplier?.name;
+        return supplierName && selectedSuppliers.includes(supplierName);
+      });
+    }
+
     // Then apply search filter
     if (search) {
       const searchLower = search.toLowerCase();
@@ -406,6 +446,7 @@ export default function StatementsPage() {
     activeTab,
     yearFilter,
     monthFilter,
+    selectedSuppliers,
   ]);
 
   // Pagination logic
@@ -458,6 +499,25 @@ export default function StatementsPage() {
     setCurrentPage(1);
     setYearFilter("all");
     setMonthFilter("all");
+    setSelectedSuppliers([...distinctSuppliers]); // Reset to all suppliers selected
+  };
+
+  const handleSupplierToggle = (supplier) => {
+    if (supplier === "Select All") {
+      if (selectedSuppliers.length === distinctSuppliers.length) {
+        // If all suppliers are selected, unselect all
+        setSelectedSuppliers([]);
+      } else {
+        // If not all suppliers are selected, select all
+        setSelectedSuppliers([...distinctSuppliers]);
+      }
+    } else {
+      setSelectedSuppliers((prev) =>
+        prev.includes(supplier)
+          ? prev.filter((s) => s !== supplier)
+          : [...prev, supplier],
+      );
+    }
   };
 
   const handleColumnToggle = (column) => {
@@ -743,7 +803,12 @@ export default function StatementsPage() {
       formData.append("file", statementForm.file);
       formData.append("month_year", formatMonthYear(statementForm.month_year));
       formData.append("due_date", statementForm.due_date);
-      formData.append("amount", statementForm.amount || "");
+      formData.append(
+        "amount",
+        statementForm.amount
+          ? statementForm.amount.toString().replace(/,/g, "")
+          : "",
+      );
       formData.append("payment_status", statementForm.payment_status);
       formData.append("notes", statementForm.notes || "");
 
@@ -875,7 +940,12 @@ export default function StatementsPage() {
           formatMonthYear(statementForm.month_year),
         );
         formData.append("due_date", statementForm.due_date);
-        formData.append("amount", statementForm.amount || "");
+        formData.append(
+          "amount",
+          statementForm.amount
+            ? statementForm.amount.toString().replace(/,/g, "")
+            : "",
+        );
         formData.append("payment_status", statementForm.payment_status);
         formData.append("notes", statementForm.notes || "");
       }
@@ -1140,7 +1210,9 @@ export default function StatementsPage() {
                             sortField !== "month_year" ||
                             sortOrder !== "desc" ||
                             yearFilter !== "all" ||
-                            monthFilter !== "all") && (
+                            monthFilter !== "all" ||
+                            selectedSuppliers.length !==
+                              distinctSuppliers.length) && (
                             <button
                               onClick={handleReset}
                               className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
@@ -1149,6 +1221,72 @@ export default function StatementsPage() {
                               <span>Reset</span>
                             </button>
                           )}
+
+                          {/* Supplier Filter */}
+                          <div
+                            className="relative"
+                            ref={supplierFilterDropdownRef}
+                          >
+                            <button
+                              onClick={() =>
+                                setShowSupplierFilterDropdown(
+                                  !showSupplierFilterDropdown,
+                                )
+                              }
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                            >
+                              <Funnel className="h-4 w-4" />
+                              <span>Filter by Supplier</span>
+                              {distinctSuppliers.length -
+                                selectedSuppliers.length >
+                                0 && (
+                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                  {distinctSuppliers.length -
+                                    selectedSuppliers.length}
+                                </span>
+                              )}
+                            </button>
+                            {showSupplierFilterDropdown && (
+                              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                                <div className="py-1">
+                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                    <span className="font-semibold">
+                                      Select All
+                                    </span>
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        selectedSuppliers.length ===
+                                        distinctSuppliers.length
+                                      }
+                                      onChange={() =>
+                                        handleSupplierToggle("Select All")
+                                      }
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </label>
+                                  {distinctSuppliers.map((supplier) => (
+                                    <label
+                                      key={supplier}
+                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                    >
+                                      <span>{supplier}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedSuppliers.includes(
+                                          supplier,
+                                        )}
+                                        onChange={() =>
+                                          handleSupplierToggle(supplier)
+                                        }
+                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                      />
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
 
                           {/* Year Filter Dropdown */}
                           <div className="relative" ref={yearDropdownRef}>
@@ -1905,15 +2043,51 @@ export default function StatementsPage() {
                             $
                           </span>
                           <input
-                            type="number"
-                            step="0.01"
+                            type="text"
                             value={statementForm.amount}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              // Remove all non-numeric characters except decimal point
+                              let rawValue = e.target.value.replace(
+                                /[^0-9.]/g,
+                                "",
+                              );
+
+                              // Allow only one decimal point
+                              const parts = rawValue.split(".");
+                              if (parts.length > 2) {
+                                rawValue =
+                                  parts[0] + "." + parts.slice(1).join("");
+                              }
+
+                              // Limit to 2 decimal places
+                              if (parts.length === 2 && parts[1].length > 2) {
+                                rawValue =
+                                  parts[0] + "." + parts[1].substring(0, 2);
+                              }
+
+                              // Format with commas for display
+                              let formattedValue = rawValue;
+                              if (rawValue) {
+                                const numValue = parseFloat(rawValue);
+                                if (!isNaN(numValue)) {
+                                  // Only format the integer part with commas
+                                  const [integerPart, decimalPart] =
+                                    rawValue.split(".");
+                                  const formattedInteger = parseInt(
+                                    integerPart || "0",
+                                  ).toLocaleString("en-US");
+                                  formattedValue =
+                                    decimalPart !== undefined
+                                      ? `${formattedInteger}.${decimalPart}`
+                                      : formattedInteger;
+                                }
+                              }
+
                               setStatementForm({
                                 ...statementForm,
-                                amount: e.target.value,
-                              })
-                            }
+                                amount: formattedValue,
+                              });
+                            }}
                             placeholder="0.00"
                             className="w-full px-4 py-3 pl-7 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                           />

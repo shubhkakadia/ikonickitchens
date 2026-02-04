@@ -9,7 +9,6 @@ import {
   File as FileIcon,
   ChevronLeft,
   ChevronRight,
-  RotateCcw,
   RotateCw,
 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -32,8 +31,10 @@ export default function ViewMedia({
   const [imageScale, setImageScale] = useState(1.0);
   const [imageRotation, setImageRotation] = useState(0);
   const [currentFileIndex, setCurrentFileIndex] = useState(currentIndex);
+  const [showControls, setShowControls] = useState(true); // For auto-hide controls
   const allFilesRef = useRef(allFiles);
   const currentFileIndexRef = useRef(currentIndex);
+  const hideControlsTimeoutRef = useRef(null); // Timer for auto-hiding controls
 
   // Keep refs in sync
   useEffect(() => {
@@ -50,7 +51,15 @@ export default function ViewMedia({
       setCurrentFileIndex(currentIndex);
       currentFileIndexRef.current = currentIndex;
     }
-  }, [currentIndex, allFiles.length]); // Only update when prop changes, not during internal navigation
+  }, [currentIndex, allFiles.length]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
 
   // Convert file object from allFiles to selectedFile format
   const convertFileToSelectedFile = useCallback((file) => {
@@ -100,8 +109,8 @@ export default function ViewMedia({
       const prevFile = convertFileToSelectedFile(files[newIndex]);
       if (prevFile) {
         setSelectedFile(prevFile);
-        setImageScale(1.0); // Reset zoom when changing files
-        setImageRotation(0); // Reset rotation when changing files
+        setImageScale(1.0);
+        setImageRotation(0);
         setPdfScale(1.0);
         setCurrentPageInView(1);
         setNumPages(null);
@@ -122,8 +131,8 @@ export default function ViewMedia({
       const nextFile = convertFileToSelectedFile(files[newIndex]);
       if (nextFile) {
         setSelectedFile(nextFile);
-        setImageScale(1.0); // Reset zoom when changing files
-        setImageRotation(0); // Reset rotation when changing files
+        setImageScale(1.0);
+        setImageRotation(0);
         setPdfScale(1.0);
         setCurrentPageInView(1);
         setNumPages(null);
@@ -162,277 +171,348 @@ export default function ViewMedia({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handlePrevious, handleNext, handleClose]);
 
+  // Auto-hide controls after 2 seconds of mouse inactivity
+  useEffect(() => {
+    const handleMouseMove = () => {
+      // Show controls when mouse moves
+      setShowControls(true);
+
+      // Clear existing timeout
+      if (hideControlsTimeoutRef.current) {
+        clearTimeout(hideControlsTimeoutRef.current);
+      }
+
+      // Set new timeout to hide controls after 2 seconds
+      hideControlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 5000);
+    };
+
+    // Add mouse move listener
+    window.addEventListener("mousemove", handleMouseMove);
+
+    // Start initial timer
+    hideControlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 5000);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (hideControlsTimeoutRef.current) {
+        clearTimeout(hideControlsTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const canNavigatePrevious = allFiles.length > 0 && currentFileIndex > 0;
   const canNavigateNext =
     allFiles.length > 0 && currentFileIndex < allFiles.length - 1;
 
+  // Reset handler for images
+  const handleReset = () => {
+    setImageScale(1.0);
+    setImageRotation(0);
+  };
+
+  // Reset handler for PDFs
+  const handlePdfReset = () => {
+    setPdfScale(1.0);
+  };
+
+  // Download handler
+  const handleDownload = () => {
+    if (selectedFile.isExisting) {
+      window.open(selectedFile.url, "_blank");
+    } else if (selectedFile.url) {
+      const a = document.createElement("a");
+      a.href = selectedFile.url;
+      a.download = selectedFile.name;
+      a.click();
+    } else if (selectedFile instanceof File || selectedFile instanceof Blob) {
+      const fileURL = URL.createObjectURL(selectedFile);
+      const a = document.createElement("a");
+      a.href = fileURL;
+      a.download = selectedFile.name;
+      a.click();
+      URL.revokeObjectURL(fileURL);
+    }
+  };
+
+  // Determine image source URL
+  const imageSrc =
+    selectedFile.url ||
+    (selectedFile instanceof File || selectedFile instanceof Blob
+      ? URL.createObjectURL(selectedFile)
+      : null);
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col relative">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between p-3 border-b border-slate-200">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-slate-800 truncate">
-              {selectedFile.name}
-            </h3>
-            <div className="flex items-center gap-4 mt-1">
-              <p className="text-sm text-slate-500">
-                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-              {allFiles.length > 0 && (
-                <p className="text-sm text-slate-500">
-                  {currentFileIndex + 1} of {allFiles.length}
-                </p>
-              )}
-            </div>
-          </div>
-          <button
-            onClick={handleClose}
-            className="cursor-pointer ml-4 p-2 hover:bg-slate-100 rounded-lg transition-colors"
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={handleClose}
+    >
+      {/* Modal Container */}
+      <div
+        className="bg-slate-900 rounded-lg shadow-2xl w-full max-w-6xl h-[98vh] flex flex-col relative overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Media Viewer Area */}
+        <div className="relative flex-1 overflow-hidden bg-slate-900">
+          {/* Media Content */}
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
           >
-            <X className="w-5 h-5 text-slate-600" />
-          </button>
-        </div>
-
-        {/* Navigation Buttons - Fixed relative to modal container */}
-        {allFiles.length > 1 && (
-          <>
-            <button
-              onClick={handlePrevious}
-              disabled={!canNavigatePrevious}
-              className="absolute left-6 top-1/2 -translate-y-1/2 z-50 p-3 bg-white/90 backdrop-blur-xs rounded-full shadow-lg border border-slate-200 hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              title="Previous (←)"
-            >
-              <ChevronLeft className="w-6 h-6 text-slate-700" />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!canNavigateNext}
-              className="absolute right-6 top-1/2 -translate-y-1/2 z-50 p-3 bg-white/90 backdrop-blur-xs rounded-full shadow-lg border border-slate-200 hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              title="Next (→)"
-            >
-              <ChevronRight className="w-6 h-6 text-slate-700" />
-            </button>
-          </>
-        )}
-
-        {/* Modal Content */}
-        <div className="relative flex-1 overflow-auto p-2 bg-slate-50">
-          {selectedFile.type?.includes("image") ? (
-            <div className="flex items-center justify-center min-h-full">
-              <div
-                className="transition-transform duration-200"
-                style={{
-                  transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
-                  transformOrigin: "center center",
-                }}
-              >
-                {/* rotate image */}
+            {selectedFile.type?.includes("image") ? (
+              <div className="transition-transform duration-300 ease-out">
                 <Image
-                  loading="lazy"
-                  width={1000}
-                  height={1000}
-                  objectFit="contain"
-                  src={
-                    selectedFile.url ||
-                    (selectedFile instanceof File ||
-                    selectedFile instanceof Blob
-                      ? URL.createObjectURL(selectedFile)
-                      : null)
-                  }
+                  width={1920}
+                  height={1080}
+                  src={imageSrc}
                   alt={selectedFile.name}
-                  className=" rounded-lg shadow-lg w-full h-full object-contain"
+                  style={{
+                    transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
+                  }}
+                  className="max-w-screen max-h-screen object-contain p-6"
+                  draggable={false}
+                  priority
                 />
               </div>
-            </div>
-          ) : selectedFile.type?.includes("pdf") ||
-            selectedFile.name?.endsWith(".pdf") ? (
-            <div className="relative flex flex-col items-center justify-start h-full w-full overflow-auto">
-              <div className="w-full flex flex-col items-center gap-4 pb-8">
-                <Document
-                  file={
-                    selectedFile.url ||
-                    (selectedFile instanceof File ||
-                    selectedFile instanceof Blob
-                      ? selectedFile
-                      : null)
-                  }
-                  onLoadSuccess={({ numPages }) => {
-                    setNumPages(numPages);
-                    setCurrentPageInView(1);
-                  }}
-                  onLoadError={(error) => {
-                    console.error("Error loading PDF:", error);
-                    toast.error("Failed to load PDF");
-                  }}
-                  className="flex flex-col items-center gap-4"
-                >
-                  {Array.from(new Array(numPages), (el, index) => (
-                    <div
-                      key={`page_${index + 1}`}
-                      className="shadow-lg bg-white"
-                      onMouseEnter={() => setCurrentPageInView(index + 1)}
-                    >
-                      <Page
-                        pageNumber={index + 1}
-                        scale={pdfScale}
-                        renderTextLayer={true}
-                        renderAnnotationLayer={true}
-                        className="max-w-full"
-                      />
-                    </div>
-                  ))}
-                </Document>
+            ) : selectedFile.type?.includes("pdf") ||
+              selectedFile.name?.endsWith(".pdf") ? (
+              <div className="relative w-full h-full overflow-auto flex flex-col items-center justify-start py-8">
+                <div className="w-full flex flex-col items-center gap-4">
+                  <Document
+                    file={imageSrc}
+                    onLoadSuccess={({ numPages }) => {
+                      setNumPages(numPages);
+                      setCurrentPageInView(1);
+                    }}
+                    onLoadError={(error) => {
+                      console.error("Error loading PDF:", error);
+                      toast.error("Failed to load PDF");
+                    }}
+                    className="flex flex-col items-center gap-4"
+                  >
+                    {Array.from(new Array(numPages), (el, index) => (
+                      <div
+                        key={`page_${index + 1}`}
+                        className="shadow-2xl bg-white"
+                        onMouseEnter={() => setCurrentPageInView(index + 1)}
+                      >
+                        <Page
+                          pageNumber={index + 1}
+                          scale={pdfScale}
+                          renderTextLayer={true}
+                          renderAnnotationLayer={true}
+                          className="max-w-full"
+                        />
+                      </div>
+                    ))}
+                  </Document>
+                </div>
               </div>
-            </div>
-          ) : selectedFile.type?.includes("video") ? (
-            <div className="flex items-center justify-center h-full">
-              <video
-                controls
-                className="max-w-full max-h-full rounded-lg shadow-lg"
-                src={
-                  selectedFile.url ||
-                  (selectedFile instanceof File || selectedFile instanceof Blob
-                    ? URL.createObjectURL(selectedFile)
-                    : null)
-                }
-              >
+            ) : selectedFile.type?.includes("video") ? (
+              <video controls className="max-w-full max-h-full" src={imageSrc}>
                 Your browser does not support the video tag.
               </video>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500">
-              <FileIcon className="w-16 h-16 mb-4 text-slate-400" />
-              <p className="text-lg font-medium mb-2">Preview not available</p>
-              <p className="text-sm mb-4">
-                This file type cannot be previewed in the browser
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between p-2 border-t border-slate-200 sticky bottom-4 left-4 right-4">
-          <div className="text-sm text-slate-700 font-medium bg-white/90 backdrop-blur-xs rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
-            {selectedFile.type?.includes("image")
-              ? "Image"
-              : selectedFile.type?.includes("pdf")
-                ? "PDF"
-                : selectedFile.type?.includes("video")
-                  ? "Video"
-                  : "Unknown file type"}
+            ) : (
+              <div className="flex flex-col items-center justify-center text-white">
+                <FileIcon className="w-16 h-16 mb-4 text-white/60" />
+                <p className="text-lg font-medium mb-2">
+                  Preview not available
+                </p>
+                <p className="text-sm text-white/60">
+                  This file type cannot be previewed in the browser
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Image Zoom Controls */}
-          {selectedFile.type?.includes("image") && (
-            <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
+          {/* Navigation Buttons for Multiple Files */}
+          {allFiles.length > 1 && (
+            <>
               <button
-                onClick={() =>
-                  setImageScale((prev) => Math.max(prev - 0.25, 0.25))
-                }
-                disabled={imageScale <= 0.25}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Zoom Out"
+                onClick={handlePrevious}
+                disabled={!canNavigatePrevious}
+                className={`absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
+                  showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+                }`}
+                title="Previous (←)"
               >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <span className="text-sm font-medium text-slate-700 min-w-[50px] text-center">
-                {Math.round(imageScale * 100)}%
-              </span>
-              <button
-                onClick={() =>
-                  setImageScale((prev) => Math.min(prev + 0.25, 3.0))
-                }
-                disabled={imageScale >= 3.0}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Zoom In"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-              <div className="h-6 w-px bg-slate-300 mx-1"></div>
-              <button
-                onClick={() => setImageRotation((prev) => (prev - 90) % 360)}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                title="Rotate Left"
-              >
-                <RotateCcw className="w-4 h-4" />
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </button>
               <button
-                onClick={() => setImageRotation((prev) => (prev + 90) % 360)}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                title="Rotate Right"
+                onClick={handleNext}
+                disabled={!canNavigateNext}
+                className={`absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
+                  showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+                }`}
+                title="Next (→)"
               >
-                <RotateCw className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </button>
-            </div>
+            </>
           )}
 
-          {/* PDF Controls */}
-          {(selectedFile.type?.includes("pdf") ||
-            selectedFile.name?.endsWith(".pdf")) && (
-            <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs rounded-lg px-4 py-2 shadow-lg border border-slate-200 pointer-events-auto">
-              <button
-                onClick={() =>
-                  setPdfScale((prev) => Math.max(prev - 0.25, 0.25))
-                }
-                disabled={pdfScale <= 0.25}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Zoom Out"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <span className="text-sm font-medium text-slate-700 min-w-[50px] text-center">
-                {Math.round(pdfScale * 100)}%
-              </span>
-              <button
-                onClick={() =>
-                  setPdfScale((prev) => Math.min(prev + 0.25, 3.0))
-                }
-                disabled={pdfScale >= 3.0}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Zoom In"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-              {numPages && (
-                <>
-                  <div className="h-6 w-px bg-slate-300 mx-1"></div>
-                  <span className="text-sm font-medium text-slate-700">
-                    Page {currentPageInView} of {numPages}
-                  </span>
-                </>
-              )}
-            </div>
-          )}
-
-          <button
-            onClick={() => {
-              if (selectedFile.isExisting) {
-                // For existing files, open in new tab or download
-                window.open(selectedFile.url, "_blank");
-              } else if (selectedFile.url) {
-                // For new files with object URL, use the provided URL
-                const a = document.createElement("a");
-                a.href = selectedFile.url;
-                a.download = selectedFile.name;
-                a.click();
-              } else if (
-                selectedFile instanceof File ||
-                selectedFile instanceof Blob
-              ) {
-                // For new files that are actual File/Blob objects, create object URL
-                const fileURL = URL.createObjectURL(selectedFile);
-                const a = document.createElement("a");
-                a.href = fileURL;
-                a.download = selectedFile.name;
-                a.click();
-                URL.revokeObjectURL(fileURL);
-              }
-            }}
-            className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium shadow-lg"
+          {/* Floating Top Navigation Bar */}
+          <div
+            className={`absolute top-0 left-0 right-0 z-20 pointer-events-none transition-opacity duration-300 ${
+              showControls ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={(e) => e.stopPropagation()}
           >
-            <Download className="w-4 h-4" />
-            Download
-          </button>
+            <div className="p-3 sm:p-4 sm:px-6">
+              <div className="flex items-center justify-between max-w-7xl mx-auto pointer-events-auto gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className="text-white font-medium truncate max-w-[200px] sm:max-w-md text-sm sm:text-base bg-black/40 rounded-lg px-2 sm:px-4 backdrop-blur-md shadow-lg border border-white/10 min-h-11 flex items-center">
+                    {selectedFile.name}
+                  </div>
+                  {allFiles.length > 0 && (
+                    <div className="text-white font-medium truncate max-w-[200px] sm:max-w-md text-sm sm:text-base bg-black/40 rounded-lg px-2 sm:px-4 backdrop-blur-md shadow-lg border border-white/10 min-h-11 flex items-center">
+                      {currentFileIndex + 1} / {allFiles.length}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleClose}
+                  className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 rounded-lg p-2 sm:p-2.5 transition-all backdrop-blur-md bg-black/40 shadow-lg border border-white/10 shrink-0 min-w-11 min-h-11 flex items-center justify-center"
+                  aria-label="Close preview"
+                >
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Floating Bottom Control Bar */}
+          <div
+            className={`absolute bottom-0 left-0 right-0 z-20 pointer-events-none transition-opacity duration-300 ${
+              showControls ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-3 sm:p-4 sm:px-6">
+              <div className="flex flex-wrap items-center justify-center gap-2 max-w-7xl mx-auto pointer-events-auto">
+                {/* Image Controls */}
+                {selectedFile.type?.includes("image") && (
+                  <>
+                    {/* Reset Button - Always visible but disabled when not needed */}
+                    <button
+                      onClick={handleReset}
+                      disabled={imageScale === 1 && imageRotation === 0}
+                      className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all border border-white/10 shadow-lg min-h-11 bg-black/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Reset
+                    </button>
+
+                    {/* Zoom Controls */}
+                    <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
+                      <button
+                        onClick={() =>
+                          setImageScale((prev) => Math.max(prev - 0.25, 0.5))
+                        }
+                        disabled={imageScale <= 0.5}
+                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
+                        aria-label="Zoom out"
+                      >
+                        <ZoomOut className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+
+                      <span className="text-white/90 text-xs sm:text-sm font-medium px-2 sm:px-3 min-w-12 sm:min-w-16 text-center">
+                        {Math.round(imageScale * 100)}%
+                      </span>
+
+                      <button
+                        onClick={() =>
+                          setImageScale((prev) => Math.min(prev + 0.25, 3))
+                        }
+                        disabled={imageScale >= 3}
+                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
+                        aria-label="Zoom in"
+                      >
+                        <ZoomIn className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                    </div>
+
+                    {/* Rotate Button */}
+                    <button
+                      onClick={() =>
+                        setImageRotation((prev) => (prev + 90) % 360)
+                      }
+                      className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg p-2 sm:p-2.5 transition-all border border-white/10 shadow-lg min-w-11 min-h-11 flex items-center justify-center bg-black/40"
+                      aria-label="Rotate image"
+                    >
+                      <RotateCw className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  </>
+                )}
+
+                {/* PDF Controls */}
+                {(selectedFile.type?.includes("pdf") ||
+                  selectedFile.name?.endsWith(".pdf")) && (
+                  <>
+                    {/* PDF Zoom Controls */}
+                    <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
+                      <button
+                        onClick={() =>
+                          setPdfScale((prev) => Math.max(prev - 0.25, 0.5))
+                        }
+                        disabled={pdfScale <= 0.5}
+                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
+                        aria-label="Zoom out"
+                      >
+                        <ZoomOut className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+
+                      <span className="text-white/90 text-xs sm:text-sm font-medium px-2 sm:px-3 min-w-12 sm:min-w-16 text-center">
+                        {Math.round(pdfScale * 100)}%
+                      </span>
+
+                      <button
+                        onClick={() =>
+                          setPdfScale((prev) => Math.min(prev + 0.25, 3))
+                        }
+                        disabled={pdfScale >= 3}
+                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
+                        aria-label="Zoom in"
+                      >
+                        <ZoomIn className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                    </div>
+
+                    {/* PDF Page Info */}
+                    {numPages && (
+                      <div className="text-white/90 text-xs sm:text-sm font-medium bg-black/40 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 border border-white/10 shadow-lg min-h-11 flex items-center">
+                        Page {currentPageInView} of {numPages}
+                      </div>
+                    )}
+
+                    {/* PDF Reset Button - Always visible but disabled when not needed */}
+                    <button
+                      onClick={handlePdfReset}
+                      disabled={pdfScale === 1}
+                      className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all border border-white/10 shadow-lg min-h-11 bg-black/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Reset
+                    </button>
+                  </>
+                )}
+
+                {/* Download Button */}
+                <button
+                  onClick={handleDownload}
+                  className="flex items-center gap-2 cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all border border-white/10 shadow-lg min-h-11 bg-black/40"
+                  aria-label="Download file"
+                >
+                  <Download className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">Download</span>
+                  <span className="sm:hidden">Save</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

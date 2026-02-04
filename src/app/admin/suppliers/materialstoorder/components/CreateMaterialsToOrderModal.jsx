@@ -102,6 +102,9 @@ export default function CreateMaterialsToOrderModal({
     // Check various fields
     const matchesCategory = item.category?.toLowerCase().includes(searchLower);
     const matchesDesc = item.description?.toLowerCase().includes(searchLower);
+    const matchesSupplierRef = item.supplier_reference
+      ?.toLowerCase()
+      .includes(searchLower);
 
     let matchesDetails = false;
     if (item.sheet) {
@@ -126,7 +129,9 @@ export default function CreateMaterialsToOrderModal({
         item.edging_tape.color?.toLowerCase().includes(searchLower);
     }
 
-    return matchesCategory || matchesDesc || matchesDetails;
+    return (
+      matchesCategory || matchesDesc || matchesSupplierRef || matchesDetails
+    );
   });
 
   const handleAddItem = (item) => {

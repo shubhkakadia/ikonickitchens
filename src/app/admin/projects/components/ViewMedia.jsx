@@ -171,30 +171,33 @@ export default function ViewMedia({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handlePrevious, handleNext, handleClose]);
 
-  // Auto-hide controls after 2 seconds of mouse inactivity
+  // Function to reset the controls timer - can be called on any user interaction
+  const resetControlsTimer = useCallback(() => {
+    // Show controls
+    setShowControls(true);
+
+    // Clear existing timeout
+    if (hideControlsTimeoutRef.current) {
+      clearTimeout(hideControlsTimeoutRef.current);
+    }
+
+    // Set new timeout to hide controls after 5 seconds
+    hideControlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 5000);
+  }, []);
+
+  // Auto-hide controls after 5 seconds of mouse inactivity
   useEffect(() => {
     const handleMouseMove = () => {
-      // Show controls when mouse moves
-      setShowControls(true);
-
-      // Clear existing timeout
-      if (hideControlsTimeoutRef.current) {
-        clearTimeout(hideControlsTimeoutRef.current);
-      }
-
-      // Set new timeout to hide controls after 2 seconds
-      hideControlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-      }, 5000);
+      resetControlsTimer();
     };
 
     // Add mouse move listener
     window.addEventListener("mousemove", handleMouseMove);
 
     // Start initial timer
-    hideControlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 5000);
+    resetControlsTimer();
 
     // Cleanup
     return () => {
@@ -203,7 +206,7 @@ export default function ViewMedia({
         clearTimeout(hideControlsTimeoutRef.current);
       }
     };
-  }, []);
+  }, [resetControlsTimer]);
 
   const canNavigatePrevious = allFiles.length > 0 && currentFileIndex > 0;
   const canNavigateNext =
@@ -333,7 +336,10 @@ export default function ViewMedia({
           {allFiles.length > 1 && (
             <>
               <button
-                onClick={handlePrevious}
+                onClick={() => {
+                  resetControlsTimer();
+                  handlePrevious();
+                }}
                 disabled={!canNavigatePrevious}
                 className={`absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
                   showControls ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -343,7 +349,10 @@ export default function ViewMedia({
                 <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </button>
               <button
-                onClick={handleNext}
+                onClick={() => {
+                  resetControlsTimer();
+                  handleNext();
+                }}
                 disabled={!canNavigateNext}
                 className={`absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
                   showControls ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -376,7 +385,10 @@ export default function ViewMedia({
                 </div>
 
                 <button
-                  onClick={handleClose}
+                  onClick={() => {
+                    resetControlsTimer();
+                    handleClose();
+                  }}
                   className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 rounded-lg p-2 sm:p-2.5 transition-all backdrop-blur-md bg-black/40 shadow-lg border border-white/10 shrink-0 min-w-11 min-h-11 flex items-center justify-center"
                   aria-label="Close preview"
                 >
@@ -400,7 +412,10 @@ export default function ViewMedia({
                   <>
                     {/* Reset Button - Always visible but disabled when not needed */}
                     <button
-                      onClick={handleReset}
+                      onClick={() => {
+                        resetControlsTimer();
+                        handleReset();
+                      }}
                       disabled={imageScale === 1 && imageRotation === 0}
                       className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all border border-white/10 shadow-lg min-h-11 bg-black/40 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
@@ -410,9 +425,10 @@ export default function ViewMedia({
                     {/* Zoom Controls */}
                     <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
                       <button
-                        onClick={() =>
-                          setImageScale((prev) => Math.max(prev - 0.25, 0.5))
-                        }
+                        onClick={() => {
+                          resetControlsTimer();
+                          setImageScale((prev) => Math.max(prev - 0.25, 0.5));
+                        }}
                         disabled={imageScale <= 0.5}
                         className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
                         aria-label="Zoom out"
@@ -425,9 +441,10 @@ export default function ViewMedia({
                       </span>
 
                       <button
-                        onClick={() =>
-                          setImageScale((prev) => Math.min(prev + 0.25, 3))
-                        }
+                        onClick={() => {
+                          resetControlsTimer();
+                          setImageScale((prev) => Math.min(prev + 0.25, 3));
+                        }}
                         disabled={imageScale >= 3}
                         className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
                         aria-label="Zoom in"
@@ -438,9 +455,10 @@ export default function ViewMedia({
 
                     {/* Rotate Button */}
                     <button
-                      onClick={() =>
-                        setImageRotation((prev) => (prev + 90) % 360)
-                      }
+                      onClick={() => {
+                        resetControlsTimer();
+                        setImageRotation((prev) => (prev + 90) % 360);
+                      }}
                       className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg p-2 sm:p-2.5 transition-all border border-white/10 shadow-lg min-w-11 min-h-11 flex items-center justify-center bg-black/40"
                       aria-label="Rotate image"
                     >
@@ -456,9 +474,10 @@ export default function ViewMedia({
                     {/* PDF Zoom Controls */}
                     <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
                       <button
-                        onClick={() =>
-                          setPdfScale((prev) => Math.max(prev - 0.25, 0.5))
-                        }
+                        onClick={() => {
+                          resetControlsTimer();
+                          setPdfScale((prev) => Math.max(prev - 0.25, 0.5));
+                        }}
                         disabled={pdfScale <= 0.5}
                         className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
                         aria-label="Zoom out"
@@ -471,9 +490,10 @@ export default function ViewMedia({
                       </span>
 
                       <button
-                        onClick={() =>
-                          setPdfScale((prev) => Math.min(prev + 0.25, 3))
-                        }
+                        onClick={() => {
+                          resetControlsTimer();
+                          setPdfScale((prev) => Math.min(prev + 0.25, 3));
+                        }}
                         disabled={pdfScale >= 3}
                         className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
                         aria-label="Zoom in"
@@ -491,7 +511,10 @@ export default function ViewMedia({
 
                     {/* PDF Reset Button - Always visible but disabled when not needed */}
                     <button
-                      onClick={handlePdfReset}
+                      onClick={() => {
+                        resetControlsTimer();
+                        handlePdfReset();
+                      }}
                       disabled={pdfScale === 1}
                       className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all border border-white/10 shadow-lg min-h-11 bg-black/40 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
@@ -502,7 +525,10 @@ export default function ViewMedia({
 
                 {/* Download Button */}
                 <button
-                  onClick={handleDownload}
+                  onClick={() => {
+                    resetControlsTimer();
+                    handleDownload();
+                  }}
                   className="flex items-center gap-2 cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all border border-white/10 shadow-lg min-h-11 bg-black/40"
                   aria-label="Download file"
                 >

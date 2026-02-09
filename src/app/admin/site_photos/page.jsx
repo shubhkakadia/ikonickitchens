@@ -71,7 +71,7 @@ export default function SitePhotosPage() {
   const [lots, setLots] = useState([]);
   const [allLots, setAllLots] = useState([]); // Store all lots for filtering
   const [loading, setLoading] = useState(true);
-  const [expandedLot, setExpandedLot] = useState(null); // Only one lot can be expanded at a time
+  const [selectedLot, setSelectedLot] = useState(null); // Currently selected lot for detail view
   const [loadingLot, setLoadingLot] = useState(null); // Track which lot is loading data
   const [selectedPhotoType, setSelectedPhotoType] = useState(
     TAB_KINDS.DELIVERY,
@@ -95,6 +95,7 @@ export default function SitePhotosPage() {
   });
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
+  const [loadingImages, setLoadingImages] = useState({}); // Track loading state for each image
   const fileInputRefs = useRef({});
   const supportDropdownRef = useRef(null);
   const settingsDropdownRef = useRef(null);
@@ -168,7 +169,7 @@ export default function SitePhotosPage() {
     }
   };
 
-  // Filter lots based on search term (client name or project name)
+  // Filter lots based on search term (client name, project name, or project ID)
   useEffect(() => {
     if (!searchTerm.trim()) {
       setLots(allLots);
@@ -176,10 +177,15 @@ export default function SitePhotosPage() {
       const searchLower = searchTerm.toLowerCase();
       const filtered = allLots.filter((lot) => {
         const projectName = lot.project?.project_name?.toLowerCase() || "";
+        const projectNameAlt = lot.project?.name?.toLowerCase() || "";
         const clientName =
           lot.project?.client?.client_name?.toLowerCase() || "";
+        const projectId = lot.project?.project_id?.toLowerCase() || "";
         return (
-          projectName.includes(searchLower) || clientName.includes(searchLower)
+          projectName.includes(searchLower) ||
+          projectNameAlt.includes(searchLower) ||
+          clientName.includes(searchLower) ||
+          projectId.includes(searchLower)
         );
       });
       setLots(filtered);
@@ -434,20 +440,19 @@ export default function SitePhotosPage() {
     }
   };
 
-  const toggleLot = (lotId) => {
-    if (expandedLot === lotId) {
-      // If clicking the same lot, close it
-      setExpandedLot(null);
-    } else {
-      // Open the clicked lot immediately and fetch data in parallel
-      setExpandedLot(lotId);
-      // Set default tab to cabinetry if not already set
-      if (!activeLotTab[lotId]) {
-        setActiveLotTab((prev) => ({ ...prev, [lotId]: "cabinetry" }));
-      }
-      // Fetch detailed lot data in the background (don't await)
-      fetchLotDetails(lotId);
+  const selectLot = (lot) => {
+    // Open the selected lot in detail view
+    setSelectedLot(lot);
+    // Set default tab to cabinetry if not already set
+    if (!activeLotTab[lot.id]) {
+      setActiveLotTab((prev) => ({ ...prev, [lot.id]: "cabinetry" }));
     }
+    // Fetch detailed lot data in the background (don't await)
+    fetchLotDetails(lot.id);
+  };
+
+  const goBackToList = () => {
+    setSelectedLot(null);
   };
 
   const getCabinetryDrawings = (lot) => {
@@ -1004,494 +1009,557 @@ export default function SitePhotosPage() {
   return (
     <AdminRoute>
       <div className="min-h-screen bg-tertiary pb-20">
-        {/* Mobile Header */}
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
-          <div className="px-4 py-3 space-y-3">
-            {/* Welcome Message */}
-            {getUserData()?.user?.username && (
-              <div className="pb-2 border-b border-gray-100">
-                <p className="text-sm text-gray-700">
-                  Welcome,{" "}
-                  <span className="font-semibold text-primary">
-                    {getUserData().user.username}
-                  </span>
-                  !
-                </p>
-              </div>
-            )}
-            {/* Header Row */}
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h1 className="text-xl font-bold text-gray-900">Site Photos</h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  {lots.length} assigned lot{lots.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Contact Support Button */}
-                <div className="relative" ref={supportDropdownRef}>
-                  <button
-                    onClick={() => setShowSupportDropdown(!showSupportDropdown)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
-                    title="Contact Support"
-                  >
-                    <HelpCircle className="w-5 h-5 text-gray-700" />
-                  </button>
-                  {showSupportDropdown && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
-                      <button
-                        onClick={handleCallSupport}
-                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
-                      >
-                        <Phone className="w-5 h-5 text-gray-700" />
-                        <span className="text-sm text-gray-700">
-                          Call Support
-                        </span>
-                      </button>
-                      <button
-                        onClick={handleWhatsAppSupport}
-                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-t border-gray-200"
-                      >
-                        <MessageSquare className="w-5 h-5 text-gray-700" />
-                        <span className="text-sm text-gray-700">WhatsApp</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {/* Settings Button */}
-                <div className="relative" ref={settingsDropdownRef}>
-                  <button
-                    onClick={() =>
-                      setShowSettingsDropdown(!showSettingsDropdown)
-                    }
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
-                    title="Settings"
-                  >
-                    <Settings className="w-5 h-5 text-gray-700" />
-                  </button>
-                  {showSettingsDropdown && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
-                      <div className="px-4 py-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">
-                            Notifications
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Installer updates
-                          </p>
-                        </div>
-                        {notificationLoading ? (
-                          <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                        ) : (
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={notificationConfig.assign_installer}
-                              onChange={handleNotificationToggle}
-                              disabled={isUpdatingNotifications}
-                              className="sr-only peer"
-                            />
-                            <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                          </label>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Logout"
-                >
-                  <LogOut className="w-5 h-5 text-gray-700" />
-                </button>
-              </div>
-            </div>
-
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by client or project name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-              />
-            </div>
-            {/* Sticky Photo Type Selector */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Photo Type
-              </label>
-              <div className="relative" ref={photoTypeDropdownRef}>
-                <button
-                  onClick={() =>
-                    setShowPhotoTypeDropdown(!showPhotoTypeDropdown)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white flex items-center justify-between hover:bg-gray-50 transition-colors"
-                >
-                  <span className="text-gray-900">
-                    {TAB_LABELS[selectedPhotoType]}
-                  </span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-gray-500 transition-transform ${showPhotoTypeDropdown ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {showPhotoTypeDropdown && (
-                  <div className="absolute top-full mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
-                    {getAllowedTabs().map((tabKind, index) => (
-                      <button
-                        key={`${tabKind}-${index}`}
-                        onClick={() => {
-                          setSelectedPhotoType(tabKind);
-                          setShowPhotoTypeDropdown(false);
-                        }}
-                        className={`w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors text-left ${
-                          selectedPhotoType === tabKind ? "bg-primary/5" : ""
-                        }`}
-                      >
-                        <span
-                          className={`text-sm ${selectedPhotoType === tabKind ? "text-primary font-medium" : "text-gray-700"}`}
-                        >
-                          {TAB_LABELS[tabKind]}
-                        </span>
-                        {selectedPhotoType === tabKind && (
-                          <div className="w-2 h-2 rounded-full bg-primary"></div>
-                        )}
-                      </button>
-                    ))}
+        {!selectedLot ? (
+          /* LIST VIEW */
+          <>
+            {/* Mobile Header */}
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+              <div className="px-4 py-3 space-y-3">
+                {/* Welcome Message */}
+                {getUserData()?.user?.username && (
+                  <div className="pb-2 border-b border-gray-100">
+                    <p className="text-sm text-gray-700">
+                      Welcome,{" "}
+                      <span className="font-semibold text-primary">
+                        {getUserData().user.username}
+                      </span>
+                      !
+                    </p>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Lots List */}
-        <div className="px-4 py-4 space-y-3">
-          {lots.length === 0 ? (
-            <div className="text-center py-12">
-              <ImageIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-600">No active lots found</p>
-            </div>
-          ) : (
-            lots.map((lot) => {
-              const isExpanded = expandedLot === lot.id;
-
-              return (
-                <div
-                  key={lot.id}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-                >
-                  {/* Lot Header */}
-                  <button
-                    onClick={() => toggleLot(lot.id)}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-900">
-                          {lot.project?.project_name ||
-                            lot.project?.name ||
-                            "No project"}
-                        </h3>
-                        {lot.project?.client?.client_name && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                            {lot.project.client.client_name}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Lot ID: {lot.lot_id || lot.id}
-                      </p>
-                    </div>
-                    {isExpanded ? (
-                      <ChevronUp className="w-5 h-5 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-gray-500" />
-                    )}
-                  </button>
-
-                  {/* Expanded Content */}
-                  {isExpanded && (
-                    <div className="border-t border-gray-200">
-                      {/* Show loading indicator while fetching lot details */}
-                      {loadingLot === lot.id ? (
-                        <div className="p-8 flex flex-col items-center justify-center">
-                          <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
-                          <p className="text-sm text-gray-600">
-                            Loading photos...
-                          </p>
+                {/* Header Row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h1 className="text-xl font-bold text-gray-900">
+                      Site Photos
+                    </h1>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {lots.length} assigned lot{lots.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Contact Support Button */}
+                    <div className="relative" ref={supportDropdownRef}>
+                      <button
+                        onClick={() =>
+                          setShowSupportDropdown(!showSupportDropdown)
+                        }
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
+                        title="Contact Support"
+                      >
+                        <HelpCircle className="w-5 h-5 text-gray-700" />
+                      </button>
+                      {showSupportDropdown && (
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                          <button
+                            onClick={handleCallSupport}
+                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                          >
+                            <Phone className="w-5 h-5 text-gray-700" />
+                            <span className="text-sm text-gray-700">
+                              Call Support
+                            </span>
+                          </button>
+                          <button
+                            onClick={handleWhatsAppSupport}
+                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-t border-gray-200"
+                          >
+                            <MessageSquare className="w-5 h-5 text-gray-700" />
+                            <span className="text-sm text-gray-700">
+                              WhatsApp
+                            </span>
+                          </button>
                         </div>
-                      ) : (
-                        <>
-                          {/* Tab Switcher */}
-                          <div className="flex border-b border-gray-200">
-                            <button
-                              onClick={() =>
-                                setActiveLotTab((prev) => ({
-                                  ...prev,
-                                  [lot.id]: "cabinetry",
-                                }))
-                              }
-                              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                                activeLotTab[lot.id] === "cabinetry"
-                                  ? "text-primary border-b-2 border-primary bg-primary/5"
-                                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                              }`}
-                            >
-                              Cabinetry Drawings
-                            </button>
-                            <button
-                              onClick={() =>
-                                setActiveLotTab((prev) => ({
-                                  ...prev,
-                                  [lot.id]: "upload",
-                                }))
-                              }
-                              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                                activeLotTab[lot.id] === "upload"
-                                  ? "text-primary border-b-2 border-primary bg-primary/5"
-                                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                              }`}
-                            >
-                              Upload
-                            </button>
-                          </div>
-
-                          {/* Cabinetry Drawings Tab Content */}
-                          {activeLotTab[lot.id] === "cabinetry" && (
-                            <div className="p-4">
-                              {(() => {
-                                const cabinetryDrawings =
-                                  getCabinetryDrawings(lot);
-                                if (cabinetryDrawings.length === 0) {
-                                  return (
-                                    <div className="text-center py-12 text-gray-500">
-                                      <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                      <p className="text-sm font-medium">
-                                        No cabinetry drawings available
-                                      </p>
-                                      <p className="text-xs mt-1">
-                                        Contact admin to get the drawings. If
-                                        you are the admin, upload the drawings
-                                        using admin portal.
-                                      </p>
-                                    </div>
-                                  );
-                                }
-
-                                return (
-                                  <div className="space-y-3">
-                                    {cabinetryDrawings.map((file) => {
-                                      const fileUrl = getFileUrl(file);
-                                      return (
-                                        <div
-                                          key={file.id}
-                                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                                        >
-                                          {/* File Icon */}
-                                          <div className="shrink-0 w-10 h-10 bg-white rounded-lg border border-gray-300 flex items-center justify-center">
-                                            {getFileIcon(file.file_kind)}
-                                          </div>
-
-                                          {/* File Info */}
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 truncate">
-                                              {file.filename}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                              {file.file_kind} •{" "}
-                                              {file.size
-                                                ? `${(file.size / 1024).toFixed(1)} KB`
-                                                : "Unknown size"}
-                                            </p>
-                                          </div>
-
-                                          {/* Action Buttons */}
-                                          <div className="flex items-center gap-2">
-                                            <button
-                                              onClick={() =>
-                                                window.open(fileUrl, "_blank")
-                                              }
-                                              className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
-                                            >
-                                              View
-                                            </button>
-                                            <button
-                                              onClick={() =>
-                                                handleDownloadFile(file)
-                                              }
-                                              className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-                                            >
-                                              Download
-                                            </button>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          )}
-
-                          {/* Upload Tab Content */}
-                          {activeLotTab[lot.id] === "upload" && (
-                            <div className="p-4">
-                              {/* Upload Section */}
-                              <div className="mb-4">
-                                <label
-                                  className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                                    uploading[`${lot.id}_${selectedPhotoType}`]
-                                      ? "border-gray-300 bg-gray-50 cursor-not-allowed pointer-events-none"
-                                      : "border-primary hover:border-primary/70 hover:bg-primary/5"
-                                  }`}
-                                >
-                                  <input
-                                    ref={(el) => {
-                                      const key = `${lot.id}_${selectedPhotoType}`;
-                                      fileInputRefs.current[key] = el;
-                                    }}
-                                    type="file"
-                                    accept={
-                                      selectedPhotoType ===
-                                        TAB_KINDS.SITE_PHOTOS ||
-                                      selectedPhotoType ===
-                                        TAB_KINDS.MEASUREMENT_PHOTOS
-                                        ? "image/*,video/*,image/heic,image/heif,.heic,.heif,.pdf,application/pdf"
-                                        : "image/*,video/*,image/heic,image/heif,.heic,.heif"
-                                    }
-                                    multiple
-                                    onChange={(e) =>
-                                      handleFileSelect(
-                                        lot,
-                                        selectedPhotoType,
-                                        e,
-                                      )
-                                    }
-                                    className="hidden"
-                                    disabled={
-                                      uploading[
-                                        `${lot.id}_${selectedPhotoType}`
-                                      ]
-                                    }
-                                  />
-                                  {uploading[
-                                    `${lot.id}_${selectedPhotoType}`
-                                  ] ? (
-                                    <div className="flex flex-col items-center justify-center w-full px-4">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                                        <span className="text-sm text-gray-500">
-                                          Uploading...{" "}
-                                          {uploadProgressState[
-                                            `${lot.id}_${selectedPhotoType}`
-                                          ] || 0}
-                                          %
-                                        </span>
-                                      </div>
-                                      <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                        <div
-                                          className="h-full bg-primary transition-all duration-300 ease-out"
-                                          style={{
-                                            width: `${uploadProgressState[`${lot.id}_${selectedPhotoType}`] || 0}%`,
-                                          }}
-                                        />
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <Camera className="w-5 h-5 text-primary" />
-                                      <span className="text-sm font-medium text-primary">
-                                        Take/Select Photos
-                                      </span>
-                                    </>
-                                  )}
-                                </label>
-                              </div>
-
-                              {/* Files Grid */}
-                              {(() => {
-                                const files = getFilesForTab(
-                                  lot,
-                                  selectedPhotoType,
-                                );
-                                if (files.length === 0) {
-                                  return (
-                                    <div className="text-center py-8 text-gray-500">
-                                      <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                      <p className="text-sm">
-                                        No files uploaded yet
-                                      </p>
-                                    </div>
-                                  );
-                                }
-
-                                return (
-                                  <div className="grid grid-cols-3 gap-2 mb-4">
-                                    {files.map((file) => {
-                                      const fileUrl = getFileUrl(file);
-                                      const hasNotes =
-                                        fileNotes[file.id] &&
-                                        fileNotes[file.id].trim() !== "";
-                                      return (
-                                        <div
-                                          key={file.id}
-                                          onClick={() =>
-                                            openFileModal(file, lot)
-                                          }
-                                          className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group cursor-pointer"
-                                        >
-                                          {file.file_kind === "PHOTO" &&
-                                          fileUrl ? (
-                                            <img
-                                              src={fileUrl}
-                                              alt={file.filename}
-                                              className="w-full h-full object-cover"
-                                            />
-                                          ) : file.file_kind === "VIDEO" &&
-                                            fileUrl ? (
-                                            <video
-                                              src={fileUrl}
-                                              className="w-full h-full object-cover"
-                                              muted
-                                              playsInline
-                                            />
-                                          ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                                              {getFileIcon(file.file_kind)}
-                                            </div>
-                                          )}
-                                          {file.file_kind === "VIDEO" && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                              <Video className="w-8 h-8 text-white" />
-                                            </div>
-                                          )}
-                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                          {hasNotes && (
-                                            <div className="absolute top-1 right-1 bg-primary/90 text-white rounded-full p-1">
-                                              <FileText className="w-3 h-3" />
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          )}
-                        </>
                       )}
                     </div>
-                  )}
+                    {/* Settings Button */}
+                    <div className="relative" ref={settingsDropdownRef}>
+                      <button
+                        onClick={() =>
+                          setShowSettingsDropdown(!showSettingsDropdown)
+                        }
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
+                        title="Settings"
+                      >
+                        <Settings className="w-5 h-5 text-gray-700" />
+                      </button>
+                      {showSettingsDropdown && (
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                          <div className="px-4 py-3 flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-800">
+                                Notifications
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Installer updates
+                              </p>
+                            </div>
+                            {notificationLoading ? (
+                              <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                            ) : (
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={notificationConfig.assign_installer}
+                                  onChange={handleNotificationToggle}
+                                  disabled={isUpdatingNotifications}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Logout"
+                    >
+                      <LogOut className="w-5 h-5 text-gray-700" />
+                    </button>
+                  </div>
                 </div>
-              );
-            })
-          )}
-        </div>
+
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by client, project, or ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Lots List */}
+            <div className="px-4 py-4 space-y-3">
+              {lots.length === 0 ? (
+                <div className="text-center py-12">
+                  <ImageIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-600">No active lots found</p>
+                </div>
+              ) : (
+                lots.map((lot) => {
+                  return (
+                    <button
+                      key={lot.id}
+                      onClick={() => selectLot(lot)}
+                      className="w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md hover:border-primary/30 transition-all"
+                    >
+                      <div className="px-4 py-3 flex items-center justify-between">
+                        <div className="flex-1 text-left">
+                          {lot.project?.client?.client_name && (
+                            <p className="text-xs font-medium text-primary mb-1">
+                              {lot.project.client.client_name}
+                            </p>
+                          )}
+                          <h3 className="font-semibold text-gray-900">
+                            {lot.project?.project_name ||
+                              lot.project?.name ||
+                              "No project"}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Lot ID: {lot.lot_id || lot.id}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </>
+        ) : (
+          /* DETAIL VIEW */
+          <>
+            {/* Detail Screen Header */}
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+              <div className="px-4 py-3">
+                {/* Back Button and Title */}
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    onClick={goBackToList}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Back to list"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-700" />
+                  </button>
+                  <div className="flex-1">
+                    <h1 className="text-lg font-bold text-gray-900">
+                      {selectedLot.project?.project_name ||
+                        selectedLot.project?.name ||
+                        "No project"}
+                    </h1>
+                  </div>
+                </div>
+
+                {/* Project and Client Details */}
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Project ID</p>
+                      <p className="font-medium text-gray-900">
+                        {selectedLot.project?.project_id || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">Lot ID</p>
+                      <p className="font-medium text-gray-900">
+                        {selectedLot.lot_id || selectedLot.id}
+                      </p>
+                    </div>
+                    {selectedLot.project?.client?.client_name && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-gray-600 mb-1">Client</p>
+                        <p className="font-medium text-primary">
+                          {selectedLot.project.client.client_name}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Photo Type Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Photo Type
+                  </label>
+                  <div className="relative" ref={photoTypeDropdownRef}>
+                    <button
+                      onClick={() =>
+                        setShowPhotoTypeDropdown(!showPhotoTypeDropdown)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-gray-900">
+                        {TAB_LABELS[selectedPhotoType]}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-gray-500 transition-transform ${showPhotoTypeDropdown ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {showPhotoTypeDropdown && (
+                      <div className="absolute top-full mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                        {getAllowedTabs().map((tabKind, index) => (
+                          <button
+                            key={`${tabKind}-${index}`}
+                            onClick={() => {
+                              setSelectedPhotoType(tabKind);
+                              setShowPhotoTypeDropdown(false);
+                            }}
+                            className={`w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors text-left ${
+                              selectedPhotoType === tabKind
+                                ? "bg-primary/5"
+                                : ""
+                            }`}
+                          >
+                            <span
+                              className={`text-sm ${selectedPhotoType === tabKind ? "text-primary font-medium" : "text-gray-700"}`}
+                            >
+                              {TAB_LABELS[tabKind]}
+                            </span>
+                            {selectedPhotoType === tabKind && (
+                              <div className="w-2 h-2 rounded-full bg-primary"></div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Detail Content */}
+            <div className="pb-4">
+              {loadingLot === selectedLot.id ? (
+                <div className="p-8 flex flex-col items-center justify-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+                  <p className="text-sm text-gray-600">Loading photos...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Tab Switcher */}
+                  <div className="flex border-b border-gray-200 bg-white">
+                    <button
+                      onClick={() =>
+                        setActiveLotTab((prev) => ({
+                          ...prev,
+                          [selectedLot.id]: "cabinetry",
+                        }))
+                      }
+                      className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                        activeLotTab[selectedLot.id] === "cabinetry" ||
+                        !activeLotTab[selectedLot.id]
+                          ? "text-primary border-b-2 border-primary bg-primary/5"
+                          : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                      }`}
+                    >
+                      Cabinetry Drawings
+                    </button>
+                    <button
+                      onClick={() =>
+                        setActiveLotTab((prev) => ({
+                          ...prev,
+                          [selectedLot.id]: "upload",
+                        }))
+                      }
+                      className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                        activeLotTab[selectedLot.id] === "upload"
+                          ? "text-primary border-b-2 border-primary bg-primary/5"
+                          : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                      }`}
+                    >
+                      Upload
+                    </button>
+                  </div>
+
+                  {/* Cabinetry Drawings Tab Content */}
+                  {(activeLotTab[selectedLot.id] === "cabinetry" ||
+                    !activeLotTab[selectedLot.id]) && (
+                    <div className="p-4">
+                      {(() => {
+                        const cabinetryDrawings =
+                          getCabinetryDrawings(selectedLot);
+                        if (cabinetryDrawings.length === 0) {
+                          return (
+                            <div className="text-center py-12 text-gray-500">
+                              <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                              <p className="text-sm font-medium">
+                                No cabinetry drawings available
+                              </p>
+                              <p className="text-xs mt-1">
+                                Contact admin to get the drawings. If you are
+                                the admin, upload the drawings using admin
+                                portal.
+                              </p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-3">
+                            {cabinetryDrawings.map((file) => {
+                              const fileUrl = getFileUrl(file);
+                              return (
+                                <div
+                                  key={file.id}
+                                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                                >
+                                  {/* File Icon */}
+                                  <div className="shrink-0 w-10 h-10 bg-white rounded-lg border border-gray-300 flex items-center justify-center">
+                                    {getFileIcon(file.file_kind)}
+                                  </div>
+
+                                  {/* File Info */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {file.filename}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {file.file_kind} •{" "}
+                                      {file.size
+                                        ? `${(file.size / 1024).toFixed(1)} KB`
+                                        : "Unknown size"}
+                                    </p>
+                                  </div>
+
+                                  {/* Action Buttons */}
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() =>
+                                        window.open(fileUrl, "_blank")
+                                      }
+                                      className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
+                                    >
+                                      View
+                                    </button>
+                                    <button
+                                      onClick={() => handleDownloadFile(file)}
+                                      className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                                    >
+                                      Download
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Upload Tab Content */}
+                  {activeLotTab[selectedLot.id] === "upload" && (
+                    <div className="p-4">
+                      {/* Upload Section */}
+                      <div className="mb-4">
+                        <label
+                          className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                            uploading[`${selectedLot.id}_${selectedPhotoType}`]
+                              ? "border-gray-300 bg-gray-50 cursor-not-allowed pointer-events-none"
+                              : "border-primary hover:border-primary/70 hover:bg-primary/5"
+                          }`}
+                        >
+                          <input
+                            ref={(el) => {
+                              const key = `${selectedLot.id}_${selectedPhotoType}`;
+                              fileInputRefs.current[key] = el;
+                            }}
+                            type="file"
+                            accept={
+                              selectedPhotoType === TAB_KINDS.SITE_PHOTOS ||
+                              selectedPhotoType === TAB_KINDS.MEASUREMENT_PHOTOS
+                                ? "image/*,video/*,image/heic,image/heif,.heic,.heif,.pdf,application/pdf"
+                                : "image/*,video/*,image/heic,image/heif,.heic,.heif"
+                            }
+                            multiple
+                            onChange={(e) =>
+                              handleFileSelect(
+                                selectedLot,
+                                selectedPhotoType,
+                                e,
+                              )
+                            }
+                            className="hidden"
+                            disabled={
+                              uploading[
+                                `${selectedLot.id}_${selectedPhotoType}`
+                              ]
+                            }
+                          />
+                          {uploading[
+                            `${selectedLot.id}_${selectedPhotoType}`
+                          ] ? (
+                            <div className="flex flex-col items-center justify-center w-full px-4">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                                <span className="text-sm text-gray-500">
+                                  Uploading...{" "}
+                                  {uploadProgressState[
+                                    `${selectedLot.id}_${selectedPhotoType}`
+                                  ] || 0}
+                                  %
+                                </span>
+                              </div>
+                              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-primary transition-all duration-300 ease-out"
+                                  style={{
+                                    width: `${uploadProgressState[`${selectedLot.id}_${selectedPhotoType}`] || 0}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <Camera className="w-5 h-5 text-primary" />
+                              <span className="text-sm font-medium text-primary">
+                                Take/Select Photos
+                              </span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+
+                      {/* Files Grid */}
+                      {(() => {
+                        const files = getFilesForTab(
+                          selectedLot,
+                          selectedPhotoType,
+                        );
+                        if (files.length === 0) {
+                          return (
+                            <div className="text-center py-8 text-gray-500">
+                              <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No files uploaded yet</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="grid grid-cols-3 gap-2 mb-4">
+                            {files.map((file) => {
+                              const fileUrl = getFileUrl(file);
+                              const hasNotes =
+                                fileNotes[file.id] &&
+                                fileNotes[file.id].trim() !== "";
+                              return (
+                                <div
+                                  key={file.id}
+                                  onClick={() =>
+                                    openFileModal(file, selectedLot)
+                                  }
+                                  className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group cursor-pointer"
+                                >
+                                  {file.file_kind === "PHOTO" && fileUrl ? (
+                                    <div className="relative w-full h-full">
+                                      {loadingImages[file.id] !== false && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                                          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                        </div>
+                                      )}
+                                      <img
+                                        src={fileUrl}
+                                        alt={file.filename}
+                                        className="w-full h-full object-cover"
+                                        onLoad={() =>
+                                          setLoadingImages((prev) => ({
+                                            ...prev,
+                                            [file.id]: false,
+                                          }))
+                                        }
+                                        onError={() =>
+                                          setLoadingImages((prev) => ({
+                                            ...prev,
+                                            [file.id]: false,
+                                          }))
+                                        }
+                                      />
+                                    </div>
+                                  ) : file.file_kind === "VIDEO" && fileUrl ? (
+                                    <video
+                                      src={fileUrl}
+                                      className="w-full h-full object-cover"
+                                      muted
+                                      playsInline
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                      {getFileIcon(file.file_kind)}
+                                    </div>
+                                  )}
+                                  {file.file_kind === "VIDEO" && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                      <Video className="w-8 h-8 text-white" />
+                                    </div>
+                                  )}
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                                  {hasNotes && (
+                                    <div className="absolute top-1 right-1 bg-primary/90 text-white rounded-full p-1">
+                                      <FileText className="w-3 h-3" />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </>
+        )}
 
         {/* File Modal */}
         {selectedFile && (
@@ -1544,11 +1612,30 @@ export default function SitePhotosPage() {
               <div className="p-4">
                 {selectedFile.file_kind === "PHOTO" &&
                 getFileUrl(selectedFile) ? (
-                  <img
-                    src={getFileUrl(selectedFile)}
-                    alt={selectedFile.filename}
-                    className="w-full rounded-lg mb-4"
-                  />
+                  <div className="relative w-full mb-4">
+                    {loadingImages[`modal-${selectedFile.id}`] !== false && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg min-h-[300px]">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      </div>
+                    )}
+                    <img
+                      src={getFileUrl(selectedFile)}
+                      alt={selectedFile.filename}
+                      className="w-full rounded-lg"
+                      onLoad={() =>
+                        setLoadingImages((prev) => ({
+                          ...prev,
+                          [`modal-${selectedFile.id}`]: false,
+                        }))
+                      }
+                      onError={() =>
+                        setLoadingImages((prev) => ({
+                          ...prev,
+                          [`modal-${selectedFile.id}`]: false,
+                        }))
+                      }
+                    />
+                  </div>
                 ) : selectedFile.file_kind === "VIDEO" &&
                   getFileUrl(selectedFile) ? (
                   <video
@@ -1670,11 +1757,31 @@ export default function SitePhotosPage() {
                         {/* Image Preview */}
                         <div className="relative w-full aspect-square bg-gray-100 rounded-lg overflow-hidden">
                           {fileItem.preview ? (
-                            <img
-                              src={fileItem.preview}
-                              alt={fileItem.file.name}
-                              className="w-full h-full object-contain"
-                            />
+                            <>
+                              {loadingImages[`preview-${fileItem.id}`] !==
+                                false && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                </div>
+                              )}
+                              <img
+                                src={fileItem.preview}
+                                alt={fileItem.file.name}
+                                className="w-full h-full object-contain"
+                                onLoad={() =>
+                                  setLoadingImages((prev) => ({
+                                    ...prev,
+                                    [`preview-${fileItem.id}`]: false,
+                                  }))
+                                }
+                                onError={() =>
+                                  setLoadingImages((prev) => ({
+                                    ...prev,
+                                    [`preview-${fileItem.id}`]: false,
+                                  }))
+                                }
+                              />
+                            </>
                           ) : fileItem.file.type === "application/pdf" ||
                             fileItem.file.name
                               .toLowerCase()

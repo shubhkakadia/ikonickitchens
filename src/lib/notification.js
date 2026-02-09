@@ -40,7 +40,12 @@ async function sendWhatsAppMessage(phoneNumber, templateName, parameters = []) {
           type: "body",
           parameters: parameters.map((param) => ({
             type: "text",
-            text: String(param),
+            text:
+              param === undefined ||
+              param === null ||
+              String(param).trim() === ""
+                ? "-"
+                : String(param),
           })),
         },
       ];

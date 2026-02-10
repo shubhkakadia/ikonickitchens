@@ -1,8 +1,6 @@
-// const { PrismaClient } = require("@prisma/client");
-// const prisma = new PrismaClient();
-import { PrismaClient } from "./generated/prisma/index.js";
+const { PrismaClient } = require("./generated/prisma/index.js");
 
-export const prisma = new PrismaClient();
+const prisma = new PrismaClient();
 
 async function migrateSuppliers() {
   console.log("Starting migration...");
@@ -29,8 +27,8 @@ async function migrateSuppliers() {
     for (const item of items) {
       if (!item.supplier_id) continue;
 
-      // Check if ItemSupplier already exists for this pair
-      const existing = await prisma.itemSupplier.findFirst({
+      // Check if item_suppliers already exists for this pair
+      const existing = await prisma.item_suppliers.findFirst({
         where: {
           item_id: item.item_id,
           supplier_id: item.supplier_id,
@@ -38,20 +36,33 @@ async function migrateSuppliers() {
       });
 
       if (!existing) {
-        await prisma.itemSupplier.create({
+        await prisma.item_suppliers.create({
           data: {
             item_id: item.item_id,
             supplier_id: item.supplier_id,
             supplier_reference: item.supplier_reference || null,
+            supplier_product_link: item.supplier_product_link || null,
+            price: item.price || null,
           },
         });
         migratedCount++;
       } else {
-        // Optional: Update supplier_reference if it's missing in existing record but present in legacy
+        // Optional: Update fields if they're missing in existing record but present in legacy
+        const updateData = {};
         if (!existing.supplier_reference && item.supplier_reference) {
-          await prisma.itemSupplier.update({
+          updateData.supplier_reference = item.supplier_reference;
+        }
+        if (!existing.supplier_product_link && item.supplier_product_link) {
+          updateData.supplier_product_link = item.supplier_product_link;
+        }
+        if (!existing.price && item.price) {
+          updateData.price = item.price;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await prisma.item_suppliers.update({
             where: { id: existing.id },
-            data: { supplier_reference: item.supplier_reference },
+            data: updateData,
           });
           migratedCount++; // Count as migrated/updated
         } else {

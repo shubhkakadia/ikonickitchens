@@ -214,6 +214,7 @@ export function AdminRoute({
     "/admin/projects/addproject": "add_projects",
     [`/admin/projects/${id}`]: "project_details",
     "/admin/projects/lotatglance": "lotatglance",
+    "/admin/projects/sitemeasurements": "site_measurements",
     "/admin/suppliers": "all_suppliers",
     "/admin/suppliers/addsupplier": "add_suppliers",
     [`/admin/suppliers/${id}`]: "supplier_details",

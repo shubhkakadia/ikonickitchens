@@ -111,6 +111,7 @@ export async function POST(request) {
             purchaseorder: module_access.purchaseorder,
             statements: module_access.statements,
             site_photos: module_access.site_photos,
+            site_measurements: module_access.site_measurements,
             config: module_access.config,
             calendar: module_access.calendar,
           },

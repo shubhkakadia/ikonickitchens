@@ -32,37 +32,38 @@ model users {
 }
 
 model module_access {
-  id               String   @id @default(uuid())
-  user_id          String   @unique
-  all_clients      Boolean  @default(false)
-  add_clients      Boolean  @default(false)
-  client_details   Boolean  @default(false)
-  dashboard        Boolean  @default(false)
-  delete_media     Boolean  @default(false)
-  all_employees    Boolean  @default(false)
-  add_employees    Boolean  @default(false)
-  employee_details Boolean  @default(false)
-  all_projects     Boolean  @default(false)
-  add_projects     Boolean  @default(false)
-  project_details  Boolean  @default(false)
-  all_suppliers    Boolean  @default(false)
-  add_suppliers    Boolean  @default(false)
-  supplier_details Boolean  @default(false)
-  all_items        Boolean  @default(false)
-  add_items        Boolean  @default(false)
-  item_details     Boolean  @default(false)
-  logs             Boolean  @default(false)
-  lotatglance      Boolean  @default(false)
-  materialstoorder Boolean  @default(false)
-  purchaseorder    Boolean  @default(false)
-  statements       Boolean  @default(false)
-  site_photos      Boolean  @default(false)
-  config           Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  usedmaterial     Boolean  @default(false)
-  calendar         Boolean  @default(false)
-  user             users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id                String   @id @default(uuid())
+  user_id           String   @unique
+  all_clients       Boolean  @default(false)
+  add_clients       Boolean  @default(false)
+  client_details    Boolean  @default(false)
+  dashboard         Boolean  @default(false)
+  delete_media      Boolean  @default(false)
+  all_employees     Boolean  @default(false)
+  add_employees     Boolean  @default(false)
+  employee_details  Boolean  @default(false)
+  all_projects      Boolean  @default(false)
+  add_projects      Boolean  @default(false)
+  project_details   Boolean  @default(false)
+  all_suppliers     Boolean  @default(false)
+  add_suppliers     Boolean  @default(false)
+  supplier_details  Boolean  @default(false)
+  all_items         Boolean  @default(false)
+  add_items         Boolean  @default(false)
+  item_details      Boolean  @default(false)
+  logs              Boolean  @default(false)
+  lotatglance       Boolean  @default(false)
+  materialstoorder  Boolean  @default(false)
+  purchaseorder     Boolean  @default(false)
+  statements        Boolean  @default(false)
+  site_photos       Boolean  @default(false)
+  config            Boolean  @default(false)
+  site_measurements Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  usedmaterial      Boolean  @default(false)
+  calendar          Boolean  @default(false)
+  user              users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
 }
@@ -438,11 +439,11 @@ model item {
 }
 
 model item_suppliers {
-  id                    String @id @default(uuid())
+  id                    String   @id @default(uuid())
   item_id               String
   supplier_id           String
   supplier_reference    String?
-  supplier_product_link String?
+  supplier_product_link String?  @db.LongText
   price                 Decimal? @db.Decimal(10, 2)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt

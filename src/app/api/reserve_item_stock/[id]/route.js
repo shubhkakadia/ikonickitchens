@@ -24,7 +24,6 @@ export async function GET(request, { params }) {
             hardware: true,
             accessory: true,
             edging_tape: true,
-            supplier: true,
           },
         },
       },

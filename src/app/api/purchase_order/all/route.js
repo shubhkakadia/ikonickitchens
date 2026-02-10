@@ -25,6 +25,11 @@ export async function GET(request) {
                 accessory: true,
                 edging_tape: true,
                 image: true,
+                itemSuppliers: {
+                  include: {
+                    supplier: true,
+                  },
+                },
               },
             },
           },

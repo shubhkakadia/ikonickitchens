@@ -15,11 +15,10 @@ export async function GET(request, { params }) {
       where: { item_id: id },
     });
 
-    
     if (!item) {
       return NextResponse.json(
         { status: false, message: "Item not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -34,7 +33,6 @@ export async function GET(request, { params }) {
             hardware: true,
             accessory: true,
             edging_tape: true,
-            supplier: true,
           },
         },
       },
@@ -46,7 +44,7 @@ export async function GET(request, { params }) {
     // Calculate total reserved quantity
     const totalReserved = reservations.reduce(
       (sum, res) => sum + res.quantity,
-      0
+      0,
     );
 
     return NextResponse.json({
@@ -62,7 +60,7 @@ export async function GET(request, { params }) {
     console.error("Error in GET /api/reserve_item_stock/item/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

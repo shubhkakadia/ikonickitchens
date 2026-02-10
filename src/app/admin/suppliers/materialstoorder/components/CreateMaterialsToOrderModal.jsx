@@ -102,9 +102,10 @@ export default function CreateMaterialsToOrderModal({
     // Check various fields
     const matchesCategory = item.category?.toLowerCase().includes(searchLower);
     const matchesDesc = item.description?.toLowerCase().includes(searchLower);
-    const matchesSupplierRef = item.supplier_reference
-      ?.toLowerCase()
-      .includes(searchLower);
+    const matchesSupplierRef =
+      item.itemSuppliers?.some((is) =>
+        is.supplier_reference?.toLowerCase().includes(searchLower),
+      ) || item.supplier_reference?.toLowerCase().includes(searchLower);
 
     let matchesDetails = false;
     if (item.sheet) {
@@ -453,7 +454,16 @@ export default function CreateMaterialsToOrderModal({
                                 item.edging_tape?.dimensions ||
                                 "N/A"}{" "}
                               • Supplier Reference:{" "}
-                              {item?.supplier_reference || "N/A"}
+                              {item.itemSuppliers?.length > 0
+                                ? item.itemSuppliers
+                                    .map(
+                                      (is) =>
+                                        `${
+                                          is.supplier?.name || "Unknown"
+                                        }: ${is.supplier_reference || "N/A"}`,
+                                    )
+                                    .join(", ")
+                                : item.supplier_reference || "N/A"}
                             </p>
                           </div>
                           <Plus className="w-4 h-4 text-primary ml-auto" />
@@ -530,14 +540,29 @@ export default function CreateMaterialsToOrderModal({
                         {/* Details Column */}
                         <td className="px-4 py-3">
                           <div className="text-xs text-slate-600 space-y-1">
-                            {item?.supplier_reference && (
-                              <div>
-                                <span className="font-medium">
-                                  Supplier Ref:
-                                </span>{" "}
-                                {item.supplier_reference}
-                              </div>
-                            )}
+                            {(() => {
+                              const refs =
+                                item.itemSuppliers?.length > 0
+                                  ? item.itemSuppliers
+                                      .map(
+                                        (is) =>
+                                          `${
+                                            is.supplier?.name || "Unknown"
+                                          }: ${is.supplier_reference || "N/A"}`,
+                                      )
+                                      .join(", ")
+                                  : item.supplier_reference;
+                              return (
+                                refs && (
+                                  <div>
+                                    <span className="font-medium">
+                                      Supplier Ref:
+                                    </span>{" "}
+                                    {refs}
+                                  </div>
+                                )
+                              );
+                            })()}
                             {item.sheet && (
                               <>
                                 <div>

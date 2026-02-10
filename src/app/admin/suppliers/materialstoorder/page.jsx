@@ -576,11 +576,24 @@ export default function page() {
     // and exclude items that have stock reserved
     const filteredMTOs = (mtos || [])
       .map((mto) => {
-        const supplierItems = (mto.items || []).filter(
-          (it) =>
-            (it.item?.supplier?.supplier_id || it.item?.supplier_id || null) ===
-              supplierId && !reservedItemsMap[it.id], // Exclude items with reserved stock
-        );
+        const supplierItems = (mto.items || []).filter((it) => {
+          // Check if item has itemSuppliers array (new multi-supplier structure)
+          if (it.item?.itemSuppliers && it.item.itemSuppliers.length > 0) {
+            // Check if any of this item's suppliers matches the selected supplier ID
+            return (
+              it.item.itemSuppliers.some(
+                (is) => is.supplier?.supplier_id === supplierId,
+              ) && !reservedItemsMap[it.id]
+            );
+          } else {
+            // Fallback: Legacy single supplier structure
+            return (
+              (it.item?.supplier?.supplier_id ||
+                it.item?.supplier_id ||
+                null) === supplierId && !reservedItemsMap[it.id]
+            );
+          }
+        });
         return { ...mto, items: supplierItems };
       })
       .filter((mto) => (mto.items || []).length > 0);
@@ -1949,21 +1962,55 @@ export default function page() {
                                               <div className="space-y-2">
                                                 {(() => {
                                                   // Group items by supplier name (Unassigned last)
+                                                  // UPDATED: Handle multi-supplier items - an item can appear under multiple suppliers
                                                   const groups = new Map();
                                                   mto.items.forEach((it) => {
-                                                    const supplierName =
-                                                      it.item?.supplier?.name ||
-                                                      "Unassigned";
+                                                    // Check if item has itemSuppliers array (new multi-supplier structure)
                                                     if (
-                                                      !groups.has(supplierName)
-                                                    )
-                                                      groups.set(
-                                                        supplierName,
-                                                        [],
+                                                      it.item?.itemSuppliers &&
+                                                      it.item.itemSuppliers
+                                                        .length > 0
+                                                    ) {
+                                                      // Add this item under each of its suppliers
+                                                      it.item.itemSuppliers.forEach(
+                                                        (itemSupplier) => {
+                                                          const supplierName =
+                                                            itemSupplier
+                                                              .supplier?.name ||
+                                                            "Unassigned";
+                                                          if (
+                                                            !groups.has(
+                                                              supplierName,
+                                                            )
+                                                          )
+                                                            groups.set(
+                                                              supplierName,
+                                                              [],
+                                                            );
+                                                          groups
+                                                            .get(supplierName)
+                                                            .push(it);
+                                                        },
                                                       );
-                                                    groups
-                                                      .get(supplierName)
-                                                      .push(it);
+                                                    } else {
+                                                      // Fallback: Legacy single supplier structure or no supplier
+                                                      const supplierName =
+                                                        it.item?.supplier
+                                                          ?.name ||
+                                                        "Unassigned";
+                                                      if (
+                                                        !groups.has(
+                                                          supplierName,
+                                                        )
+                                                      )
+                                                        groups.set(
+                                                          supplierName,
+                                                          [],
+                                                        );
+                                                      groups
+                                                        .get(supplierName)
+                                                        .push(it);
+                                                    }
                                                   });
                                                   const orderedGroupNames =
                                                     Array.from(
@@ -2032,15 +2079,50 @@ export default function page() {
                                                                       groups.get(
                                                                         name,
                                                                       )?.[0];
-                                                                    const supplierId =
-                                                                      firstItem
-                                                                        ?.item
-                                                                        ?.supplier
-                                                                        ?.supplier_id ||
-                                                                      firstItem
-                                                                        ?.item
-                                                                        ?.supplier_id ||
+
+                                                                    // UPDATED: Get supplier ID from itemSuppliers for multi-supplier support
+                                                                    let supplierId =
                                                                       null;
+
+                                                                    if (
+                                                                      firstItem
+                                                                        ?.item
+                                                                        ?.itemSuppliers &&
+                                                                      firstItem
+                                                                        .item
+                                                                        .itemSuppliers
+                                                                        .length >
+                                                                        0
+                                                                    ) {
+                                                                      // Find the supplier matching this group name
+                                                                      const matchingSupplier =
+                                                                        firstItem.item.itemSuppliers.find(
+                                                                          (
+                                                                            is,
+                                                                          ) =>
+                                                                            is
+                                                                              .supplier
+                                                                              ?.name ===
+                                                                            name,
+                                                                        );
+                                                                      supplierId =
+                                                                        matchingSupplier
+                                                                          ?.supplier
+                                                                          ?.supplier_id ||
+                                                                        null;
+                                                                    } else {
+                                                                      // Fallback: Legacy single supplier structure
+                                                                      supplierId =
+                                                                        firstItem
+                                                                          ?.item
+                                                                          ?.supplier
+                                                                          ?.supplier_id ||
+                                                                        firstItem
+                                                                          ?.item
+                                                                          ?.supplier_id ||
+                                                                        null;
+                                                                    }
+
                                                                     if (
                                                                       !supplierId
                                                                     )
@@ -2192,21 +2274,37 @@ export default function page() {
                                                                           </td>
                                                                           <td className="px-3 py-2">
                                                                             <div className="text-xs text-gray-600 space-y-1">
-                                                                              {item
-                                                                                .item
-                                                                                ?.supplier_reference && (
-                                                                                <div>
-                                                                                  <span className="font-medium">
-                                                                                    Supplier
-                                                                                    Ref:
-                                                                                  </span>{" "}
-                                                                                  {
-                                                                                    item
-                                                                                      .item
-                                                                                      .supplier_reference
-                                                                                  }
-                                                                                </div>
-                                                                              )}
+                                                                              {(() => {
+                                                                                const supplierRef =
+                                                                                  item.item?.itemSuppliers?.find(
+                                                                                    (
+                                                                                      is,
+                                                                                    ) =>
+                                                                                      (is
+                                                                                        .supplier
+                                                                                        ?.name ||
+                                                                                        "Unassigned") ===
+                                                                                      name,
+                                                                                  )
+                                                                                    ?.supplier_reference ||
+                                                                                  item
+                                                                                    .item
+                                                                                    ?.supplier_reference;
+
+                                                                                return (
+                                                                                  supplierRef && (
+                                                                                    <div>
+                                                                                      <span className="font-medium">
+                                                                                        Supplier
+                                                                                        Ref:
+                                                                                      </span>{" "}
+                                                                                      {
+                                                                                        supplierRef
+                                                                                      }
+                                                                                    </div>
+                                                                                  )
+                                                                                );
+                                                                              })()}
                                                                               {item
                                                                                 .item
                                                                                 ?.sheet && (

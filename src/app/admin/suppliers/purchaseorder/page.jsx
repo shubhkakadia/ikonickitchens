@@ -2080,18 +2080,33 @@ export default function page() {
                                                         </td>
                                                         <td className="px-3 py-2">
                                                           <div className="text-xs text-gray-600 space-y-1">
-                                                            {item.item
-                                                              ?.supplier_reference && (
-                                                              <div>
-                                                                <span className="font-medium">
-                                                                  Supplier Ref:
-                                                                </span>{" "}
-                                                                {
-                                                                  item.item
-                                                                    .supplier_reference
-                                                                }
-                                                              </div>
-                                                            )}
+                                                            {(() => {
+                                                              const supplierRef =
+                                                                item.item?.itemSuppliers?.find(
+                                                                  (is) =>
+                                                                    is.supplier
+                                                                      ?.supplier_id ===
+                                                                    po.supplier
+                                                                      ?.supplier_id,
+                                                                )
+                                                                  ?.supplier_reference ||
+                                                                item.item
+                                                                  ?.supplier_reference;
+
+                                                              return (
+                                                                supplierRef && (
+                                                                  <div>
+                                                                    <span className="font-medium">
+                                                                      Supplier
+                                                                      Ref:
+                                                                    </span>{" "}
+                                                                    {
+                                                                      supplierRef
+                                                                    }
+                                                                  </div>
+                                                                )
+                                                              );
+                                                            })()}
                                                             {item.item
                                                               ?.sheet && (
                                                               <>

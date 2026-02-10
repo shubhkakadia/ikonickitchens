@@ -26,10 +26,14 @@ export async function GET(request) {
                 hardware: true,
                 accessory: true,
                 edging_tape: true,
-                supplier: {
-                  select: {
-                    supplier_id: true,
-                    name: true,
+                itemSuppliers: {
+                  include: {
+                    supplier: {
+                      select: {
+                        supplier_id: true,
+                        name: true,
+                      },
+                    },
                   },
                 },
               },
@@ -80,22 +84,6 @@ export async function GET(request) {
           return;
         }
 
-        // Handle items with or without supplier
-        const supplierId = item.supplier?.supplier_id || "unassigned";
-        const supplierName = item.supplier?.name || "Unassigned";
-        const itemId = item.item_id;
-
-        // Initialize supplier in map if not exists
-        if (!supplierMap.has(supplierId)) {
-          supplierMap.set(supplierId, {
-            supplier_id: supplierId,
-            supplier_name: supplierName,
-            items: new Map(),
-          });
-        }
-
-        const supplier = supplierMap.get(supplierId);
-
         // Calculate remaining quantity (total - ordered)
         const totalQty = parseFloat(mtoItem.quantity) || 0;
         const orderedQty = parseFloat(mtoItem.quantity_ordered_po) || 0;
@@ -104,34 +92,105 @@ export async function GET(request) {
         // Skip if nothing remaining to order
         if (remainingQty <= 0) return;
 
-        // Aggregate items by item_id
-        if (!supplier.items.has(itemId)) {
-          supplier.items.set(itemId, {
-            item_id: itemId,
-            category: item.category,
-            description: item.description,
-            supplier_reference: item.supplier_reference,
-            image: item.image,
-            sheet: item.sheet,
-            handle: item.handle,
-            hardware: item.hardware,
-            accessory: item.accessory,
-            edging_tape: item.edging_tape,
-            measurement_unit: item.measurement_unit,
-            stock_on_hand: item.quantity || 0,
-            cumulative_quantity: 0,
-            mto_sources: [], // Track which MTOs contribute to this item
+        const itemId = item.item_id;
+
+        // UPDATED: Handle items with itemSuppliers (multi-supplier support)
+        // An item can appear under multiple suppliers
+        const itemSuppliers = item.itemSuppliers || [];
+
+        if (itemSuppliers.length > 0) {
+          // Item has suppliers - add it under each supplier
+          itemSuppliers.forEach((itemSupplier) => {
+            const supplierId =
+              itemSupplier.supplier?.supplier_id || "unassigned";
+            const supplierName = itemSupplier.supplier?.name || "Unassigned";
+            const supplierReference = itemSupplier.supplier_reference;
+
+            // Initialize supplier in map if not exists
+            if (!supplierMap.has(supplierId)) {
+              supplierMap.set(supplierId, {
+                supplier_id: supplierId,
+                supplier_name: supplierName,
+                items: new Map(),
+              });
+            }
+
+            const supplier = supplierMap.get(supplierId);
+
+            // Aggregate items by item_id
+            if (!supplier.items.has(itemId)) {
+              supplier.items.set(itemId, {
+                item_id: itemId,
+                category: item.category,
+                description: item.description,
+                supplier_reference: supplierReference,
+                image: item.image,
+                sheet: item.sheet,
+                handle: item.handle,
+                hardware: item.hardware,
+                accessory: item.accessory,
+                edging_tape: item.edging_tape,
+                measurement_unit: item.measurement_unit,
+                stock_on_hand: item.quantity || 0,
+                cumulative_quantity: 0,
+                mto_sources: [], // Track which MTOs contribute to this item
+              });
+            }
+
+            const aggregatedItem = supplier.items.get(itemId);
+            aggregatedItem.cumulative_quantity += remainingQty;
+            aggregatedItem.mto_sources.push({
+              mto_id: mto.id,
+              mto_item_id: mtoItem.id,
+              project_name: mto.project?.name,
+              quantity: remainingQty,
+            });
+          });
+        } else {
+          // Fallback: No suppliers assigned (legacy or unassigned items)
+          const supplierId = "unassigned";
+          const supplierName = "Unassigned";
+
+          // Initialize supplier in map if not exists
+          if (!supplierMap.has(supplierId)) {
+            supplierMap.set(supplierId, {
+              supplier_id: supplierId,
+              supplier_name: supplierName,
+              items: new Map(),
+            });
+          }
+
+          const supplier = supplierMap.get(supplierId);
+
+          // Aggregate items by item_id
+          if (!supplier.items.has(itemId)) {
+            supplier.items.set(itemId, {
+              item_id: itemId,
+              category: item.category,
+              description: item.description,
+              supplier_reference: null,
+              image: item.image,
+              sheet: item.sheet,
+              handle: item.handle,
+              hardware: item.hardware,
+              accessory: item.accessory,
+              edging_tape: item.edging_tape,
+              measurement_unit: item.measurement_unit,
+              stock_on_hand: item.quantity || 0,
+              cumulative_quantity: 0,
+              mto_sources: [], // Track which MTOs contribute to this item
+            });
+          }
+
+          const aggregatedItem = supplier.items.get(itemId);
+          aggregatedItem.cumulative_quantity += remainingQty;
+          aggregatedItem.mto_sources.push({
+            mto_id: mto.id,
+            mto_item_id: mtoItem.id,
+            project_name: mto.project?.name,
+            quantity: remainingQty,
           });
         }
-
-        const aggregatedItem = supplier.items.get(itemId);
-        aggregatedItem.cumulative_quantity += remainingQty;
-        aggregatedItem.mto_sources.push({
-          mto_id: mto.id,
-          mto_item_id: mtoItem.id,
-          project_name: mto.project?.name,
-          quantity: remainingQty,
-        });
       });
     });
 

@@ -73,16 +73,37 @@ export async function POST(request) {
           // Get current item within transaction to lock it
           const currentItem = await tx.item.findUnique({
             where: { item_id: item_id },
-            select: { quantity: true, supplier_reference: true },
+            select: {
+              quantity: true,
+              supplier_reference: true,
+              itemSuppliers: {
+                include: {
+                  supplier: {
+                    select: { name: true },
+                  },
+                },
+              },
+            },
           });
 
           if (!currentItem) {
             return { error: "Item not found" };
           }
 
-          const oldQuantity = current_quantity ?? currentItem.quantity ?? 0;
+          const oldQuantity = currentItem.quantity ?? 0; // Fixed nullish coalescing
           const newQty = Math.floor(parseFloat(new_quantity));
           const difference = newQty - oldQuantity;
+
+          // Construct supplier reference string from multiple suppliers
+          const performSupplierRef =
+            currentItem.itemSuppliers?.length > 0
+              ? currentItem.itemSuppliers
+                  .map(
+                    (is) =>
+                      `${is.supplier?.name || "Unassigned"}: ${is.supplier_reference || "N/A"}`,
+                  )
+                  .join(", ")
+              : currentItem.supplier_reference;
 
           // Skip if no change
           if (difference === 0) {
@@ -113,7 +134,8 @@ export async function POST(request) {
 
           return {
             item_id,
-            supplier_reference: currentItem.supplier_reference,
+            item_id,
+            supplier_reference: performSupplierRef,
             old_quantity: oldQuantity,
             new_quantity: newQty,
             difference: difference,

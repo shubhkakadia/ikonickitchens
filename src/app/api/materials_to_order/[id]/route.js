@@ -27,6 +27,11 @@ export async function GET(request, { params }) {
                 accessory: true,
                 edging_tape: true,
                 image: true,
+                itemSuppliers: {
+                  include: {
+                    supplier: true,
+                  },
+                },
               },
             },
             reserve_item_stock: true,
@@ -125,6 +130,11 @@ export async function PATCH(request, { params }) {
               accessory: true,
               edging_tape: true,
               image: true,
+              itemSuppliers: {
+                include: {
+                  supplier: true,
+                },
+              },
             },
           },
         },

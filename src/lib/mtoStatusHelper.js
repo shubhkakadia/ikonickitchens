@@ -35,30 +35,42 @@ export async function checkAndUpdateMTOStatus(mtoItemId) {
       return false;
     }
 
-    let allItemsOrderedOrReserved = true;
-    let someItemsOrderedOrReserved = false;
+    let allItemsFullyCovered = true;
+    let anyItemHasCoverage = false;
 
     for (const item of mto.items) {
-      const isOrdered =
-        (item.quantity_ordered || 0) > 0 || (item.quantity_ordered_po || 0) > 0;
-      const isReserved =
-        item.reserve_item_stock && item.reserve_item_stock.length > 0;
+      // Calculate reserved quantity
+      const reservedQty =
+        item.reserve_item_stock?.reduce(
+          (sum, res) => sum + (res.quantity || 0),
+          0,
+        ) || 0;
 
-      if (isOrdered || isReserved) {
-        someItemsOrderedOrReserved = true;
-      } else {
-        allItemsOrderedOrReserved = false;
+      // Calculate ordered quantity (PO takes precedence if > 0, otherwise manual)
+      const orderedQty =
+        (item.quantity_ordered_po || 0) > 0
+          ? item.quantity_ordered_po
+          : item.quantity_ordered || 0;
+
+      const totalCovered = reservedQty + orderedQty;
+      const requiredQty = item.quantity || 0;
+
+      // Check coverage
+      if (totalCovered > 0) {
+        anyItemHasCoverage = true;
+      }
+
+      if (totalCovered < requiredQty) {
+        allItemsFullyCovered = false;
       }
     }
 
     // Determine the new status
-    let newStatus = null;
-    if (allItemsOrderedOrReserved) {
+    let newStatus = "DRAFT";
+    if (allItemsFullyCovered && mto.items.length > 0) {
       newStatus = "FULLY_ORDERED";
-    } else if (someItemsOrderedOrReserved) {
+    } else if (anyItemHasCoverage) {
       newStatus = "PARTIALLY_ORDERED";
-    } else {
-      newStatus = "DRAFT";
     }
 
     // Only update if status should change and is different from current

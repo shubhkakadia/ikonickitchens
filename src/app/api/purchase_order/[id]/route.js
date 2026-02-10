@@ -3,6 +3,7 @@ import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
+import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
 export async function GET(request, { params }) {
   try {
@@ -553,6 +554,14 @@ export async function PATCH(request, { params }) {
         invoice_url: true,
       },
     });
+
+    // Update MTO status if this PO is linked to MTO items
+    if (updated.items && updated.items.length > 0) {
+      const firstLinkedItem = updated.items.find((item) => item.mto_item_id);
+      if (firstLinkedItem) {
+        await checkAndUpdateMTOStatus(firstLinkedItem.mto_item_id);
+      }
+    }
 
     const logged = await withLogging(
       request,

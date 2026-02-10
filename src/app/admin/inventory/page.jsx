@@ -316,7 +316,9 @@ export default function page() {
         const searchLower = search.toLowerCase();
         const matchesSearch =
           (item.description || "").toLowerCase().includes(searchLower) ||
-          (item.supplier_reference || "").toLowerCase().includes(searchLower) ||
+          item.itemSuppliers?.some((s) =>
+            (s.supplier_reference || "").toLowerCase().includes(searchLower),
+          ) ||
           (item.sheet?.brand || "").toLowerCase().includes(searchLower) ||
           (item.sheet?.color || "").toLowerCase().includes(searchLower) ||
           (item.sheet?.description || "").toLowerCase().includes(searchLower) ||

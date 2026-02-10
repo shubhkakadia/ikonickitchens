@@ -169,9 +169,12 @@ export default function CreatePurchaseOrderModal({
     // Check various fields
     const matchesCategory = item.category?.toLowerCase().includes(searchLower);
     const matchesDesc = item.description?.toLowerCase().includes(searchLower);
-    const matchesSupplierRef = item.supplier_reference
-      ?.toLowerCase()
-      .includes(searchLower);
+    const matchesSupplierRef =
+      item.itemSuppliers?.some(
+        (is) =>
+          is.supplier_id === selectedSupplier?.supplier_id &&
+          is.supplier_reference?.toLowerCase().includes(searchLower),
+      ) || item.supplier_reference?.toLowerCase().includes(searchLower);
 
     let matchesDetails = false;
     if (item.sheet) {
@@ -644,7 +647,13 @@ export default function CreatePurchaseOrderModal({
                               item.edging_tape?.dimensions ||
                               "N/A"}{" "}
                             • Supplier Reference:{" "}
-                            {item?.supplier_reference || "N/A"}
+                            {item.itemSuppliers?.find(
+                              (is) =>
+                                is.supplier_id ===
+                                selectedSupplier?.supplier_id,
+                            )?.supplier_reference ||
+                              item.supplier_reference ||
+                              "N/A"}
                           </p>
                         </div>
                         <Plus className="w-4 h-4 text-primary ml-auto" />
@@ -726,14 +735,25 @@ export default function CreatePurchaseOrderModal({
                         {/* Details Column */}
                         <td className="px-4 py-3">
                           <div className="text-xs text-slate-600 space-y-1">
-                            {item.supplier_reference && (
-                              <div>
-                                <span className="font-medium">
-                                  Supplier Ref:
-                                </span>{" "}
-                                {item.supplier_reference}
-                              </div>
-                            )}
+                            {(() => {
+                              const ref =
+                                item.itemSuppliers?.find(
+                                  (is) =>
+                                    is.supplier_id ===
+                                    selectedSupplier?.supplier_id,
+                                )?.supplier_reference ||
+                                item.supplier_reference;
+                              return (
+                                ref && (
+                                  <div>
+                                    <span className="font-medium">
+                                      Supplier Ref:
+                                    </span>{" "}
+                                    {ref}
+                                  </div>
+                                )
+                              );
+                            })()}
                             {item.sheet && (
                               <>
                                 <div>

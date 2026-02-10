@@ -133,6 +133,9 @@ export default function page() {
   const stock_tx_item_per_page = 10;
   const [stockTxCurrentPage, setStockTxCurrentPage] = useState(1);
 
+  // Multi-supplier support - array of supplier objects for this item
+  const [itemSuppliers, setItemSuppliers] = useState([]);
+
   const sortedStockTransactions = React.useMemo(() => {
     const transactions = item?.stock_transactions ?? [];
     return [...transactions].sort(
@@ -378,7 +381,40 @@ export default function page() {
       });
       if (response.data.status) {
         setItem(response.data.data);
-        // Set selected supplier if item has supplier
+
+        // Load multi-supplier data
+        if (
+          response.data.data.itemSuppliers &&
+          response.data.data.itemSuppliers.length > 0
+        ) {
+          // Map API data to form state with temporary IDs
+          const suppliersData = response.data.data.itemSuppliers.map((is) => ({
+            id: crypto.randomUUID(),
+            supplier_id: is.supplier_id,
+            supplier_reference: is.supplier_reference || "",
+            supplier_product_link: is.supplier_product_link || "",
+            price: is.price || "",
+            supplier_search_term: is.supplier?.name || "",
+            _dropdownOpen: false,
+          }));
+          setItemSuppliers(suppliersData);
+        } else {
+          // Fallback: if no itemSuppliers, initialize with empty supplier or legacy data
+          setItemSuppliers([
+            {
+              id: crypto.randomUUID(),
+              supplier_id: response.data.data.supplier_id || "",
+              supplier_reference: response.data.data.supplier_reference || "",
+              supplier_product_link:
+                response.data.data.supplier_product_link || "",
+              price: response.data.data.price || "",
+              supplier_search_term: response.data.data.supplier?.name || "",
+              _dropdownOpen: false,
+            },
+          ]);
+        }
+
+        // Set selected supplier (for backward compatibility / legacy single supplier view)
         if (response.data.data.supplier_id && response.data.data.supplier) {
           setSelectedSupplier(response.data.data.supplier);
           setSupplierSearchTerm(response.data.data.supplier.name);
@@ -740,6 +776,48 @@ export default function page() {
     }
   };
 
+  // Multi-supplier helper functions
+  const handleAddSupplier = () => {
+    setItemSuppliers([
+      ...itemSuppliers,
+      {
+        id: crypto.randomUUID(),
+        supplier_id: "",
+        supplier_reference: "",
+        supplier_product_link: "",
+        price: "",
+        supplier_search_term: "",
+        _dropdownOpen: false,
+      },
+    ]);
+  };
+
+  const handleRemoveSupplier = (id) => {
+    // Keep at least one supplier
+    if (itemSuppliers.length === 1) return;
+    setItemSuppliers(itemSuppliers.filter((s) => s.id !== id));
+  };
+
+  const handleSupplierFieldChange = (id, field, value) => {
+    setItemSuppliers(
+      itemSuppliers.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
+    );
+  };
+
+  const handleMultiSupplierSelect = (id, supplierId, supplierName) => {
+    setItemSuppliers(
+      itemSuppliers.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              supplier_id: supplierId,
+              supplier_search_term: supplierName,
+            }
+          : s,
+      ),
+    );
+  };
+
   // Initialize edit form with current item data
   const handleEdit = () => {
     if (item) {
@@ -831,6 +909,15 @@ export default function page() {
           formDataToSend.append(key, value);
         }
       });
+
+      // Add suppliers array as JSON for multi-supplier support
+      const suppliersData = itemSuppliers
+        .filter((s) => s.supplier_id) // Only include suppliers with ID selected
+        .map(({ id, supplier_search_term, _dropdownOpen, ...rest }) => rest); // Remove temp fields
+
+      if (suppliersData.length > 0) {
+        formDataToSend.append("suppliers", JSON.stringify(suppliersData));
+      }
 
       // Add new image if selected
       if (newImage) {
@@ -1982,107 +2069,341 @@ export default function page() {
                                 )}
                               </div>
 
-                              {/* Supplier and Measurement Unit */}
-                              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-200">
-                                {/* Supplier Field */}
-                                <div>
-                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                              {/* Multi-Supplier Section - Full Width */}
+                              <div className="col-span-2 pt-3 border-t border-slate-200">
+                                <div className="flex items-center justify-between mb-2">
+                                  <label className="text-xs uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
                                     <Building2 className="w-3.5 h-3.5" />
-                                    Supplier
+                                    Suppliers
                                   </label>
-                                  {isEditing ? (
-                                    <div
-                                      className="relative"
-                                      ref={supplierDropdownRef}
+                                  {isEditing && (
+                                    <button
+                                      type="button"
+                                      onClick={handleAddSupplier}
+                                      className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
                                     >
-                                      <input
-                                        type="text"
-                                        value={supplierSearchTerm}
-                                        onChange={handleSupplierSearchChange}
-                                        onFocus={() =>
-                                          setIsSupplierDropdownOpen(true)
-                                        }
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            setIsSupplierDropdownOpen(false);
-                                          }
-                                        }}
-                                        placeholder="Search supplier..."
-                                        className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setIsSupplierDropdownOpen(
-                                            !isSupplierDropdownOpen,
-                                          )
-                                        }
-                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                      >
-                                        <ChevronDown
-                                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                            isSupplierDropdownOpen
-                                              ? "rotate-180"
-                                              : ""
-                                          }`}
-                                        />
-                                      </button>
-
-                                      {isSupplierDropdownOpen && (
-                                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                          {filteredSuppliers.length > 0 ? (
-                                            filteredSuppliers.map(
-                                              (supplier) => (
-                                                <button
-                                                  key={supplier.supplier_id}
-                                                  type="button"
-                                                  onClick={() =>
-                                                    handleSupplierSelect(
-                                                      supplier,
-                                                    )
-                                                  }
-                                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                                >
-                                                  <div className="font-medium">
-                                                    {supplier.name}
-                                                  </div>
-                                                  <div className="text-xs text-slate-500">
-                                                    {supplier.supplier_id}
-                                                  </div>
-                                                </button>
-                                              ),
-                                            )
-                                          ) : (
-                                            <div className="px-3 py-2 text-xs text-slate-500 text-center">
-                                              No suppliers found
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div>
-                                      {item.supplier ? (
-                                        <p
-                                          className="text-sm text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors"
-                                          onClick={() =>
-                                            router.push(
-                                              `/admin/suppliers/${item.supplier.supplier_id}`,
-                                            )
-                                          }
-                                        >
-                                          {item.supplier.name}
-                                        </p>
-                                      ) : (
-                                        <p className="text-sm text-slate-800">
-                                          -
-                                        </p>
-                                      )}
-                                    </div>
+                                      <Plus className="w-3 h-3" />
+                                      Add Supplier
+                                    </button>
                                   )}
                                 </div>
 
+                                {isEditing ? (
+                                  <div className="space-y-3">
+                                    {itemSuppliers.map((supplier, index) => (
+                                      <div
+                                        key={supplier.id}
+                                        className="border border-slate-300 rounded-lg p-3 space-y-3 relative bg-white"
+                                      >
+                                        {/* Remove button */}
+                                        {itemSuppliers.length > 1 && (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleRemoveSupplier(supplier.id)
+                                            }
+                                            className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                            title="Remove supplier"
+                                          >
+                                            <X className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+
+                                        <div className="text-xs font-medium text-slate-600">
+                                          Supplier #{index + 1}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                          {/* Supplier Dropdown */}
+                                          <div className="relative">
+                                            <label className="text-xs text-slate-600 mb-1 block">
+                                              Supplier Name
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={
+                                                supplier.supplier_search_term
+                                              }
+                                              onChange={(e) =>
+                                                handleSupplierFieldChange(
+                                                  supplier.id,
+                                                  "supplier_search_term",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              onFocus={() => {
+                                                const updatedSuppliers =
+                                                  itemSuppliers.map((s) =>
+                                                    s.id === supplier.id
+                                                      ? {
+                                                          ...s,
+                                                          _dropdownOpen: true,
+                                                        }
+                                                      : {
+                                                          ...s,
+                                                          _dropdownOpen: false,
+                                                        },
+                                                  );
+                                                setItemSuppliers(
+                                                  updatedSuppliers,
+                                                );
+                                              }}
+                                              placeholder="Search supplier..."
+                                              className="w-full text-sm text-slate-800 px-2 py-1.5 pr-7 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                const updatedSuppliers =
+                                                  itemSuppliers.map((s) =>
+                                                    s.id === supplier.id
+                                                      ? {
+                                                          ...s,
+                                                          _dropdownOpen:
+                                                            !s._dropdownOpen,
+                                                        }
+                                                      : s,
+                                                  );
+                                                setItemSuppliers(
+                                                  updatedSuppliers,
+                                                );
+                                              }}
+                                              className="absolute right-2 top-7 text-slate-400 hover:text-slate-600 transition-colors"
+                                            >
+                                              <ChevronDown
+                                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                                  supplier._dropdownOpen
+                                                    ? "rotate-180"
+                                                    : ""
+                                                }`}
+                                              />
+                                            </button>
+
+                                            {supplier._dropdownOpen && (
+                                              <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-auto">
+                                                {filteredSuppliers.filter((s) =>
+                                                  s.name
+                                                    .toLowerCase()
+                                                    .includes(
+                                                      (
+                                                        supplier.supplier_search_term ||
+                                                        ""
+                                                      ).toLowerCase(),
+                                                    ),
+                                                ).length > 0 ? (
+                                                  filteredSuppliers
+                                                    .filter((s) =>
+                                                      s.name
+                                                        .toLowerCase()
+                                                        .includes(
+                                                          (
+                                                            supplier.supplier_search_term ||
+                                                            ""
+                                                          ).toLowerCase(),
+                                                        ),
+                                                    )
+                                                    .map((s) => (
+                                                      <button
+                                                        key={s.supplier_id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                          // Update supplier selection and close dropdown in one state update
+                                                          setItemSuppliers(
+                                                            itemSuppliers.map(
+                                                              (sup) =>
+                                                                sup.id ===
+                                                                supplier.id
+                                                                  ? {
+                                                                      ...sup,
+                                                                      supplier_id:
+                                                                        s.supplier_id,
+                                                                      supplier_search_term:
+                                                                        s.name,
+                                                                      _dropdownOpen: false,
+                                                                    }
+                                                                  : sup,
+                                                            ),
+                                                          );
+                                                        }}
+                                                        className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                                      >
+                                                        <div className="font-medium">
+                                                          {s.name}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500">
+                                                          {s.supplier_id}
+                                                        </div>
+                                                      </button>
+                                                    ))
+                                                ) : (
+                                                  <div className="px-3 py-2 text-xs text-slate-500 text-center">
+                                                    No suppliers found
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Price */}
+                                          <div>
+                                            <label className="text-xs text-slate-600 mb-1 block">
+                                              Price per Unit
+                                            </label>
+                                            <div className="relative">
+                                              <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">
+                                                $
+                                              </span>
+                                              <input
+                                                type="number"
+                                                value={supplier.price}
+                                                onChange={(e) =>
+                                                  handleSupplierFieldChange(
+                                                    supplier.id,
+                                                    "price",
+                                                    e.target.value,
+                                                  )
+                                                }
+                                                placeholder="0.00"
+                                                step="0.01"
+                                                className="w-full text-sm text-slate-800 pl-6 pr-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                              />
+                                            </div>
+                                          </div>
+
+                                          {/* Supplier Reference */}
+                                          <div>
+                                            <label className="text-xs text-slate-600 mb-1 block">
+                                              Supplier Reference
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={
+                                                supplier.supplier_reference
+                                              }
+                                              onChange={(e) =>
+                                                handleSupplierFieldChange(
+                                                  supplier.id,
+                                                  "supplier_reference",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              placeholder="e.g. SUP-12345"
+                                              className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                            />
+                                          </div>
+
+                                          {/* Supplier Product Link */}
+                                          <div>
+                                            <label className="text-xs text-slate-600 mb-1 block">
+                                              Product Link
+                                            </label>
+                                            <input
+                                              type="url"
+                                              value={
+                                                supplier.supplier_product_link
+                                              }
+                                              onChange={(e) =>
+                                                handleSupplierFieldChange(
+                                                  supplier.id,
+                                                  "supplier_product_link",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              placeholder="https://..."
+                                              className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {item?.itemSuppliers &&
+                                    item.itemSuppliers.length > 0 ? (
+                                      item.itemSuppliers.map(
+                                        (itemSupplier, index) => (
+                                          <div
+                                            key={index}
+                                            className="border border-slate-200 rounded-lg p-3 bg-slate-50"
+                                          >
+                                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                              <div>
+                                                <div className="text-xs text-slate-500 mb-0.5">
+                                                  Supplier
+                                                </div>
+                                                {itemSupplier.supplier ? (
+                                                  <p
+                                                    className="text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors font-medium"
+                                                    onClick={() =>
+                                                      router.push(
+                                                        `/admin/suppliers/${itemSupplier.supplier.supplier_id}`,
+                                                      )
+                                                    }
+                                                  >
+                                                    {itemSupplier.supplier.name}
+                                                  </p>
+                                                ) : (
+                                                  <p className="text-slate-800">
+                                                    -
+                                                  </p>
+                                                )}
+                                              </div>
+                                              <div>
+                                                <div className="text-xs text-slate-500 mb-0.5">
+                                                  Price
+                                                </div>
+                                                <p className="text-slate-800">
+                                                  {itemSupplier.price
+                                                    ? `$${parseFloat(itemSupplier.price).toFixed(2)}`
+                                                    : "-"}
+                                                </p>
+                                              </div>
+                                              {itemSupplier.supplier_reference && (
+                                                <div>
+                                                  <div className="text-xs text-slate-500 mb-0.5">
+                                                    Reference
+                                                  </div>
+                                                  <p className="text-slate-800">
+                                                    {
+                                                      itemSupplier.supplier_reference
+                                                    }
+                                                  </p>
+                                                </div>
+                                              )}
+                                              {itemSupplier.supplier_product_link && (
+                                                <div>
+                                                  <div className="text-xs text-slate-500 mb-0.5">
+                                                    Product Link
+                                                  </div>
+                                                  <a
+                                                    href={
+                                                      itemSupplier.supplier_product_link
+                                                    }
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline flex items-center gap-1"
+                                                  >
+                                                    View
+                                                    <ExternalLink className="w-3 h-3" />
+                                                  </a>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ),
+                                      )
+                                    ) : (
+                                      <p className="text-sm text-slate-500 italic">
+                                        No suppliers assigned
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Measurement Unit Field - Back to grid */}
+                              <div className="grid grid-cols-2 gap-4">
                                 {/* Measurement Unit Field */}
                                 <div
                                   className="relative"
@@ -2215,84 +2536,6 @@ export default function page() {
                                   ) : (
                                     <p className="text-sm text-slate-800">
                                       {formatValue(item.measurement_unit)}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Supplier Reference and Product Link */}
-                              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-200">
-                                {/* Supplier Reference Field */}
-                                <div>
-                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                                    <Tag className="w-3.5 h-3.5" />
-                                    Supplier Reference
-                                  </label>
-                                  {isEditing ? (
-                                    <input
-                                      type="text"
-                                      value={formData.supplier_reference || ""}
-                                      onChange={(e) =>
-                                        handleInputChange(
-                                          "supplier_reference",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder={formatValue(
-                                        item.supplier_reference,
-                                      )}
-                                      className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                    />
-                                  ) : (
-                                    <p className="text-sm text-slate-800">
-                                      {formatValue(item.supplier_reference)}
-                                    </p>
-                                  )}
-                                </div>
-
-                                {/* Supplier Product Link Field */}
-                                <div>
-                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                    Supplier Product Link
-                                  </label>
-                                  {isEditing ? (
-                                    <input
-                                      type="url"
-                                      value={
-                                        formData.supplier_product_link || ""
-                                      }
-                                      onChange={(e) =>
-                                        handleInputChange(
-                                          "supplier_product_link",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder={formatValue(
-                                        item.supplier_product_link,
-                                      )}
-                                      className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                    />
-                                  ) : (
-                                    <p className="text-sm text-slate-800">
-                                      {item.supplier_product_link ? (
-                                        <a
-                                          href={item.supplier_product_link}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-primary hover:underline"
-                                        >
-                                          {item.supplier_product_link.length >
-                                          40
-                                            ? `${item.supplier_product_link.substring(
-                                                0,
-                                                40,
-                                              )}...`
-                                            : item.supplier_product_link}
-                                        </a>
-                                      ) : (
-                                        formatValue(item.supplier_product_link)
-                                      )}
                                     </p>
                                   )}
                                 </div>

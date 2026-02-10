@@ -71,6 +71,11 @@ export async function POST(request) {
                 hardware: true,
                 accessory: true,
                 edging_tape: true,
+                itemSuppliers: {
+                  include: {
+                    supplier: true,
+                  },
+                },
               },
             },
           },

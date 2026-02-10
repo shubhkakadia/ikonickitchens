@@ -132,11 +132,23 @@ const GroupedItemsTable = ({
     if (!items || items.length === 0) return null;
 
     // Group items by supplier name (Unassigned last)
+    // UPDATED: Handle multi-supplier items - an item can appear under multiple suppliers
     const groups = new Map();
     items.forEach((it) => {
-      const supplierName = it.item?.supplier?.name || "Unassigned";
-      if (!groups.has(supplierName)) groups.set(supplierName, []);
-      groups.get(supplierName).push(it);
+      // Check if item has itemSuppliers array (new multi-supplier structure)
+      if (it.item?.itemSuppliers && it.item.itemSuppliers.length > 0) {
+        // Add this item under each of its suppliers
+        it.item.itemSuppliers.forEach((itemSupplier) => {
+          const supplierName = itemSupplier.supplier?.name || "Unassigned";
+          if (!groups.has(supplierName)) groups.set(supplierName, []);
+          groups.get(supplierName).push(it);
+        });
+      } else {
+        // Fallback: Legacy single supplier structure or no supplier
+        const supplierName = it.item?.supplier?.name || "Unassigned";
+        if (!groups.has(supplierName)) groups.set(supplierName, []);
+        groups.get(supplierName).push(it);
+      }
     });
 
     // Sort group names (Unassigned last)
@@ -177,10 +189,28 @@ const GroupedItemsTable = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       const firstItem = groups.get(name)?.[0];
-                      const supplierId =
-                        firstItem?.item?.supplier?.supplier_id ||
-                        firstItem?.item?.supplier_id ||
-                        null;
+
+                      // UPDATED: For multi-supplier items, find the supplier ID that matches this group name
+                      let supplierId = null;
+                      if (
+                        firstItem?.item?.itemSuppliers &&
+                        firstItem.item.itemSuppliers.length > 0
+                      ) {
+                        // Find the supplier in itemSuppliers that matches this group's name
+                        const matchingSupplier =
+                          firstItem.item.itemSuppliers.find(
+                            (is) => is.supplier?.name === name,
+                          );
+                        supplierId =
+                          matchingSupplier?.supplier?.supplier_id || null;
+                      } else {
+                        // Fallback: Legacy single supplier structure
+                        supplierId =
+                          firstItem?.item?.supplier?.supplier_id ||
+                          firstItem?.item?.supplier_id ||
+                          null;
+                      }
+
                       if (!supplierId) return;
                       onOpenPO(name, supplierId, mtoId);
                     }}
@@ -531,11 +561,22 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
     // Build materialsToOrder list filtered to only include items from the selected supplier
     const filteredMTOs = (materialsToOrder || [])
       .map((mto) => {
-        const supplierItems = (mto.items || []).filter(
-          (it) =>
-            (it.item?.supplier?.supplier_id || it.item?.supplier_id || null) ===
-            supplierId,
-        );
+        const supplierItems = (mto.items || []).filter((it) => {
+          // UPDATED: Check itemSuppliers array for multi-supplier support
+          if (it.item?.itemSuppliers && it.item.itemSuppliers.length > 0) {
+            // Check if any of this item's suppliers matches the selected supplier ID
+            return it.item.itemSuppliers.some(
+              (is) => is.supplier?.supplier_id === supplierId,
+            );
+          } else {
+            // Fallback: Legacy single supplier structure
+            return (
+              (it.item?.supplier?.supplier_id ||
+                it.item?.supplier_id ||
+                null) === supplierId
+            );
+          }
+        });
         return { ...mto, items: supplierItems };
       })
       .filter((mto) => (mto.items || []).length > 0);

@@ -25,7 +25,12 @@ export async function GET(request, { params }) {
         hardware: true,
         accessory: true,
         edging_tape: true,
-        supplier: true,
+
+        itemSuppliers: {
+          include: {
+            supplier: true,
+          },
+        },
         materials_to_order_items: true,
         purchase_order_item: true,
         reserve_item_stock: {
@@ -150,10 +155,25 @@ export async function PATCH(request, { params }) {
     const material = formData.get("material");
     const name = formData.get("name");
     const sub_category = formData.get("sub_category");
-    const supplier_id = formData.get("supplier_id");
     const measurement_unit = formData.get("measurement_unit");
-    const supplier_reference = formData.get("supplier_reference");
-    const supplier_product_link = formData.get("supplier_product_link");
+
+    // Parse suppliers array from JSON (new multi-supplier support)
+    const suppliersJson = formData.get("suppliers");
+    let suppliers = null; // null means not provided, different from empty array
+    if (suppliersJson !== null && suppliersJson !== undefined) {
+      try {
+        suppliers = JSON.parse(suppliersJson);
+      } catch (e) {
+        return NextResponse.json(
+          {
+            status: false,
+            message: "Invalid suppliers format - must be valid JSON array",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     // Handle is_sunmica - FormData sends booleans as strings
     const is_sunmicaValue = formData.get("is_sunmica");
     const is_sunmica =
@@ -181,20 +201,39 @@ export async function PATCH(request, { params }) {
       updateData.price = parseFloat(price);
     if (quantity !== null && quantity !== undefined)
       updateData.quantity = parseFloat(quantity);
-    if (supplier_id !== null && supplier_id !== undefined)
-      updateData.supplier_id = supplier_id;
     if (measurement_unit !== null && measurement_unit !== undefined)
       updateData.measurement_unit = measurement_unit;
-    if (supplier_reference !== null && supplier_reference !== undefined)
-      updateData.supplier_reference = supplier_reference;
-    if (supplier_product_link !== null && supplier_product_link !== undefined)
-      updateData.supplier_product_link = supplier_product_link;
 
     // Update item first (without image_id)
     await prisma.item.update({
       where: { item_id: id },
       data: updateData,
     });
+
+    // Handle itemSuppliers update if suppliers array is provided
+    if (suppliers !== null) {
+      // Delete all existing item_suppliers and create new ones
+      await prisma.$transaction(async (tx) => {
+        // Delete existing
+        await tx.item_suppliers.deleteMany({
+          where: { item_id: id },
+        });
+
+        // Create new ones if any
+        if (suppliers.length > 0) {
+          for (const s of suppliers) {
+            // Create new ItemSupplier entry
+            await tx.itemSupplier.create({
+              data: {
+                item_id: id,
+                supplier_id: s.supplier_id,
+                supplier_reference: s.supplier_reference || null,
+              },
+            });
+          }
+        }
+      });
+    }
 
     // Handle image removal if imageFile is empty string
     if (imageFile === "") {
@@ -388,8 +427,13 @@ export async function PATCH(request, { params }) {
         handle: true,
         hardware: true,
         accessory: true,
-        supplier: true,
+
         edging_tape: true,
+        itemSuppliers: {
+          include: {
+            supplier: true,
+          },
+        },
         materials_to_order_items: true,
         purchase_order_item: true,
         reserve_item_stock: {

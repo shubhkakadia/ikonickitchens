@@ -31,6 +31,12 @@ export async function GET(request, { params }) {
     };
 
     include[categoryRelationMap[normalizedCategory]] = true;
+    // Always include itemSuppliers with supplier details
+    include.itemSuppliers = {
+      include: {
+        supplier: true,
+      },
+    };
 
     const items = await prisma.item.findMany({
       where: {

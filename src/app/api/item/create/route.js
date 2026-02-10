@@ -36,6 +36,24 @@ export async function POST(request, { params }) {
     const measurement_unit = formData.get("measurement_unit");
     const supplier_reference = formData.get("supplier_reference");
     const supplier_product_link = formData.get("supplier_product_link");
+
+    // Parse suppliers array from JSON (new multi-supplier support)
+    const suppliersJson = formData.get("suppliers");
+    let suppliers = [];
+    if (suppliersJson) {
+      try {
+        suppliers = JSON.parse(suppliersJson);
+      } catch (e) {
+        return NextResponse.json(
+          {
+            status: false,
+            message: "Invalid suppliers format - must be valid JSON array",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     // Handle is_sunmica - FormData sends booleans as strings
     const is_sunmicaValue = formData.get("is_sunmica");
     const is_sunmica =
@@ -110,6 +128,30 @@ export async function POST(request, { params }) {
       };
     }
 
+    // Prepare itemSuppliers data
+    let itemSuppliersData = [];
+
+    // New approach: use suppliers array if provided
+    if (suppliers && suppliers.length > 0) {
+      itemSuppliersData = suppliers.map((s) => ({
+        supplier_id: s.supplier_id,
+        supplier_reference: s.supplier_reference || null,
+        supplier_product_link: s.supplier_product_link || null,
+        price: s.price ? parseFloat(s.price) : null,
+      }));
+    }
+    // Backward compatibility: fall back to single supplier fields
+    else if (supplier_id) {
+      itemSuppliersData = [
+        {
+          supplier_id: supplier_id,
+          supplier_reference: supplier_reference || null,
+          supplier_product_link: supplier_product_link || null,
+          price: price ? parseFloat(price) : null,
+        },
+      ];
+    }
+
     // Use transaction to atomically create item and category-specific record
     // This prevents "ghost items" if category creation fails
     const createdItem = await prisma.$transaction(async (tx) => {
@@ -117,14 +159,18 @@ export async function POST(request, { params }) {
       return await tx.item.create({
         data: {
           description,
+          // Keep old fields for backward compatibility (will be removed later)
           price: price ? parseFloat(price) : null,
           quantity: quantity ? parseFloat(quantity) : null,
           category: category.toUpperCase(),
-          supplier_id: supplier_id || null,
           measurement_unit: measurement_unit || null,
-          supplier_reference: supplier_reference || null,
-          supplier_product_link: supplier_product_link || null,
           ...categoryData,
+          // Add itemSuppliers relation
+          ...(itemSuppliersData.length > 0 && {
+            itemSuppliers: {
+              create: itemSuppliersData,
+            },
+          }),
         },
         include: {
           sheet: true,
@@ -132,6 +178,11 @@ export async function POST(request, { params }) {
           hardware: true,
           accessory: true,
           edging_tape: true,
+          itemSuppliers: {
+            include: {
+              supplier: true,
+            },
+          },
         },
       });
     });
@@ -206,6 +257,11 @@ export async function POST(request, { params }) {
         hardware: true,
         accessory: true,
         edging_tape: true,
+        itemSuppliers: {
+          include: {
+            supplier: true,
+          },
+        },
       },
     });
 

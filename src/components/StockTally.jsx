@@ -119,14 +119,28 @@ export default function StockTally({
       const XLSX = await import("xlsx");
 
       // Prepare data for stock tally template
-      const templateData = filteredAndSortedData.map((item) => ({
-        "Item ID": item.item_id,
-        "Supplier Reference": item.supplier_reference || "",
-        Details: getItemDetails(item),
-        Dimensions: getItemDimensions(item),
-        "Current Stock Quantity": item.quantity || 0,
-        "New Stock Quantity": "", // Empty for user to fill
-      }));
+      const templateData = filteredAndSortedData.map((item) => {
+        const supplierRefs =
+          item.itemSuppliers?.length > 0
+            ? item.itemSuppliers
+                .map(
+                  (is) =>
+                    `${is.supplier?.name || "Unknown"}: ${
+                      is.supplier_reference || "N/A"
+                    }`,
+                )
+                .join(", ")
+            : item.supplier_reference || "";
+
+        return {
+          "Item ID": item.item_id,
+          "Supplier Reference": supplierRefs,
+          Details: getItemDetails(item),
+          Dimensions: getItemDimensions(item),
+          "Current Stock Quantity": item.quantity || 0,
+          "New Stock Quantity": "", // Empty for user to fill
+        };
+      });
 
       // Create workbook
       const wb = XLSX.utils.book_new();
@@ -263,7 +277,16 @@ export default function StockTally({
               item_id: itemId,
               supplier_reference:
                 row["Supplier Reference"] ||
-                originalItem.supplier_reference ||
+                (originalItem.itemSuppliers?.length > 0
+                  ? originalItem.itemSuppliers
+                      .map(
+                        (is) =>
+                          `${is.supplier?.name || "Unknown"}: ${
+                            is.supplier_reference || "N/A"
+                          }`,
+                      )
+                      .join(", ")
+                  : originalItem.supplier_reference) ||
                 "",
               details: row["Details"] || getItemDetails(originalItem),
               dimensions: row["Dimensions"] || getItemDimensions(originalItem),

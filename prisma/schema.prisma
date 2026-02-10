@@ -430,10 +430,24 @@ model item {
   sheet                    sheet?
   stock_transactions       stock_transaction[]
   reserve_item_stock       reserve_item_stock[]
+  itemSuppliers            item_suppliers[]
 
   @@unique([item_id, category])
   @@index([category])
   @@index([supplier_id], map: "item_supplier_id_fkey")
+}
+
+model item_suppliers {
+  id                    String @id @default(uuid())
+  item_id               String
+  supplier_id           String
+  supplier_reference    String?
+  supplier_product_link String?
+  price                 Decimal? @db.Decimal(10, 2)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  supplier              supplier @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+  item                  item     @relation(fields: [item_id], references: [item_id], onDelete: Cascade)
 }
 
 model sheet {
@@ -508,6 +522,7 @@ model supplier {
   items          item[]
   purchase_order purchase_order[]
   statements     supplier_statement[]
+  itemSuppliers  item_suppliers[]
 
   @@index([supplier_id])
 }

@@ -34,8 +34,12 @@ export async function GET(request, { params }) {
 
     // Dynamically construct include object based on categories present
     const include = {
-      supplier: true,
       image: true, // Always include image relation
+      itemSuppliers: {
+        include: {
+          supplier: true,
+        },
+      },
     };
 
     // Only include relations for categories that actually exist
@@ -46,9 +50,14 @@ export async function GET(request, { params }) {
       }
     });
 
+    // Query items through itemSuppliers junction table
     const items = await prisma.item.findMany({
       where: {
-        supplier_id: id,
+        itemSuppliers: {
+          some: {
+            supplier_id: id,
+          },
+        },
         is_deleted: false,
       },
       include,

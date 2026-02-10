@@ -52,6 +52,16 @@ export async function PATCH(request, { params }) {
                 name: true,
               },
             },
+            itemSuppliers: {
+              include: {
+                supplier: {
+                  select: {
+                    supplier_id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
         mto: {
@@ -64,6 +74,16 @@ export async function PATCH(request, { params }) {
                       select: {
                         supplier_id: true,
                         name: true,
+                      },
+                    },
+                    itemSuppliers: {
+                      include: {
+                        supplier: {
+                          select: {
+                            supplier_id: true,
+                            name: true,
+                          },
+                        },
                       },
                     },
                   },
@@ -152,12 +172,29 @@ export async function PATCH(request, { params }) {
     }
 
     // Check if all items from this supplier are ordered (only send notification on transition)
-    const supplierId = updated.item?.supplier?.supplier_id;
+    // In multi-supplier world, this is ambiguous for manual updates. We try to find a relevant supplier.
+    const itemSuppliers = updated.item?.itemSuppliers || [];
+    const legacySupplierId = updated.item?.supplier?.supplier_id;
+
+    // Determine which supplier ID to group by. Priority: Legacy -> First in list -> undefined
+    const supplierId =
+      legacySupplierId ||
+      (itemSuppliers.length > 0
+        ? itemSuppliers[0].supplier?.supplier_id
+        : undefined);
+
     if (supplierId && updated.mto) {
-      // Get all items from this MTO that belong to the same supplier
-      const supplierItems = updated.mto.items.filter(
-        (item) => item.item?.supplier?.supplier_id === supplierId,
-      );
+      // Get all items from this MTO that belong to the same supplier (checking both legacy and new structure)
+      const supplierItems = updated.mto.items.filter((item) => {
+        const iSuppliers = item.item?.itemSuppliers || [];
+        const iLegacyId = item.item?.supplier?.supplier_id;
+
+        // Match if legacy ID matches OR if any of the item's suppliers match
+        return (
+          iLegacyId === supplierId ||
+          iSuppliers.some((is) => is.supplier?.supplier_id === supplierId)
+        );
+      });
 
       // Check current state: if all items from this supplier are fully ordered
       const allOrderedNow = supplierItems.every(

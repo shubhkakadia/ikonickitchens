@@ -63,6 +63,7 @@ export async function PATCH(request, { params }) {
           purchaseorder: data.purchaseorder,
           statements: data.statements,
           site_photos: data.site_photos,
+          site_measurements: data.site_measurements,
           config: data.config,
           calendar: data.calendar,
         },

@@ -91,6 +91,10 @@ export default function Sidebar() {
           name: "Lots at a Glance",
           href: "/admin/projects/lotatglance",
         },
+        {
+          name: "Site Measurements",
+          href: "/admin/projects/sitemeasurements",
+        },
       ],
     },
     {

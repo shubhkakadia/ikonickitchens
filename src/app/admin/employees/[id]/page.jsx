@@ -130,6 +130,7 @@ export default function EmployeeDetailPage() {
         { key: "add_projects", label: "Add Project" },
         { key: "project_details", label: "Project Detail" },
         { key: "lotatglance", label: "Lot at Glance" },
+        { key: "site_measurements", label: "Site Measurements" },
       ],
     },
     {

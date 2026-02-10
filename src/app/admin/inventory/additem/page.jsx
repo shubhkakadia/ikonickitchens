@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import Image from "next/image";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
+import { v4 as uuidv4 } from "uuid";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -97,7 +98,7 @@ export default function page() {
   // Multi-supplier support - array of supplier objects for this item
   const [itemSuppliers, setItemSuppliers] = useState([
     {
-      id: crypto.randomUUID(), // Temporary ID for React keys
+      id: uuidv4(), // Temporary ID for React keys
       supplier_id: "",
       supplier_reference: "",
       supplier_product_link: "",
@@ -467,7 +468,7 @@ export default function page() {
     setItemSuppliers([
       ...itemSuppliers,
       {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         supplier_id: "",
         supplier_reference: "",
         supplier_product_link: "",

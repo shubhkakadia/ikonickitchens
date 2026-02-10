@@ -35,7 +35,9 @@ import { CiMenuKebab } from "react-icons/ci";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
+
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
+import { v4 as uuidv4 } from "uuid";
 
 // InfoField component - defined outside to prevent recreation and focus loss
 const InfoField = ({
@@ -389,7 +391,7 @@ export default function page() {
         ) {
           // Map API data to form state with temporary IDs
           const suppliersData = response.data.data.itemSuppliers.map((is) => ({
-            id: crypto.randomUUID(),
+            id: uuidv4(),
             supplier_id: is.supplier_id,
             supplier_reference: is.supplier_reference || "",
             supplier_product_link: is.supplier_product_link || "",
@@ -402,7 +404,7 @@ export default function page() {
           // Fallback: if no itemSuppliers, initialize with empty supplier or legacy data
           setItemSuppliers([
             {
-              id: crypto.randomUUID(),
+              id: uuidv4(),
               supplier_id: response.data.data.supplier_id || "",
               supplier_reference: response.data.data.supplier_reference || "",
               supplier_product_link:
@@ -781,7 +783,7 @@ export default function page() {
     setItemSuppliers([
       ...itemSuppliers,
       {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         supplier_id: "",
         supplier_reference: "",
         supplier_product_link: "",

@@ -19,6 +19,8 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
 export default function SiteMeasurementsPage() {
   const { getToken } = useAuth();
@@ -30,7 +32,7 @@ export default function SiteMeasurementsPage() {
   const [doneLots, setDoneLots] = useState([]);
 
   // Status Dropdown State
-  const [statusDropdownOpen, setStatusDropdownOpen] = useState(null); // Format: "lot_id"
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(null);
   const [statusDropdownPositions, setStatusDropdownPositions] = useState({});
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
@@ -229,6 +231,57 @@ export default function SiteMeasurementsPage() {
     );
   };
 
+  // Handle drop for react-dnd
+  const handleDrop = async (lot, targetColumn) => {
+    const currentStatus = getStageStatus(lot, "Site Measurements");
+    let newStatus;
+
+    // Determine new status based on target column
+    if (targetColumn === "done") {
+      if (currentStatus === "DONE") return; // Already done
+      newStatus = "DONE";
+    } else if (targetColumn === "pending") {
+      if (currentStatus !== "DONE") return; // Already pending
+      newStatus = "IN_PROGRESS";
+    }
+
+    // Update the status using the same API
+    await handleStageStatusUpdate(lot, newStatus);
+  };
+
+  // DropZone component with react-dnd
+  const DropZone = ({ children, targetColumn, isEmpty }) => {
+    const [{ isOver, canDrop }, drop] = useDrop(
+      () => ({
+        accept: "LOT_CARD",
+        drop: (item) => {
+          handleDrop(item.lot, targetColumn);
+        },
+        collect: (monitor) => ({
+          isOver: monitor.isOver(),
+          canDrop: monitor.canDrop(),
+        }),
+      }),
+      [targetColumn],
+    );
+
+    const isActive = isOver && canDrop;
+    const bgColor = targetColumn === "done" ? "bg-green-50" : "bg-blue-50";
+    const borderColor =
+      targetColumn === "done" ? "border-green-300" : "border-blue-300";
+
+    return (
+      <div
+        ref={drop}
+        className={`flex-1 rounded-lg transition-colors min-h-0 ${
+          isActive ? `${bgColor} border-2 border-dashed ${borderColor} p-1` : ""
+        }`}
+      >
+        <div className="h-full overflow-y-auto space-y-3 pr-2">{children}</div>
+      </div>
+    );
+  };
+
   const LotCard = ({ lot }) => {
     const clientName = lot.project?.client?.client_name || "Unknown Client";
     const projectName = lot.project?.name || "Unknown Project";
@@ -256,10 +309,25 @@ export default function SiteMeasurementsPage() {
 
     const currentStatus = statusConfig[stageStatus] || statusConfig.NOT_STARTED;
 
+    // react-dnd hook
+    const [{ isDragging }, drag] = useDrag(
+      () => ({
+        type: "LOT_CARD",
+        item: { lot },
+        collect: (monitor) => ({
+          isDragging: monitor.isDragging(),
+        }),
+      }),
+      [lot],
+    );
+
     return (
       <div
+        ref={drag}
         onClick={() => handleCardClick(lot)}
-        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group relative"
+        className={`bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-move group relative ${
+          isDragging ? "opacity-40" : ""
+        }`}
       >
         <div className="flex justify-between items-start mb-3 relative z-20">
           <div className="status-dropdown-container relative z-30">
@@ -333,99 +401,107 @@ export default function SiteMeasurementsPage() {
   };
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-slate-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
+    <DndProvider backend={HTML5Backend}>
+      <AdminRoute>
+        <div className="flex h-screen bg-slate-50">
+          <Sidebar />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <CRMLayout />
 
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <div className="px-6 py-5 border-b border-slate-200 bg-white shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary-50 rounded-lg">
-                  <MapPin className="w-6 h-6 text-primary-600" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-800">
-                    Site Measurements
-                  </h1>
-                  <p className="text-sm text-slate-500">
-                    Manage site measurement status across all projects
-                  </p>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="px-6 py-5 border-b border-slate-200 bg-white shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary-50 rounded-lg">
+                    <MapPin className="w-6 h-6 text-primary-600" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-800">
+                      Site Measurements
+                    </h1>
+                    <p className="text-sm text-slate-500">
+                      Manage site measurement status across all projects
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="m-6 flex-1">
-              {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                </div>
-              ) : error ? (
-                <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
-                  {error}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-                  {/* Pending Column */}
-                  <div className="flex flex-col">
-                    <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
-                      <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
-                        <Clock className="w-5 h-5 text-orange-500" />
-                        Pending Measurements
-                        <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
-                          {pendingLots.length}
-                        </span>
-                      </h2>
+              <div className="m-6 flex-1 min-h-0">
+                {loading ? (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  </div>
+                ) : error ? (
+                  <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
+                    {error}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                    {/* Pending Column */}
+                    <div className="flex flex-col h-full min-h-0">
+                      <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
+                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
+                          <Clock className="w-5 h-5 text-orange-500" />
+                          Pending Measurements
+                          <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
+                            {pendingLots.length}
+                          </span>
+                        </h2>
+                      </div>
+
+                      <DropZone
+                        targetColumn="pending"
+                        isEmpty={pendingLots.length === 0}
+                      >
+                        {pendingLots.length === 0 ? (
+                          <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
+                            <p className="text-slate-500">
+                              No pending measurements
+                            </p>
+                          </div>
+                        ) : (
+                          pendingLots.map((lot) => (
+                            <LotCard key={lot.lot_id} lot={lot} />
+                          ))
+                        )}
+                      </DropZone>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-                      {pendingLots.length === 0 ? (
-                        <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
-                          <p className="text-slate-500">
-                            No pending measurements
-                          </p>
-                        </div>
-                      ) : (
-                        pendingLots.map((lot) => (
-                          <LotCard key={lot.lot_id} lot={lot} />
-                        ))
-                      )}
+                    {/* Done Column */}
+                    <div className="flex flex-col h-full min-h-0">
+                      <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
+                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                          Completed Measurements
+                          <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
+                            {doneLots.length}
+                          </span>
+                        </h2>
+                      </div>
+
+                      <DropZone
+                        targetColumn="done"
+                        isEmpty={doneLots.length === 0}
+                      >
+                        {doneLots.length === 0 ? (
+                          <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
+                            <p className="text-slate-500">
+                              No completed measurements
+                            </p>
+                          </div>
+                        ) : (
+                          doneLots.map((lot) => (
+                            <LotCard key={lot.lot_id} lot={lot} />
+                          ))
+                        )}
+                      </DropZone>
                     </div>
                   </div>
-
-                  {/* Done Column */}
-                  <div className="flex flex-col">
-                    <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
-                      <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                        Completed Measurements
-                        <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
-                          {doneLots.length}
-                        </span>
-                      </h2>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-                      {doneLots.length === 0 ? (
-                        <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
-                          <p className="text-slate-500">
-                            No completed measurements
-                          </p>
-                        </div>
-                      ) : (
-                        doneLots.map((lot) => (
-                          <LotCard key={lot.lot_id} lot={lot} />
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </AdminRoute>
+      </AdminRoute>
+    </DndProvider>
   );
 }

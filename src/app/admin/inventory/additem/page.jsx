@@ -1101,8 +1101,8 @@ export default function page() {
                           />
                         </div>
 
-                        {/* Multi-Supplier Section */}
-                        <div className="space-y-4">
+                        {/* Multi-Supplier Section - Full Width */}
+                        <div className="col-span-2 space-y-4">
                           <div className="flex items-center justify-between">
                             <label className="block text-sm font-medium text-slate-700">
                               Suppliers{" "}
@@ -1111,7 +1111,7 @@ export default function page() {
                             <button
                               type="button"
                               onClick={handleAddSupplier}
-                              className="flex items-center gap-1 px-3 py-1 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                              className="cursor-pointer flex items-center gap-1 px-3 py-1 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
                             >
                               <Plus className="w-4 h-4" />
                               Add Supplier
@@ -1121,7 +1121,7 @@ export default function page() {
                           {itemSuppliers.map((supplier, index) => (
                             <div
                               key={supplier.id}
-                              className="border border-slate-300 rounded-lg p-4 space-y-4 relative"
+                              className="border border-slate-300 rounded-lg p-4 space-y-4 relative bg-slate-50"
                             >
                               {/* Remove button - only show if more than 1 supplier */}
                               {itemSuppliers.length > 1 && (
@@ -1130,7 +1130,7 @@ export default function page() {
                                   onClick={() =>
                                     handleRemoveSupplier(supplier.id)
                                   }
-                                  className="absolute top-3 right-3 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                  className="cursor-pointer absolute top-3 right-3 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                                   title="Remove supplier"
                                 >
                                   <X className="w-4 h-4" />
@@ -1141,196 +1141,202 @@ export default function page() {
                                 Supplier #{index + 1}
                               </div>
 
-                              {/* Supplier Dropdown */}
-                              <div className="relative">
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                  Supplier
-                                </label>
+                              {/* 2x2 Grid Layout */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Supplier Dropdown */}
                                 <div className="relative">
+                                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Supplier Name
+                                  </label>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={supplier.supplier_search_term}
+                                      onChange={(e) =>
+                                        handleSupplierFieldChange(
+                                          supplier.id,
+                                          "supplier_search_term",
+                                          e.target.value,
+                                        )
+                                      }
+                                      onFocus={() => {
+                                        // Open dropdown for this specific supplier
+                                        const updatedSuppliers =
+                                          itemSuppliers.map((s) =>
+                                            s.id === supplier.id
+                                              ? { ...s, _dropdownOpen: true }
+                                              : { ...s, _dropdownOpen: false },
+                                          );
+                                        setItemSuppliers(updatedSuppliers);
+                                      }}
+                                      className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                      placeholder="Search or select supplier..."
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updatedSuppliers =
+                                          itemSuppliers.map((s) =>
+                                            s.id === supplier.id
+                                              ? {
+                                                  ...s,
+                                                  _dropdownOpen:
+                                                    !s._dropdownOpen,
+                                                }
+                                              : s,
+                                          );
+                                        setItemSuppliers(updatedSuppliers);
+                                      }}
+                                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                      <ChevronDown
+                                        className={`w-5 h-5 transition-transform duration-200 ${
+                                          supplier._dropdownOpen
+                                            ? "rotate-180"
+                                            : ""
+                                        }`}
+                                      />
+                                    </button>
+                                  </div>
+
+                                  {supplier._dropdownOpen && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                      {filteredSuppliers.filter((s) =>
+                                        s.name
+                                          .toLowerCase()
+                                          .includes(
+                                            (
+                                              supplier.supplier_search_term ||
+                                              ""
+                                            ).toLowerCase(),
+                                          ),
+                                      ).length > 0 ? (
+                                        filteredSuppliers
+                                          .filter((s) =>
+                                            s.name
+                                              .toLowerCase()
+                                              .includes(
+                                                (
+                                                  supplier.supplier_search_term ||
+                                                  ""
+                                                ).toLowerCase(),
+                                              ),
+                                          )
+                                          .map((s) => (
+                                            <button
+                                              key={s.supplier_id}
+                                              type="button"
+                                              onClick={() => {
+                                                // Update supplier selection and close dropdown in one state update
+                                                setItemSuppliers(
+                                                  itemSuppliers.map((sup) =>
+                                                    sup.id === supplier.id
+                                                      ? {
+                                                          ...sup,
+                                                          supplier_id:
+                                                            s.supplier_id,
+                                                          supplier_search_term:
+                                                            s.name,
+                                                          _dropdownOpen: false,
+                                                        }
+                                                      : sup,
+                                                  ),
+                                                );
+                                              }}
+                                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                            >
+                                              <div>
+                                                <div className="font-medium">
+                                                  {s.name}
+                                                </div>
+                                                <div className="text-xs text-slate-500">
+                                                  id: {s.supplier_id}
+                                                </div>
+                                              </div>
+                                            </button>
+                                          ))
+                                      ) : (
+                                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                          No matching suppliers found
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Price per Unit */}
+                                <div>
+                                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Price per Unit (including GST)
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500">
+                                      $
+                                    </span>
+                                    <input
+                                      type="number"
+                                      value={supplier.price}
+                                      onChange={(e) =>
+                                        handleSupplierFieldChange(
+                                          supplier.id,
+                                          "price",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-full text-sm text-slate-800 pl-8 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                      placeholder="0.00"
+                                      step="0.01"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Supplier Reference */}
+                                <div>
+                                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Supplier Reference
+                                  </label>
                                   <input
                                     type="text"
-                                    value={supplier.supplier_search_term}
+                                    value={supplier.supplier_reference}
                                     onChange={(e) =>
                                       handleSupplierFieldChange(
                                         supplier.id,
-                                        "supplier_search_term",
+                                        "supplier_reference",
                                         e.target.value,
                                       )
                                     }
-                                    onFocus={() => {
-                                      // Open dropdown for this specific supplier
-                                      const updatedSuppliers =
-                                        itemSuppliers.map((s) =>
-                                          s.id === supplier.id
-                                            ? { ...s, _dropdownOpen: true }
-                                            : { ...s, _dropdownOpen: false },
-                                        );
-                                      setItemSuppliers(updatedSuppliers);
-                                    }}
-                                    className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                    placeholder="Search or select supplier..."
+                                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                    placeholder="Eg. SUP-12345"
                                   />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const updatedSuppliers =
-                                        itemSuppliers.map((s) =>
-                                          s.id === supplier.id
-                                            ? {
-                                                ...s,
-                                                _dropdownOpen: !s._dropdownOpen,
-                                              }
-                                            : s,
-                                        );
-                                      setItemSuppliers(updatedSuppliers);
-                                    }}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                  >
-                                    <ChevronDown
-                                      className={`w-5 h-5 transition-transform duration-200 ${
-                                        supplier._dropdownOpen
-                                          ? "rotate-180"
-                                          : ""
-                                      }`}
-                                    />
-                                  </button>
                                 </div>
 
-                                {supplier._dropdownOpen && (
-                                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                    {filteredSuppliers.filter((s) =>
-                                      s.name
-                                        .toLowerCase()
-                                        .includes(
-                                          (
-                                            supplier.supplier_search_term || ""
-                                          ).toLowerCase(),
-                                        ),
-                                    ).length > 0 ? (
-                                      filteredSuppliers
-                                        .filter((s) =>
-                                          s.name
-                                            .toLowerCase()
-                                            .includes(
-                                              (
-                                                supplier.supplier_search_term ||
-                                                ""
-                                              ).toLowerCase(),
-                                            ),
-                                        )
-                                        .map((s) => (
-                                          <button
-                                            key={s.supplier_id}
-                                            type="button"
-                                            onClick={() => {
-                                              // Update supplier selection and close dropdown in one state update
-                                              setItemSuppliers(
-                                                itemSuppliers.map((sup) =>
-                                                  sup.id === supplier.id
-                                                    ? {
-                                                        ...sup,
-                                                        supplier_id:
-                                                          s.supplier_id,
-                                                        supplier_search_term:
-                                                          s.name,
-                                                        _dropdownOpen: false,
-                                                      }
-                                                    : sup,
-                                                ),
-                                              );
-                                            }}
-                                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                          >
-                                            <div>
-                                              <div className="font-medium">
-                                                {s.name}
-                                              </div>
-                                              <div className="text-xs text-slate-500">
-                                                id: {s.supplier_id}
-                                              </div>
-                                            </div>
-                                          </button>
-                                        ))
-                                    ) : (
-                                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                        No matching suppliers found
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Price per Unit */}
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                  Price per Unit (including GST)
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500">
-                                    $
-                                  </span>
+                                {/* Supplier Product Link */}
+                                <div>
+                                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Supplier Product Link
+                                  </label>
                                   <input
-                                    type="number"
-                                    value={supplier.price}
+                                    type="url"
+                                    value={supplier.supplier_product_link}
                                     onChange={(e) =>
                                       handleSupplierFieldChange(
                                         supplier.id,
-                                        "price",
+                                        "supplier_product_link",
                                         e.target.value,
                                       )
                                     }
-                                    className="w-full text-sm text-slate-800 pl-8 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                    placeholder="0.00"
-                                    step="0.01"
+                                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                    placeholder="Eg. https://supplier.com/product/123"
                                   />
                                 </div>
-                              </div>
-
-                              {/* Supplier Reference */}
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                  Supplier Reference
-                                </label>
-                                <input
-                                  type="text"
-                                  value={supplier.supplier_reference}
-                                  onChange={(e) =>
-                                    handleSupplierFieldChange(
-                                      supplier.id,
-                                      "supplier_reference",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                  placeholder="Eg. SUP-12345"
-                                />
-                              </div>
-
-                              {/* Supplier Product Link */}
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                  Supplier Product Link
-                                </label>
-                                <input
-                                  type="url"
-                                  value={supplier.supplier_product_link}
-                                  onChange={(e) =>
-                                    handleSupplierFieldChange(
-                                      supplier.id,
-                                      "supplier_product_link",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                  placeholder="Eg. https://supplier.com/product/123"
-                                />
                               </div>
                             </div>
                           ))}
                         </div>
 
+                        {/* Measurement Unit - Full Width Below Suppliers */}
                         <div
-                          className="relative"
+                          className="col-span-2 relative"
                           ref={measuringUnitDropdownRef}
                         >
                           <label className="block text-sm font-medium text-slate-700 mb-2">

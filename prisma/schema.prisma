@@ -410,22 +410,17 @@ model item {
   item_id                  String                    @id @default(uuid())
   category                 Category
   description              String?
-  price                    Decimal?                  @db.Decimal(10, 2)
   quantity                 Decimal?                  @default(0) @db.Decimal(10, 2)
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   measurement_unit         String?
-  supplier_id              String?
   image_id                 String?                   @unique
-  supplier_product_link    String?                   @db.LongText
-  supplier_reference       String?
   is_deleted               Boolean                   @default(false)
   accessory                accessory?
   edging_tape              edging_tape?
   handle                   handle?
   hardware                 hardware?
   image                    media?                    @relation(fields: [image_id], references: [id], onDelete: SetNull)
-  supplier                 supplier?                 @relation(fields: [supplier_id], references: [supplier_id], onDelete: SetNull)
   materials_to_order_items materials_to_order_item[]
   purchase_order_item      purchase_order_item[]
   sheet                    sheet?
@@ -435,7 +430,6 @@ model item {
 
   @@unique([item_id, category])
   @@index([category])
-  @@index([supplier_id], map: "item_supplier_id_fkey")
 }
 
 model item_suppliers {
@@ -508,19 +502,19 @@ model edging_tape {
 }
 
 model supplier {
-  supplier_id    String               @id @default(uuid())
-  name           String               @unique
-  address        String?              @db.LongText
-  phone          String?
-  email          String?
-  website        String?
-  notes          String?              @db.LongText
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  abn_number     String?
-  is_deleted     Boolean              @default(false)
-  contacts       contact[]
-  items          item[]
+  supplier_id String    @id @default(uuid())
+  name        String    @unique
+  address     String?   @db.LongText
+  phone       String?
+  email       String?
+  website     String?
+  notes       String?   @db.LongText
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  abn_number  String?
+  is_deleted  Boolean   @default(false)
+  contacts    contact[]
+
   purchase_order purchase_order[]
   statements     supplier_statement[]
   itemSuppliers  item_suppliers[]

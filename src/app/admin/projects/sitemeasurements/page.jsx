@@ -26,7 +26,8 @@ export default function SiteMeasurementsPage() {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeLots, setActiveLots] = useState([]);
+  const [pendingLots, setPendingLots] = useState([]);
+  const [doneLots, setDoneLots] = useState([]);
 
   // Status Dropdown State
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(null); // Format: "lot_id"
@@ -34,7 +35,7 @@ export default function SiteMeasurementsPage() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
-    fetchActiveLots();
+    fetchSiteMeasurements();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -64,7 +65,7 @@ export default function SiteMeasurementsPage() {
     };
   }, []);
 
-  const fetchActiveLots = async () => {
+  const fetchSiteMeasurements = async () => {
     try {
       const sessionToken = getToken();
 
@@ -75,7 +76,7 @@ export default function SiteMeasurementsPage() {
 
       const config = {
         method: "get",
-        url: "/api/lot/active",
+        url: "/api/lot/sitemeasurements",
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -84,13 +85,14 @@ export default function SiteMeasurementsPage() {
       const response = await axios.request(config);
 
       if (response.data.status) {
-        setActiveLots(response.data.data);
+        setPendingLots(response.data.data.pending);
+        setDoneLots(response.data.data.done);
       } else {
         setError(response.data.message);
       }
     } catch (error) {
-      console.error("Error fetching active lots:", error);
-      setError(error.message || "Failed to fetch active lots");
+      console.error("Error fetching site measurements:", error);
+      setError(error.message || "Failed to fetch site measurements");
     } finally {
       setLoading(false);
     }
@@ -169,7 +171,7 @@ export default function SiteMeasurementsPage() {
         if (createResponse.data.status) {
           toast.success("Status updated successfully");
           setStatusDropdownOpen(null);
-          fetchActiveLots();
+          fetchSiteMeasurements();
         } else {
           toast.error(createResponse.data.message || "Failed to update status");
         }
@@ -199,27 +201,8 @@ export default function SiteMeasurementsPage() {
         if (response.data.status) {
           toast.success("Status updated successfully");
           setStatusDropdownOpen(null);
-          // Update local state to reflect change immediately without waiting for fetch
-          const updatedLots = activeLots.map((l) => {
-            if (l.lot_id === lot.lot_id) {
-              const existingStages = l.stages || [];
-              const existingStageIndex = existingStages.findIndex(
-                (s) => s.stage_id === stageObj.stage_id,
-              );
-              let newStages = [...existingStages];
-              if (existingStageIndex >= 0) {
-                newStages[existingStageIndex] = {
-                  ...newStages[existingStageIndex],
-                  status: newStatus,
-                };
-              }
-              return { ...l, stages: newStages };
-            }
-            return l;
-          });
-          setActiveLots(updatedLots);
-
-          fetchActiveLots();
+          // Refresh data from backend
+          fetchSiteMeasurements();
         } else {
           toast.error(response.data.message || "Failed to update status");
         }
@@ -231,15 +214,6 @@ export default function SiteMeasurementsPage() {
       setIsUpdatingStatus(false);
     }
   };
-
-  const notStartedOrProgressLots = activeLots.filter((lot) => {
-    const status = getStageStatus(lot, "Site Measurements");
-    return status === "NOT_STARTED" || status === "IN_PROGRESS";
-  });
-
-  const doneLots = activeLots.filter(
-    (lot) => getStageStatus(lot, "Site Measurements") === "DONE",
-  );
 
   const handleCardClick = (lot) => {
     if (!lot.project?.project_id) return;
@@ -382,7 +356,7 @@ export default function SiteMeasurementsPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="m-6 flex-1">
               {loading ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -394,26 +368,26 @@ export default function SiteMeasurementsPage() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
                   {/* Pending Column */}
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between sticky top-0 bg-slate-50 z-10 py-2">
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
                       <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
                         <Clock className="w-5 h-5 text-orange-500" />
                         Pending Measurements
                         <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
-                          {notStartedOrProgressLots.length}
+                          {pendingLots.length}
                         </span>
                       </h2>
                     </div>
 
-                    <div className="space-y-3 pb-8">
-                      {notStartedOrProgressLots.length === 0 ? (
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+                      {pendingLots.length === 0 ? (
                         <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
                           <p className="text-slate-500">
                             No pending measurements
                           </p>
                         </div>
                       ) : (
-                        notStartedOrProgressLots.map((lot) => (
+                        pendingLots.map((lot) => (
                           <LotCard key={lot.lot_id} lot={lot} />
                         ))
                       )}
@@ -421,8 +395,8 @@ export default function SiteMeasurementsPage() {
                   </div>
 
                   {/* Done Column */}
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between sticky top-0 bg-slate-50 z-10 py-2">
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
                       <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
                         <CheckCircle className="w-5 h-5 text-green-500" />
                         Completed Measurements
@@ -432,7 +406,7 @@ export default function SiteMeasurementsPage() {
                       </h2>
                     </div>
 
-                    <div className="space-y-3 pb-8">
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-2">
                       {doneLots.length === 0 ? (
                         <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
                           <p className="text-slate-500">

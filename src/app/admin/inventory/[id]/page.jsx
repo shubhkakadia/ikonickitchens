@@ -401,25 +401,18 @@ export default function page() {
           }));
           setItemSuppliers(suppliersData);
         } else {
-          // Fallback: if no itemSuppliers, initialize with empty supplier or legacy data
+          // Initialize with empty supplier entry if no itemSuppliers
           setItemSuppliers([
             {
               id: uuidv4(),
-              supplier_id: response.data.data.supplier_id || "",
-              supplier_reference: response.data.data.supplier_reference || "",
-              supplier_product_link:
-                response.data.data.supplier_product_link || "",
-              price: response.data.data.price || "",
-              supplier_search_term: response.data.data.supplier?.name || "",
+              supplier_id: "",
+              supplier_reference: "",
+              supplier_product_link: "",
+              price: "",
+              supplier_search_term: "",
               _dropdownOpen: false,
             },
           ]);
-        }
-
-        // Set selected supplier (for backward compatibility / legacy single supplier view)
-        if (response.data.data.supplier_id && response.data.data.supplier) {
-          setSelectedSupplier(response.data.data.supplier);
-          setSupplierSearchTerm(response.data.data.supplier.name);
         }
       } else {
         setError(response.data.message || "Failed to fetch item data");
@@ -828,12 +821,8 @@ export default function page() {
 
       const editFormData = {
         description: item.description || "",
-        price: item.price || "",
         quantity: item.quantity || "",
-        supplier_id: item.supplier_id || "",
         measurement_unit: item.measurement_unit || "",
-        supplier_reference: item.supplier_reference || "",
-        supplier_product_link: item.supplier_product_link || "",
       };
       // Initialize measuring unit search term
       setMeasuringUnitSearchTerm(item.measurement_unit || "");
@@ -1949,27 +1938,57 @@ export default function page() {
                             )}
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h2 className="text-lg font-bold text-slate-800">
-                                {getItemTitle()}
-                              </h2>
-                              <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
-                                {item.category
-                                  .toLowerCase()
-                                  .charAt(0)
-                                  .toUpperCase() +
-                                  item.category.toLowerCase().slice(1)}
-                              </span>
-                              {item.category.toLowerCase() === "sheet" &&
-                                item.sheet?.is_sunmica && (
-                                  <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
-                                    Sunmica
+                            <div className="grid grid-cols-2 gap-4 mb-3">
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h2 className="text-lg font-bold text-slate-800">
+                                    {getItemTitle()}
+                                  </h2>
+                                  <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
+                                    {item.category
+                                      .toLowerCase()
+                                      .charAt(0)
+                                      .toUpperCase() +
+                                      item.category.toLowerCase().slice(1)}
                                   </span>
+                                  {item.category.toLowerCase() === "sheet" &&
+                                    item.sheet?.is_sunmica && (
+                                      <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
+                                        Sunmica
+                                      </span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                  ID: {item.item_id}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={formData.quantity || ""}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        "quantity",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder={formatValue(item.quantity)}
+                                    className="w-full text-lg text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-right"
+                                    step="0.1"
+                                  />
+                                ) : (
+                                  <p className="text-2xl font-bold text-emerald-600">
+                                    {formatValue(item.quantity)}
+                                    {item.measurement_unit && (
+                                      <span className="ml-1 text-sm font-normal">
+                                        {item.measurement_unit}
+                                      </span>
+                                    )}
+                                  </p>
                                 )}
+                              </div>
                             </div>
-                            <p className="text-xs text-slate-500 mb-3">
-                              ID: {item.item_id}
-                            </p>
                             <div className="space-y-3">
                               <div>
                                 <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
@@ -1995,413 +2014,11 @@ export default function page() {
                                 )}
                               </div>
 
-                              {/* Pricing & Stock Information */}
-                              <div className="grid grid-cols-3 gap-4 pt-3 border-t border-slate-200">
-                                <div>
-                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                                    Quantity in Stock
-                                  </label>
-                                  {isEditing ? (
-                                    <input
-                                      type="number"
-                                      value={formData.quantity || ""}
-                                      onChange={(e) =>
-                                        handleInputChange(
-                                          "quantity",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder={formatValue(item.quantity)}
-                                      className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                      step="0.1"
-                                    />
-                                  ) : (
-                                    <p className="text-sm font-bold text-slate-800">
-                                      {formatValue(item.quantity)}
-                                      {item.measurement_unit && (
-                                        <span className="ml-1 text-slate-600 text-xs font-normal">
-                                          {item.measurement_unit}
-                                        </span>
-                                      )}
-                                    </p>
-                                  )}
-                                </div>
-                                <div>
-                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                                    Price per Unit (including GST)
-                                  </label>
-                                  {isEditing ? (
-                                    <div className="relative">
-                                      <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-slate-600 text-sm">
-                                        $
-                                      </span>
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.price || ""}
-                                        onChange={(e) =>
-                                          handleInputChange(
-                                            "price",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder={formatValue(item.price)}
-                                        className="w-full text-sm text-slate-800 pl-7 pr-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm font-bold text-emerald-600">
-                                      ${formatValue(item.price)}
-                                    </p>
-                                  )}
-                                </div>
-                                {!isEditing && (
-                                  <div>
-                                    <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                                      Total Value
-                                    </label>
-                                    <p className="text-sm font-bold text-slate-800">
-                                      $
-                                      {(
-                                        parseFloat(item.price || 0) *
-                                        parseFloat(item.quantity || 0)
-                                      ).toFixed(2)}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Multi-Supplier Section - Full Width */}
+                              {/* Category-Specific Details Section - Moved from sidebar */}
                               <div className="col-span-2 pt-3 border-t border-slate-200">
-                                <div className="flex items-center justify-between mb-2">
-                                  <label className="text-xs uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
-                                    <Building2 className="w-3.5 h-3.5" />
-                                    Suppliers
-                                  </label>
-                                  {isEditing && (
-                                    <button
-                                      type="button"
-                                      onClick={handleAddSupplier}
-                                      className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
-                                    >
-                                      <Plus className="w-3 h-3" />
-                                      Add Supplier
-                                    </button>
-                                  )}
+                                <div className="grid grid-cols-3 gap-4">
+                                  {renderCategorySpecificFields()}
                                 </div>
-
-                                {isEditing ? (
-                                  <div className="space-y-3">
-                                    {itemSuppliers.map((supplier, index) => (
-                                      <div
-                                        key={supplier.id}
-                                        className="border border-slate-300 rounded-lg p-3 space-y-3 relative bg-white"
-                                      >
-                                        {/* Remove button */}
-                                        {itemSuppliers.length > 1 && (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              handleRemoveSupplier(supplier.id)
-                                            }
-                                            className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                            title="Remove supplier"
-                                          >
-                                            <X className="w-3.5 h-3.5" />
-                                          </button>
-                                        )}
-
-                                        <div className="text-xs font-medium text-slate-600">
-                                          Supplier #{index + 1}
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-3">
-                                          {/* Supplier Dropdown */}
-                                          <div className="relative">
-                                            <label className="text-xs text-slate-600 mb-1 block">
-                                              Supplier Name
-                                            </label>
-                                            <input
-                                              type="text"
-                                              value={
-                                                supplier.supplier_search_term
-                                              }
-                                              onChange={(e) =>
-                                                handleSupplierFieldChange(
-                                                  supplier.id,
-                                                  "supplier_search_term",
-                                                  e.target.value,
-                                                )
-                                              }
-                                              onFocus={() => {
-                                                const updatedSuppliers =
-                                                  itemSuppliers.map((s) =>
-                                                    s.id === supplier.id
-                                                      ? {
-                                                          ...s,
-                                                          _dropdownOpen: true,
-                                                        }
-                                                      : {
-                                                          ...s,
-                                                          _dropdownOpen: false,
-                                                        },
-                                                  );
-                                                setItemSuppliers(
-                                                  updatedSuppliers,
-                                                );
-                                              }}
-                                              placeholder="Search supplier..."
-                                              className="w-full text-sm text-slate-800 px-2 py-1.5 pr-7 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                            />
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                const updatedSuppliers =
-                                                  itemSuppliers.map((s) =>
-                                                    s.id === supplier.id
-                                                      ? {
-                                                          ...s,
-                                                          _dropdownOpen:
-                                                            !s._dropdownOpen,
-                                                        }
-                                                      : s,
-                                                  );
-                                                setItemSuppliers(
-                                                  updatedSuppliers,
-                                                );
-                                              }}
-                                              className="absolute right-2 top-7 text-slate-400 hover:text-slate-600 transition-colors"
-                                            >
-                                              <ChevronDown
-                                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                                  supplier._dropdownOpen
-                                                    ? "rotate-180"
-                                                    : ""
-                                                }`}
-                                              />
-                                            </button>
-
-                                            {supplier._dropdownOpen && (
-                                              <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-auto">
-                                                {filteredSuppliers.filter((s) =>
-                                                  s.name
-                                                    .toLowerCase()
-                                                    .includes(
-                                                      (
-                                                        supplier.supplier_search_term ||
-                                                        ""
-                                                      ).toLowerCase(),
-                                                    ),
-                                                ).length > 0 ? (
-                                                  filteredSuppliers
-                                                    .filter((s) =>
-                                                      s.name
-                                                        .toLowerCase()
-                                                        .includes(
-                                                          (
-                                                            supplier.supplier_search_term ||
-                                                            ""
-                                                          ).toLowerCase(),
-                                                        ),
-                                                    )
-                                                    .map((s) => (
-                                                      <button
-                                                        key={s.supplier_id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                          // Update supplier selection and close dropdown in one state update
-                                                          setItemSuppliers(
-                                                            itemSuppliers.map(
-                                                              (sup) =>
-                                                                sup.id ===
-                                                                supplier.id
-                                                                  ? {
-                                                                      ...sup,
-                                                                      supplier_id:
-                                                                        s.supplier_id,
-                                                                      supplier_search_term:
-                                                                        s.name,
-                                                                      _dropdownOpen: false,
-                                                                    }
-                                                                  : sup,
-                                                            ),
-                                                          );
-                                                        }}
-                                                        className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                                      >
-                                                        <div className="font-medium">
-                                                          {s.name}
-                                                        </div>
-                                                        <div className="text-xs text-slate-500">
-                                                          {s.supplier_id}
-                                                        </div>
-                                                      </button>
-                                                    ))
-                                                ) : (
-                                                  <div className="px-3 py-2 text-xs text-slate-500 text-center">
-                                                    No suppliers found
-                                                  </div>
-                                                )}
-                                              </div>
-                                            )}
-                                          </div>
-
-                                          {/* Price */}
-                                          <div>
-                                            <label className="text-xs text-slate-600 mb-1 block">
-                                              Price per Unit
-                                            </label>
-                                            <div className="relative">
-                                              <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">
-                                                $
-                                              </span>
-                                              <input
-                                                type="number"
-                                                value={supplier.price}
-                                                onChange={(e) =>
-                                                  handleSupplierFieldChange(
-                                                    supplier.id,
-                                                    "price",
-                                                    e.target.value,
-                                                  )
-                                                }
-                                                placeholder="0.00"
-                                                step="0.01"
-                                                className="w-full text-sm text-slate-800 pl-6 pr-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                              />
-                                            </div>
-                                          </div>
-
-                                          {/* Supplier Reference */}
-                                          <div>
-                                            <label className="text-xs text-slate-600 mb-1 block">
-                                              Supplier Reference
-                                            </label>
-                                            <input
-                                              type="text"
-                                              value={
-                                                supplier.supplier_reference
-                                              }
-                                              onChange={(e) =>
-                                                handleSupplierFieldChange(
-                                                  supplier.id,
-                                                  "supplier_reference",
-                                                  e.target.value,
-                                                )
-                                              }
-                                              placeholder="e.g. SUP-12345"
-                                              className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                            />
-                                          </div>
-
-                                          {/* Supplier Product Link */}
-                                          <div>
-                                            <label className="text-xs text-slate-600 mb-1 block">
-                                              Product Link
-                                            </label>
-                                            <input
-                                              type="url"
-                                              value={
-                                                supplier.supplier_product_link
-                                              }
-                                              onChange={(e) =>
-                                                handleSupplierFieldChange(
-                                                  supplier.id,
-                                                  "supplier_product_link",
-                                                  e.target.value,
-                                                )
-                                              }
-                                              placeholder="https://..."
-                                              className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="space-y-2">
-                                    {item?.itemSuppliers &&
-                                    item.itemSuppliers.length > 0 ? (
-                                      item.itemSuppliers.map(
-                                        (itemSupplier, index) => (
-                                          <div
-                                            key={index}
-                                            className="border border-slate-200 rounded-lg p-3 bg-slate-50"
-                                          >
-                                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                              <div>
-                                                <div className="text-xs text-slate-500 mb-0.5">
-                                                  Supplier
-                                                </div>
-                                                {itemSupplier.supplier ? (
-                                                  <p
-                                                    className="text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors font-medium"
-                                                    onClick={() =>
-                                                      router.push(
-                                                        `/admin/suppliers/${itemSupplier.supplier.supplier_id}`,
-                                                      )
-                                                    }
-                                                  >
-                                                    {itemSupplier.supplier.name}
-                                                  </p>
-                                                ) : (
-                                                  <p className="text-slate-800">
-                                                    -
-                                                  </p>
-                                                )}
-                                              </div>
-                                              <div>
-                                                <div className="text-xs text-slate-500 mb-0.5">
-                                                  Price
-                                                </div>
-                                                <p className="text-slate-800">
-                                                  {itemSupplier.price
-                                                    ? `$${parseFloat(itemSupplier.price).toFixed(2)}`
-                                                    : "-"}
-                                                </p>
-                                              </div>
-                                              {itemSupplier.supplier_reference && (
-                                                <div>
-                                                  <div className="text-xs text-slate-500 mb-0.5">
-                                                    Reference
-                                                  </div>
-                                                  <p className="text-slate-800">
-                                                    {
-                                                      itemSupplier.supplier_reference
-                                                    }
-                                                  </p>
-                                                </div>
-                                              )}
-                                              {itemSupplier.supplier_product_link && (
-                                                <div>
-                                                  <div className="text-xs text-slate-500 mb-0.5">
-                                                    Product Link
-                                                  </div>
-                                                  <a
-                                                    href={
-                                                      itemSupplier.supplier_product_link
-                                                    }
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-primary hover:underline flex items-center gap-1"
-                                                  >
-                                                    View
-                                                    <ExternalLink className="w-3 h-3" />
-                                                  </a>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        ),
-                                      )
-                                    ) : (
-                                      <p className="text-sm text-slate-500 italic">
-                                        No suppliers assigned
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
                               </div>
 
                               {/* Measurement Unit Field - Back to grid */}
@@ -2902,16 +2519,320 @@ export default function page() {
                       </div>
                     </div>
 
-                    {/* Category-Specific Information - 30% width */}
+                    {/* Suppliers Section - 30% width (moved from main section) */}
                     <div className="col-span-3">
                       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                          <Package className="w-4 h-4" />
-                          Details
-                        </h3>
-                        <div className="grid grid-cols-1 gap-4">
-                          {renderCategorySpecificFields()}
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                            <Building2 className="w-4 h-4" />
+                            Suppliers
+                          </h3>
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={handleAddSupplier}
+                              className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
+                            >
+                              <Plus className="w-3 h-3" />
+                              Add Supplier
+                            </button>
+                          )}
                         </div>
+
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            {itemSuppliers.map((supplier, index) => (
+                              <div
+                                key={supplier.id}
+                                className="border border-slate-300 rounded-lg p-3 space-y-3 relative bg-white"
+                              >
+                                {/* Remove button */}
+                                {itemSuppliers.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleRemoveSupplier(supplier.id)
+                                    }
+                                    className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                    title="Remove supplier"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+
+                                <div className="text-xs font-medium text-slate-600">
+                                  Supplier #{index + 1}
+                                </div>
+
+                                <div className="space-y-3">
+                                  {/* Supplier Dropdown */}
+                                  <div className="relative">
+                                    <label className="text-xs text-slate-600 mb-1 block">
+                                      Supplier Name
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={supplier.supplier_search_term}
+                                      onChange={(e) =>
+                                        handleSupplierFieldChange(
+                                          supplier.id,
+                                          "supplier_search_term",
+                                          e.target.value,
+                                        )
+                                      }
+                                      onFocus={() => {
+                                        const updatedSuppliers =
+                                          itemSuppliers.map((s) =>
+                                            s.id === supplier.id
+                                              ? {
+                                                  ...s,
+                                                  _dropdownOpen: true,
+                                                }
+                                              : {
+                                                  ...s,
+                                                  _dropdownOpen: false,
+                                                },
+                                          );
+                                        setItemSuppliers(updatedSuppliers);
+                                      }}
+                                      placeholder="Search supplier..."
+                                      className="w-full text-sm text-slate-800 px-2 py-1.5 pr-7 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updatedSuppliers =
+                                          itemSuppliers.map((s) =>
+                                            s.id === supplier.id
+                                              ? {
+                                                  ...s,
+                                                  _dropdownOpen:
+                                                    !s._dropdownOpen,
+                                                }
+                                              : s,
+                                          );
+                                        setItemSuppliers(updatedSuppliers);
+                                      }}
+                                      className="absolute right-2 top-7 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                      <ChevronDown
+                                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                          supplier._dropdownOpen
+                                            ? "rotate-180"
+                                            : ""
+                                        }`}
+                                      />
+                                    </button>
+
+                                    {supplier._dropdownOpen && (
+                                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-auto">
+                                        {filteredSuppliers.filter((s) =>
+                                          s.name
+                                            .toLowerCase()
+                                            .includes(
+                                              (
+                                                supplier.supplier_search_term ||
+                                                ""
+                                              ).toLowerCase(),
+                                            ),
+                                        ).length > 0 ? (
+                                          filteredSuppliers
+                                            .filter((s) =>
+                                              s.name
+                                                .toLowerCase()
+                                                .includes(
+                                                  (
+                                                    supplier.supplier_search_term ||
+                                                    ""
+                                                  ).toLowerCase(),
+                                                ),
+                                            )
+                                            .map((s) => (
+                                              <button
+                                                key={s.supplier_id}
+                                                type="button"
+                                                onClick={() => {
+                                                  // Update supplier selection and close dropdown in one state update
+                                                  setItemSuppliers(
+                                                    itemSuppliers.map((sup) =>
+                                                      sup.id === supplier.id
+                                                        ? {
+                                                            ...sup,
+                                                            supplier_id:
+                                                              s.supplier_id,
+                                                            supplier_search_term:
+                                                              s.name,
+                                                            _dropdownOpen: false,
+                                                          }
+                                                        : sup,
+                                                    ),
+                                                  );
+                                                }}
+                                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                              >
+                                                <div className="font-medium">
+                                                  {s.name}
+                                                </div>
+                                                <div className="text-xs text-slate-500">
+                                                  {s.supplier_id}
+                                                </div>
+                                              </button>
+                                            ))
+                                        ) : (
+                                          <div className="px-3 py-2 text-xs text-slate-500 text-center">
+                                            No suppliers found
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Price */}
+                                  <div>
+                                    <label className="text-xs text-slate-600 mb-1 block">
+                                      Price per Unit
+                                    </label>
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">
+                                        $
+                                      </span>
+                                      <input
+                                        type="number"
+                                        value={supplier.price}
+                                        onChange={(e) =>
+                                          handleSupplierFieldChange(
+                                            supplier.id,
+                                            "price",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="0.00"
+                                        step="0.01"
+                                        className="w-full text-sm text-slate-800 pl-6 pr-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Supplier Reference */}
+                                  <div>
+                                    <label className="text-xs text-slate-600 mb-1 block">
+                                      Supplier Reference
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={supplier.supplier_reference}
+                                      onChange={(e) =>
+                                        handleSupplierFieldChange(
+                                          supplier.id,
+                                          "supplier_reference",
+                                          e.target.value,
+                                        )
+                                      }
+                                      placeholder="e.g. SUP-12345"
+                                      className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                    />
+                                  </div>
+
+                                  {/* Supplier Product Link */}
+                                  <div>
+                                    <label className="text-xs text-slate-600 mb-1 block">
+                                      Product Link
+                                    </label>
+                                    <input
+                                      type="url"
+                                      value={supplier.supplier_product_link}
+                                      onChange={(e) =>
+                                        handleSupplierFieldChange(
+                                          supplier.id,
+                                          "supplier_product_link",
+                                          e.target.value,
+                                        )
+                                      }
+                                      placeholder="https://..."
+                                      className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {item?.itemSuppliers &&
+                            item.itemSuppliers.length > 0 ? (
+                              item.itemSuppliers.map((itemSupplier, index) => (
+                                <div
+                                  key={index}
+                                  className="border border-slate-200 rounded-lg p-3 bg-slate-50"
+                                >
+                                  <div className="space-y-2 text-sm">
+                                    <div>
+                                      <div className="text-xs text-slate-500 mb-0.5">
+                                        Supplier
+                                      </div>
+                                      {itemSupplier.supplier ? (
+                                        <p
+                                          className="text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors font-medium"
+                                          onClick={() =>
+                                            router.push(
+                                              `/admin/suppliers/${itemSupplier.supplier.supplier_id}`,
+                                            )
+                                          }
+                                        >
+                                          {itemSupplier.supplier.name}
+                                        </p>
+                                      ) : (
+                                        <p className="text-slate-800">-</p>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="text-xs text-slate-500 mb-0.5">
+                                        Price
+                                      </div>
+                                      <p className="text-slate-800">
+                                        {itemSupplier.price
+                                          ? `$${parseFloat(itemSupplier.price).toFixed(2)}`
+                                          : "-"}
+                                      </p>
+                                    </div>
+                                    {itemSupplier.supplier_reference && (
+                                      <div>
+                                        <div className="text-xs text-slate-500 mb-0.5">
+                                          Reference
+                                        </div>
+                                        <p className="text-slate-800">
+                                          {itemSupplier.supplier_reference}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {itemSupplier.supplier_product_link && (
+                                      <div>
+                                        <div className="text-xs text-slate-500 mb-0.5">
+                                          Product Link
+                                        </div>
+                                        <a
+                                          href={
+                                            itemSupplier.supplier_product_link
+                                          }
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-primary hover:underline flex items-center gap-1"
+                                        >
+                                          View
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-sm text-slate-500 italic">
+                                No suppliers assigned
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

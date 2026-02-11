@@ -32,10 +32,7 @@ export async function POST(request, { params }) {
     const material = formData.get("material");
     const name = formData.get("name");
     const sub_category = (formData.get("sub_category") || "").toLowerCase();
-    const supplier_id = formData.get("supplier_id");
     const measurement_unit = formData.get("measurement_unit");
-    const supplier_reference = formData.get("supplier_reference");
-    const supplier_product_link = formData.get("supplier_product_link");
 
     // Parse suppliers array from JSON (new multi-supplier support)
     const suppliersJson = formData.get("suppliers");
@@ -128,10 +125,8 @@ export async function POST(request, { params }) {
       };
     }
 
-    // Prepare itemSuppliers data
+    // Prepare itemSuppliers data from suppliers array
     let itemSuppliersData = [];
-
-    // New approach: use suppliers array if provided
     if (suppliers && suppliers.length > 0) {
       itemSuppliersData = suppliers.map((s) => ({
         supplier_id: s.supplier_id,
@@ -139,17 +134,6 @@ export async function POST(request, { params }) {
         supplier_product_link: s.supplier_product_link || null,
         price: s.price ? parseFloat(s.price) : null,
       }));
-    }
-    // Backward compatibility: fall back to single supplier fields
-    else if (supplier_id) {
-      itemSuppliersData = [
-        {
-          supplier_id: supplier_id,
-          supplier_reference: supplier_reference || null,
-          supplier_product_link: supplier_product_link || null,
-          price: price ? parseFloat(price) : null,
-        },
-      ];
     }
 
     // Use transaction to atomically create item and category-specific record

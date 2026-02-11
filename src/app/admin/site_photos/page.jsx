@@ -1153,11 +1153,12 @@ export default function SitePhotosPage() {
                     >
                       <div className="px-4 py-3 flex items-center justify-between">
                         <div className="flex-1 text-left">
-                          {lot.project?.client?.client_name && (
-                            <p className="text-xs font-medium text-primary mb-1">
-                              {lot.project.client.client_name}
-                            </p>
-                          )}
+                          {lot.project?.client?.client_name &&
+                            getUserType() !== "employee" && (
+                              <p className="text-xs font-medium text-primary mb-1">
+                                {lot.project.client.client_name}
+                              </p>
+                            )}
                           <h3 className="font-semibold text-gray-900">
                             {lot.project?.project_name ||
                               lot.project?.name ||
@@ -1214,14 +1215,15 @@ export default function SitePhotosPage() {
                         {selectedLot.lot_id || selectedLot.id}
                       </p>
                     </div>
-                    {selectedLot.project?.client?.client_name && (
-                      <div className="col-span-2">
-                        <p className="text-xs text-gray-600 mb-1">Client</p>
-                        <p className="font-medium text-primary">
-                          {selectedLot.project.client.client_name}
-                        </p>
-                      </div>
-                    )}
+                    {selectedLot.project?.client?.client_name &&
+                      getUserType() !== "employee" && (
+                        <div className="col-span-2">
+                          <p className="text-xs text-gray-600 mb-1">Client</p>
+                          <p className="font-medium text-primary">
+                            {selectedLot.project.client.client_name}
+                          </p>
+                        </div>
+                      )}
                   </div>
                 </div>
 

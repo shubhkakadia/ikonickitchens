@@ -14,6 +14,8 @@ import {
   ArrowRight,
   ClipboardList,
   CheckCircle,
+  Check,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -36,6 +38,12 @@ export default function SiteMeasurementsPage() {
   const [statusDropdownPositions, setStatusDropdownPositions] = useState({});
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
+  // Employee assignment states
+  const [employees, setEmployees] = useState([]);
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [currentLotForAssignment, setCurrentLotForAssignment] = useState(null);
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState("");
+
   useEffect(() => {
     fetchSiteMeasurements();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,6 +63,11 @@ export default function SiteMeasurementsPage() {
     };
   }, []);
 
+  // Fetch employees on component mount
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
   // Close dropdowns when scrolling
   useEffect(() => {
     const handleScroll = () => {
@@ -66,6 +79,23 @@ export default function SiteMeasurementsPage() {
       window.removeEventListener("scroll", handleScroll, true);
     };
   }, []);
+
+  // Close employee dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showEmployeeDropdown && !event.target.closest(".employee-dropdown")) {
+        setShowEmployeeDropdown(false);
+        setEmployeeSearchTerm("");
+      }
+    };
+
+    if (showEmployeeDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showEmployeeDropdown]);
 
   const fetchSiteMeasurements = async () => {
     try {
@@ -98,6 +128,181 @@ export default function SiteMeasurementsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        return;
+      }
+
+      const response = await axios.get("/api/employee/all", {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+
+      if (response.data.status) {
+        setEmployees(response.data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+    }
+  };
+
+  // Filter employees based on search term
+  const filteredEmployees = employees.filter((employee) => {
+    const searchLower = employeeSearchTerm.toLowerCase();
+    const fullName =
+      `${employee.first_name} ${employee.last_name}`.toLowerCase();
+    return (
+      fullName.includes(searchLower) ||
+      employee.employee_id.toLowerCase().includes(searchLower) ||
+      employee.email?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Open employee dropdown for a specific lot
+  const handleOpenEmployeeDropdown = (lot) => {
+    setCurrentLotForAssignment(lot);
+    setShowEmployeeDropdown(true);
+    setEmployeeSearchTerm("");
+  };
+
+  // Helper to normalize assigned_to array
+  const normalizeAssignedTo = (assignedTo) => {
+    if (!assignedTo || assignedTo.length === 0) return [];
+    return assignedTo.map((assignment) =>
+      typeof assignment === "string" ? assignment : assignment.employee_id,
+    );
+  };
+
+  // Check if employee is assigned to current lot
+  const isEmployeeAssigned = (employeeId) => {
+    if (!currentLotForAssignment) return false;
+    const stage = currentLotForAssignment.stages?.find(
+      (s) => s.name.toLowerCase() === "site measurements",
+    );
+    if (!stage) return false;
+    const assignedIds = normalizeAssignedTo(stage.assigned_to || []);
+    return assignedIds.includes(employeeId);
+  };
+
+  // Handle employee assignment toggle
+  const handleToggleEmployeeAssignment = async (employeeId) => {
+    if (!currentLotForAssignment) return;
+
+    const stageName = "Site Measurements";
+    try {
+      const sessionToken = getToken();
+
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const stageObj = currentLotForAssignment.stages?.find(
+        (s) => s.name.toLowerCase() === stageName.toLowerCase(),
+      );
+
+      // Get current assigned employees
+      const currentAssignedIds = normalizeAssignedTo(
+        stageObj?.assigned_to || [],
+      );
+
+      // Toggle employee assignment
+      let updatedAssignedIds;
+      if (currentAssignedIds.includes(employeeId)) {
+        updatedAssignedIds = currentAssignedIds.filter(
+          (id) => id !== employeeId,
+        );
+      } else {
+        updatedAssignedIds = [...currentAssignedIds, employeeId];
+      }
+
+      if (!stageObj || !stageObj.stage_id) {
+        // Create stage with assignment
+        const createResponse = await axios.post(
+          "/api/stage/create",
+          {
+            lot_id: currentLotForAssignment.lot_id,
+            name: stageName.toLowerCase(),
+            status: "NOT_STARTED",
+            notes: "",
+            startDate: null,
+            endDate: null,
+            assigned_to: updatedAssignedIds,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        if (createResponse.data.status) {
+          toast.success("Assignment updated successfully");
+          fetchSiteMeasurements();
+        } else {
+          toast.error(
+            createResponse.data.message || "Failed to update assignment",
+          );
+        }
+      } else {
+        // Update existing stage
+        const response = await axios.patch(
+          `/api/stage/${stageObj.stage_id}`,
+          {
+            name: stageObj.name,
+            status: stageObj.status,
+            notes: stageObj.notes || "",
+            startDate: stageObj.startDate || null,
+            endDate: stageObj.endDate || null,
+            assigned_to: updatedAssignedIds,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        if (response.data.status) {
+          toast.success("Assignment updated successfully");
+          fetchSiteMeasurements();
+        } else {
+          toast.error(response.data.message || "Failed to update assignment");
+        }
+      }
+    } catch (error) {
+      console.error("Error updating assignment:", error);
+      toast.error("Failed to update assignment");
+    }
+  };
+
+  // Get assigned team members display
+  const getAssignedTeamMembers = (lot) => {
+    const stage = lot.stages?.find(
+      (s) => s.name.toLowerCase() === "site measurements",
+    );
+    if (!stage || !stage.assigned_to || stage.assigned_to.length === 0) {
+      return "Unassigned";
+    }
+
+    return stage.assigned_to
+      .map((assignment) => {
+        if (typeof assignment === "string") {
+          const employee = employees.find((e) => e.employee_id === assignment);
+          return employee
+            ? `${employee.first_name} ${employee.last_name}`
+            : assignment;
+        }
+        return `${assignment.employee.first_name} ${assignment.employee.last_name}`;
+      })
+      .join(", ");
   };
 
   // Helper to check stage status
@@ -325,76 +530,96 @@ export default function SiteMeasurementsPage() {
       <div
         ref={drag}
         onClick={() => handleCardClick(lot)}
-        className={`bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-move group relative ${
+        className={`bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-move group relative ${
           isDragging ? "opacity-40" : ""
         }`}
       >
-        <div className="flex justify-between items-start mb-3 relative z-20">
-          <div className="status-dropdown-container relative z-30">
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleStatusClick(lot, e);
-              }}
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${currentStatus.color} uppercase tracking-wide flex items-center gap-1.5 hover:bg-opacity-80 transition-colors cursor-pointer`}
-            >
-              <div
-                className={`w-1.5 h-1.5 rounded-full ${currentStatus.dot}`}
-              />
-              {currentStatus.label}
-            </button>
+        {/* Status badge - top right corner */}
+        <div className="status-dropdown-container absolute top-3 right-3">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleStatusClick(lot, e);
+            }}
+            className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${currentStatus.color} uppercase tracking-wide flex items-center gap-1 hover:bg-opacity-80 transition-colors cursor-pointer`}
+          >
+            <div className={`w-1.5 h-1.5 rounded-full ${currentStatus.dot}`} />
+            {currentStatus.label}
+          </button>
 
-            {/* Dropdown Portal/Absolute Position */}
-            {statusDropdownOpen === lot.lot_id && (
-              <div
-                className="fixed bg-white rounded-lg shadow-xl border border-slate-200 w-40 z-50 overflow-hidden text-sm"
-                style={{
-                  top: statusDropdownPositions[lot.lot_id]?.top,
-                  left: statusDropdownPositions[lot.lot_id]?.left,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {Object.entries(statusConfig).map(([key, config]) => (
-                  <button
-                    key={key}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStageStatusUpdate(lot, key);
-                    }}
-                    className={`cursor-pointer w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 ${stageStatus === key ? "bg-slate-50 font-medium" : ""}`}
-                  >
-                    <div className={`w-2 h-2 rounded-full ${config.dot}`} />
-                    {config.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="p-1.5 rounded-full bg-slate-50 text-slate-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors">
-            <ArrowRight className="w-4 h-4" />
-          </div>
+          {/* Dropdown Portal/Absolute Position */}
+          {statusDropdownOpen === lot.lot_id && (
+            <div
+              className="fixed bg-white rounded-lg shadow-xl border border-slate-200 w-40 z-50 overflow-hidden text-sm"
+              style={{
+                top: statusDropdownPositions[lot.lot_id]?.top,
+                left: statusDropdownPositions[lot.lot_id]?.left,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {Object.entries(statusConfig).map(([key, config]) => (
+                <button
+                  key={key}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStageStatusUpdate(lot, key);
+                  }}
+                  className={`cursor-pointer w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 ${stageStatus === key ? "bg-slate-50 font-medium" : ""}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${config.dot}`} />
+                  {config.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
+        {/* Project name with more space on right for status badge */}
         <h3
-          className="text-lg font-bold text-slate-800 mb-1 line-clamp-1"
+          className="text-base font-bold text-slate-800 mb-2 pr-24 line-clamp-1"
           title={projectName}
         >
           {projectName}
         </h3>
 
-        <div className="space-y-2 mt-3">
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <User className="w-4 h-4 text-slate-400 shrink-0" />
-            <span className="line-clamp-1">{clientName}</span>
+        {/* Grid layout for information - more compact */}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+          <div className="flex items-center gap-1.5 text-slate-600">
+            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="line-clamp-1 text-xs">{clientName}</span>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <ClipboardList className="w-4 h-4 text-slate-400 shrink-0" />
+          <div className="flex items-center gap-1.5 text-slate-600">
+            <ClipboardList className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">
               {lotId}
             </span>
           </div>
+
+          <div className="col-span-2 flex items-center gap-1.5 text-slate-600">
+            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenEmployeeDropdown(lot);
+              }}
+              className={`cursor-pointer text-xs hover:text-primary-600 hover:underline text-left truncate ${
+                lot.stages?.find(
+                  (s) => s.name.toLowerCase() === "site measurements",
+                )?.assigned_to?.length > 0
+                  ? "text-primary-600 font-medium"
+                  : "text-slate-600"
+              }`}
+            >
+              {getAssignedTeamMembers(lot)}
+            </button>
+          </div>
+        </div>
+
+        {/* Hover indicator - bottom right corner */}
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <ArrowRight className="w-3.5 h-3.5 text-primary-600" />
         </div>
       </div>
     );
@@ -501,6 +726,104 @@ export default function SiteMeasurementsPage() {
             </div>
           </div>
         </div>
+
+        {/* Employee Assignment Dropdown Modal */}
+        {showEmployeeDropdown && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="employee-dropdown bg-white rounded-xl shadow-2xl w-full max-w-md border border-slate-200 max-h-[80vh] overflow-hidden flex flex-col">
+              <div className="p-4 border-b border-slate-200 shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-bold text-slate-800">
+                    Assign Team Members
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowEmployeeDropdown(false);
+                      setEmployeeSearchTerm("");
+                    }}
+                    className="cursor-pointer text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={employeeSearchTerm}
+                  onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                  placeholder="Search employees..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                />
+              </div>
+
+              <div className="mb-3 text-xs text-slate-500 px-4 pt-2">
+                Click to select/unselect. Changes are saved automatically.
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-4 pb-4">
+                {filteredEmployees.length > 0 ? (
+                  <div className="space-y-2">
+                    {filteredEmployees.map((employee) => {
+                      const isAssigned = isEmployeeAssigned(
+                        employee.employee_id,
+                      );
+                      return (
+                        <button
+                          key={employee.employee_id}
+                          onClick={() =>
+                            handleToggleEmployeeAssignment(employee.employee_id)
+                          }
+                          className={`cursor-pointer w-full text-left p-3 border rounded-lg transition-colors ${
+                            isAssigned
+                              ? "border-primary-600 bg-primary-50 hover:bg-primary-100"
+                              : "border-slate-200 hover:bg-slate-50 hover:border-primary-600"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <div className="font-medium text-slate-900">
+                                  {employee.first_name} {employee.last_name}
+                                </div>
+                                {isAssigned && (
+                                  <Check className="w-4 h-4 text-primary-600" />
+                                )}
+                              </div>
+                              <div className="text-sm text-slate-600">
+                                ID: {employee.employee_id}
+                              </div>
+                              {employee.email && (
+                                <div className="text-xs text-slate-500">
+                                  {employee.email}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    <User className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                    <p className="text-sm">No employees found</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-slate-200 shrink-0">
+                <button
+                  onClick={() => {
+                    setShowEmployeeDropdown(false);
+                    setEmployeeSearchTerm("");
+                  }}
+                  className="cursor-pointer w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </AdminRoute>
     </DndProvider>
   );

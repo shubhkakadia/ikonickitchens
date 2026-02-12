@@ -228,6 +228,8 @@ export async function PATCH(request, { params }) {
                 item_id: id,
                 supplier_id: s.supplier_id,
                 supplier_reference: s.supplier_reference || null,
+                supplier_product_link: s.supplier_product_link || null,
+                price: s.price ? parseFloat(s.price) : null,
               },
             });
           }

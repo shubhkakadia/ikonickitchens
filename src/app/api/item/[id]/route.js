@@ -222,8 +222,8 @@ export async function PATCH(request, { params }) {
         // Create new ones if any
         if (suppliers.length > 0) {
           for (const s of suppliers) {
-            // Create new ItemSupplier entry
-            await tx.itemSupplier.create({
+            // Create new item_suppliers entry
+            await tx.item_suppliers.create({
               data: {
                 item_id: id,
                 supplier_id: s.supplier_id,

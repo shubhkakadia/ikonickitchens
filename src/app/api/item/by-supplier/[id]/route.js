@@ -11,7 +11,11 @@ export async function GET(request, { params }) {
     // First, get distinct categories for items with this supplier_id
     const itemsWithCategories = await prisma.item.findMany({
       where: {
-        supplier_id: id,
+        itemSuppliers: {
+          some: {
+            supplier_id: id,
+          },
+        },
         is_deleted: false,
       },
       select: { category: true },

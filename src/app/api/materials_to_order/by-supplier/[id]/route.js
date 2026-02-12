@@ -15,7 +15,11 @@ export async function GET(request, { params }) {
         items: {
           some: {
             item: {
-              supplier_id: id, // Match supplier via item relation
+              itemSuppliers: {
+                some: {
+                  supplier_id: id, // Match supplier via item relation
+                },
+              },
             },
           },
         },
@@ -52,7 +56,11 @@ export async function GET(request, { params }) {
         items: {
           where: {
             item: {
-              supplier_id: id,
+              itemSuppliers: {
+                some: {
+                  supplier_id: id,
+                },
+              },
               is_deleted: false,
             },
           },
@@ -66,7 +74,6 @@ export async function GET(request, { params }) {
                 hardware: true,
                 accessory: true,
                 edging_tape: true,
-                supplier: true,
               },
             },
           },

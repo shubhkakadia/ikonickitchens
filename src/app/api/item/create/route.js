@@ -143,8 +143,6 @@ export async function POST(request, { params }) {
       return await tx.item.create({
         data: {
           description,
-          // Keep old fields for backward compatibility (will be removed later)
-          price: price ? parseFloat(price) : null,
           quantity: quantity ? parseFloat(quantity) : null,
           category: category.toUpperCase(),
           measurement_unit: measurement_unit || null,

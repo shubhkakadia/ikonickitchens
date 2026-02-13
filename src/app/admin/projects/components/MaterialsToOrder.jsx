@@ -119,10 +119,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
     const normalizedCategoryItems = {};
     Object.keys(categoryItemsData).forEach((category) => {
       normalizedCategoryItems[category] = categoryItemsData[category]
-        .filter((row) => row.item && row.quantity)
+        .filter((row) => row.item)
         .map((row) => ({
           item_id: row.item.item_id || row.item.id,
-          quantity: parseInt(row.quantity) || 1,
+          quantity: parseInt(row.quantity) || 0,
           notes: row.notes || null,
         }))
         .sort((a, b) => a.item_id - b.item_id);
@@ -677,7 +677,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
     // Check if this is the last item across all categories
     const totalItemsWithData = Object.values(categoryItems).reduce(
       (total, rows) => {
-        return total + rows.filter((row) => row.item && row.quantity).length;
+        return total + rows.filter((row) => row.item).length;
       },
       0,
     );
@@ -744,9 +744,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
 
   const hasItems = useMemo(
     () =>
-      Object.values(categoryItems).some((rows) =>
-        rows.some((row) => row.item && row.quantity),
-      ),
+      Object.values(categoryItems).some((rows) => rows.some((row) => row.item)),
     [categoryItems],
   );
 
@@ -1571,21 +1569,15 @@ export default function MaterialsToOrder({ project, selectedLot }) {
               <span className="text-lg font-semibold text-slate-700">
                 Sheet
               </span>
-              {categoryItems.sheet.filter((row) => row.item && row.quantity)
-                .length > 0 && (
+              {categoryItems.sheet.filter((row) => row.item).length > 0 && (
                 <span className="px-2 py-1 text-xs font-medium text-secondary bg-secondary/10 rounded-full">
-                  {
-                    categoryItems.sheet.filter(
-                      (row) => row.item && row.quantity,
-                    ).length
-                  }
+                  {categoryItems.sheet.filter((row) => row.item).length}
                 </span>
               )}
             </div>
           </div>
           <div className="p-4">
-            {categoryItems.sheet.filter((row) => row.item && row.quantity)
-              .length > 0 && (
+            {categoryItems.sheet.filter((row) => row.item).length > 0 && (
               <div className="overflow-x-auto mb-4">
                 <table className="w-full text-sm">
                   <thead>
@@ -1785,22 +1777,16 @@ export default function MaterialsToOrder({ project, selectedLot }) {
               <span className="text-lg font-semibold text-slate-700">
                 Edging Tape
               </span>
-              {categoryItems.edging_tape.filter(
-                (row) => row.item && row.quantity,
-              ).length > 0 && (
+              {categoryItems.edging_tape.filter((row) => row.item).length >
+                0 && (
                 <span className="px-2 py-1 text-xs font-medium text-secondary bg-secondary/10 rounded-full">
-                  {
-                    categoryItems.edging_tape.filter(
-                      (row) => row.item && row.quantity,
-                    ).length
-                  }
+                  {categoryItems.edging_tape.filter((row) => row.item).length}
                 </span>
               )}
             </div>
           </div>
           <div className="p-4">
-            {categoryItems.edging_tape.filter((row) => row.item && row.quantity)
-              .length > 0 && (
+            {categoryItems.edging_tape.filter((row) => row.item).length > 0 && (
               <div className="overflow-x-auto mb-4">
                 <table className="w-full text-sm">
                   <thead>
@@ -2016,21 +2002,15 @@ export default function MaterialsToOrder({ project, selectedLot }) {
               <span className="text-lg font-semibold text-slate-700">
                 Handle
               </span>
-              {categoryItems.handle.filter((row) => row.item && row.quantity)
-                .length > 0 && (
+              {categoryItems.handle.filter((row) => row.item).length > 0 && (
                 <span className="px-2 py-1 text-xs font-medium text-secondary bg-secondary/10 rounded-full">
-                  {
-                    categoryItems.handle.filter(
-                      (row) => row.item && row.quantity,
-                    ).length
-                  }
+                  {categoryItems.handle.filter((row) => row.item).length}
                 </span>
               )}
             </div>
           </div>
           <div className="p-4">
-            {categoryItems.handle.filter((row) => row.item && row.quantity)
-              .length > 0 && (
+            {categoryItems.handle.filter((row) => row.item).length > 0 && (
               <div className="overflow-x-auto mb-4">
                 <table className="w-full text-sm">
                   <thead>
@@ -2239,21 +2219,15 @@ export default function MaterialsToOrder({ project, selectedLot }) {
               <span className="text-lg font-semibold text-slate-700">
                 Hardware
               </span>
-              {categoryItems.hardware.filter((row) => row.item && row.quantity)
-                .length > 0 && (
+              {categoryItems.hardware.filter((row) => row.item).length > 0 && (
                 <span className="px-2 py-1 text-xs font-medium text-secondary bg-secondary/10 rounded-full">
-                  {
-                    categoryItems.hardware.filter(
-                      (row) => row.item && row.quantity,
-                    ).length
-                  }
+                  {categoryItems.hardware.filter((row) => row.item).length}
                 </span>
               )}
             </div>
           </div>
           <div className="p-4">
-            {categoryItems.hardware.filter((row) => row.item && row.quantity)
-              .length > 0 && (
+            {categoryItems.hardware.filter((row) => row.item).length > 0 && (
               <div className="overflow-x-auto mb-4">
                 <table className="w-full text-sm">
                   <thead>
@@ -2461,21 +2435,15 @@ export default function MaterialsToOrder({ project, selectedLot }) {
               <span className="text-lg font-semibold text-slate-700">
                 Accessory
               </span>
-              {categoryItems.accessory.filter((row) => row.item && row.quantity)
-                .length > 0 && (
+              {categoryItems.accessory.filter((row) => row.item).length > 0 && (
                 <span className="px-2 py-1 text-xs font-medium text-secondary bg-secondary/10 rounded-full">
-                  {
-                    categoryItems.accessory.filter(
-                      (row) => row.item && row.quantity,
-                    ).length
-                  }
+                  {categoryItems.accessory.filter((row) => row.item).length}
                 </span>
               )}
             </div>
           </div>
           <div className="p-4">
-            {categoryItems.accessory.filter((row) => row.item && row.quantity)
-              .length > 0 && (
+            {categoryItems.accessory.filter((row) => row.item).length > 0 && (
               <div className="overflow-x-auto mb-4">
                 <table className="w-full text-sm">
                   <thead>

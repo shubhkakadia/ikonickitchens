@@ -29,6 +29,7 @@ import {
   HelpCircle,
   Settings,
   Download,
+  StickyNote,
 } from "lucide-react";
 
 const TAB_KINDS = {
@@ -90,6 +91,7 @@ export default function SitePhotosPage() {
   const [showSupportDropdown, setShowSupportDropdown] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showPhotoTypeDropdown, setShowPhotoTypeDropdown] = useState(false);
+  const [showNotesPopup, setShowNotesPopup] = useState(false);
   const [notificationConfig, setNotificationConfig] = useState({
     assign_installer: false,
   });
@@ -188,7 +190,16 @@ export default function SitePhotosPage() {
           projectId.includes(searchLower)
         );
       });
-      setLots(filtered);
+      // Sort filtered results by lot_id using natural sort
+      const sortedFiltered = filtered.sort((a, b) => {
+        const lotIdA = (a.lot_id || a.id || "").toString();
+        const lotIdB = (b.lot_id || b.id || "").toString();
+        return lotIdA.localeCompare(lotIdB, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
+      setLots(sortedFiltered);
     }
   }, [searchTerm, allLots]);
 
@@ -379,8 +390,18 @@ export default function SitePhotosPage() {
       if (response.data.status) {
         const lotsData = response.data.data;
 
-        setAllLots(lotsData);
-        setLots(lotsData);
+        // Sort lots by lot_id using natural sort (handles alphanumeric strings like "ik001-lot 3")
+        const sortedLots = lotsData.sort((a, b) => {
+          const lotIdA = (a.lot_id || a.id || "").toString();
+          const lotIdB = (b.lot_id || b.id || "").toString();
+          return lotIdA.localeCompare(lotIdB, undefined, {
+            numeric: true,
+            sensitivity: "base",
+          });
+        });
+
+        setAllLots(sortedLots);
+        setLots(sortedLots);
 
         // Initialize file notes state from existing files
         const fileNotesState = {};
@@ -1198,6 +1219,13 @@ export default function SitePhotosPage() {
                         "No project"}
                     </h1>
                   </div>
+                  <button
+                    onClick={() => setShowNotesPopup(true)}
+                    className="p-2 hover:bg-primary/10 rounded-lg transition-colors"
+                    title="View Notes"
+                  >
+                    <StickyNote className="w-5 h-5 text-primary" />
+                  </button>
                 </div>
 
                 {/* Project and Client Details */}
@@ -1910,6 +1938,48 @@ export default function SitePhotosPage() {
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notes Popup Modal */}
+        {showNotesPopup && selectedLot && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Installer Notes
+                </h2>
+                <button
+                  onClick={() => setShowNotesPopup(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Close"
+                >
+                  <X className="w-5 h-5 text-gray-700" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {selectedLot.installer_notes ? (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                      {selectedLot.installer_notes}
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <StickyNote className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm font-medium">
+                      No installer notes available
+                    </p>
+                    <p className="text-xs mt-1">
+                      Notes will appear here when added by the admin
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

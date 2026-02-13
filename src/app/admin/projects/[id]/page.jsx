@@ -113,6 +113,11 @@ export default function page() {
   const [notesSavedIndicators, setNotesSavedIndicators] = useState(false);
   const notesDebounceTimer = useRef(null);
 
+  // Installer notes auto-save debouncing states
+  const [installerNotesSavedIndicator, setInstallerNotesSavedIndicator] =
+    useState(false);
+  const installerNotesDebounceTimer = useRef(null);
+
   // Installer assignment states (installer is per-lot)
   const [employees, setEmployees] = useState([]);
   const [installerSearchTerm, setInstallerSearchTerm] = useState("");
@@ -493,6 +498,9 @@ export default function page() {
     return () => {
       if (notesDebounceTimer.current) {
         clearTimeout(notesDebounceTimer.current);
+      }
+      if (installerNotesDebounceTimer.current) {
+        clearTimeout(installerNotesDebounceTimer.current);
       }
     };
   }, []);
@@ -1314,6 +1322,62 @@ export default function page() {
     }, 1000);
   };
 
+  // Save installer notes to the database
+  const saveInstallerNotes = async (notes) => {
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+      const response = await axios.patch(
+        `/api/lot/${selectedLotData.id}`,
+        {
+          installer_notes: notes,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (response.data.status) {
+        // Show saved indicator
+        setInstallerNotesSavedIndicator(true);
+        setTimeout(() => {
+          setInstallerNotesSavedIndicator(false);
+        }, 2000);
+      } else {
+        toast.error(response.data.message || "Failed to save installer notes");
+      }
+    } catch (error) {
+      console.error("Error saving installer notes:", error);
+      toast.error("Failed to save installer notes. Please try again.");
+    }
+  };
+
+  // Debounced handler for installer notes changes
+  const handleInstallerNotesChange = (value) => {
+    // Update local state immediately
+    setSelectedLotData((prevData) => ({
+      ...prevData,
+      installer_notes: value,
+    }));
+
+    // Clear existing timer
+    if (installerNotesDebounceTimer.current) {
+      clearTimeout(installerNotesDebounceTimer.current);
+    }
+
+    // Set new timer (1 second debounce)
+    installerNotesDebounceTimer.current = setTimeout(() => {
+      saveInstallerNotes(value);
+      installerNotesDebounceTimer.current = null;
+    }, 1000);
+  };
+
   const handleNotesSave = async (content) => {
     try {
       const sessionToken = getToken();
@@ -1675,10 +1739,10 @@ export default function page() {
                       {project.lots && project.lots.length > 0 ? (
                         selectedLot && selectedLotData ? (
                           <>
-                            {/* Overview - quick info cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
-                              {/* Lot Information */}
-                              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                            {/* Overview - quick info cards with 30-30-40 ratio */}
+                            <div className="flex flex-col lg:flex-row gap-4 mb-4">
+                              {/* Lot Information - 30% */}
+                              <div className="bg-white rounded-xl border border-slate-200 p-4 lg:w-[30%]">
                                 <div className="flex items-start justify-between gap-3 mb-3">
                                   <div>
                                     <h3 className="text-base font-semibold text-slate-900">
@@ -1895,8 +1959,8 @@ export default function page() {
                                 </div>
                               </div>
 
-                              {/* Client Information (project-level) */}
-                              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                              {/* Client Information (project-level) - 30% */}
+                              <div className="bg-white rounded-xl border border-slate-200 p-4 lg:w-[30%]">
                                 <div className="flex items-center gap-2 mb-3">
                                   <User className="w-4 h-4 text-slate-500" />
                                   <h3 className="text-base font-semibold text-slate-900">
@@ -2022,8 +2086,8 @@ export default function page() {
                                 )}
                               </div>
 
-                              {/* Installer Information (lot-level) */}
-                              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                              {/* Installer Information (lot-level) - 40% */}
+                              <div className="bg-white rounded-xl border border-slate-200 p-4 lg:w-[40%]">
                                 <div className="flex items-center gap-2 mb-3">
                                   <User className="w-4 h-4 text-slate-500" />
                                   <h3 className="text-base font-semibold text-slate-900">
@@ -2109,7 +2173,7 @@ export default function page() {
                                       </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-3 gap-3">
                                       <div>
                                         <div className="text-xs font-medium text-slate-600">
                                           Email
@@ -2128,14 +2192,44 @@ export default function page() {
                                             "—"}
                                         </p>
                                       </div>
+                                      <div>
+                                        <div className="text-xs font-medium text-slate-600">
+                                          Role
+                                        </div>
+                                        <p className="text-sm text-slate-900 mt-1 capitalize">
+                                          {selectedLotData.installer.role ||
+                                            "—"}
+                                        </p>
+                                      </div>
                                     </div>
 
-                                    <div>
-                                      <div className="text-xs font-medium text-slate-600">
-                                        Role
+                                    {/* Installer Notes - Inside installer section */}
+                                    <div className="mt-4 pt-4 border-t border-slate-200">
+                                      <div className="flex items-center justify-between gap-3 mb-2">
+                                        <h4 className="text-sm font-semibold text-slate-900">
+                                          Installer Notes
+                                        </h4>
+                                        {installerNotesSavedIndicator && (
+                                          <span className="text-xs text-green-600 font-medium">
+                                            Saved
+                                          </span>
+                                        )}
                                       </div>
-                                      <p className="text-sm text-slate-900 mt-1 capitalize">
-                                        {selectedLotData.installer.role || "—"}
+                                      <textarea
+                                        value={
+                                          selectedLotData.installer_notes || ""
+                                        }
+                                        onChange={(e) =>
+                                          handleInstallerNotesChange(
+                                            e.target.value,
+                                          )
+                                        }
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/30 bg-white resize-none text-sm"
+                                        rows="4"
+                                        placeholder="Add installer-specific notes (auto-saves)"
+                                      />
+                                      <p className="text-xs text-slate-500 mt-2">
+                                        Notes are saved automatically.
                                       </p>
                                     </div>
                                   </div>

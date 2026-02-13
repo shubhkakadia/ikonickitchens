@@ -21,7 +21,6 @@ import {
   Clock,
   RotateCcw,
   Database,
-  HardDrive,
   Target,
 } from "lucide-react";
 import {
@@ -126,25 +125,27 @@ const KPICard = ({
 }) => (
   <div
     onClick={onClick}
-    className={`bg-white rounded-lg border border-slate-200 p-3 transition-all duration-300 group ${onClick ? "cursor-pointer" : ""}`}
+    className={`bg-white rounded-lg border border-slate-200 p-2 md:p-2.5 xl:p-3 transition-all duration-300 group ${onClick ? "cursor-pointer" : ""}`}
   >
     <div className="flex items-start justify-between">
       <div className="flex-1">
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
+        <p className="text-[9px] md:text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
           {title}
         </p>
-        <h3 className="text-xl font-bold text-slate-800">
+        <h3 className="text-lg md:text-xl font-bold text-slate-800 leading-tight">
           {prefix}
           {typeof value === "number" ? value.toLocaleString() : value}
         </h3>
         {subtitle && (
-          <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>
+          <p className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 leading-tight">
+            {subtitle}
+          </p>
         )}
       </div>
       <div
-        className={`p-2 rounded-lg ${color} transition-transform duration-300 group-hover:scale-110`}
+        className={`p-1.5 md:p-2 rounded-lg ${color} transition-transform duration-300 group-hover:scale-110`}
       >
-        <Icon className="w-4 h-4 text-white" />
+        <Icon className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
       </div>
     </div>
   </div>
@@ -259,6 +260,7 @@ export default function page() {
     useState(false);
   const [storageUsage, setStorageUsage] = useState(null);
   const [storageLoading, setStorageLoading] = useState(true);
+  const [storageDropdownOpen, setStorageDropdownOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [employeeData, setEmployeeData] = useState(null);
   const [employeeLoading, setEmployeeLoading] = useState(false);
@@ -433,6 +435,9 @@ export default function page() {
       }
       if (!event.target.closest(".dashboard-month-dropdown-container")) {
         setDashboardMonthDropdownOpen(false);
+      }
+      if (!event.target.closest(".dashboard-storage-dropdown-container")) {
+        setStorageDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -759,16 +764,16 @@ export default function page() {
                 </div>
               </div>
             ) : (
-              <div className="p-6 space-y-4">
+              <div className="p-4 md:p-5 xl:p-6 space-y-4">
                 {/* Header with Greeting */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6 xl:mb-8">
                   <div>
                     <div className="flex items-center gap-3 mb-3">
                       <div>
-                        <h1 className="text-5xl font-bold text-slate-800">
+                        <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-slate-800">
                           {getGreeting()}
                         </h1>
-                        <h1 className="text-5xl font-bold text-slate-800">
+                        <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-slate-800">
                           {employeeData && (
                             <span className="text-secondary">
                               {employeeData.first_name}
@@ -781,13 +786,15 @@ export default function page() {
                     </div>
                     <div className="flex items-center gap-2 text-slate-600">
                       {/* <Calendar className="w-5 h-5" /> */}
-                      <p className="text-base font-medium">
+                      <p className="text-sm md:text-base font-medium">
                         {formatDateTime()}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <SearchBar />
+                  <div className="flex flex-wrap items-center gap-2 xl:gap-3 xl:justify-end">
+                    <div className="w-full md:w-auto">
+                      <SearchBar />
+                    </div>
                     {/* Storage Usage - Compact Display */}
                     {storageLoading ? (
                       <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 bg-white border border-slate-200 rounded-lg">
@@ -795,37 +802,57 @@ export default function page() {
                         <span>Loading storage...</span>
                       </div>
                     ) : storageUsage ? (
-                      <div
-                        className="flex items-center gap-2 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg cursor-help"
-                        title={`Last updated: ${formatTimestampAdelaide(storageUsage.timestamp)} (Adelaide time)`}
-                      >
-                        <div className="flex items-center gap-2">
+                      <div className="relative dashboard-storage-dropdown-container">
+                        <button
+                          onClick={() =>
+                            setStorageDropdownOpen(!storageDropdownOpen)
+                          }
+                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                          title={`Last updated: ${formatTimestampAdelaide(storageUsage.timestamp)} (Adelaide time)`}
+                        >
                           <Database className="w-4 h-4 text-blue-600" />
-                          <span className="text-xs text-slate-600">
-                            DB:{" "}
-                            {formatStorageSize(
-                              storageUsage.database?.size_mb || 0,
-                            )}
-                          </span>
-                        </div>
-                        <div className="w-px h-4 bg-slate-300"></div>
-                        <div className="flex items-center gap-2">
-                          <HardDrive className="w-4 h-4 text-emerald-600" />
-                          <span className="text-xs text-slate-600">
-                            Files:{" "}
-                            {formatStorageSize(
-                              storageUsage.uploads?.size_mb || 0,
-                            )}
-                          </span>
-                        </div>
-                        <div className="w-px h-4 bg-slate-300"></div>
-                        <span className="text-xs font-semibold text-slate-700">
-                          Total:{" "}
-                          {formatStorageSize(
-                            (storageUsage.database?.size_mb || 0) +
-                              (storageUsage.uploads?.size_mb || 0),
-                          )}
-                        </span>
+                          <span>Storage</span>
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                        {storageDropdownOpen && (
+                          <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg z-10 shadow-lg p-2">
+                            <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50">
+                              <span className="text-xs font-medium text-slate-600">
+                                DB
+                              </span>
+                              <span className="text-xs font-semibold text-slate-700">
+                                {formatStorageSize(
+                                  storageUsage.database?.size_mb || 0,
+                                )}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50">
+                              <span className="text-xs font-medium text-slate-600">
+                                Files
+                              </span>
+                              <span className="text-xs font-semibold text-slate-700">
+                                {formatStorageSize(
+                                  storageUsage.uploads?.size_mb || 0,
+                                )}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between px-2 py-1.5 rounded-md bg-slate-50 mt-1">
+                              <span className="text-xs font-semibold text-slate-700">
+                                Total
+                              </span>
+                              <span className="text-xs font-bold text-slate-800">
+                                {formatStorageSize(
+                                  (storageUsage.database?.size_mb || 0) +
+                                    (storageUsage.uploads?.size_mb || 0),
+                                )}
+                              </span>
+                            </div>
+                            <div className="px-2 pt-2 text-[10px] text-slate-400">
+                              Updated{" "}
+                              {formatTimestampAdelaide(storageUsage.timestamp)}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : null}
                     {/* Reset Filters Button - Only show when filters are applied */}
@@ -963,10 +990,10 @@ export default function page() {
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-4">
-                  <div className="flex-3 space-y-4">
+                <div className="flex flex-col xl:flex-row gap-4">
+                  <div className="xl:flex-3 min-w-0 space-y-4">
                     {/* KPI Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 xl:gap-3">
                       <KPICard
                         title="Active Projects"
                         value={dashboardData?.activeProjects || 0}
@@ -1125,7 +1152,7 @@ export default function page() {
                       )}
                     </ChartCard>
                   </div>
-                  <div className="flex-1">
+                  <div className="xl:flex-1 min-w-0">
                     {/* Upcoming Meetings */}
                     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-full">
                       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -1264,7 +1291,7 @@ export default function page() {
                 </div>
 
                 {/* Upcoming Meetings & Status Charts */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {/* Lots by Stage */}
                   <ChartCard title="Lots by Stage">
                     {lotsByStageChartData ? (
@@ -1315,7 +1342,7 @@ export default function page() {
                 </div>
 
                 {/* Top Items and Logs - Side by Side */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   {/* Top 10 Items */}
                   <ChartCard title="Top 10 Items">
                     {dashboardData?.top10items?.length > 0 ? (

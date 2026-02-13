@@ -123,7 +123,7 @@ export default function SearchBar() {
     );
 
   return (
-    <div className="relative min-w-md global-search-container z-50">
+    <div className="relative min-w-md global-search-container z-10">
       <input
         type="text"
         value={searchTerm}

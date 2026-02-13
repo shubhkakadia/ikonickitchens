@@ -216,6 +216,7 @@ model lot {
   notes                  String?             @db.LongText
   installer              employees?          @relation(fields: [installer_id], references: [employee_id], onDelete: SetNull)
   installer_id           String?
+  installer_notes        String?             @db.LongText
   materials_to_orders_id String?
   material_selection_id  String?             @unique
   is_deleted             Boolean             @default(false)

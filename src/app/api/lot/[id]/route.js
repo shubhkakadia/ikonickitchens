@@ -97,6 +97,7 @@ export async function PATCH(request, { params }) {
       notes,
       status,
       installer_id,
+      installer_notes,
     } = await request.json();
 
     // Build update data object with only provided fields
@@ -151,6 +152,10 @@ export async function PATCH(request, { params }) {
         }
         updateData.installer_id = installer_id;
       }
+    }
+
+    if (installer_notes !== undefined) {
+      updateData.installer_notes = installer_notes;
     }
 
     // Update the lot only if there are fields to update

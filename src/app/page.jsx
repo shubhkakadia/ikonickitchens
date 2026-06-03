@@ -384,7 +384,7 @@ export default function Home() {
               </div>
               <div className="space-y-2">
                 <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white group-hover:text-[#B92F34] transition-colors duration-300">
-                  2+
+                  3+
                 </div>
                 <div className="text-sm sm:text-base lg:text-lg text-slate-300 font-medium">
                   Years of Experience
@@ -420,7 +420,7 @@ export default function Home() {
               </div>
               <div className="space-y-2">
                 <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white group-hover:text-[#B92F34] transition-colors duration-300">
-                  100+
+                  450+
                 </div>
                 <div className="text-sm sm:text-base lg:text-lg text-slate-300 font-medium">
                   Projects Completed

@@ -203,6 +203,12 @@ export default function Footer() {
               >
                 Contact Us
               </Link>
+              <Link
+                href="/blogs"
+                className="block text-gray-300 text-sm hover:text-[#B92F34] transition-colors duration-200"
+              >
+                Blogs
+              </Link>
             </div>
           </div>
 
@@ -262,7 +268,7 @@ export default function Footer() {
       <div className="container mx-auto px-4 py-4">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="text-gray-400 text-sm mb-2 md:mb-0 text-center">
-            © 2025 Ikonic Kitchens | All Rights Reserved
+            © 2026 Ikonic Kitchens and Cabinets | All Rights Reserved
           </div>
           <div className="text-gray-400 text-sm text-center">
             Developed by{" "}

@@ -32,7 +32,7 @@ export default function page() {
     });
   };
 
-  const handleFileChange = (e) => { };
+  const handleFileChange = (e) => {};
 
   const removeImage = (index) => {
     const updatedFiles = selectedFiles.filter((_, i) => i !== index);
@@ -101,7 +101,9 @@ export default function page() {
                     <div className="shrink-0">
                       <Mail size={20} />
                     </div>
-                    <p className="wrap-break-words">info@ikonickitchens.com.au</p>
+                    <p className="wrap-break-words">
+                      info@ikonickitchens.com.au
+                    </p>
                   </a>
 
                   <div
@@ -114,7 +116,7 @@ export default function page() {
                     <div className="flex flex-col">
                       <a href="tel:0881653886">(08) 8165 3886</a>
                       <a href="tel:0426246791">0426 246 791</a>
-                      <a href="tel:0433693005">0433 693 005</a>
+                      <a href="tel:0452669964">0452 669 964</a>
                       <a href="tel:0450223904">0450 223 904</a>
                     </div>
                   </div>
@@ -264,7 +266,7 @@ export default function page() {
                           {(
                             selectedFiles.reduce(
                               (total, file) => total + file.size,
-                              0
+                              0,
                             ) /
                             (1024 * 1024)
                           ).toFixed(1)}

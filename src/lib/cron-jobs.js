@@ -1,5 +1,4 @@
 import cron from "node-cron";
-import { prisma } from "@/lib/db";
 import { sendNotification } from "@/lib/notification";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -18,6 +17,7 @@ export function initializeMeetingReminderCron() {
   // Run every 5 minutes
   cron.schedule("*/5 * * * *", async () => {
     try {
+      const { prisma } = await import("./db");
       const now = new Date();
 
       // Calculate time window: 55-65 minutes from now

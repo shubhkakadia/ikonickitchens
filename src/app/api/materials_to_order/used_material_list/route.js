@@ -10,9 +10,6 @@ export async function GET(request) {
 
     // Fetch completed MTOs with their items and ordered items
     const completedMTOs = await prisma.materials_to_order.findMany({
-      where: {
-        status: "FULLY_ORDERED",
-      },
       include: {
         items: {
           include: {
@@ -24,10 +21,15 @@ export async function GET(request) {
                 hardware: true,
                 accessory: true,
                 edging_tape: true,
-                supplier: {
+                itemSuppliers: {
                   select: {
                     supplier_id: true,
-                    name: true,
+                    supplier: {
+                      select: {
+                        supplier_id: true,
+                        name: true,
+                      },
+                    },
                   },
                 },
               },

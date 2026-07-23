@@ -12,15 +12,19 @@ import {
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
 
+const REQUIRED_FIELDS = ["employee_id", "first_name", "role", "email", "phone"];
+
+const formatPhone = (phone) => (phone ? formatPhoneToNational(phone) : phone);
+
 export async function POST(request) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    // Validate and parse multipart/form-data
+
     const formData = await validateMultipartRequest(request);
     const body = Object.fromEntries(formData.entries());
-
     const imageFile = getFileFromFormData(formData, "image");
+
     const {
       employee_id,
       first_name,
@@ -47,27 +51,22 @@ export async function POST(request) {
       is_active,
     } = body;
 
-    // Check if employee_id already exists
-    const existingEmployee = await prisma.employees.findUnique({
-      where: { employee_id },
-    });
-
-    if (existingEmployee) {
+    const missingFields = REQUIRED_FIELDS.filter(
+      (field) => !body[field] || String(body[field]).trim() === "",
+    );
+    if (missingFields.length > 0) {
       return NextResponse.json(
         {
           status: false,
-          message:
-            "Employee already exists by this employee id: " + employee_id,
+          message: `Missing required fields: ${missingFields.join(", ")}`,
         },
-        { status: 409 },
+        { status: 400 },
       );
     }
 
-    // Parse availability JSON string to object for validation, then stringify for Prisma
     let availabilityString = null;
     if (availability !== null && availability !== undefined) {
       if (typeof availability === "string" && availability.trim() !== "") {
-        // Validate it's valid JSON, but keep as string for Prisma
         try {
           JSON.parse(availability);
           availabilityString = availability;
@@ -78,65 +77,61 @@ export async function POST(request) {
             { status: 400 },
           );
         }
-      } else if (typeof availability === "object" && availability !== null) {
-        // Convert object to JSON string for Prisma
+      } else if (typeof availability === "object") {
         availabilityString = JSON.stringify(availability);
       }
     }
 
-    // Parse is_active - handle string "true"/"false" or boolean
     const isActiveValue =
-      is_active === "true" ||
-      is_active === true ||
-      is_active === undefined ||
-      is_active === null
+      is_active === undefined || is_active === null
         ? true
-        : false;
+        : is_active === "true" || is_active === true;
 
-    // Format phone numbers to national format before saving
-    const formattedPhone = phone ? formatPhoneToNational(phone) : phone;
-    const formattedEmergencyPhone = emergency_contact_phone
-      ? formatPhoneToNational(emergency_contact_phone)
-      : emergency_contact_phone;
+    let employee;
+    try {
+      employee = await prisma.employees.create({
+        data: {
+          employee_id,
+          first_name,
+          last_name,
+          role,
+          email,
+          phone: formatPhone(phone),
+          phone_secondary: formatPhone(phone_secondary),
+          dob: processDateTimeField(dob),
+          join_date: processDateTimeField(join_date),
+          address,
+          emergency_contact_name,
+          emergency_contact_phone: formatPhone(emergency_contact_phone),
+          bank_account_name,
+          bank_account_number,
+          bank_account_bsb,
+          supper_account_name,
+          supper_account_number,
+          tfn_number,
+          abn_number,
+          education,
+          availability: availabilityString,
+          notes,
+          is_active: isActiveValue,
+        },
+      });
+    } catch (error) {
+      if (error.code === "P2002") {
+        return NextResponse.json(
+          {
+            status: false,
+            message: `Employee already exists with this employee id: ${employee_id}`,
+          },
+          { status: 409 },
+        );
+      }
+      throw error;
+    }
 
-    const formatPhone = (phone) => {
-      return phone ? formatPhoneToNational(phone) : phone;
-    };
-
-    // Create employee first (without image_id)
-    const employee = await prisma.employees.create({
-      data: {
-        employee_id,
-        first_name,
-        last_name,
-        role,
-        email,
-        phone: formatPhone(phone),
-        phone_secondary: formatPhone(phone_secondary),
-        dob: processDateTimeField(dob),
-        join_date: processDateTimeField(join_date),
-        address,
-        emergency_contact_name,
-        emergency_contact_phone: formatPhone(emergency_contact_phone),
-        bank_account_name,
-        bank_account_number,
-        bank_account_bsb,
-        supper_account_name,
-        supper_account_number,
-        tfn_number,
-        abn_number,
-        education,
-        availability: availabilityString,
-        notes,
-        is_active: isActiveValue,
-      },
-    });
-
-    // Handle image upload if image is provided
-    let imageId = null;
+    let imageUploadWarning = null;
     if (imageFile) {
       try {
-        // Upload file with ID-based naming
         const uploadResult = await uploadFile(imageFile, {
           uploadDir: "mediauploads",
           subDir: "employees",
@@ -144,34 +139,30 @@ export async function POST(request) {
           idPrefix: employee_id,
         });
 
-        // Create media record
-        const media = await prisma.media.create({
-          data: {
-            url: uploadResult.relativePath,
-            filename: uploadResult.originalFilename,
-            file_type: "employee_photo",
-            mime_type: uploadResult.mimeType,
-            extension: uploadResult.extension,
-            size: uploadResult.size,
-            employee_id: employee.id,
-          },
-        });
+        await prisma.$transaction(async (tx) => {
+          const media = await tx.media.create({
+            data: {
+              url: uploadResult.relativePath,
+              filename: uploadResult.originalFilename,
+              file_type: "employee_photo",
+              mime_type: uploadResult.mimeType,
+              extension: uploadResult.extension,
+              size: uploadResult.size,
+              employee_id: employee.id,
+            },
+          });
 
-        imageId = media.id;
-
-        // Update employee with image_id
-        await prisma.employees.update({
-          where: { id: employee.id },
-          data: { image_id: imageId },
+          await tx.employees.update({
+            where: { id: employee.id },
+            data: { image_id: media.id },
+          });
         });
       } catch (error) {
         console.error("Error handling image upload:", error);
-        // Continue without image if upload fails
-        // Employee is already created, so we don't fail the whole request
+        imageUploadWarning = "Employee created, but image upload failed";
       }
     }
 
-    // Fetch the updated employee with image relation
     const updatedEmployee = await prisma.employees.findUnique({
       where: { id: employee.id },
       include: { image: true },
@@ -194,9 +185,8 @@ export async function POST(request) {
       {
         status: true,
         message: "Employee created successfully",
-        ...(logged
-          ? {}
-          : { warning: "Note: Creation succeeded but logging failed" }),
+        ...(logged ? {} : { warning: "Note: Creation succeeded but logging failed" }),
+        ...(imageUploadWarning ? { imageWarning: imageUploadWarning } : {}),
         data: updatedEmployee,
       },
       { status: 201 },

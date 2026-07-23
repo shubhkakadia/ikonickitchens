@@ -191,13 +191,13 @@ model project {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   project_id         String               @unique
-  client_id          String
+  client_id          String?
   is_deleted         Boolean              @default(false)
   lots               lot[]
   material_selection material_selection[]
   materials_to_order materials_to_order[]
   stock_transactions stock_transaction[]
-  client             client               @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  client             client?              @relation(fields: [client_id], references: [client_id], onDelete: SetNull)
 
   @@index([project_id])
   @@index([client_id], map: "project_client_id_fkey")

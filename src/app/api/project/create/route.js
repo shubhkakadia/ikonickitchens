@@ -10,15 +10,15 @@ export async function POST(request) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    const { name, client_id, startDate, lots } = await request.json();
+    const { name, project_id, client_id, startDate, lots } = await request.json();
     // Normalize client_id - handle empty string, null, or undefined
     const normalizedClientId =
       client_id && client_id.trim() !== ""
         ? client_id.trim().toLowerCase()
         : null;
-    if (!normalizedClientId) {
+    if (!normalizedClientId && !project_id) {
       return NextResponse.json(
-        { status: false, message: "Client is required" },
+        { status: false, message: "Project ID is required when no client is selected" },
         { status: 400 },
       );
     }
@@ -42,52 +42,39 @@ export async function POST(request) {
     // Use transaction to create project and lots atomically
     const result = await prisma.$transaction(
       async (tx) => {
-        const existingClient = await tx.client.findFirst({
-          where: { client_id: normalizedClientId, is_deleted: false },
-          select: { client_id: true, client_slug: true },
-        });
-        if (!existingClient) {
-          const error = new Error(
-            "Client not found with client id: " + client_id,
-          );
-          error.statusCode = 404;
-          throw error;
-        }
-        const existingProjects = await tx.project.findMany({
-          where: {
-            project_id: { startsWith: `IKC-${existingClient.client_slug}-` },
-          },
-          select: { project_id: true },
-        });
-        const sequence = getNextProjectSequence(
-          existingProjects.map(
-            ({ project_id: existingProjectId }) => existingProjectId,
-          ),
-          existingClient.client_slug,
-        );
-        if (!sequence) {
-          const error = new Error(
-            "Project ID sequence limit reached for this client",
-          );
-          error.statusCode = 409;
-          throw error;
-        }
-        const generatedProjectId = formatProjectId(
-          existingClient.client_slug,
-          sequence,
-        );
-        if (!generatedProjectId) {
-          const error = new Error(
-            "Client slug must be exactly 4 letters before creating a project",
-          );
-          error.statusCode = 409;
-          throw error;
+        let generatedProjectId = project_id;
+        if (normalizedClientId) {
+          const existingClient = await tx.client.findFirst({
+            where: { client_id: normalizedClientId, is_deleted: false },
+            select: { client_id: true, client_slug: true },
+          });
+          if (!existingClient) {
+            const error = new Error("Client not found with client id: " + client_id);
+            error.statusCode = 404;
+            throw error;
+          }
+          const existingProjects = await tx.project.findMany({
+            where: { project_id: { startsWith: `IKC-${existingClient.client_slug}-` } },
+            select: { project_id: true },
+          });
+          const sequence = getNextProjectSequence(existingProjects.map(({ project_id: existingProjectId }) => existingProjectId), existingClient.client_slug);
+          if (!sequence) {
+            const error = new Error("Project ID sequence limit reached for this client");
+            error.statusCode = 409;
+            throw error;
+          }
+          generatedProjectId = formatProjectId(existingClient.client_slug, sequence);
+          if (!generatedProjectId) {
+            const error = new Error("Client slug must be exactly 4 letters before creating a project");
+            error.statusCode = 409;
+            throw error;
+          }
         }
         // Create the project
         const project = await tx.project.create({
           data: {
             name,
-            project_id: generatedProjectId,
+            project_id: String(generatedProjectId).toLowerCase(),
             client_id: normalizedClientId,
           },
         });

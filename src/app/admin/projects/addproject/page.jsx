@@ -317,9 +317,6 @@ export default function page() {
     if (!formData.project_id) {
       newErrors.project_id = "Project ID is required";
     }
-    if (!formData.client_id) {
-      newErrors.client_id = "Client is required";
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -384,9 +381,9 @@ export default function page() {
                             name="project_id"
                             value={formData.project_id}
                             onChange={handleInputChange}
-                            disabled={isProjectIdLoading || !formData.client_id}
-                            className="w-full text-sm text-slate-500 px-4 py-3 border border-slate-300 bg-slate-100 rounded-lg cursor-not-allowed"
-                            placeholder="Select a client"
+                            disabled={isProjectIdLoading || Boolean(formData.client_id)}
+                            className={`w-full text-sm px-4 py-3 border rounded-lg focus:outline-none ${formData.client_id ? "text-slate-500 bg-slate-100 border-slate-300 cursor-not-allowed" : "text-slate-800 border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent"}`}
+                            placeholder={formData.client_id ? "Generating..." : "Eg. IK001"}
                             required
                           />
                           {errors.project_id && (
@@ -402,7 +399,7 @@ export default function page() {
                           ref={clientDropdownRef}
                         >
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Client <span className="text-red-500">*</span>
+                            Client <span className="text-slate-400">(Optional)</span>
                           </label>
                           <div className="relative">
                             <input

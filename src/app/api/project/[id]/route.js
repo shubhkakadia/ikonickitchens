@@ -86,20 +86,16 @@ export async function PATCH(request, { params }) {
     }
     const nextClientId =
       client_id === undefined ? existingProject.client_id : client_id;
-    if (!nextClientId) {
-      return NextResponse.json(
-        { status: false, message: "Client is required" },
-        { status: 400 },
-      );
-    }
-    const existingClient = await prisma.client.findFirst({
-      where: {
-        client_id: String(nextClientId).toLowerCase(),
-        is_deleted: false,
-      },
-      select: { client_id: true },
-    });
-    if (!existingClient) {
+    const existingClient = nextClientId
+      ? await prisma.client.findFirst({
+          where: {
+            client_id: String(nextClientId).toLowerCase(),
+            is_deleted: false,
+          },
+          select: { client_id: true },
+        })
+      : null;
+    if (nextClientId && !existingClient) {
       return NextResponse.json(
         { status: false, message: "Client not found" },
         { status: 404 },
@@ -113,7 +109,7 @@ export async function PATCH(request, { params }) {
       updateData.name = name;
     }
 
-    updateData.client_id = existingClient.client_id;
+    updateData.client_id = existingClient?.client_id || null;
 
     const project = await prisma.project.update({
       where: { project_id: id },

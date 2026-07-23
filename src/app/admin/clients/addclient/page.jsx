@@ -23,10 +23,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { validatePhone, formatPhoneToNational } from "@/components/validators";
+import { generateClientSlug, normalizeClientSlug } from "@/lib/clientSlug";
 
 export default function page() {
   const [formData, setFormData] = useState({
     client_name: "",
+    client_slug: "",
     client_address: "",
     client_phone: "",
     client_email: "",
@@ -54,13 +56,44 @@ export default function page() {
   });
   const [isSavingContact, setIsSavingContact] = useState(false);
   const [editingContactIndex, setEditingContactIndex] = useState(null);
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [slugAvailability, setSlugAvailability] = useState(null);
 
   const handleInputChange = (e) => {
+    if (e.target.name === "client_name" && !slugTouched) {
+      setFormData((previous) => ({
+        ...previous,
+        client_name: e.target.value,
+        client_slug: generateClientSlug(e.target.value),
+      }));
+      return;
+    }
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
+
+  useEffect(() => {
+    const slug = formData.client_slug;
+    if (!slug || slug.length !== 4) {
+      setSlugAvailability(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const token = getToken();
+        const response = await axios.get(
+          `/api/client/slug-availability?slug=${encodeURIComponent(slug)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        setSlugAvailability(response.data.available);
+      } catch {
+        setSlugAvailability(null);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [formData.client_slug, getToken]);
 
   // Filter client types based on search term
   const filteredClientTypes = client_types.filter((type) =>
@@ -143,6 +176,7 @@ export default function page() {
       const data = {
         client_type: formData.client_type.toLowerCase(),
         client_name: formData.client_name,
+        client_slug: formData.client_slug,
         client_address: formData.client_address,
         client_phone: formatPhone(formData.client_phone),
         client_email: formData.client_email,
@@ -185,6 +219,7 @@ export default function page() {
       // Reset form on success
       setFormData({
         client_name: "",
+        client_slug: "",
         client_address: "",
         client_phone: "",
         client_email: "",
@@ -194,6 +229,8 @@ export default function page() {
       });
       setSearchTerm("");
       setContacts([]);
+      setSlugTouched(false);
+      setSlugAvailability(null);
 
       // Show success toast
       toast.success("Client created successfully!", {
@@ -242,6 +279,11 @@ export default function page() {
     const newErrors = {};
     if (!formData.client_name) {
       newErrors.client_name = "Client Name is required";
+    }
+    if (!/^[A-Z]{4}$/.test(formData.client_slug)) {
+      newErrors.client_slug = "Slug must be exactly 4 letters";
+    } else if (slugAvailability === false) {
+      newErrors.client_slug = "This slug is already taken";
     }
     if (!formData.client_type) {
       newErrors.client_type = "Client Type is required";
@@ -431,6 +473,36 @@ export default function page() {
                             {errors.client_name}
                           </p>
                         )}
+                        <label className="block text-sm font-medium text-slate-700 mt-3 mb-2">
+                          Client Slug
+                        </label>
+                        <input
+                          type="text"
+                          name="client_slug"
+                          value={formData.client_slug}
+                          maxLength={4}
+                          onChange={(e) => {
+                            setSlugTouched(true);
+                            setFormData((previous) => ({
+                              ...previous,
+                              client_slug: normalizeClientSlug(e.target.value),
+                            }));
+                          }}
+                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${errors.client_slug ? "border-red-500" : "border-slate-300"}`}
+                          placeholder="BTTO"
+                        />
+                        <p
+                          className={`text-xs mt-1 ${slugAvailability === false ? "text-red-500" : "text-slate-500"}`}
+                        >
+                          {slugAvailability === false
+                            ? "This slug is already taken"
+                            : slugAvailability === true
+                              ? "Slug is available"
+                              : "4 letters; editable"}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          This slug is used to generate automated project IDs.
+                        </p>
                       </div>
                       <div className="relative" ref={dropdownRef}>
                         <label className="block text-sm font-medium text-slate-700 mb-2">

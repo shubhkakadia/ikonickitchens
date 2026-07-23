@@ -170,6 +170,7 @@ model client {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   client_type    String
+  client_slug    String?   @unique
   client_name    String    @unique
   client_address String?   @db.LongText
   client_phone   String?
@@ -190,13 +191,13 @@ model project {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   project_id         String               @unique
-  client_id          String?
+  client_id          String
   is_deleted         Boolean              @default(false)
   lots               lot[]
   material_selection material_selection[]
   materials_to_order materials_to_order[]
   stock_transactions stock_transaction[]
-  client             client?              @relation(fields: [client_id], references: [client_id], onDelete: SetNull)
+  client             client               @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
 
   @@index([project_id])
   @@index([client_id], map: "project_client_id_fkey")
@@ -225,8 +226,8 @@ model lot {
   material_selection     material_selection?
   stages                 stage[]
   meetingLots            meeting[]
+  stock_transactions     stock_transaction[]
 
-  @@index([lot_id])
   @@index([project_id])
   @@index([materials_to_orders_id], map: "lot_materials_to_orders_id_fkey")
 }
@@ -659,18 +660,21 @@ model stock_transaction {
   materials_to_order_id String?
   purchase_order_id     String?
   project_id            String?
+  lot_id                String?
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
   item                  item                 @relation(fields: [item_id], references: [item_id])
   materials_to_order    materials_to_order?  @relation(fields: [materials_to_order_id], references: [id], onDelete: SetNull)
   purchase_order        purchase_order?      @relation(fields: [purchase_order_id], references: [id], onDelete: SetNull)
   project               project?             @relation(fields: [project_id], references: [project_id], onDelete: SetNull)
+  lot                   lot?                 @relation(fields: [lot_id], references: [lot_id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([item_id])
   @@index([purchase_order_id])
   @@index([materials_to_order_id])
   @@index([project_id])
+  @@index([lot_id])
 }
 
 model logs {

@@ -65,6 +65,25 @@ export async function POST(request, { params }) {
       );
     }
 
+    if (brand && ["sheet", "handle", "edging_tape"].includes(category)) {
+      const configuredBrand = await prisma.constants_config.findFirst({
+        where: {
+          category: "brand",
+          value: brand,
+        },
+      });
+
+      if (!configuredBrand) {
+        return NextResponse.json(
+          {
+            status: false,
+            message: "Please select a brand from the configured brand list",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     // Prepare category-specific data based on category type
     let categoryData = {};
     if (category === "sheet") {

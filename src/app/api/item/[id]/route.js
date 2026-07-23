@@ -93,6 +93,11 @@ export async function GET(request, { params }) {
             name: true,
           },
         },
+        lot: {
+          select: {
+            lot_id: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -184,13 +189,50 @@ export async function PATCH(request, { params }) {
     // check if item already exists
     const existingItem = await prisma.item.findUnique({
       where: { item_id: id },
-      include: { image: true },
+      include: {
+        image: true,
+        sheet: true,
+        handle: true,
+        edging_tape: true,
+      },
     });
     if (!existingItem) {
       return NextResponse.json(
         { status: false, message: "Item does not exist" },
         { status: 404 },
       );
+    }
+
+    const existingCategory = existingItem.category.toLowerCase();
+    const existingBrand =
+      existingItem.sheet?.brand ||
+      existingItem.handle?.brand ||
+      existingItem.edging_tape?.brand ||
+      "";
+
+    // Preserve legacy values, but require any newly selected brand to come
+    // from the common configured list.
+    if (
+      brand &&
+      brand !== existingBrand &&
+      ["sheet", "handle", "edging_tape"].includes(existingCategory)
+    ) {
+      const configuredBrand = await prisma.constants_config.findFirst({
+        where: {
+          category: "brand",
+          value: brand,
+        },
+      });
+
+      if (!configuredBrand) {
+        return NextResponse.json(
+          {
+            status: false,
+            message: "Please select a brand from the configured brand list",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     // Prepare update data - only include fields that are provided
@@ -484,6 +526,11 @@ export async function PATCH(request, { params }) {
                 lot_id: true,
               },
             },
+          },
+        },
+        lot: {
+          select: {
+            lot_id: true,
           },
         },
       },

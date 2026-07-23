@@ -40,6 +40,52 @@ async function detachAndDeleteMedia(tx, { employeeId, mediaId, mediaUrl }) {
   await deleteFileByRelativePath(mediaUrl);
 }
 
+// Fetch a single employee for the employee detail page.
+export async function GET(request, { params }) {
+  try {
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
+
+    const { id } = await params;
+    const employee = await prisma.employees.findFirst({
+      where: {
+        employee_id: id,
+        is_deleted: false,
+      },
+      include: {
+        image: true,
+        user: {
+          include: {
+            module_access: true,
+          },
+        },
+      },
+    });
+
+    if (!employee) {
+      return NextResponse.json(
+        { status: false, message: "Employee not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Employee fetched successfully",
+        data: employee,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("Error in GET /api/employee/[id]:", error);
+    return NextResponse.json(
+      { status: false, message: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function PATCH(request, { params }) {
   try {
     const authError = await validateAdminAuth(request);
@@ -178,7 +224,8 @@ export async function PATCH(request, { params }) {
         );
       } catch (error) {
         console.error("Error handling image removal:", error);
-        imageWarning = "Employee updated, but existing image could not be removed";
+        imageWarning =
+          "Employee updated, but existing image could not be removed";
       }
     }
     // Handle image upload if a new image is provided
@@ -253,7 +300,9 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Employee updated successfully",
         data: updatedEmployee,
-        ...(logged ? {} : { warning: "Note: Update succeeded but logging failed" }),
+        ...(logged
+          ? {}
+          : { warning: "Note: Update succeeded but logging failed" }),
         ...(imageWarning ? { imageWarning } : {}),
       },
       { status: 200 },
@@ -268,6 +317,77 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    return NextResponse.json(
+      { status: false, message: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+}
+
+// Soft-delete an employee and its linked profile image.
+export async function DELETE(request, { params }) {
+  try {
+    const authError = await validateAdminAuth(request);
+    if (authError) return authError;
+
+    const { id } = await params;
+    const currentEmployee = await prisma.employees.findUnique({
+      where: { employee_id: id },
+      include: { image: true },
+    });
+
+    if (!currentEmployee) {
+      return NextResponse.json(
+        { status: false, message: "Employee not found" },
+        { status: 404 },
+      );
+    }
+
+    if (currentEmployee.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Employee already deleted" },
+        { status: 400 },
+      );
+    }
+
+    // Keep records recoverable; media is also soft-deleted rather than removed.
+    if (currentEmployee.image_id && currentEmployee.image) {
+      try {
+        await prisma.media.update({
+          where: { id: currentEmployee.image_id },
+          data: { is_deleted: true },
+        });
+      } catch (error) {
+        console.error("Error handling image soft deletion:", error);
+      }
+    }
+
+    const employee = await prisma.employees.update({
+      where: { employee_id: id },
+      data: { is_deleted: true },
+    });
+
+    const logged = await withLogging(
+      request,
+      "employee",
+      id,
+      "DELETE",
+      `Employee deleted successfully: ${employee.first_name} ${employee.last_name}`,
+    );
+
+    return NextResponse.json(
+      {
+        status: true,
+        message: "Employee deleted successfully",
+        data: employee,
+        ...(logged
+          ? {}
+          : { warning: "Note: Deletion succeeded but logging failed" }),
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("Error in DELETE /api/employee/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 },

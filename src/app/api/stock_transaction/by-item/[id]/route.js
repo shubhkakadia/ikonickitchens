@@ -12,6 +12,11 @@ export async function GET(request, { params }) {
       where: { item_id: id },
       include: {
         project: true,
+        lot: {
+          select: {
+            lot_id: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",

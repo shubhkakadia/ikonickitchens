@@ -5,45 +5,22 @@ import {
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { formatProjectId, getNextProjectSequence } from "@/lib/projectId";
 export async function POST(request) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    const { name, project_id, client_id, startDate, lots } =
-      await request.json();
+    const { name, client_id, startDate, lots } = await request.json();
     // Normalize client_id - handle empty string, null, or undefined
     const normalizedClientId =
       client_id && client_id.trim() !== ""
         ? client_id.trim().toLowerCase()
         : null;
-
-    const existingProject = await prisma.project.findUnique({
-      where: { project_id },
-    });
-    if (existingProject) {
+    if (!normalizedClientId) {
       return NextResponse.json(
-        {
-          status: false,
-          message: "Project already exists by this project id: " + project_id,
-        },
-        { status: 409 },
+        { status: false, message: "Client is required" },
+        { status: 400 },
       );
-    }
-
-    // Validate client_id if provided
-    if (normalizedClientId) {
-      const existingClient = await prisma.client.findUnique({
-        where: { client_id: normalizedClientId },
-      });
-      if (!existingClient) {
-        return NextResponse.json(
-          {
-            status: false,
-            message: "Client not found with client id: " + client_id,
-          },
-          { status: 404 },
-        );
-      }
     }
 
     // Validate lots if provided
@@ -63,39 +40,83 @@ export async function POST(request) {
     }
 
     // Use transaction to create project and lots atomically
-    const result = await prisma.$transaction(async (tx) => {
-      // Create the project
-      const project = await tx.project.create({
-        data: {
-          name,
-          project_id: project_id.toLowerCase(),
-          client_id: normalizedClientId,
-        },
-      });
-
-      // Create lots if provided
-      const createdLots = [];
-      if (lots && Array.isArray(lots) && lots.length > 0) {
-        for (const lot of lots) {
-          const createdLot = await tx.lot.create({
-            data: {
-              lot_id: lot.lotId.toLowerCase(),
-              name: lot.clientName,
-              project_id: project.project_id,
-              startDate: startDate ? processDateTimeField(startDate) : null,
-              installationDueDate: lot.installationDueDate
-                ? processDateTimeField(lot.installationDueDate)
-                : null,
-              notes: lot.notes || null,
-              status: "ACTIVE",
-            },
-          });
-          createdLots.push(createdLot);
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const existingClient = await tx.client.findFirst({
+          where: { client_id: normalizedClientId, is_deleted: false },
+          select: { client_id: true, client_slug: true },
+        });
+        if (!existingClient) {
+          const error = new Error(
+            "Client not found with client id: " + client_id,
+          );
+          error.statusCode = 404;
+          throw error;
         }
-      }
+        const existingProjects = await tx.project.findMany({
+          where: {
+            project_id: { startsWith: `IKC-${existingClient.client_slug}-` },
+          },
+          select: { project_id: true },
+        });
+        const sequence = getNextProjectSequence(
+          existingProjects.map(
+            ({ project_id: existingProjectId }) => existingProjectId,
+          ),
+          existingClient.client_slug,
+        );
+        if (!sequence) {
+          const error = new Error(
+            "Project ID sequence limit reached for this client",
+          );
+          error.statusCode = 409;
+          throw error;
+        }
+        const generatedProjectId = formatProjectId(
+          existingClient.client_slug,
+          sequence,
+        );
+        if (!generatedProjectId) {
+          const error = new Error(
+            "Client slug must be exactly 4 letters before creating a project",
+          );
+          error.statusCode = 409;
+          throw error;
+        }
+        // Create the project
+        const project = await tx.project.create({
+          data: {
+            name,
+            project_id: generatedProjectId,
+            client_id: normalizedClientId,
+          },
+        });
 
-      return { project, createdLots };
-    });
+        // Create lots if provided
+        const createdLots = [];
+        if (lots && Array.isArray(lots) && lots.length > 0) {
+          for (const lot of lots) {
+            const createdLot = await tx.lot.create({
+              data: {
+                lot_id: lot.lotId.toLowerCase(),
+                name: lot.clientName,
+                project_id: project.project_id,
+                startDate: startDate ? processDateTimeField(startDate) : null,
+                installationDueDate: lot.installationDueDate
+                  ? processDateTimeField(lot.installationDueDate)
+                  : null,
+                notes: lot.notes || null,
+                status: "ACTIVE",
+              },
+            });
+            createdLots.push(createdLot);
+          }
+        }
+
+        return { project, createdLots };
+      },
+      { isolationLevel: "Serializable" },
+    );
 
     const { project, createdLots } = result;
 
@@ -139,6 +160,21 @@ export async function POST(request) {
     return NextResponse.json(responseData, { status: 201 });
   } catch (error) {
     console.error("Error in POST /api/project/create:", error);
+    if (error.statusCode) {
+      return NextResponse.json(
+        { status: false, message: error.message },
+        { status: error.statusCode },
+      );
+    }
+    if (error.code === "P2034" || error.code === "P2002") {
+      return NextResponse.json(
+        {
+          status: false,
+          message: "A project ID was generated concurrently. Please try again.",
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { status: false, message: "Internal server error", error: error.message },
       { status: 500 },

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
+import { normalizeClientSlug, isValidClientSlug } from "@/lib/clientSlug";
 
 export async function POST(request) {
   try {
@@ -11,6 +12,7 @@ export async function POST(request) {
     const {
       client_type,
       client_name,
+      client_slug,
       client_address,
       client_phone,
       client_email,
@@ -18,6 +20,22 @@ export async function POST(request) {
       client_notes,
       contacts,
     } = await request.json();
+    const normalizedSlug = normalizeClientSlug(client_slug);
+    if (!isValidClientSlug(normalizedSlug)) {
+      return NextResponse.json(
+        { status: false, message: "Client slug must be exactly 4 letters" },
+        { status: 400 },
+      );
+    }
+    const existingSlug = await prisma.client.findUnique({
+      where: { client_slug: normalizedSlug },
+    });
+    if (existingSlug) {
+      return NextResponse.json(
+        { status: false, message: "Client slug is already taken" },
+        { status: 409 },
+      );
+    }
     // Check if client already exists
     const existingClient = await prisma.client.findUnique({
       where: { client_name },
@@ -59,6 +77,7 @@ export async function POST(request) {
         data: {
           client_type,
           client_name,
+          client_slug: normalizedSlug,
           client_address,
           client_phone: formatPhone(client_phone),
           client_email,

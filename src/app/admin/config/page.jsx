@@ -19,7 +19,10 @@ export default function ConfigPage() {
     { id: "hardware", label: "Hardware" },
     { id: "measuring_unit", label: "Measuring Unit" },
     { id: "finish", label: "Finish" },
+    { id: "brand", label: "Brand" },
   ];
+  const activeTabLabel =
+    tabs.find((tab) => tab.id === activeTab)?.label || "Configuration";
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -293,7 +296,7 @@ export default function ConfigPage() {
                   </h1>
 
                   <p className="text-slate-600">
-                    Manage role, hardware, measuring unit, and finish
+                    Manage role, hardware, measuring unit, finish, and brand
                     configurations
                   </p>
                 </div>
@@ -342,14 +345,7 @@ export default function ConfigPage() {
                       className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm shrink-0"
                     >
                       <Plus className="h-4 w-4" />
-                      Add{" "}
-                      {activeTab === "role"
-                        ? "Role"
-                        : activeTab === "hardware"
-                          ? "Hardware"
-                          : activeTab === "measuring_unit"
-                            ? "Measuring Unit"
-                            : "Finish"}
+                      Add {activeTabLabel}
                     </button>
                   </div>
                 </div>
@@ -503,14 +499,7 @@ export default function ConfigPage() {
           >
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
-                Add{" "}
-                {activeTab === "role"
-                  ? "Role"
-                  : activeTab === "hardware"
-                    ? "Hardware"
-                    : activeTab === "measuring_unit"
-                      ? "Measuring Unit"
-                      : "Finish"}
+                Add {activeTabLabel}
               </h2>
               <button
                 onClick={closeModals}
@@ -561,7 +550,7 @@ export default function ConfigPage() {
         isOpen={showDeleteModal}
         onClose={closeModals}
         onConfirm={handleDelete}
-        heading={`${activeTab === "role" ? "Role" : activeTab === "hardware" ? "Hardware" : activeTab === "measuring_unit" ? "Measuring Unit" : "Finish"}`}
+        heading={activeTabLabel}
         message={`Are you sure you want to delete "${selectedItem?.value}"? This action cannot be undone.`}
         isDeleting={isDeleting}
       />

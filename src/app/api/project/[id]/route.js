@@ -74,6 +74,34 @@ export async function PATCH(request, { params }) {
     const { id } = await params;
     const { name, client_id } = await request.json();
 
+    const existingProject = await prisma.project.findUnique({
+      where: { project_id: id },
+      select: { client_id: true },
+    });
+    if (!existingProject) {
+      return NextResponse.json(
+        { status: false, message: "Project not found" },
+        { status: 404 },
+      );
+    }
+    const nextClientId =
+      client_id === undefined ? existingProject.client_id : client_id;
+    const existingClient = nextClientId
+      ? await prisma.client.findFirst({
+          where: {
+            client_id: String(nextClientId).toLowerCase(),
+            is_deleted: false,
+          },
+          select: { client_id: true },
+        })
+      : null;
+    if (nextClientId && !existingClient) {
+      return NextResponse.json(
+        { status: false, message: "Client not found" },
+        { status: 404 },
+      );
+    }
+
     // Build update data object with only provided fields
     const updateData = {};
 
@@ -81,9 +109,7 @@ export async function PATCH(request, { params }) {
       updateData.name = name;
     }
 
-    if (client_id !== undefined) {
-      updateData.client_id = client_id ? client_id.toLowerCase() : null;
-    }
+    updateData.client_id = existingClient?.client_id || null;
 
     const project = await prisma.project.update({
       where: { project_id: id },

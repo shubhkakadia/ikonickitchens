@@ -27,6 +27,7 @@ export default function page() {
   const { getToken } = useAuth();
   const [numberOfLots, setNumberOfLots] = useState("");
   const [lots, setLots] = useState([]);
+  const [isProjectIdLoading, setIsProjectIdLoading] = useState(false);
 
   // Fetch clients on component mount
   useEffect(() => {
@@ -95,13 +96,36 @@ export default function page() {
     });
   };
 
-  const handleClientSelect = (clientId, clientName) => {
+  const handleClientSelect = async (clientId, clientName) => {
     setFormData({
       ...formData,
       client_id: clientId,
+      project_id: "",
     });
     setClientSearchTerm(clientName);
     setIsClientDropdownOpen(false);
+    setIsProjectIdLoading(true);
+    try {
+      const response = await axios.get(
+        `/api/project/next-id?client_id=${encodeURIComponent(clientId)}`,
+        { headers: { Authorization: `Bearer ${getToken()}` } },
+      );
+      if (response.data.status) {
+        setFormData((previous) => ({
+          ...previous,
+          client_id: clientId,
+          project_id: response.data.data.project_id,
+        }));
+      } else {
+        toast.error(response.data.message || "Unable to generate project ID");
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Unable to generate project ID",
+      );
+    } finally {
+      setIsProjectIdLoading(false);
+    }
   };
 
   const handleClientSearchChange = (e) => {
@@ -114,6 +138,7 @@ export default function page() {
       setFormData({
         ...formData,
         client_id: "",
+        project_id: "",
       });
     }
   };
@@ -356,8 +381,9 @@ export default function page() {
                             name="project_id"
                             value={formData.project_id}
                             onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                            placeholder="Eg. IK001"
+                            disabled={isProjectIdLoading || Boolean(formData.client_id)}
+                            className={`w-full text-sm px-4 py-3 border rounded-lg focus:outline-none ${formData.client_id ? "text-slate-500 bg-slate-100 border-slate-300 cursor-not-allowed" : "text-slate-800 border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent"}`}
+                            placeholder={formData.client_id ? "Generating..." : "Eg. IK001"}
                             required
                           />
                           {errors.project_id && (
@@ -373,8 +399,7 @@ export default function page() {
                           ref={clientDropdownRef}
                         >
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Client{" "}
-                            <span className="text-slate-400">(Optional)</span>
+                            Client <span className="text-slate-400">(Optional)</span>
                           </label>
                           <div className="relative">
                             <input
@@ -399,6 +424,11 @@ export default function page() {
                               />
                             </button>
                           </div>
+                          {errors.client_id && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {errors.client_id}
+                            </p>
+                          )}
 
                           {isClientDropdownOpen && (
                             <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">

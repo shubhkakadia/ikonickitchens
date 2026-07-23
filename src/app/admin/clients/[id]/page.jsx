@@ -36,6 +36,7 @@ import ContactSection from "@/components/ContactSection";
 import { CiMenuKebab } from "react-icons/ci";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { validatePhone, formatPhoneToNational } from "@/components/validators";
+import { generateClientSlug, normalizeClientSlug } from "@/lib/clientSlug";
 
 export default function page() {
   const { id } = useParams();
@@ -68,10 +69,34 @@ export default function page() {
   const [activeTab, setActiveTab] = useState("ACTIVE");
   const [numberOfLots, setNumberOfLots] = useState("");
   const [lots, setLots] = useState([]);
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [slugAvailability, setSlugAvailability] = useState(null);
 
   useEffect(() => {
     fetchClient(id);
   }, [id]);
+
+  useEffect(() => {
+    if (!showAddProjectModal || !client?.client_id) return;
+    const loadNextProjectId = async () => {
+      try {
+        const response = await axios.get(
+          `/api/project/next-id?client_id=${encodeURIComponent(client.client_id)}`,
+          { headers: { Authorization: `Bearer ${getToken()}` } },
+        );
+        if (response.data.status)
+          setNewProject((previous) => ({
+            ...previous,
+            project_id: response.data.data.project_id,
+          }));
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || "Unable to generate project ID",
+        );
+      }
+    };
+    loadNextProjectId();
+  }, [showAddProjectModal, client?.client_id, getToken]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -128,11 +153,34 @@ export default function page() {
     }
   };
 
+  useEffect(() => {
+    const slug = editData.client_slug;
+    if (!isEditing || !slug || slug.length !== 4) {
+      setSlugAvailability(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const token = getToken();
+        const response = await axios.get(
+          `/api/client/slug-availability?slug=${encodeURIComponent(slug)}&excludeId=${encodeURIComponent(id)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        setSlugAvailability(response.data.available);
+      } catch {
+        setSlugAvailability(null);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [editData.client_slug, id, isEditing, getToken]);
+
   const handleEdit = () => {
     if (client) {
       setEditData({
         client_type: client.client_type || "",
         client_name: client.client_name || "",
+        client_slug:
+          client.client_slug || generateClientSlug(client.client_name),
         client_address: client.client_address || "",
         client_phone: client.client_phone || "",
         client_email: client.client_email || "",
@@ -140,6 +188,7 @@ export default function page() {
         client_notes: client.client_notes || "",
       });
       setIsEditing(true);
+      setSlugTouched(false);
     }
   };
 
@@ -165,6 +214,18 @@ export default function page() {
         ...editData,
         client_phone: formatPhone(editData.client_phone),
       };
+
+      if (
+        !/^[A-Z]{4}$/.test(dataToSend.client_slug || "") ||
+        slugAvailability === false
+      ) {
+        toast.error(
+          slugAvailability === false
+            ? "This client slug is already taken"
+            : "Client slug must be exactly 4 letters",
+        );
+        return;
+      }
 
       const response = await axios.patch(`/api/client/${id}`, dataToSend, {
         headers: {
@@ -218,8 +279,12 @@ export default function page() {
   const handleInputChange = (field, value) => {
     setEditData((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: field === "client_slug" ? normalizeClientSlug(value) : value,
+      ...(field === "client_name" && !slugTouched
+        ? { client_slug: generateClientSlug(value) }
+        : {}),
     }));
+    if (field === "client_slug") setSlugTouched(true);
   };
 
   const formatValue = (value) => {
@@ -508,8 +573,8 @@ export default function page() {
   };
 
   const handleCreateProject = async () => {
-    if (!newProject.name || !newProject.project_id) {
-      toast.error("Project name and Project ID are required", {
+    if (!newProject.name || !client?.client_id) {
+      toast.error("Project name and client are required", {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
@@ -741,6 +806,19 @@ export default function page() {
                                     placeholder={client.client_name}
                                     className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                                   />
+                                  <input
+                                    type="text"
+                                    value={editData.client_slug || ""}
+                                    maxLength={4}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        "client_slug",
+                                        e.target.value,
+                                      )
+                                    }
+                                    aria-label="Client slug"
+                                    className={`w-20 text-sm font-semibold tracking-widest text-slate-800 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${slugAvailability === false ? "border-red-500" : "border-slate-300"}`}
+                                  />
                                   <select
                                     value={editData.client_type || ""}
                                     onChange={(e) =>
@@ -759,6 +837,17 @@ export default function page() {
                                 </div>
                                 <p className="text-sm text-slate-500">
                                   Client ID: {client.client_id}
+                                </p>
+                                <p
+                                  className={`text-xs ${slugAvailability === false ? "text-red-500" : "text-slate-500"}`}
+                                >
+                                  {slugAvailability === false
+                                    ? "Client slug is already taken"
+                                    : "Client slug (4 letters)"}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  This slug is used to generate automated
+                                  project IDs.
                                 </p>
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2">
@@ -1436,14 +1525,9 @@ export default function page() {
                         <input
                           type="text"
                           value={newProject.project_id}
-                          onChange={(e) =>
-                            setNewProject({
-                              ...newProject,
-                              project_id: e.target.value,
-                            })
-                          }
-                          placeholder="Eg. IK001"
-                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                          disabled
+                          placeholder="Generating..."
+                          className="w-full text-sm text-slate-500 px-4 py-3 border border-slate-300 bg-slate-100 rounded-lg cursor-not-allowed"
                         />
                       </div>
                     </div>

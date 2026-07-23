@@ -40,6 +40,7 @@ export default function page() {
   // Manual add modal states
   const [showManualAddModal, setShowManualAddModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [allItems, setAllItems] = useState([]);
   const [itemSearch, setItemSearch] = useState("");
   const [showItemSearchResults, setShowItemSearchResults] = useState(false);
@@ -51,9 +52,15 @@ export default function page() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedProjectName, setSelectedProjectName] = useState("");
+  const [selectedProjectLots, setSelectedProjectLots] = useState([]);
+  const [selectedLotId, setSelectedLotId] = useState("");
+  const [lotSearchTerm, setLotSearchTerm] = useState("");
+  const [isLotDropdownOpen, setIsLotDropdownOpen] = useState(false);
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const [projectSearchTerm, setProjectSearchTerm] = useState("");
   const projectDropdownRef = useRef(null);
+  const lotDropdownRef = useRef(null);
+  const categoryDropdownRef = useRef(null);
 
   // Category options
   const categoryOptions = [
@@ -82,13 +89,11 @@ export default function page() {
       });
 
       if (response.data.status) {
-        // Filter projects where ALL lots are ACTIVE
+        // Include every project that has lots so each lot can be selected.
         const filteredProjects = response.data.data.filter((project) => {
           const lots = project.lots || [];
-          // If project has no lots, exclude it
           if (lots.length === 0) return false;
-          // Check if all lots are ACTIVE
-          return lots.every((lot) => lot.status === "ACTIVE");
+          return true;
         });
         setProjects(filteredProjects);
       }
@@ -494,6 +499,18 @@ export default function page() {
       ) {
         setIsProjectDropdownOpen(false);
       }
+      if (
+        lotDropdownRef.current &&
+        !lotDropdownRef.current.contains(event.target)
+      ) {
+        setIsLotDropdownOpen(false);
+      }
+      if (
+        categoryDropdownRef.current &&
+        !categoryDropdownRef.current.contains(event.target)
+      ) {
+        setIsCategoryDropdownOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -516,6 +533,9 @@ export default function page() {
   const handleProjectSelect = (project) => {
     setSelectedProjectId(project.project_id);
     setSelectedProjectName(project.name);
+    setSelectedProjectLots(project.lots || []);
+    setSelectedLotId("");
+    setLotSearchTerm("");
     setProjectSearchTerm(
       `${project.name}${
         project.client ? ` (${project.client.client_name})` : ""
@@ -532,7 +552,37 @@ export default function page() {
     if (!value.trim()) {
       setSelectedProjectId("");
       setSelectedProjectName("");
+      setSelectedProjectLots([]);
+      setSelectedLotId("");
+      setLotSearchTerm("");
     }
+  };
+
+  const filteredLots = selectedProjectLots.filter((lot) => {
+    const search = lotSearchTerm.toLowerCase();
+    return (
+      !search ||
+      lot.name?.toLowerCase().includes(search) ||
+      lot.lot_id?.toLowerCase().includes(search) ||
+      lot.status?.toLowerCase().includes(search)
+    );
+  });
+
+  const handleLotSelect = (lot) => {
+    setSelectedLotId(lot.lot_id);
+    setLotSearchTerm(`${lot.name || lot.lot_id} (${lot.lot_id})`);
+    setIsLotDropdownOpen(false);
+  };
+
+  const handleLotSearchChange = (e) => {
+    setLotSearchTerm(e.target.value);
+    setSelectedLotId("");
+    setIsLotDropdownOpen(true);
+  };
+
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    setIsCategoryDropdownOpen(false);
   };
 
   const fetchItemsByCategory = async (category) => {
@@ -600,6 +650,7 @@ export default function page() {
   const handleCloseManualModal = () => {
     setShowManualAddModal(false);
     setSelectedCategory("");
+    setIsCategoryDropdownOpen(false);
     setAllItems([]);
     setItemSearch("");
     setShowItemSearchResults(false);
@@ -607,8 +658,12 @@ export default function page() {
     setManualNotes("");
     setSelectedProjectId("");
     setSelectedProjectName("");
+    setSelectedProjectLots([]);
+    setSelectedLotId("");
+    setLotSearchTerm("");
     setProjectSearchTerm("");
     setIsProjectDropdownOpen(false);
+    setIsLotDropdownOpen(false);
   };
 
   // Handle add item to table
@@ -672,6 +727,11 @@ export default function page() {
       return;
     }
 
+    if (selectedProjectId && !selectedLotId) {
+      toast.error("Please select a lot for the selected project");
+      return;
+    }
+
     // Validate quantities
     const invalidItems = selectedItems.some(
       (item) => !item.quantity || item.quantity <= 0,
@@ -723,6 +783,7 @@ export default function page() {
             type: "USED",
             notes: manualNotes || `Manually recorded used quantity`,
             project_id: selectedProjectId || null,
+            lot_id: selectedLotId || null,
           },
           {
             headers: {
@@ -1621,9 +1682,9 @@ export default function page() {
                             <span>
                               <p className="font-bold">{project.name}</p>
                               <p className="text-xs text-slate-500">
-                                {project.client
-                                  ? ` ${project.client.client_name}`
-                                  : ""}
+                                Client:{" "}
+                                {project.client?.client_name ||
+                                  "No client assigned"}
                               </p>
                             </span>
                           </button>
@@ -1640,6 +1701,63 @@ export default function page() {
                 )}
               </div>
 
+              {selectedProjectId && (
+                <div className="relative mt-4" ref={lotDropdownRef}>
+                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                    Lot <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={lotSearchTerm}
+                      onChange={handleLotSearchChange}
+                      onFocus={() => setIsLotDropdownOpen(true)}
+                      placeholder="Search or select a lot..."
+                      disabled={savingManual}
+                      className="w-full text-sm text-slate-800 px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:bg-slate-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsLotDropdownOpen(!isLotDropdownOpen)}
+                      disabled={savingManual}
+                      className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 disabled:opacity-50"
+                    >
+                      <ChevronDown
+                        className={`w-5 h-5 transition-transform ${isLotDropdownOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                  </div>
+                  {isLotDropdownOpen && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {filteredLots.length > 0 ? (
+                        filteredLots.map((lot) => (
+                          <button
+                            key={lot.lot_id}
+                            type="button"
+                            onClick={() => handleLotSelect(lot)}
+                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                          >
+                            <p className="font-medium">
+                              {lot.name || lot.lot_id}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {lot.lot_id}
+                              {lot.status ? ` · ${lot.status}` : ""}
+                            </p>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                          {lotSearchTerm
+                            ? "No matching lots found"
+                            : "No lots available"}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <hr className="border-slate-100" />
 
               {/* Item Selection & List */}
@@ -1653,23 +1771,48 @@ export default function page() {
                 {/* Category Dropdown and Search Bar */}
                 <div className="mb-6 flex gap-3">
                   {/* Category Dropdown */}
-                  <div className="shrink-0">
+                  <div className="relative shrink-0" ref={categoryDropdownRef}>
                     <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
                       Category <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="w-48 px-4 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-white"
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setIsCategoryDropdownOpen(!isCategoryDropdownOpen)
+                      }
                       disabled={savingManual}
+                      className="w-48 px-4 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-1 focus:ring-primary focus:border-primary outline-none bg-white flex items-center justify-between disabled:bg-slate-50 disabled:text-slate-400"
                     >
-                      <option value="">-- Select --</option>
-                      {categoryOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                      <span>
+                        {categoryOptions.find(
+                          (option) => option.value === selectedCategory,
+                        )?.label || "-- Select --"}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-slate-400 transition-transform ${isCategoryDropdownOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {isCategoryDropdownOpen && (
+                      <div className="absolute z-20 w-48 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => handleCategorySelect("")}
+                          className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-100"
+                        >
+                          -- Select --
+                        </button>
+                        {categoryOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => handleCategorySelect(option.value)}
+                            className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-100"
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Search Bar */}

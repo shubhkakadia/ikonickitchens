@@ -13,6 +13,7 @@ export async function GET(request) {
       select: {
         client_id: true,
         client_name: true,
+        client_slug: true,
         client_type: true,
       },
     });

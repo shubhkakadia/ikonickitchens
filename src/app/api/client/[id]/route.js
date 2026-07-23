@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
+import { normalizeClientSlug, isValidClientSlug } from "@/lib/clientSlug";
 
 export async function GET(request, { params }) {
   try {
@@ -17,6 +18,7 @@ export async function GET(request, { params }) {
       select: {
         client_id: true,
         client_name: true,
+        client_slug: true,
         client_type: true,
         client_address: true,
         client_phone: true,
@@ -86,12 +88,30 @@ export async function PATCH(request, { params }) {
     const {
       client_type,
       client_name,
+      client_slug,
       client_address,
       client_phone,
       client_email,
       client_website,
       client_notes,
     } = await request.json();
+    const normalizedSlug = normalizeClientSlug(client_slug);
+    if (!isValidClientSlug(normalizedSlug)) {
+      return NextResponse.json(
+        { status: false, message: "Client slug must be exactly 4 letters" },
+        { status: 400 },
+      );
+    }
+    const existingSlug = await prisma.client.findFirst({
+      where: { client_slug: normalizedSlug, NOT: { client_id: id } },
+      select: { client_id: true },
+    });
+    if (existingSlug) {
+      return NextResponse.json(
+        { status: false, message: "Client slug is already taken" },
+        { status: 409 },
+      );
+    }
     const formatPhone = (phone) => {
       return phone ? formatPhoneToNational(phone) : phone;
     };
@@ -101,6 +121,7 @@ export async function PATCH(request, { params }) {
       data: {
         client_type,
         client_name,
+        client_slug: normalizedSlug,
         client_address,
         client_phone: formatPhone(client_phone),
         client_email,
@@ -115,6 +136,7 @@ export async function PATCH(request, { params }) {
       select: {
         client_id: true,
         client_name: true,
+        client_slug: true,
         client_type: true,
         client_address: true,
         client_phone: true,

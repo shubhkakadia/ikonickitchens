@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
-import { Category } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
+
+const ITEM_CATEGORIES = [
+  "SHEET",
+  "HANDLE",
+  "HARDWARE",
+  "ACCESSORY",
+  "EDGING_TAPE",
+];
 
 export async function POST(request) {
   try {
@@ -94,10 +101,9 @@ export async function POST(request) {
     });
 
     // Search items - handle enums separately to avoid invalid Prisma filters
-    const categoryMatch =
-      Category && typeof Category === "object"
-        ? Object.values(Category).find((c) => c === searchTermUpper)
-        : null;
+    const categoryMatch = ITEM_CATEGORIES.find(
+      (category) => category === searchTermUpper,
+    );
 
     const itemSearchOR = [
       { measurement_unit: { contains: searchTerm } },

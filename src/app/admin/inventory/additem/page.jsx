@@ -20,6 +20,98 @@ import Image from "next/image";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
 import { v4 as uuidv4 } from "uuid";
 
+function SearchableBrandDropdown({
+  value,
+  searchTerm,
+  onSearchChange,
+  onSelect,
+  isOpen,
+  setIsOpen,
+  dropdownRef,
+  options,
+  loading,
+  onCreate,
+}) {
+  const filteredBrands = options.filter((brand) =>
+    brand.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+  const canCreate =
+    searchTerm &&
+    !options.some((brand) => brand.toLowerCase() === searchTerm.toLowerCase());
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div className="relative">
+        <input
+          type="text"
+          value={searchTerm || value || ""}
+          onChange={onSearchChange}
+          onFocus={() => setIsOpen(true)}
+          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+          placeholder="Search or type a brand..."
+        />
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <ChevronDown
+            className={`w-5 h-5 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+      </div>
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+          {loading ? (
+            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+              Loading brands...
+            </div>
+          ) : filteredBrands.length > 0 ? (
+            <>
+              {filteredBrands.map((brand) => (
+                <button
+                  key={brand}
+                  type="button"
+                  onClick={() => onSelect(brand)}
+                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                >
+                  {brand}
+                </button>
+              ))}
+              {canCreate && (
+                <div className="border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={onCreate}
+                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> Create "{searchTerm}"
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="px-4 py-3">
+              <div className="text-sm text-slate-500 mb-2">
+                No matching brands found
+              </div>
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={onCreate}
+                  className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Create "{searchTerm}"
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function page() {
   const { getToken } = useAuth();
   const {
@@ -54,6 +146,13 @@ export default function page() {
   const [isCreatingMeasuringUnit, setIsCreatingMeasuringUnit] = useState(false);
   const [finishOptions, setFinishOptions] = useState([]);
   const [loadingFinishes, setLoadingFinishes] = useState(false);
+  const [brandOptions, setBrandOptions] = useState([]);
+  const [loadingBrands, setLoadingBrands] = useState(false);
+  const [isBrandDropdownOpen, setIsBrandDropdownOpen] = useState(false);
+  const [brandSearchTerm, setBrandSearchTerm] = useState("");
+  const [showCreateBrandModal, setShowCreateBrandModal] = useState(false);
+  const [newBrandValue, setNewBrandValue] = useState("");
+  const [isCreatingBrand, setIsCreatingBrand] = useState(false);
   const [showCreateFinishModal, setShowCreateFinishModal] = useState(false);
   const [newFinishValue, setNewFinishValue] = useState("");
   const [isCreatingFinish, setIsCreatingFinish] = useState(false);
@@ -62,6 +161,7 @@ export default function page() {
   const supplierDropdownRef = useRef(null);
   const measuringUnitDropdownRef = useRef(null);
   const finishDropdownRef = useRef(null);
+  const brandDropdownRef = useRef(null);
   const faceDropdownRef = useRef(null);
   const fileInputRef = useRef(null);
   const faceAutoSetRef = useRef(false);
@@ -273,6 +373,39 @@ export default function page() {
     fetchFinishes();
   }, [getToken]);
 
+  // Brands are shared by sheets, handles, and edging tape.
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        setLoadingBrands(true);
+        const sessionToken = getToken();
+        if (!sessionToken) return;
+
+        const response = await axios.post(
+          "/api/config/read_all_by_category",
+          { category: "brand" },
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        if (response.data.status && response.data.data) {
+          setBrandOptions(response.data.data.map((item) => item.value));
+        }
+      } catch (error) {
+        console.error("Error fetching brands:", error);
+        setBrandOptions([]);
+      } finally {
+        setLoadingBrands(false);
+      }
+    };
+
+    fetchBrands();
+  }, [getToken]);
+
   // Filter suppliers based on search term
   useEffect(() => {
     if (supplierSearchTerm === "") {
@@ -300,6 +433,7 @@ export default function page() {
           setIsOpen: setIsMeasuringUnitDropdownOpen,
         },
         { ref: finishDropdownRef, setIsOpen: setIsFinishDropdownOpen },
+        { ref: brandDropdownRef, setIsOpen: setIsBrandDropdownOpen },
         { ref: faceDropdownRef, setIsOpen: setIsFaceDropdownOpen },
       ];
 
@@ -550,6 +684,63 @@ export default function page() {
       ...formData,
       finish: value,
     });
+  };
+
+  const handleBrandSelect = (brand) => {
+    setFormData({ ...formData, brand });
+    setBrandSearchTerm(brand);
+    setIsBrandDropdownOpen(false);
+  };
+
+  const handleBrandSearchChange = (e) => {
+    const value = e.target.value;
+    setBrandSearchTerm(value);
+    setIsBrandDropdownOpen(true);
+    setFormData({ ...formData, brand: value });
+  };
+
+  const openCreateBrandModal = () => {
+    setNewBrandValue(brandSearchTerm);
+    setShowCreateBrandModal(true);
+  };
+
+  const handleCreateNewBrand = async () => {
+    const value = newBrandValue.trim();
+    if (!value) {
+      toast.error("Brand value is required");
+      return;
+    }
+
+    try {
+      setIsCreatingBrand(true);
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error("No valid session found. Please login again.");
+        return;
+      }
+
+      const response = await axios.post(
+        "/api/config/create",
+        { category: "brand", value },
+        { headers: { Authorization: `Bearer ${sessionToken}` } },
+      );
+      if (!response.data.status) {
+        toast.error(response.data.message || "Failed to create brand");
+        return;
+      }
+
+      setBrandOptions((current) => [...current, value]);
+      setFormData((current) => ({ ...current, brand: value }));
+      setBrandSearchTerm(value);
+      setShowCreateBrandModal(false);
+      setNewBrandValue("");
+      setIsBrandDropdownOpen(false);
+      toast.success("Brand created successfully");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to create brand");
+    } finally {
+      setIsCreatingBrand(false);
+    }
   };
 
   // Face handlers
@@ -876,12 +1067,14 @@ export default function page() {
       setIsSupplierDropdownOpen(false);
       setIsMeasuringUnitDropdownOpen(false);
       setIsFinishDropdownOpen(false);
+      setIsBrandDropdownOpen(false);
       setIsFaceDropdownOpen(false);
       setSearchTerm("Sheet");
       setSubCategorySearchTerm("");
       setSupplierSearchTerm("");
       setMeasuringUnitSearchTerm("");
       setFinishSearchTerm("");
+      setBrandSearchTerm("");
       setFaceSearchTerm("");
       setSelectedCategory("Sheet");
       faceAutoSetRef.current = false;
@@ -1489,7 +1682,25 @@ export default function page() {
                                 "dimensions",
                               ].map((field) => (
                                 <div key={field}>
-                                  {field === "finish" ? (
+                                  {field === "brand" ? (
+                                    <div>
+                                      <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                        Brand
+                                      </label>
+                                      <SearchableBrandDropdown
+                                        value={formData.brand}
+                                        searchTerm={brandSearchTerm}
+                                        onSearchChange={handleBrandSearchChange}
+                                        onSelect={handleBrandSelect}
+                                        isOpen={isBrandDropdownOpen}
+                                        setIsOpen={setIsBrandDropdownOpen}
+                                        dropdownRef={brandDropdownRef}
+                                        options={brandOptions}
+                                        loading={loadingBrands}
+                                        onCreate={openCreateBrandModal}
+                                      />
+                                    </div>
+                                  ) : field === "finish" ? (
                                     <div
                                       className="relative"
                                       ref={finishDropdownRef}
@@ -1729,17 +1940,39 @@ export default function page() {
                               "dimensions",
                             ].map((field) => (
                               <div key={field}>
-                                <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                  {field}
-                                </label>
-                                <input
-                                  type="text"
-                                  name={field}
-                                  value={formData[field]}
-                                  onChange={handleInputChange}
-                                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                  placeholder={`Enter ${field}`}
-                                />
+                                {field === "brand" ? (
+                                  <>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                      Brand
+                                    </label>
+                                    <SearchableBrandDropdown
+                                      value={formData.brand}
+                                      searchTerm={brandSearchTerm}
+                                      onSearchChange={handleBrandSearchChange}
+                                      onSelect={handleBrandSelect}
+                                      isOpen={isBrandDropdownOpen}
+                                      setIsOpen={setIsBrandDropdownOpen}
+                                      dropdownRef={brandDropdownRef}
+                                      options={brandOptions}
+                                      loading={loadingBrands}
+                                      onCreate={openCreateBrandModal}
+                                    />
+                                  </>
+                                ) : (
+                                  <>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                      {field}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      name={field}
+                                      value={formData[field]}
+                                      onChange={handleInputChange}
+                                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                      placeholder={`Enter ${field}`}
+                                    />
+                                  </>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1911,7 +2144,25 @@ export default function page() {
                             {["brand", "color", "finish", "dimensions"].map(
                               (field) => (
                                 <div key={field}>
-                                  {field === "finish" ? (
+                                  {field === "brand" ? (
+                                    <div>
+                                      <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
+                                        Brand
+                                      </label>
+                                      <SearchableBrandDropdown
+                                        value={formData.brand}
+                                        searchTerm={brandSearchTerm}
+                                        onSearchChange={handleBrandSearchChange}
+                                        onSelect={handleBrandSelect}
+                                        isOpen={isBrandDropdownOpen}
+                                        setIsOpen={setIsBrandDropdownOpen}
+                                        dropdownRef={brandDropdownRef}
+                                        options={brandOptions}
+                                        loading={loadingBrands}
+                                        onCreate={openCreateBrandModal}
+                                      />
+                                    </div>
+                                  ) : field === "finish" ? (
                                     <div
                                       className="relative"
                                       ref={finishDropdownRef}
@@ -2190,6 +2441,66 @@ export default function page() {
                   className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isCreatingFinish ? "Creating..." : "Create Finish"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateBrandModal && (
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateBrandModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Brand
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateBrandModal(false);
+                  setNewBrandValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Brand Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newBrandValue}
+                  onChange={(e) => setNewBrandValue(e.target.value)}
+                  placeholder="Enter brand name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCreateBrandModal(false);
+                    setNewBrandValue("");
+                  }}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateNewBrand}
+                  disabled={isCreatingBrand || !newBrandValue?.trim()}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingBrand ? "Creating..." : "Create Brand"}
                 </button>
               </div>
             </div>

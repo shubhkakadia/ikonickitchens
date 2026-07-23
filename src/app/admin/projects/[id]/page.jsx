@@ -345,55 +345,6 @@ export default function page() {
     }
   };
 
-  const handleRemoveClient = async () => {
-    if (!project?.project_id) {
-      toast.error("No project selected");
-      return;
-    }
-
-    if (!project.client) {
-      toast.error("No client assigned to remove");
-      return;
-    }
-
-    try {
-      setIsAssigningClient(true);
-      const sessionToken = getToken();
-
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-
-      const response = await axios.patch(
-        `/api/project/${project.project_id}`,
-        {
-          name: project.name,
-          client_id: null, // Remove client assignment
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      if (response.data.status) {
-        toast.success("Client removed successfully");
-        // Refresh the project data to get updated client information
-        fetchProject();
-      } else {
-        toast.error(response.data.message || "Failed to remove client");
-      }
-    } catch (error) {
-      console.error("Error removing client:", error);
-      toast.error("Failed to remove client. Please try again.");
-    } finally {
-      setIsAssigningClient(false);
-    }
-  };
-
   const handleCreateLot = async () => {
     if (!newLot.name.trim()) {
       toast.error("Please enter a lot name");
@@ -2024,14 +1975,6 @@ export default function page() {
                                               title="Change Client"
                                             >
                                               <Edit className="w-4 h-4 text-blue-600" />
-                                            </button>
-                                            <button
-                                              onClick={handleRemoveClient}
-                                              disabled={isAssigningClient}
-                                              className="p-1.5 rounded hover:bg-red-100 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                              title="Remove Client"
-                                            >
-                                              <X className="w-4 h-4 text-red-600" />
                                             </button>
                                           </>
                                         )}

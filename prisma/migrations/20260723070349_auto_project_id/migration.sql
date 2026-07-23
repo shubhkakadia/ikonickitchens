@@ -4,8 +4,6 @@
   - A unique constraint covering the columns `[client_slug]` on the table `client` will be added. If there are existing duplicate values, this will fail.
 
 */
--- DropForeignKey
-ALTER TABLE `project` DROP FOREIGN KEY `project_client_id_fkey`;
 
 -- DropIndex
 DROP INDEX `lot_lot_id_idx` ON `lot`;

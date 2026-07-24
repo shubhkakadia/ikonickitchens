@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
+import PaginationFooter from "@/components/PaginationFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -19,8 +20,10 @@ import {
   Plus,
   Search,
   Trash2,
+  History,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
 
 export default function page() {
@@ -31,6 +34,15 @@ export default function page() {
   const [expandedMto, setExpandedMto] = useState(null);
   const [quantityInputs, setQuantityInputs] = useState({});
   const [saving, setSaving] = useState(false);
+  const [recentUsage, setRecentUsage] = useState([]);
+  const [loadingRecentUsage, setLoadingRecentUsage] = useState(false);
+  const [recentSearch, setRecentSearch] = useState("");
+  const [recentCategoryFilter, setRecentCategoryFilter] = useState("");
+  const [recentProjectFilter, setRecentProjectFilter] = useState("");
+  const [recentLotFilter, setRecentLotFilter] = useState("");
+  const [recentPage, setRecentPage] = useState(1);
+  const [recentItemsPerPage, setRecentItemsPerPage] = useState(50);
+  const [openRecentFilter, setOpenRecentFilter] = useState(null);
 
   // Used material MTO completion (Active/Completed) UI
   const [mtoTab, setMtoTab] = useState("active"); // active | completed
@@ -74,7 +86,31 @@ export default function page() {
   useEffect(() => {
     fetchMTOs();
     fetchProjectsWithAllActiveLots();
+    fetchRecentUsage();
   }, []);
+
+  const fetchRecentUsage = async () => {
+    try {
+      setLoadingRecentUsage(true);
+      const sessionToken = getToken();
+      if (!sessionToken) return;
+
+      const response = await axios.get("/api/stock_transaction/used", {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+
+      if (response.data.status) {
+        setRecentUsage(response.data.data || []);
+      } else {
+        toast.error(response.data.message || "Failed to fetch usage logs");
+      }
+    } catch (error) {
+      console.error("Error fetching recent material usage:", error);
+      toast.error("Error fetching recent material usage");
+    } finally {
+      setLoadingRecentUsage(false);
+    }
+  };
 
   const fetchProjectsWithAllActiveLots = async () => {
     try {
@@ -405,6 +441,7 @@ export default function page() {
         });
         // Refresh MTOs
         await fetchMTOs();
+        await fetchRecentUsage();
       } else {
         toast.error(response.data.message || "Failed to update quantity used", {
           position: "top-right",
@@ -813,6 +850,7 @@ export default function page() {
           autoClose: 3000,
         });
         handleCloseManualModal();
+        await fetchRecentUsage();
       }
     } catch (error) {
       toast.error(
@@ -915,6 +953,138 @@ export default function page() {
         ? upcomingMtos
         : activeMtos;
 
+  const getUsageLocation = (transaction) => {
+    const project =
+      transaction.project || transaction.materials_to_order?.project;
+    const lots = transaction.lot
+      ? [transaction.lot]
+      : transaction.materials_to_order?.lots || [];
+
+    return {
+      project: project?.name || project?.project_id || "Not linked",
+      projectId: project?.project_id || null,
+      lots,
+    };
+  };
+
+  const recentCategoryOptions = [
+    ...new Set(recentUsage.map((transaction) => transaction.item?.category).filter(Boolean)),
+  ];
+  const recentProjectOptions = [
+    ...new Map(
+      recentUsage
+        .map((transaction) => getUsageLocation(transaction))
+        .filter((location) => location.projectId)
+        .map((location) => [location.projectId, location]),
+    ).values(),
+  ];
+  const recentLotOptions = [
+    ...new Map(
+      recentUsage
+        .flatMap((transaction) => getUsageLocation(transaction).lots)
+        .map((lot) => [lot.lot_id, lot]),
+    ).values(),
+  ];
+  const normalizedRecentSearch = recentSearch.trim().toLowerCase();
+  const filteredRecentUsage = recentUsage.filter((transaction) => {
+    const itemDetails = getItemDetails(transaction.item);
+    const location = getUsageLocation(transaction);
+    const searchableText = [
+      itemDetails?.name,
+      itemDetails?.brand,
+      itemDetails?.color,
+      itemDetails?.finish,
+      itemDetails?.type,
+      itemDetails?.dimensions,
+      transaction.item?.description,
+      transaction.item?.category,
+      location.project,
+      location.projectId,
+      ...location.lots.flatMap((lot) => [lot.name, lot.lot_id]),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      (!normalizedRecentSearch || searchableText.includes(normalizedRecentSearch)) &&
+      (!recentCategoryFilter || transaction.item?.category === recentCategoryFilter) &&
+      (!recentProjectFilter || location.projectId === recentProjectFilter) &&
+      (!recentLotFilter || location.lots.some((lot) => lot.lot_id === recentLotFilter))
+    );
+  });
+  const paginatedRecentUsage = filteredRecentUsage.slice(
+    recentItemsPerPage === 0 ? 0 : (recentPage - 1) * recentItemsPerPage,
+    recentItemsPerPage === 0 ? undefined : recentPage * recentItemsPerPage,
+  );
+
+  useEffect(() => {
+    setRecentPage(1);
+  }, [
+    recentSearch,
+    recentCategoryFilter,
+    recentProjectFilter,
+    recentLotFilter,
+    recentItemsPerPage,
+  ]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest("[data-recent-filter-dropdown]")) {
+        setOpenRecentFilter(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const renderRecentFilterDropdown = ({
+    id,
+    label,
+    value,
+    options,
+    onChange,
+  }) => {
+    const selectedOption = options.find((option) => option.value === value);
+
+    return (
+      <div className="relative" data-recent-filter-dropdown>
+        <button
+          type="button"
+          onClick={() =>
+            setOpenRecentFilter((current) => (current === id ? null : id))
+          }
+          className="cursor-pointer flex items-center gap-2 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 transition-all duration-200 whitespace-nowrap"
+        >
+          <span>{selectedOption?.label || label}</span>
+          <ChevronDown className="h-4 w-4" />
+        </button>
+        {openRecentFilter === id && (
+          <div className="absolute top-full right-0 mt-1 w-64 max-h-80 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+            {options.map((option) => (
+              <button
+                key={option.value || "all"}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpenRecentFilter(null);
+                }}
+                className={`cursor-pointer w-full text-left px-3 py-2 text-sm hover:bg-slate-100 transition-colors ${
+                  option.value === value
+                    ? "text-primary font-medium"
+                    : "text-slate-600"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <AdminRoute>
       <div className="flex h-screen bg-tertiary">
@@ -981,6 +1151,16 @@ export default function page() {
                         <div className="px-4 shrink-0 border-b border-slate-200">
                           <nav className="flex space-x-6">
                             <button
+                              onClick={() => setMtoTab("recent")}
+                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                                mtoTab === "recent"
+                                  ? "border-primary text-primary"
+                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                              }`}
+                            >
+                              Recently Used ({recentUsage.length})
+                            </button>
+                            <button
                               onClick={() => setMtoTab("active")}
                               className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
                                 mtoTab === "active"
@@ -1015,7 +1195,261 @@ export default function page() {
 
                         {/* Scrollable Content */}
                         <div className="flex-1 overflow-auto px-4 py-3">
-                          {mtos.length === 0 ? (
+                          {mtoTab === "recent" ? (
+                            loadingRecentUsage ? (
+                              <div className="flex justify-center items-center py-10">
+                                <div className="text-center">
+                                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-secondary mx-auto mb-3" />
+                                  <p className="text-sm text-slate-500 font-medium">
+                                    Loading usage logs...
+                                  </p>
+                                </div>
+                              </div>
+                            ) : recentUsage.length === 0 ? (
+                              <div className="flex justify-center items-center py-10">
+                                <div className="text-center">
+                                  <History className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                                  <p className="text-sm text-slate-500 font-medium">
+                                    No recently used materials
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col h-full overflow-hidden">
+                                <div className="p-3 shrink-0 border-b border-slate-200">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="relative flex-1 min-w-[220px] max-w-sm">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                    <input
+                                      type="search"
+                                      value={recentSearch}
+                                      onChange={(event) => setRecentSearch(event.target.value)}
+                                      placeholder="Search material, project, or lot..."
+                                      className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                    />
+                                    </div>
+                                    <div className="ml-auto flex items-center gap-2 shrink-0">
+                                      {(recentSearch || recentCategoryFilter || recentProjectFilter || recentLotFilter) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setRecentSearch("");
+                                            setRecentCategoryFilter("");
+                                            setRecentProjectFilter("");
+                                            setRecentLotFilter("");
+                                          }}
+                                          className="rounded-lg px-3 py-2 text-sm font-medium text-primary hover:bg-red-50"
+                                        >
+                                          Clear filters
+                                        </button>
+                                      )}
+                                      {renderRecentFilterDropdown({
+                                        id: "category",
+                                        label: "All categories",
+                                        value: recentCategoryFilter,
+                                        options: [
+                                          { value: "", label: "All categories" },
+                                          ...recentCategoryOptions.map((category) => ({
+                                            value: category,
+                                            label: formatCategoryName(category),
+                                          })),
+                                        ],
+                                        onChange: setRecentCategoryFilter,
+                                      })}
+                                      {renderRecentFilterDropdown({
+                                        id: "project",
+                                        label: "All projects",
+                                        value: recentProjectFilter,
+                                        options: [
+                                          { value: "", label: "All projects" },
+                                          ...recentProjectOptions.map((project) => ({
+                                            value: project.projectId,
+                                            label: `${project.project} (${project.projectId})`,
+                                          })),
+                                        ],
+                                        onChange: setRecentProjectFilter,
+                                      })}
+                                      {renderRecentFilterDropdown({
+                                        id: "lot",
+                                        label: "All lots",
+                                        value: recentLotFilter,
+                                        options: [
+                                          { value: "", label: "All lots" },
+                                          ...recentLotOptions.map((lot) => ({
+                                            value: lot.lot_id,
+                                            label: `${lot.name || lot.lot_id} (${lot.lot_id})`,
+                                          })),
+                                        ],
+                                        onChange: setRecentLotFilter,
+                                      })}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                <div className="flex-1 overflow-auto">
+                                  {filteredRecentUsage.length === 0 ? (
+                                    <div className="rounded-lg border border-slate-200 bg-white py-10 text-center text-sm text-slate-500 m-3">
+                                      No materials match the selected filters.
+                                    </div>
+                                  ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[900px] divide-y divide-slate-200">
+                                  <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                                        Image
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                                        Material
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                                        Category
+                                      </th>
+                                      <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">
+                                        Quantity
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                                        Used At
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                                        Project
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
+                                        Lot
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {paginatedRecentUsage.map((transaction) => {
+                                      const itemDetails = getItemDetails(
+                                        transaction.item,
+                                      );
+                                      const location =
+                                        getUsageLocation(transaction);
+                                      return (
+                                        <tr
+                                          key={transaction.id}
+                                          className="hover:bg-slate-50"
+                                        >
+                                          <td className="px-4 py-3">
+                                            {getImageUrl(
+                                              transaction.item?.image,
+                                            ) ? (
+                                              <Image
+                                                src={getImageUrl(
+                                                  transaction.item.image,
+                                                )}
+                                                alt={
+                                                  itemDetails?.name ||
+                                                  "Material"
+                                                }
+                                                width={48}
+                                                height={48}
+                                                className="h-12 w-12 rounded-md object-cover border border-slate-200"
+                                              />
+                                            ) : (
+                                              <div className="h-12 w-12 rounded-md border border-slate-200 bg-slate-50 flex items-center justify-center">
+                                                <Package className="h-5 w-5 text-slate-300" />
+                                              </div>
+                                            )}
+                                          </td>
+                                          <td className="px-4 py-3">
+                                            <div className="font-medium text-slate-800">
+                                              {itemDetails?.name}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                              {[
+                                                itemDetails?.brand,
+                                                itemDetails?.color,
+                                                itemDetails?.finish,
+                                                itemDetails?.type,
+                                                itemDetails?.dimensions,
+                                              ]
+                                                .filter(Boolean)
+                                                .join(" · ") ||
+                                                transaction.item?.description ||
+                                                "No additional details"}
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-600">
+                                            <span className="inline-flex items-center gap-1.5">
+                                              {getCategoryIcon(
+                                                transaction.item?.category,
+                                              )}
+                                              {formatCategoryName(
+                                                transaction.item?.category ||
+                                                  "UNCATEGORIZED",
+                                              )}
+                                            </span>
+                                          </td>
+                                          <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">
+                                            {transaction.quantity}
+                                            {transaction.item?.measurement_unit
+                                              ? ` ${transaction.item.measurement_unit}`
+                                              : ""}
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                                            {new Date(
+                                              transaction.createdAt,
+                                            ).toLocaleString("en-AU", {
+                                              dateStyle: "medium",
+                                              timeStyle: "short",
+                                            })}
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-700">
+                                            {location.projectId ? (
+                                              <Link
+                                                href={`/admin/projects/${location.projectId}`}
+                                                className="font-medium text-primary hover:underline"
+                                              >
+                                                {location.project}
+                                              </Link>
+                                            ) : (
+                                              <span>{location.project}</span>
+                                            )}
+                                            {location.projectId && (
+                                              <div className="text-xs text-slate-500">
+                                                ID: {location.projectId}
+                                              </div>
+                                            )}
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-700">
+                                            {location.lots.length > 0 ? (
+                                              <div className="space-y-1">
+                                                {location.lots.map((lot) => (
+                                                  <div key={lot.lot_id}>
+                                                    <div>
+                                                      {lot.name || lot.lot_id}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500">
+                                                      ID: {lot.lot_id}
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              "Not linked"
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                    </table>
+                                  </div>
+                                  )}
+                                </div>
+
+                                <PaginationFooter
+                                  totalItems={filteredRecentUsage.length}
+                                  itemsPerPage={recentItemsPerPage}
+                                  currentPage={recentPage}
+                                  onPageChange={setRecentPage}
+                                  onItemsPerPageChange={setRecentItemsPerPage}
+                                />
+                              </div>
+                            )
+                          ) : mtos.length === 0 ? (
                             <div className="flex justify-center items-center py-10">
                               <div className="text-center">
                                 <div className="h-12 w-12 text-slate-400 mx-auto mb-4">
@@ -1031,7 +1465,9 @@ export default function page() {
                               <p className="text-sm text-slate-500 font-medium">
                                 {mtoTab === "active"
                                   ? "No Active MTOs"
-                                  : "No Completed MTOs"}
+                                  : mtoTab === "upcoming"
+                                    ? "No Upcoming MTOs"
+                                    : "No Completed MTOs"}
                               </p>
                             </div>
                           ) : (

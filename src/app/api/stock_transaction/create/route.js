@@ -593,6 +593,7 @@ export async function POST(request) {
       purchase_order_id,
       materials_to_order_id,
       project_id,
+      lot_id,
     } = body;
 
     // Validate required fields
@@ -634,6 +635,7 @@ export async function POST(request) {
           quantity,
           notes,
           project_id,
+          lot_id,
         });
       }
     } else if (type === "ADDED") {

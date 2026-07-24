@@ -110,7 +110,7 @@ prisma/
 
 ### Backend & Database
 
-- **Prisma 6.19.0** (ORM with MySQL)
+- **Prisma 7.9.0** (ORM with MySQL)
 - **MySQL** (Relational database)
 - **bcrypt 6.0.0** (Password hashing)
 - **jsonwebtoken 9.0.2** (JWT tokens)
@@ -599,7 +599,7 @@ When working on this codebase:
 
 ---
 
-**Last Updated**: 2026-01-15  
+**Last Updated**: 2026-07-24  
 **Project Version**: 0.1.0  
 **Next.js Version**: 15.5.9  
-**Prisma Version**: 6.19.0
+**Prisma Version**: 7.9.0

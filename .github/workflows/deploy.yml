@@ -6,83 +6,239 @@ on:
       - dev
       - main
 
+# The deployment only needs to read the repository.
+permissions:
+  contents: read
+
+# Never run two deployments to the same environment at once.
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   deploy:
+    name: Deploy ${{ github.ref_name }}
     runs-on: self-hosted
+    timeout-minutes: 45
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'development' }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        # actions/checkout v5.1.0, pinned to an immutable commit.
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          clean: true
 
-      - name: Deploy to Server
+      - name: Select deployment target
+        env:
+          DEPLOY_BRANCH: ${{ github.ref_name }}
         run: |
-          BRANCH="${{ github.ref_name }}"
+          set -Eeuo pipefail
 
-          if [[ "$BRANCH" == "dev" ]]; then
-            echo "Deploying to DEVELOPMENT SERVER"
-            REMOTE_PATH="/home/ikonic-server/ikonickitchens-dev"
-            ENV_DATA="${{ secrets.DEV_ENV }}"
-            PM2_NAME="ikonickitchens-dev"
-            PORT=4000
-            BACKUP=false
-          else
-            echo "Deploying to PRODUCTION SERVER"
-            REMOTE_PATH="/home/ikonic-server/ikonickitchens"
-            ENV_DATA="${{ secrets.PROD_ENV }}"
-            PM2_NAME="ikonickitchens"
-            PORT=3000
-            BACKUP=true
+          case "$DEPLOY_BRANCH" in
+            dev)
+              {
+                echo "REMOTE_PATH=/home/ikonic-server/ikonickitchens-dev"
+                echo "PM2_NAME=ikonickitchens-dev"
+                echo "APP_PORT=4000"
+              } >> "$GITHUB_ENV"
+              ;;
+            main)
+              {
+                echo "REMOTE_PATH=/home/ikonic-server/ikonickitchens"
+                echo "PM2_NAME=ikonickitchens"
+                echo "APP_PORT=3000"
+              } >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "Refusing to deploy unsupported branch: $DEPLOY_BRANCH" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Verify deployment tools and target
+        run: |
+          set -Eeuo pipefail
+
+          for tool in rsync npm pm2 realpath; do
+            command -v "$tool" >/dev/null 2>&1 || {
+              echo "Required command is unavailable: $tool" >&2
+              exit 1
+            }
+          done
+
+          if [[ ! -d "$REMOTE_PATH" ]]; then
+            echo "Deployment directory does not exist: $REMOTE_PATH" >&2
+            exit 1
           fi
 
-          echo "Remote path: $REMOTE_PATH"
-
-          # Since runner is on the same server, just copy files
-          rsync -avz --delete --exclude=".git" --exclude="node_modules" --exclude=".next" --exclude="/mediauploads" --exclude="generated" \
-            ./ $REMOTE_PATH/
-
-          # Setup app
-          cd $REMOTE_PATH
-
-          # Write .env file
-          echo "$ENV_DATA" > .env
-
-          # Install dependencies
-          npm install
-
-          # ===== PRODUCTION DATABASE BACKUP =====
-          if [[ "$BACKUP" == "true" ]]; then
-            echo "=== Running quick SQL backup (pre-deploy) ==="
-
-            BACKUP_FILE=/home/ikonic-server/db_backups/db_backup_$(date +%Y-%m-%d_%H-%M-%S).sql
-            mysqldump -h ${{ secrets.MYSQL_HOST }} -u ${{ secrets.MYSQL_USER }} -p'${{ secrets.MYSQL_PASSWORD }}' ${{ secrets.MYSQL_DB }} > $BACKUP_FILE
-
-            echo "Quick database backup created successfully: $BACKUP_FILE"
-
-
-            echo "=== Running FULL backup script (DB + media) ==="
-
-            FULL_BACKUP_SCRIPT="/home/ikonic-server/auto_backups/scripts/prod_full_backup.sh"
-
-            if [[ -x "$FULL_BACKUP_SCRIPT" ]]; then
-              bash "$FULL_BACKUP_SCRIPT"
-              echo "Full backup completed successfully."
-            else
-              echo "ERROR: Full backup script missing or not executable: $FULL_BACKUP_SCRIPT"
-            fi
-
-            echo "=== All production backups completed ==="
+          resolved_path="$(realpath -e -- "$REMOTE_PATH")"
+          if [[ "$resolved_path" != "$REMOTE_PATH" ]]; then
+            echo "Refusing to deploy through an unexpected symlink: $REMOTE_PATH -> $resolved_path" >&2
+            exit 1
           fi
 
-          # Run prisma migrations
-          npx prisma migrate deploy
+      - name: Synchronize application files
+        run: |
+          set -Eeuo pipefail
 
-          # Generate Prisma client
-          npx prisma generate
+          rsync \
+            --archive \
+            --delete-delay \
+            --human-readable \
+            --exclude=".env" \
+            --exclude=".git/" \
+            --exclude=".next/" \
+            --exclude="generated/" \
+            --exclude="mediauploads/" \
+            --exclude="node_modules/" \
+            ./ "$REMOTE_PATH/"
 
-          # Build Next.js app
+      - name: Install development environment
+        if: github.ref_name == 'dev'
+        env:
+          APP_ENV_DATA: ${{ secrets.DEV_ENV }}
+        run: |
+          set -Eeuo pipefail
+          umask 077
+
+          if [[ -z "$APP_ENV_DATA" ]]; then
+            echo "DEV_ENV is empty or unavailable." >&2
+            exit 1
+          fi
+
+          env_file="$(mktemp "$REMOTE_PATH/.env.XXXXXX")"
+          trap 'rm -f -- "$env_file"' EXIT
+          printf '%s\n' "$APP_ENV_DATA" > "$env_file"
+          chmod 600 "$env_file"
+          mv -f -- "$env_file" "$REMOTE_PATH/.env"
+          trap - EXIT
+
+      - name: Install production environment
+        if: github.ref_name == 'main'
+        env:
+          APP_ENV_DATA: ${{ secrets.PROD_ENV }}
+        run: |
+          set -Eeuo pipefail
+          umask 077
+
+          if [[ -z "$APP_ENV_DATA" ]]; then
+            echo "PROD_ENV is empty or unavailable." >&2
+            exit 1
+          fi
+
+          env_file="$(mktemp "$REMOTE_PATH/.env.XXXXXX")"
+          trap 'rm -f -- "$env_file"' EXIT
+          printf '%s\n' "$APP_ENV_DATA" > "$env_file"
+          chmod 600 "$env_file"
+          mv -f -- "$env_file" "$REMOTE_PATH/.env"
+          trap - EXIT
+
+      - name: Install, generate, and build
+        env:
+          CI: "true"
+          NODE_ENV: production
+        run: |
+          set -Eeuo pipefail
+          cd -- "$REMOTE_PATH"
+
+          # npm ci is deterministic and refuses a stale package lock.
+          npm ci --include=dev --no-audit --no-fund
+          ./node_modules/.bin/prisma generate
           npm run build
 
-          # Start PM2 process
-          pm2 restart $PM2_NAME || pm2 start npm --name $PM2_NAME -- start -- --port $PORT
+      - name: Back up production data
+        if: github.ref_name == 'main'
+        env:
+          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DB }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+
+          for variable in MYSQL_HOST MYSQL_USER MYSQL_PASSWORD MYSQL_DATABASE; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "Required production secret is empty: $variable" >&2
+              exit 1
+            fi
+          done
+
+          if [[ ! "$MYSQL_DATABASE" =~ ^[A-Za-z0-9_]+$ ]]; then
+            echo "MYSQL_DB contains unsupported characters." >&2
+            exit 1
+          fi
+
+          command -v mysqldump >/dev/null 2>&1 || {
+            echo "Required command is unavailable: mysqldump" >&2
+            exit 1
+          }
+
+          backup_dir="/home/ikonic-server/db_backups"
+          full_backup_script="/home/ikonic-server/auto_backups/scripts/prod_full_backup.sh"
+
+          if [[ ! -d "$backup_dir" || ! -w "$backup_dir" ]]; then
+            echo "Backup directory is missing or not writable: $backup_dir" >&2
+            exit 1
+          fi
+
+          if [[ ! -x "$full_backup_script" ]]; then
+            echo "Full backup script is missing or not executable: $full_backup_script" >&2
+            exit 1
+          fi
+
+          timestamp="$(date -u +'%Y-%m-%d_%H-%M-%S_UTC')"
+          partial_backup="$backup_dir/.db_backup_${timestamp}.sql.partial"
+          final_backup="$backup_dir/db_backup_${timestamp}.sql"
+          trap 'rm -f -- "$partial_backup"' EXIT
+
+          # MYSQL_PWD keeps the password out of the process command line.
+          MYSQL_PWD="$MYSQL_PASSWORD" mysqldump \
+            --host="$MYSQL_HOST" \
+            --user="$MYSQL_USER" \
+            --single-transaction \
+            "$MYSQL_DATABASE" > "$partial_backup"
+
+          if [[ ! -s "$partial_backup" ]]; then
+            echo "Database backup is empty; deployment stopped." >&2
+            exit 1
+          fi
+
+          chmod 600 "$partial_backup"
+          mv -- "$partial_backup" "$final_backup"
+          trap - EXIT
+          echo "Database backup created: $final_backup"
+
+          "$full_backup_script"
+          echo "Full production backup completed."
+
+      - name: Apply database migrations
+        env:
+          NODE_ENV: production
+        run: |
+          set -Eeuo pipefail
+          cd -- "$REMOTE_PATH"
+          ./node_modules/.bin/prisma migrate deploy
+
+      - name: Restart application
+        run: |
+          set -Eeuo pipefail
+          cd -- "$REMOTE_PATH"
+          export PORT="$APP_PORT"
+
+          if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+            pm2 restart "$PM2_NAME" --update-env
+          else
+            pm2 start npm --name "$PM2_NAME" -- start
+          fi
 
           pm2 save

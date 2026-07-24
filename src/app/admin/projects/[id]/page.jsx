@@ -39,6 +39,7 @@ import MaterialSelection from "../components/MaterialSelection";
 import Image from "next/image";
 import SiteMeasurementsSection from "../components/SiteMeasurement";
 import MaterialsToOrder from "../components/MaterialsToOrder";
+import UsedMaterials from "../components/UsedMaterials";
 import FileUploadSection from "../components/FileUploadSection";
 import ViewMedia from "../components/ViewMedia";
 
@@ -1655,11 +1656,14 @@ export default function page() {
                 </div>
 
                 {/* Project Tabs Navigation */}
-                {project.lots && project.lots.length > 0 && (
+                {project && (
                   <div className="mb-6">
                     <div className="border-b border-slate-200">
                       <nav className="-mb-px flex space-x-8 overflow-x-auto">
-                        {tabs.map((tab) => (
+                        {(project.lots && project.lots.length > 0
+                          ? tabs
+                          : tabs.filter((tab) => tab.id === "used_materials")
+                        ).map((tab) => (
                           <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
@@ -2725,6 +2729,10 @@ export default function page() {
                         />
                       </div>
                     )}
+
+                  {activeTab === "used_materials" && (
+                    <UsedMaterials projectId={id} getToken={getToken} />
+                  )}
                 </div>
               </div>
             )}

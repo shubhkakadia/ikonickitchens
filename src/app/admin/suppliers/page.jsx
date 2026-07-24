@@ -26,14 +26,29 @@ import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "suppliers";
 
 export default function page() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { getToken } = useAuth();
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("name");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    "name",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "asc",
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [itemsPerPage, setItemsPerPage] = useState(50);
@@ -254,9 +269,7 @@ export default function page() {
   };
 
   const handleReset = () => {
-    setSearch("");
-    setSortField("name");
-    setSortOrder("asc");
+    resetFilters();
   };
 
   const handleColumnToggle = (column) => {

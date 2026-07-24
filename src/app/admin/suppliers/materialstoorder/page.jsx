@@ -35,6 +35,12 @@ import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import CreateMaterialsToOrderModal from "./components/CreateMaterialsToOrderModal";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "materials-to-order";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -48,9 +54,18 @@ export default function page() {
   const [selectedSupplierForPO, setSelectedSupplierForPO] = useState(null);
   const [mtosForSelectedSupplier, setMtosForSelectedSupplier] = useState([]);
   const [preSelectedMtoId, setPreSelectedMtoId] = useState(null);
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("project");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    "project",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "asc",
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
@@ -717,9 +732,7 @@ export default function page() {
   }, [search]);
 
   const handleReset = () => {
-    setSearch("");
-    setSortField("project");
-    setSortOrder("asc");
+    resetFilters();
     setCurrentPage(1);
   };
 

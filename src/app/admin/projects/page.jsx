@@ -28,14 +28,29 @@ import { setActiveTab } from "@/state/reducer/projectTabs";
 import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "projects";
 
 export default function page() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { getToken } = useAuth();
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("client_name");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    "client_name",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "asc",
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [projects, setProjects] = useState([]);
   const [itemsPerPage, setItemsPerPage] = useState(50);
@@ -44,10 +59,18 @@ export default function page() {
   const [error, setError] = useState("");
   const [showClientNameFilterDropdown, setShowClientNameFilterDropdown] =
     useState(false);
-  const [selectedClientName, setSelectedClientName] = useState([]);
   const [distinctClientName, setDistinctClientName] = useState([]);
-  const [selectedClientType, setSelectedClientType] = useState([]);
   const [distinctClientType, setDistinctClientType] = useState([]);
+  const [selectedClientName, setSelectedClientName] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedClientName",
+    distinctClientName,
+  );
+  const [selectedClientType, setSelectedClientType] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedClientType",
+    distinctClientType,
+  );
   const [showClientTypeFilterDropdown, setShowClientTypeFilterDropdown] =
     useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
@@ -293,9 +316,7 @@ export default function page() {
             }
 
             setDistinctClientName(names);
-            setSelectedClientName(names); // Select all by default
             setDistinctClientType(types);
-            setSelectedClientType(types); // Select all by default
           } else {
             setError(response.data.message);
           }
@@ -407,11 +428,7 @@ export default function page() {
   };
 
   const handleReset = () => {
-    setSearch("");
-    setSortField("client_name");
-    setSortOrder("asc");
-    setSelectedClientName([...distinctClientName]); // Reset to all client names selected (including "Unassigned" if present)
-    setSelectedClientType([...distinctClientType]); // Reset to all roles selected
+    resetFilters();
   };
 
   const getSortIcon = (field) => {

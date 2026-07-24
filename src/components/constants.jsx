@@ -30,6 +30,7 @@ export const tabs = [
   { id: "materials_to_order", label: "Materials to Order" },
   { id: "site_photos", label: "Site Photos" },
   { id: "finished_site_photos", label: "Finished Site Photos" },
+  { id: "used_materials", label: "Used Materials" },
 ];
 
 export const hardwareSubCategories = [

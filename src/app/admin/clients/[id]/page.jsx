@@ -37,9 +37,14 @@ import { CiMenuKebab } from "react-icons/ci";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { validatePhone, formatPhoneToNational } from "@/components/validators";
 import { generateClientSlug, normalizeClientSlug } from "@/lib/clientSlug";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
 
 export default function page() {
   const { id } = useParams();
+  const tableKey = `client-projects:${id}`;
   const router = useRouter();
   const { getToken } = useAuth();
   const [client, setClient] = useState(null);
@@ -54,9 +59,18 @@ export default function page() {
   const [contacts, setContacts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("project_id");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [search, setSearch] = usePersistedTableFilter(tableKey, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    tableKey,
+    "sortField",
+    "project_id",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    tableKey,
+    "sortOrder",
+    "asc",
+  );
+  const { resetFilters } = useTableFilterActions(tableKey);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState(new Set());
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
@@ -494,9 +508,7 @@ export default function page() {
   };
 
   const handleReset = () => {
-    setSearch("");
-    setSortField("project_id");
-    setSortOrder("asc");
+    resetFilters();
   };
 
   const toggleProjectExpansion = (projectId) => {

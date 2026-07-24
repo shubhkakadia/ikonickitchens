@@ -36,6 +36,12 @@ import {
   Database,
 } from "lucide-react";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "deleted-files";
 
 // Setup PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -55,13 +61,14 @@ export default function DeleteFilesPage() {
   const [fileToDelete, setFileToDelete] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [search, setSearch] = useState("");
-  const [selectedMediaTypes, setSelectedMediaTypes] = useState([
-    "Image",
-    "Video",
-    "PDF",
-    "File",
-  ]);
+  const mediaTypes = ["Image", "Video", "PDF", "File"];
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [selectedMediaTypes, setSelectedMediaTypes] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedMediaTypes",
+    mediaTypes,
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -556,8 +563,6 @@ export default function DeleteFilesPage() {
   }, [deletedMedia, search, selectedMediaTypes]);
 
   // Media types available
-  const mediaTypes = ["Image", "Video", "PDF", "File"];
-
   // Handle media type toggle
   const handleMediaTypeToggle = (type) => {
     if (type === "Select All") {
@@ -575,8 +580,7 @@ export default function DeleteFilesPage() {
 
   // Handle reset filters
   const handleReset = () => {
-    setSearch("");
-    setSelectedMediaTypes([...mediaTypes]);
+    resetFilters();
   };
 
   // Check if any filters are active

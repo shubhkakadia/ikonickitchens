@@ -37,6 +37,12 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import Image from "next/image";
 import CreatePurchaseOrderModal from "./components/CreatePurchaseOrderModal";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "purchase-orders";
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function page() {
@@ -44,14 +50,26 @@ export default function page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pos, setPos] = useState([]);
-  const [activeTab, setActiveTab] = useState("active");
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("date");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [activeTab, setActiveTab] = usePersistedTableFilter(
+    TABLE_KEY,
+    "activeTab",
+    "active",
+  );
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    "date",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "desc",
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showSupplierFilterDropdown, setShowSupplierFilterDropdown] =
     useState(false);
-  const [selectedSuppliers, setSelectedSuppliers] = useState([]);
   const [showCreatePOModal, setShowCreatePOModal] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
@@ -212,14 +230,11 @@ export default function page() {
     return suppliers.sort();
   }, [pos]);
 
-  // Initialize selectedSuppliers with all suppliers
-  useEffect(() => {
-    if (distinctSuppliers.length > 0) {
-      setSelectedSuppliers([...distinctSuppliers]);
-    } else {
-      setSelectedSuppliers([]);
-    }
-  }, [distinctSuppliers]);
+  const [selectedSuppliers, setSelectedSuppliers] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedSuppliers",
+    distinctSuppliers,
+  );
 
   const filteredAndSortedPOs = useMemo(() => {
     let list = (pos || []).filter((po) => {
@@ -343,11 +358,7 @@ export default function page() {
   }, [search, activeTab]);
 
   const handleReset = () => {
-    setSearch("");
-    setSortField("date");
-    setSortOrder("desc");
-    setActiveTab("active");
-    setSelectedSuppliers([...distinctSuppliers]); // Reset to all suppliers selected
+    resetFilters();
     setCurrentPage(1);
   };
 

@@ -5,7 +5,7 @@ import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import TabsController from "@/components/tabscontroller";
 import PaginationFooter from "@/components/PaginationFooter";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -34,6 +34,33 @@ import {
 import StockTally from "@/components/StockTally.jsx";
 import MultiSelectDropdown from "./components/MultiSelectDropdown";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "inventory";
+const DEFAULT_FILTERS = {
+  quantity_min: "",
+  quantity_max: "",
+  sheet_brand: [],
+  sheet_color: [],
+  sheet_finish: [],
+  sheet_face: [],
+  handle_brand: [],
+  handle_color: [],
+  handle_type: [],
+  handle_material: [],
+  hardware_brand: [],
+  hardware_name: [],
+  hardware_type: [],
+  hardware_sub_category: [],
+  accessory_name: [],
+  edging_tape_brand: [],
+  edging_tape_color: [],
+  edging_tape_finish: [],
+  edging_tape_dimensions: [],
+};
 
 export default function page() {
   const router = useRouter();
@@ -51,15 +78,29 @@ export default function page() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("brand");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    activeTab === "accessory" ? "name" : "brand",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "asc",
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showCategoryFilterDropdown, setShowCategoryFilterDropdown] =
     useState(false);
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedCategories",
+    [activeTab],
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
+  const previousActiveTab = useRef(activeTab);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
@@ -151,33 +192,11 @@ export default function page() {
   }, [activeTab]);
 
   // Filter states - now supporting multiple selections
-  const [filters, setFilters] = useState({
-    // Common filters
-    quantity_min: "",
-    quantity_max: "",
-    // Sheet filters
-    sheet_brand: [],
-    sheet_color: [],
-    sheet_finish: [],
-    sheet_face: [],
-    // Handle filters
-    handle_brand: [],
-    handle_color: [],
-    handle_type: [],
-    handle_material: [],
-    // Hardware filters
-    hardware_brand: [],
-    hardware_name: [],
-    hardware_type: [],
-    hardware_sub_category: [],
-    // Accessory filters
-    accessory_name: [],
-    // Edging Tape filters
-    edging_tape_brand: [],
-    edging_tape_color: [],
-    edging_tape_finish: [],
-    edging_tape_dimensions: [],
-  });
+  const [filters, setFilters] = usePersistedTableFilter(
+    TABLE_KEY,
+    "filters",
+    DEFAULT_FILTERS,
+  );
 
   // Utility functions to extract distinct values for dropdowns
   const getDistinctValues = (field, data) => {
@@ -299,12 +318,10 @@ export default function page() {
 
   useEffect(() => {
     fetchData(activeTab);
-    setSelectedCategories([activeTab]); // Initialize with current active tab
-    // Set default sort field based on active tab
-    if (activeTab === "accessory") {
-      setSortField("name");
-    } else {
-      setSortField("brand");
+    if (previousActiveTab.current !== activeTab) {
+      setSelectedCategories([activeTab]);
+      setSortField(activeTab === "accessory" ? "name" : "brand");
+      previousActiveTab.current = activeTab;
     }
   }, [activeTab]);
 
@@ -785,35 +802,8 @@ export default function page() {
   };
 
   const handleReset = () => {
-    setSearch("");
-    // Set default sort field based on active tab
-    const defaultSortField = activeTab === "accessory" ? "name" : "brand";
-    setSortField(defaultSortField);
-    setSortOrder("asc");
-    setSelectedCategories([activeTab]); // Reset to current active tab
+    resetFilters();
     setCurrentPage(1);
-    // Reset all filters
-    setFilters({
-      quantity_min: "",
-      quantity_max: "",
-      sheet_brand: [],
-      sheet_color: [],
-      sheet_finish: [],
-      sheet_face: [],
-      handle_brand: [],
-      handle_color: [],
-      handle_type: [],
-      handle_material: [],
-      hardware_brand: [],
-      hardware_name: [],
-      hardware_type: [],
-      hardware_sub_category: [],
-      accessory_name: [],
-      edging_tape_brand: [],
-      edging_tape_color: [],
-      edging_tape_finish: [],
-      edging_tape_dimensions: [],
-    });
   };
 
   const handleColumnToggle = (column) => {
@@ -842,27 +832,7 @@ export default function page() {
   };
 
   const clearFilters = () => {
-    setFilters({
-      quantity_min: "",
-      quantity_max: "",
-      sheet_brand: [],
-      sheet_color: [],
-      sheet_finish: [],
-      sheet_face: [],
-      handle_brand: [],
-      handle_color: [],
-      handle_type: [],
-      handle_material: [],
-      hardware_brand: [],
-      hardware_name: [],
-      hardware_type: [],
-      hardware_sub_category: [],
-      accessory_name: [],
-      edging_tape_brand: [],
-      edging_tape_color: [],
-      edging_tape_finish: [],
-      edging_tape_dimensions: [],
-    });
+    setFilters(DEFAULT_FILTERS);
   };
 
   // Count active filters

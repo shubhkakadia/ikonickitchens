@@ -23,14 +23,29 @@ import "react-toastify/dist/ReactToastify.css";
 import { useEffect, useMemo, useState } from "react";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "logs";
 
 export default function page() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    "createdAt",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "desc",
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(100);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -39,11 +54,16 @@ export default function page() {
   const [showActionFilterDropdown, setShowActionFilterDropdown] =
     useState(false);
   const [showDateFilterDropdown, setShowDateFilterDropdown] = useState(false);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [selectedEntityTypes, setSelectedEntityTypes] = useState([]);
-  const [selectedActions, setSelectedActions] = useState([]);
-  const [hasInitializedFilters, setHasInitializedFilters] = useState(false);
+  const [startDate, setStartDate] = usePersistedTableFilter(
+    TABLE_KEY,
+    "startDate",
+    "",
+  );
+  const [endDate, setEndDate] = usePersistedTableFilter(
+    TABLE_KEY,
+    "endDate",
+    "",
+  );
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const { getToken } = useAuth();
 
@@ -122,17 +142,16 @@ export default function page() {
     return actions.sort();
   }, [logs]);
 
-  // Initialize filters with all values when data changes (only once)
-  useEffect(() => {
-    if (
-      (distinctEntityTypes.length > 0 || distinctActions.length > 0) &&
-      !hasInitializedFilters
-    ) {
-      setSelectedEntityTypes([...distinctEntityTypes]);
-      setSelectedActions([...distinctActions]);
-      setHasInitializedFilters(true);
-    }
-  }, [distinctEntityTypes, distinctActions, hasInitializedFilters]);
+  const [selectedEntityTypes, setSelectedEntityTypes] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedEntityTypes",
+    distinctEntityTypes,
+  );
+  const [selectedActions, setSelectedActions] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedActions",
+    distinctActions,
+  );
 
   // Filter and sort logs
   const filteredAndSortedLogs = useMemo(() => {
@@ -312,15 +331,8 @@ export default function page() {
   };
 
   const handleReset = () => {
-    setSearch("");
-    setSortField("createdAt");
-    setSortOrder("desc");
-    setStartDate("");
-    setEndDate("");
-    setSelectedEntityTypes([...distinctEntityTypes]);
-    setSelectedActions([...distinctActions]);
+    resetFilters();
     setCurrentPage(1);
-    setHasInitializedFilters(true);
   };
 
   const handleColumnToggle = (column) => {

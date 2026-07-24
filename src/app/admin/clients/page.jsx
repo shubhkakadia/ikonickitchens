@@ -27,22 +27,41 @@ import { replaceTab } from "@/state/reducer/tabs";
 import "react-toastify/dist/ReactToastify.css";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "clients";
 
 export default function page() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { getToken } = useAuth();
 
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("client_name");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    "client_name",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "asc",
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Data objects
   const [clients, setClients] = useState([]);
-  const [selectedClientType, setSelectedClientType] = useState([]);
   const [distinctClientType, setDistinctClientType] = useState([]);
+  const [selectedClientType, setSelectedClientType] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedClientType",
+    distinctClientType,
+  );
   const [selectedColumns, setSelectedColumns] = useState([]);
 
   // UI states
@@ -239,7 +258,6 @@ export default function page() {
               ),
             ];
             setDistinctClientType(types);
-            setSelectedClientType(types); // Select all by default
           } else {
             setError(response.data.message);
           }
@@ -352,10 +370,7 @@ export default function page() {
   };
 
   const handleReset = () => {
-    setSearch("");
-    setSortField("client_name");
-    setSortOrder("asc");
-    setSelectedClientType([...distinctClientType]); // Reset to all roles selected
+    resetFilters();
   };
 
   // Local helpers (formatters, validators)

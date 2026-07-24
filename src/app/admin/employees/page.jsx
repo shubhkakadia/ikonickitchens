@@ -29,6 +29,12 @@ import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "employees";
 
 export default function page() {
   const router = useRouter();
@@ -37,15 +43,22 @@ export default function page() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("employee_id");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    "employee_id",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "asc",
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showRoleFilterDropdown, setShowRoleFilterDropdown] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState([]);
-  const [hasInitializedRoles, setHasInitializedRoles] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const [activeTab, setActiveTab] = useState("active");
 
@@ -158,16 +171,11 @@ export default function page() {
     return roles.sort();
   }, [employees]);
 
-  // Initialize selectedRoles with all roles when distinctRoles changes
-  useEffect(() => {
-    if (distinctRoles.length > 0) {
-      // Update selectedRoles to match distinctRoles when they change (e.g., when switching tabs)
-      setSelectedRoles([...distinctRoles]);
-    } else {
-      // If no roles, clear selectedRoles
-      setSelectedRoles([]);
-    }
-  }, [distinctRoles]);
+  const [selectedRoles, setSelectedRoles] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedRoles",
+    distinctRoles,
+  );
 
   // Filter and sort employees
   const filteredAndSortedEmployees = useMemo(() => {
@@ -303,12 +311,8 @@ export default function page() {
   };
 
   const handleReset = () => {
-    setSearch("");
-    setSortField("employee_id");
-    setSortOrder("asc");
-    setSelectedRoles([...distinctRoles]); // Reset to all roles selected
+    resetFilters();
     setCurrentPage(1);
-    setHasInitializedRoles(true); // Keep initialized state
   };
 
   // Check if any filters are active (not in default state)

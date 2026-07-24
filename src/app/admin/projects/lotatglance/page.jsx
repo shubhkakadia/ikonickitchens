@@ -21,6 +21,12 @@ import { useDispatch } from "react-redux";
 import { addTab, replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "lot-at-a-glance";
 
 export default function page() {
   const { getToken } = useAuth();
@@ -29,8 +35,13 @@ export default function page() {
   const [activeLots, setActiveLots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [stageFilters, setStageFilters] = useState({});
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [stageFilters, setStageFilters] = usePersistedTableFilter(
+    TABLE_KEY,
+    "stageFilters",
+    {},
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [isExporting, setIsExporting] = useState(false);
   const [showFilterDropdowns, setShowFilterDropdowns] = useState({});
   const [dropdownPositions, setDropdownPositions] = useState({});
@@ -292,8 +303,7 @@ export default function page() {
 
   // Reset all filters
   const handleResetFilters = () => {
-    setSearch("");
-    setStageFilters({});
+    resetFilters();
   };
 
   // Handle column toggle

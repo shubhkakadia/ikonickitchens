@@ -32,6 +32,12 @@ import { useDispatch } from "react-redux";
 import { replaceTab } from "@/state/reducer/tabs";
 import { v4 as uuidv4 } from "uuid";
 import SearchBar from "@/components/SearchBar";
+import {
+  usePersistedTableFilter,
+  useTableFilterActions,
+} from "@/hooks/usePersistedTableFilter";
+
+const TABLE_KEY = "supplier-statements";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -79,9 +85,18 @@ export default function StatementsPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [expandedNotes, setExpandedNotes] = useState(new Set());
-  const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState("month_year");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    "month_year",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "desc",
+  );
+  const { resetFilters } = useTableFilterActions(TABLE_KEY);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
@@ -90,7 +105,6 @@ export default function StatementsPage() {
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   const [showSupplierFilterDropdown, setShowSupplierFilterDropdown] =
     useState(false);
-  const [selectedSuppliers, setSelectedSuppliers] = useState([]);
 
   // Refs for dropdown containers
   const sortDropdownRef = useRef(null);
@@ -123,8 +137,16 @@ export default function StatementsPage() {
   const statusDropdownRefs = useRef({});
 
   // Year and month filter states
-  const [yearFilter, setYearFilter] = useState("all");
-  const [monthFilter, setMonthFilter] = useState("all");
+  const [yearFilter, setYearFilter] = usePersistedTableFilter(
+    TABLE_KEY,
+    "yearFilter",
+    "all",
+  );
+  const [monthFilter, setMonthFilter] = usePersistedTableFilter(
+    TABLE_KEY,
+    "monthFilter",
+    "all",
+  );
   const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
   const [monthDropdownOpen, setMonthDropdownOpen] = useState(false);
   const yearDropdownRef = useRef(null);
@@ -317,14 +339,11 @@ export default function StatementsPage() {
     return supplierNames.sort();
   }, [statements]);
 
-  // Initialize selectedSuppliers with all suppliers
-  useEffect(() => {
-    if (distinctSuppliers.length > 0) {
-      setSelectedSuppliers([...distinctSuppliers]);
-    } else {
-      setSelectedSuppliers([]);
-    }
-  }, [distinctSuppliers]);
+  const [selectedSuppliers, setSelectedSuppliers] = usePersistedTableFilter(
+    TABLE_KEY,
+    "selectedSuppliers",
+    distinctSuppliers,
+  );
 
   const fetchStatements = async () => {
     try {
@@ -510,13 +529,8 @@ export default function StatementsPage() {
   }, [yearFilter]);
 
   const handleReset = () => {
-    setSearch("");
-    setSortField("month_year");
-    setSortOrder("desc");
+    resetFilters();
     setCurrentPage(1);
-    setYearFilter("all");
-    setMonthFilter("all");
-    setSelectedSuppliers([...distinctSuppliers]); // Reset to all suppliers selected
   };
 
   const handleSupplierToggle = (supplier) => {

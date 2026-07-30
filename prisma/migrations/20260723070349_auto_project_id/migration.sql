@@ -22,7 +22,4 @@ CREATE UNIQUE INDEX `client_client_slug_key` ON `client`(`client_slug`);
 CREATE INDEX `stock_transaction_lot_id_idx` ON `stock_transaction`(`lot_id`);
 
 -- AddForeignKey
-ALTER TABLE `project` ADD CONSTRAINT `project_client_id_fkey` FOREIGN KEY (`client_id`) REFERENCES `client`(`client_id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `stock_transaction` ADD CONSTRAINT `stock_transaction_lot_id_fkey` FOREIGN KEY (`lot_id`) REFERENCES `lot`(`lot_id`) ON DELETE SET NULL ON UPDATE CASCADE;

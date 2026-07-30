@@ -100,16 +100,12 @@ export default function CalendarPage() {
   const [editingEventId, setEditingEventId] = useState(null);
   const [selectedTimelineEvent, setSelectedTimelineEvent] = useState(null);
 
-  // Fetch meetings for the logged-in user
+  // Fetch every calendar event visible to authenticated users.
   const fetchMeetings = async () => {
     try {
-      const userData = getUserData();
-      const userId = userData?.user?.id;
-      if (!userId) return;
-
       setIsLoadingEvents(true);
       const token = getToken();
-      const response = await axios.get(`/api/meeting/all/${userId}`, {
+      const response = await axios.get("/api/meeting/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -147,13 +143,10 @@ export default function CalendarPage() {
     }
   };
 
-  // Fetch meetings on mount
+  // Fetch shared meetings on mount
   useEffect(() => {
-    const userData = getUserData();
-    if (userData?.user?.id) {
-      fetchMeetings();
-    }
-  }, [getUserData()?.user?.id]);
+    fetchMeetings();
+  }, []);
 
   const months = [
     "January",

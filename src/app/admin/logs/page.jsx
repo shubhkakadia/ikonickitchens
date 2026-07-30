@@ -192,21 +192,17 @@ export default function page() {
         }
       }
 
-      // Entity type filter
-      if (selectedEntityTypes.length === 0) {
-        return false;
-      }
-
-      if (!selectedEntityTypes.includes(log.entity_type)) {
+      // Empty selections show all values, matching the Employees table while
+      // filter options are initialized from the loaded data.
+      if (
+        selectedEntityTypes.length > 0 &&
+        !selectedEntityTypes.includes(log.entity_type)
+      ) {
         return false;
       }
 
       // Action filter
-      if (selectedActions.length === 0) {
-        return false;
-      }
-
-      if (!selectedActions.includes(log.action)) {
+      if (selectedActions.length > 0 && !selectedActions.includes(log.action)) {
         return false;
       }
 
@@ -270,10 +266,10 @@ export default function page() {
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedLogs = filteredAndSortedLogs.slice(startIndex, endIndex);
 
-  // Reset to first page when search, items per page, or date filters change
+  // Reset to the first page whenever the displayed log set changes.
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, startDate, endDate]);
+  }, [search, startDate, endDate, selectedEntityTypes, selectedActions]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -379,6 +375,8 @@ export default function page() {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
+        setLoading(true);
+        setError("");
         const sessionToken = getToken();
 
         if (!sessionToken) {
@@ -400,23 +398,16 @@ export default function page() {
           data: {},
         };
 
-        axios
-          .request(config)
-          .then((response) => {
-            setLoading(false);
-            if (response.data.status) {
-              setLogs(response.data.data);
-            } else {
-              setError(response.data.message);
-            }
-          })
-          .catch((error) => {
-            setLoading(false);
-            console.error("Error fetching logs:", error);
-            setError(error.response?.data?.message || "Failed to fetch logs");
-          });
+        const response = await axios.request(config);
+        if (response.data.status) {
+          setLogs(response.data.data);
+        } else {
+          setError(response.data.message || "Failed to fetch logs");
+        }
       } catch (error) {
         console.error("Error fetching logs:", error);
+        setError(error.response?.data?.message || "Failed to fetch logs");
+      } finally {
         setLoading(false);
       }
     };

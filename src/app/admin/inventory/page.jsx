@@ -76,7 +76,7 @@ export default function page() {
     { id: "accessory", label: "Accessory" },
   ];
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
   const [sortField, setSortField] = usePersistedTableFilter(
@@ -234,6 +234,7 @@ export default function page() {
     }
     try {
       setLoading(true);
+      setError(null);
       const sessionToken = getToken();
       if (!sessionToken) {
         toast.error("No valid session found. Please login again.");
@@ -250,36 +251,29 @@ export default function page() {
           ...{},
         },
       };
-      axios
-        .request(config)
-        .then((response) => {
-          if (response.data.status) {
-            let items = response.data.data;
-            // Filter items based on category
-            if (category === "sunmica") {
-              // Sunmica tab: show ONLY sunmica items
-              items = items.filter((item) => item.sheet?.is_sunmica === true);
-            } else if (category === "sheet") {
-              // Sheet tab: show ONLY non-sunmica items (exclude sunmica)
-              items = items.filter(
-                (item) =>
-                  !item.sheet?.is_sunmica || item.sheet?.is_sunmica === false,
-              );
-            }
-            setData(items);
-            setLoading(false);
-          } else {
-            setLoading(false);
-            setError(response.data.message);
-          }
-        })
-        .catch((error) => {
-          console.error(error);
-          setLoading(false);
-          setError(error.response.data.message);
-        });
+      const response = await axios.request(config);
+
+      if (response.data.status) {
+        let items = response.data.data;
+        // Filter items based on category
+        if (category === "sunmica") {
+          // Sunmica tab: show ONLY sunmica items
+          items = items.filter((item) => item.sheet?.is_sunmica === true);
+        } else if (category === "sheet") {
+          // Sheet tab: show ONLY non-sunmica items (exclude sunmica)
+          items = items.filter(
+            (item) =>
+              !item.sheet?.is_sunmica || item.sheet?.is_sunmica === false,
+          );
+        }
+        setData(items);
+      } else {
+        setError(response.data.message || "Failed to fetch inventory");
+      }
     } catch (error) {
       console.error(error);
+      setError(error.response?.data?.message || "Failed to fetch inventory");
+    } finally {
       setLoading(false);
     }
   };
@@ -753,10 +747,10 @@ export default function page() {
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedData = filteredAndSortedData.slice(startIndex, endIndex);
 
-  // Reset to first page when search or items per page changes
+  // Reset to the first page when the displayed inventory set changes.
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, activeTab, filters]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -1049,7 +1043,7 @@ export default function page() {
                     <div className="p-4 shrink-0 border-b border-slate-200">
                       <div className="flex items-center justify-between gap-3">
                         {/* search bar */}
-                        <div className="flex items-center gap-2 flex-1 max-w-lg relative">
+                        <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
                           <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                           <input
                             type="text"
@@ -1453,7 +1447,7 @@ export default function page() {
                                   }}
                                   className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
                                 >
-                                  <td className="px-4 py-2">
+                                  <td className="px-4 py-3">
                                     <div className="w-10 h-10">
                                       {item.image?.url ? (
                                         <Image

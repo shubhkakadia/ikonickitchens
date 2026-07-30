@@ -628,19 +628,19 @@ export default function SiteMeasurementsPage() {
   return (
     <DndProvider backend={HTML5Backend}>
       <AdminRoute>
-        <div className="flex h-screen bg-slate-50">
+        <div className="flex h-screen bg-tertiary">
           <Sidebar />
           <div className="flex-1 flex flex-col overflow-hidden">
             <CRMLayout />
 
             <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="px-6 py-5 border-b border-slate-200 bg-white shrink-0">
+              <div className="px-4 py-2 border-b border-slate-200 bg-white shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary-50 rounded-lg">
                     <MapPin className="w-6 h-6 text-primary-600" />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-slate-800">
+                    <h1 className="text-xl font-bold text-slate-700">
                       Site Measurements
                     </h1>
                     <p className="text-sm text-slate-500">
@@ -650,7 +650,7 @@ export default function SiteMeasurementsPage() {
                 </div>
               </div>
 
-              <div className="m-6 flex-1 min-h-0">
+              <div className="px-4 pb-4 flex-1 min-h-0">
                 {loading ? (
                   <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>

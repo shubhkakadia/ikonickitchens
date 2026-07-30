@@ -147,6 +147,7 @@ export default function page() {
   const fetchMTOs = async () => {
     try {
       setLoading(true);
+      setError(null);
       const sessionToken = getToken();
       if (!sessionToken) {
         toast.error("No valid session found. Please login again.", {
@@ -172,6 +173,7 @@ export default function page() {
         // Combine both for compatibility with existing code
         setMtos([...ready_to_use, ...upcoming]);
       } else {
+        setError(response.data.message || "Failed to fetch materials to order");
         toast.error(response.data.message || "Failed to fetch MTOs", {
           position: "top-right",
           autoClose: 3000,
@@ -183,7 +185,9 @@ export default function page() {
         position: "top-right",
         autoClose: 3000,
       });
-      setError(error.response.data.message);
+      setError(
+        error.response?.data?.message || "Failed to fetch materials to order",
+      );
     } finally {
       setLoading(false);
     }
@@ -968,7 +972,11 @@ export default function page() {
   };
 
   const recentCategoryOptions = [
-    ...new Set(recentUsage.map((transaction) => transaction.item?.category).filter(Boolean)),
+    ...new Set(
+      recentUsage
+        .map((transaction) => transaction.item?.category)
+        .filter(Boolean),
+    ),
   ];
   const recentProjectOptions = [
     ...new Map(
@@ -1007,10 +1015,13 @@ export default function page() {
       .toLowerCase();
 
     return (
-      (!normalizedRecentSearch || searchableText.includes(normalizedRecentSearch)) &&
-      (!recentCategoryFilter || transaction.item?.category === recentCategoryFilter) &&
+      (!normalizedRecentSearch ||
+        searchableText.includes(normalizedRecentSearch)) &&
+      (!recentCategoryFilter ||
+        transaction.item?.category === recentCategoryFilter) &&
       (!recentProjectFilter || location.projectId === recentProjectFilter) &&
-      (!recentLotFilter || location.lots.some((lot) => lot.lot_id === recentLotFilter))
+      (!recentLotFilter ||
+        location.lots.some((lot) => lot.lot_id === recentLotFilter))
     );
   });
   const paginatedRecentUsage = filteredRecentUsage.slice(
@@ -1218,18 +1229,23 @@ export default function page() {
                               <div className="flex flex-col h-full overflow-hidden">
                                 <div className="p-3 shrink-0 border-b border-slate-200">
                                   <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <div className="relative flex-1 min-w-[220px] max-w-sm">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <input
-                                      type="search"
-                                      value={recentSearch}
-                                      onChange={(event) => setRecentSearch(event.target.value)}
-                                      placeholder="Search material, project, or lot..."
-                                      className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                                    />
+                                    <div className="relative flex-1 min-w-[220px] max-w-2xl">
+                                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                      <input
+                                        type="search"
+                                        value={recentSearch}
+                                        onChange={(event) =>
+                                          setRecentSearch(event.target.value)
+                                        }
+                                        placeholder="Search material, project, or lot..."
+                                        className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                      />
                                     </div>
                                     <div className="ml-auto flex items-center gap-2 shrink-0">
-                                      {(recentSearch || recentCategoryFilter || recentProjectFilter || recentLotFilter) && (
+                                      {(recentSearch ||
+                                        recentCategoryFilter ||
+                                        recentProjectFilter ||
+                                        recentLotFilter) && (
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -1248,11 +1264,17 @@ export default function page() {
                                         label: "All categories",
                                         value: recentCategoryFilter,
                                         options: [
-                                          { value: "", label: "All categories" },
-                                          ...recentCategoryOptions.map((category) => ({
-                                            value: category,
-                                            label: formatCategoryName(category),
-                                          })),
+                                          {
+                                            value: "",
+                                            label: "All categories",
+                                          },
+                                          ...recentCategoryOptions.map(
+                                            (category) => ({
+                                              value: category,
+                                              label:
+                                                formatCategoryName(category),
+                                            }),
+                                          ),
                                         ],
                                         onChange: setRecentCategoryFilter,
                                       })}
@@ -1262,10 +1284,12 @@ export default function page() {
                                         value: recentProjectFilter,
                                         options: [
                                           { value: "", label: "All projects" },
-                                          ...recentProjectOptions.map((project) => ({
-                                            value: project.projectId,
-                                            label: `${project.project} (${project.projectId})`,
-                                          })),
+                                          ...recentProjectOptions.map(
+                                            (project) => ({
+                                              value: project.projectId,
+                                              label: `${project.project} (${project.projectId})`,
+                                            }),
+                                          ),
                                         ],
                                         onChange: setRecentProjectFilter,
                                       })}
@@ -1282,9 +1306,9 @@ export default function page() {
                                         ],
                                         onChange: setRecentLotFilter,
                                       })}
-                                      </div>
                                     </div>
                                   </div>
+                                </div>
 
                                 <div className="flex-1 overflow-auto">
                                   {filteredRecentUsage.length === 0 ? (
@@ -1292,151 +1316,167 @@ export default function page() {
                                       No materials match the selected filters.
                                     </div>
                                   ) : (
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[900px] divide-y divide-slate-200">
-                                  <thead className="bg-slate-50 border-b border-slate-200">
-                                    <tr>
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
-                                        Image
-                                      </th>
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
-                                        Material
-                                      </th>
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
-                                        Category
-                                      </th>
-                                      <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase">
-                                        Quantity
-                                      </th>
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
-                                        Used At
-                                      </th>
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
-                                        Project
-                                      </th>
-                                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
-                                        Lot
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-100">
-                                    {paginatedRecentUsage.map((transaction) => {
-                                      const itemDetails = getItemDetails(
-                                        transaction.item,
-                                      );
-                                      const location =
-                                        getUsageLocation(transaction);
-                                      return (
-                                        <tr
-                                          key={transaction.id}
-                                          className="hover:bg-slate-50"
-                                        >
-                                          <td className="px-4 py-3">
-                                            {getImageUrl(
-                                              transaction.item?.image,
-                                            ) ? (
-                                              <Image
-                                                src={getImageUrl(
-                                                  transaction.item.image,
-                                                )}
-                                                alt={
-                                                  itemDetails?.name ||
-                                                  "Material"
-                                                }
-                                                width={48}
-                                                height={48}
-                                                className="h-12 w-12 rounded-md object-cover border border-slate-200"
-                                              />
-                                            ) : (
-                                              <div className="h-12 w-12 rounded-md border border-slate-200 bg-slate-50 flex items-center justify-center">
-                                                <Package className="h-5 w-5 text-slate-300" />
-                                              </div>
-                                            )}
-                                          </td>
-                                          <td className="px-4 py-3">
-                                            <div className="font-medium text-slate-800">
-                                              {itemDetails?.name}
-                                            </div>
-                                            <div className="text-xs text-slate-500">
-                                              {[
-                                                itemDetails?.brand,
-                                                itemDetails?.color,
-                                                itemDetails?.finish,
-                                                itemDetails?.type,
-                                                itemDetails?.dimensions,
-                                              ]
-                                                .filter(Boolean)
-                                                .join(" · ") ||
-                                                transaction.item?.description ||
-                                                "No additional details"}
-                                            </div>
-                                          </td>
-                                          <td className="px-4 py-3 text-sm text-slate-600">
-                                            <span className="inline-flex items-center gap-1.5">
-                                              {getCategoryIcon(
-                                                transaction.item?.category,
-                                              )}
-                                              {formatCategoryName(
-                                                transaction.item?.category ||
-                                                  "UNCATEGORIZED",
-                                              )}
-                                            </span>
-                                          </td>
-                                          <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">
-                                            {transaction.quantity}
-                                            {transaction.item?.measurement_unit
-                                              ? ` ${transaction.item.measurement_unit}`
-                                              : ""}
-                                          </td>
-                                          <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
-                                            {new Date(
-                                              transaction.createdAt,
-                                            ).toLocaleString("en-AU", {
-                                              dateStyle: "medium",
-                                              timeStyle: "short",
-                                            })}
-                                          </td>
-                                          <td className="px-4 py-3 text-sm text-slate-700">
-                                            {location.projectId ? (
-                                              <Link
-                                                href={`/admin/projects/${location.projectId}`}
-                                                className="font-medium text-primary hover:underline"
-                                              >
-                                                {location.project}
-                                              </Link>
-                                            ) : (
-                                              <span>{location.project}</span>
-                                            )}
-                                            {location.projectId && (
-                                              <div className="text-xs text-slate-500">
-                                                ID: {location.projectId}
-                                              </div>
-                                            )}
-                                          </td>
-                                          <td className="px-4 py-3 text-sm text-slate-700">
-                                            {location.lots.length > 0 ? (
-                                              <div className="space-y-1">
-                                                {location.lots.map((lot) => (
-                                                  <div key={lot.lot_id}>
-                                                    <div>
-                                                      {lot.name || lot.lot_id}
+                                    <div className="overflow-x-auto">
+                                      <table className="min-w-full divide-y divide-slate-200">
+                                        <thead className="bg-slate-50 sticky top-0 z-10">
+                                          <tr>
+                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                              Image
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                              Material
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                              Category
+                                            </th>
+                                            <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                              Quantity
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                              Used At
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                              Project
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                              Lot
+                                            </th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-slate-200">
+                                          {paginatedRecentUsage.map(
+                                            (transaction) => {
+                                              const itemDetails =
+                                                getItemDetails(
+                                                  transaction.item,
+                                                );
+                                              const location =
+                                                getUsageLocation(transaction);
+                                              return (
+                                                <tr
+                                                  key={transaction.id}
+                                                  className="hover:bg-slate-50"
+                                                >
+                                                  <td className="px-4 py-3">
+                                                    {getImageUrl(
+                                                      transaction.item?.image,
+                                                    ) ? (
+                                                      <Image
+                                                        src={getImageUrl(
+                                                          transaction.item
+                                                            .image,
+                                                        )}
+                                                        alt={
+                                                          itemDetails?.name ||
+                                                          "Material"
+                                                        }
+                                                        width={40}
+                                                        height={40}
+                                                        className="h-10 w-10 rounded object-cover border border-slate-200"
+                                                      />
+                                                    ) : (
+                                                      <div className="h-10 w-10 rounded border border-slate-200 bg-slate-50 flex items-center justify-center">
+                                                        <Package className="h-5 w-5 text-slate-300" />
+                                                      </div>
+                                                    )}
+                                                  </td>
+                                                  <td className="px-4 py-3">
+                                                    <div className="text-sm font-medium text-slate-700">
+                                                      {itemDetails?.name}
                                                     </div>
                                                     <div className="text-xs text-slate-500">
-                                                      ID: {lot.lot_id}
+                                                      {[
+                                                        itemDetails?.brand,
+                                                        itemDetails?.color,
+                                                        itemDetails?.finish,
+                                                        itemDetails?.type,
+                                                        itemDetails?.dimensions,
+                                                      ]
+                                                        .filter(Boolean)
+                                                        .join(" · ") ||
+                                                        transaction.item
+                                                          ?.description ||
+                                                        "No additional details"}
                                                     </div>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            ) : (
-                                              "Not linked"
-                                            )}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                    </table>
-                                  </div>
+                                                  </td>
+                                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                                    <span className="inline-flex items-center gap-1.5">
+                                                      {getCategoryIcon(
+                                                        transaction.item
+                                                          ?.category,
+                                                      )}
+                                                      {formatCategoryName(
+                                                        transaction.item
+                                                          ?.category ||
+                                                          "UNCATEGORIZED",
+                                                      )}
+                                                    </span>
+                                                  </td>
+                                                  <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">
+                                                    {transaction.quantity}
+                                                    {transaction.item
+                                                      ?.measurement_unit
+                                                      ? ` ${transaction.item.measurement_unit}`
+                                                      : ""}
+                                                  </td>
+                                                  <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                                                    {new Date(
+                                                      transaction.createdAt,
+                                                    ).toLocaleString("en-AU", {
+                                                      dateStyle: "medium",
+                                                      timeStyle: "short",
+                                                    })}
+                                                  </td>
+                                                  <td className="px-4 py-3 text-sm text-slate-700">
+                                                    {location.projectId ? (
+                                                      <Link
+                                                        href={`/admin/projects/${location.projectId}`}
+                                                        className="font-medium text-primary hover:underline"
+                                                      >
+                                                        {location.project}
+                                                      </Link>
+                                                    ) : (
+                                                      <span>
+                                                        {location.project}
+                                                      </span>
+                                                    )}
+                                                    {location.projectId && (
+                                                      <div className="text-xs text-slate-500">
+                                                        ID: {location.projectId}
+                                                      </div>
+                                                    )}
+                                                  </td>
+                                                  <td className="px-4 py-3 text-sm text-slate-700">
+                                                    {location.lots.length >
+                                                    0 ? (
+                                                      <div className="space-y-1">
+                                                        {location.lots.map(
+                                                          (lot) => (
+                                                            <div
+                                                              key={lot.lot_id}
+                                                            >
+                                                              <div>
+                                                                {lot.name ||
+                                                                  lot.lot_id}
+                                                              </div>
+                                                              <div className="text-xs text-slate-500">
+                                                                ID: {lot.lot_id}
+                                                              </div>
+                                                            </div>
+                                                          ),
+                                                        )}
+                                                      </div>
+                                                    ) : (
+                                                      "Not linked"
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            },
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
                                   )}
                                 </div>
 

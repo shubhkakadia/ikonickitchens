@@ -2125,7 +2125,7 @@ export default function page() {
                       <div className="p-4 shrink-0 border-b border-slate-200">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                           {/* Search */}
-                          <div className="flex items-center gap-2 flex-1 max-w-sm relative">
+                          <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
                             <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                             <input
                               type="text"

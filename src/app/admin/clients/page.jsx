@@ -65,7 +65,7 @@ export default function page() {
   const [selectedColumns, setSelectedColumns] = useState([]);
 
   // UI states
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showClientTypeFilterDropdown, setShowClientTypeFilterDropdown] =
     useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -130,12 +130,14 @@ export default function page() {
         if (!matchesSearch) return false;
       }
 
-      // Client type filter
-      if (selectedClientType.length === 0) {
-        return false;
+      // Client type filter - no selection means every client type is visible.
+      // This matches the Employees table and prevents an empty table while the
+      // available client types are being loaded.
+      if (selectedClientType.length > 0) {
+        return selectedClientType.includes(client.client_type);
       }
 
-      return selectedClientType.includes(client.client_type);
+      return true;
     });
 
     // Sort clients
@@ -221,6 +223,8 @@ export default function page() {
   // Async functions (fetch/update API)
   const fetchClients = async () => {
     try {
+      setLoading(true);
+      setError(null);
       // Get the session token when needed
       const sessionToken = getToken();
 
@@ -264,7 +268,7 @@ export default function page() {
         })
         .catch((error) => {
           setLoading(false);
-          setError(error.response.data.message);
+          setError(error.response?.data?.message || "Failed to fetch clients");
         });
     } catch (error) {
       setLoading(false);
@@ -323,6 +327,7 @@ export default function page() {
       setSortField(field);
       setSortOrder("asc");
     }
+    setShowSortDropdown(false);
   };
 
   const handleClientTypeToggle = (clientType) => {
@@ -371,6 +376,7 @@ export default function page() {
 
   const handleReset = () => {
     resetFilters();
+    setCurrentPage(1);
   };
 
   // Local helpers (formatters, validators)

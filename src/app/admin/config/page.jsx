@@ -3,6 +3,7 @@ import React from "react";
 import Sidebar from "@/components/sidebar.jsx";
 import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
+import PaginationFooter from "@/components/PaginationFooter";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -24,7 +25,7 @@ export default function ConfigPage() {
   const activeTabLabel =
     tabs.find((tab) => tab.id === activeTab)?.label || "Configuration";
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -98,16 +99,14 @@ export default function ConfigPage() {
 
   // Pagination logic
   const totalItems = filteredData.length;
-  const totalPages =
-    itemsPerPage === 0 ? 1 : Math.ceil(totalItems / itemsPerPage);
   const startIndex = itemsPerPage === 0 ? 0 : (currentPage - 1) * itemsPerPage;
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, endIndex);
 
-  // Reset to first page when search changes
+  // Reset to the first page when the displayed configuration set changes.
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, activeTab]);
 
   // Handle create
   const handleCreate = async () => {
@@ -287,26 +286,20 @@ export default function ConfigPage() {
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-800 mb-2">
-                    Configuration Management
-                  </h1>
-
-                  <p className="text-slate-600">
-                    Manage role, hardware, measuring unit, finish, and brand
-                    configurations
-                  </p>
-                </div>
-
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-4 py-2 shrink-0">
+              <div className="flex items-center justify-between">
+                <h1 className="text-xl font-bold text-slate-700">
+                  Configuration Management
+                </h1>
                 <SearchBar />
               </div>
+            </div>
 
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-[calc(100vh-12rem)] overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                 {/* Tabs Section */}
-                <div className="px-6 shrink-0 border-b border-slate-200">
+                <div className="px-4 shrink-0 border-b border-slate-200">
                   <nav className="-mb-px flex space-x-8 overflow-x-auto">
                     {tabs.map((tab) => (
                       <button
@@ -326,8 +319,8 @@ export default function ConfigPage() {
 
                 {/* Search Section */}
                 <div className="p-4 shrink-0 border-b border-slate-200">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 flex-1 max-w-lg relative">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
                       <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                       <input
                         type="text"
@@ -356,13 +349,13 @@ export default function ConfigPage() {
                     <table className="min-w-full divide-y divide-slate-200">
                       <thead className="bg-slate-50 sticky top-0 z-10">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                             Value
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                             Created At
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
                             Actions
                           </th>
                         </tr>
@@ -371,7 +364,7 @@ export default function ConfigPage() {
                         {loading ? (
                           <tr>
                             <td
-                              className="px-6 py-4 text-sm text-slate-500 text-center"
+                              className="px-4 py-4 text-sm text-slate-500 text-center"
                               colSpan={3}
                             >
                               <div className="flex items-center justify-center gap-2">
@@ -383,7 +376,7 @@ export default function ConfigPage() {
                         ) : error ? (
                           <tr>
                             <td
-                              className="px-6 py-4 text-sm text-red-600 text-center"
+                              className="px-4 py-4 text-sm text-red-600 text-center"
                               colSpan={3}
                             >
                               {error}
@@ -392,7 +385,7 @@ export default function ConfigPage() {
                         ) : paginatedData.length === 0 ? (
                           <tr>
                             <td
-                              className="px-6 py-4 text-sm text-slate-500 text-center"
+                              className="px-4 py-4 text-sm text-slate-500 text-center"
                               colSpan={3}
                             >
                               {search
@@ -406,17 +399,17 @@ export default function ConfigPage() {
                               key={item.id}
                               className="hover:bg-slate-50 transition-colors duration-200"
                             >
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-700">
                                 {item.value || "N/A"}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
                                 {item.createdAt
                                   ? new Date(
                                       item.createdAt,
                                     ).toLocaleDateString()
                                   : "N/A"}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                                 <div className="flex items-center justify-end gap-2">
                                   <button
                                     onClick={(e) => {
@@ -439,47 +432,16 @@ export default function ConfigPage() {
                 </div>
 
                 {/* Pagination Footer */}
-                {totalPages > 1 && (
-                  <div className="px-6 py-4 shrink-0 border-t border-slate-200 flex items-center justify-between">
-                    <div className="text-sm text-slate-600">
-                      Showing {startIndex + 1} to{" "}
-                      {Math.min(endIndex, totalItems)} of {totalItems} results
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="cursor-pointer px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Previous
-                      </button>
-                      <div className="flex items-center gap-1">
-                        {Array.from(
-                          { length: totalPages },
-                          (_, i) => i + 1,
-                        ).map((page) => (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentPage(page)}
-                            className={`cursor-pointer px-3 py-1 text-sm font-medium rounded ${
-                              currentPage === page
-                                ? "bg-primary text-white"
-                                : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="cursor-pointer px-3 py-1 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
+                {!loading && !error && paginatedData.length > 0 && (
+                  <PaginationFooter
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={setItemsPerPage}
+                    itemsPerPageOptions={[25, 50, 100, 0]}
+                    showItemsPerPage={true}
+                  />
                 )}
               </div>
             </div>

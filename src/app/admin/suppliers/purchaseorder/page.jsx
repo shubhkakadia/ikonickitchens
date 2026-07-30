@@ -47,7 +47,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 
 export default function page() {
   const { getToken } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pos, setPos] = useState([]);
   const [activeTab, setActiveTab] = usePersistedTableFilter(
@@ -175,6 +175,7 @@ export default function page() {
   const fetchPOs = async () => {
     try {
       setLoading(true);
+      setError(null);
       const sessionToken = getToken();
       if (!sessionToken) {
         toast.error("No valid session found. Please login again.", {
@@ -1202,16 +1203,16 @@ export default function page() {
               </div>
             ) : (
               <>
-                <div className="px-3 py-2 shrink-0">
+                <div className="px-4 py-2 shrink-0">
                   <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-slate-600">
+                    <h1 className="text-xl font-bold text-slate-700">
                       Purchase Orders
                     </h1>
                     <div className="flex items-center gap-2">
                       <SearchBar />
                       <button
                         onClick={() => setShowCreatePOModal(true)}
-                        className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-xs font-medium"
+                        className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium shadow-sm"
                       >
                         <Plus className="w-4 h-4" />
                         Create Purchase Order
@@ -1220,18 +1221,18 @@ export default function page() {
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col overflow-hidden px-3 pb-3">
+                <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
                   <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                     {/* Fixed Header Section */}
-                    <div className="p-3 shrink-0">
-                      <div className="flex items-center justify-between">
+                    <div className="p-4 shrink-0 border-b border-slate-200">
+                      <div className="flex items-center justify-between gap-3">
                         {/* Search */}
-                        <div className="flex items-center gap-2 flex-1 max-w-sm relative">
+                        <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
                           <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                           <input
                             type="text"
                             placeholder="Search by order no, supplier or status"
-                            className="w-full text-slate-800 p-2 pl-9 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
+                            className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                           />
@@ -1246,7 +1247,7 @@ export default function page() {
                               distinctSuppliers.length) && (
                             <button
                               onClick={handleReset}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-2 rounded-lg text-xs font-medium"
+                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                             >
                               <RotateCcw className="h-4 w-4" />
                               <span>Reset</span>
@@ -1345,7 +1346,7 @@ export default function page() {
                                     <button
                                       key={opt.key}
                                       onClick={() => handleSort(opt.key)}
-                                      className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                      className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                                     >
                                       {opt.label} {getSortIcon(opt.key)}
                                     </button>
@@ -1393,7 +1394,7 @@ export default function page() {
                               disabled={
                                 isExporting || filteredAndSortedPOs.length === 0
                               }
-                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${
+                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
                                 isExporting || filteredAndSortedPOs.length === 0
                                   ? "opacity-50 cursor-not-allowed"
                                   : "cursor-pointer hover:bg-slate-100"
@@ -1447,7 +1448,7 @@ export default function page() {
                     </div>
 
                     {/* Tabs Section */}
-                    <div className="px-3 shrink-0 border-b border-slate-200">
+                    <div className="px-4 shrink-0 border-b border-slate-200">
                       <nav className="flex space-x-6">
                         <button
                           onClick={() => setActiveTab("active")}
@@ -1483,1027 +1484,1060 @@ export default function page() {
                     </div>
 
                     {/* Scrollable Content Section */}
-                    <div className="flex-1 overflow-auto px-3">
-                      <table className="min-w-full divide-y divide-slate-200">
-                        <thead className="bg-slate-50 sticky top-0 z-10">
-                          <tr>
-                            <th
-                              className="px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("order")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Supplier / Order
-                                {getSortIcon("order")}
-                              </div>
-                            </th>
-                            <th
-                              className="px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("date")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Date
-                                {getSortIcon("date")}
-                              </div>
-                            </th>
-                            <th
-                              className="px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("items")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Items
-                                {getSortIcon("items")}
-                              </div>
-                            </th>
-                            <th
-                              className="px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("total")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Total
-                                {getSortIcon("total")}
-                              </div>
-                            </th>
-                            <th
-                              className="px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("status")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Status
-                                {getSortIcon("status")}
-                              </div>
-                            </th>
-                            <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-200">
-                          {paginatedPOs.length === 0 ? (
+                    <div className="flex-1 overflow-auto">
+                      <div className="min-w-full">
+                        <table className="min-w-full divide-y divide-slate-200">
+                          <thead className="bg-slate-50 sticky top-0 z-10">
                             <tr>
-                              <td
-                                className="px-3 py-10 text-xs text-slate-500 text-center"
-                                colSpan={6}
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("order")}
                               >
-                                No purchase orders found
-                              </td>
+                                <div className="flex items-center gap-2">
+                                  Supplier / Order
+                                  {getSortIcon("order")}
+                                </div>
+                              </th>
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("date")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Date
+                                  {getSortIcon("date")}
+                                </div>
+                              </th>
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("items")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Items
+                                  {getSortIcon("items")}
+                                </div>
+                              </th>
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("total")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Total
+                                  {getSortIcon("total")}
+                                </div>
+                              </th>
+                              <th
+                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                                onClick={() => handleSort("status")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Status
+                                  {getSortIcon("status")}
+                                </div>
+                              </th>
+                              <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                Actions
+                              </th>
                             </tr>
-                          ) : (
-                            paginatedPOs.map((po) => {
-                              return (
-                                <React.Fragment key={po.id}>
-                                  <tr
-                                    onClick={() => {
-                                      if (openAccordionId === po.id) {
-                                        setOpenAccordionId(null);
-                                      } else {
-                                        setOpenAccordionId(po.id);
-                                      }
-                                    }}
-                                    className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
-                                  >
-                                    <td className="px-3 py-2">
-                                      <div className="flex flex-col">
-                                        <span className="text-xs font-semibold text-gray-800 truncate">
-                                          {po.supplier?.name || "-"}
-                                        </span>
-                                        <span className="text-xs text-slate-600 truncate">
-                                          {po.order_no}
-                                        </span>
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-2 text-xs text-slate-700">
-                                      {po.ordered_at
-                                        ? `Ordered: ${new Date(
-                                            po.ordered_at,
-                                          ).toLocaleDateString()}`
-                                        : `Created: ${
-                                            po.createdAt
-                                              ? new Date(
-                                                  po.createdAt,
-                                                ).toLocaleDateString()
-                                              : "-"
+                          </thead>
+                          <tbody className="bg-white divide-y divide-slate-200">
+                            {paginatedPOs.length === 0 ? (
+                              <tr>
+                                <td
+                                  className="px-4 py-4 text-sm text-slate-500 text-center"
+                                  colSpan={6}
+                                >
+                                  No purchase orders found
+                                </td>
+                              </tr>
+                            ) : (
+                              paginatedPOs.map((po) => {
+                                return (
+                                  <React.Fragment key={po.id}>
+                                    <tr
+                                      onClick={() => {
+                                        if (openAccordionId === po.id) {
+                                          setOpenAccordionId(null);
+                                        } else {
+                                          setOpenAccordionId(po.id);
+                                        }
+                                      }}
+                                      className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                                    >
+                                      <td className="px-4 py-3">
+                                        <div className="flex flex-col">
+                                          <span className="text-sm font-medium text-slate-700 truncate">
+                                            {po.supplier?.name || "-"}
+                                          </span>
+                                          <span className="text-sm text-slate-600 truncate">
+                                            {po.order_no}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-700">
+                                        {po.ordered_at
+                                          ? `Ordered: ${new Date(
+                                              po.ordered_at,
+                                            ).toLocaleDateString()}`
+                                          : `Created: ${
+                                              po.createdAt
+                                                ? new Date(
+                                                    po.createdAt,
+                                                  ).toLocaleDateString()
+                                                : "-"
+                                            }`}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-700">
+                                        {(po.items || []).reduce(
+                                          (sum, it) =>
+                                            sum +
+                                            (parseFloat(it.quantity) || 0),
+                                          0,
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-700">
+                                        $
+                                        {formatMoney(
+                                          (parseFloat(po.total_amount) || 0) +
+                                            (parseFloat(po.delivery_charge) ||
+                                              0) *
+                                              1.1,
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <span
+                                          className={`px-2 py-1 text-xs font-medium rounded ${
+                                            po.status === "DRAFT"
+                                              ? "bg-yellow-100 text-yellow-800"
+                                              : po.status === "ORDERED"
+                                                ? "bg-blue-100 text-blue-800"
+                                                : po.status ===
+                                                    "PARTIALLY_RECEIVED"
+                                                  ? "bg-purple-100 text-purple-800"
+                                                  : po.status ===
+                                                      "FULLY_RECEIVED"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : po.status === "CANCELLED"
+                                                      ? "bg-red-100 text-red-800"
+                                                      : "bg-gray-100 text-gray-800"
                                           }`}
-                                    </td>
-                                    <td className="px-3 py-2 text-xs text-slate-700">
-                                      {(po.items || []).reduce(
-                                        (sum, it) =>
-                                          sum + (parseFloat(it.quantity) || 0),
-                                        0,
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2 text-xs text-slate-700">
-                                      $
-                                      {formatMoney(
-                                        (parseFloat(po.total_amount) || 0) +
-                                          (parseFloat(po.delivery_charge) ||
-                                            0) *
-                                            1.1,
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      <span
-                                        className={`px-2 py-1 text-xs font-medium rounded ${
-                                          po.status === "DRAFT"
-                                            ? "bg-yellow-100 text-yellow-800"
-                                            : po.status === "ORDERED"
-                                              ? "bg-blue-100 text-blue-800"
-                                              : po.status ===
-                                                  "PARTIALLY_RECEIVED"
-                                                ? "bg-purple-100 text-purple-800"
-                                                : po.status === "FULLY_RECEIVED"
-                                                  ? "bg-green-100 text-green-800"
-                                                  : po.status === "CANCELLED"
-                                                    ? "bg-red-100 text-red-800"
-                                                    : "bg-gray-100 text-gray-800"
-                                        }`}
-                                      >
-                                        {po.status}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2 text-right">
-                                      <ChevronDown
-                                        className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${
-                                          openAccordionId === po.id
-                                            ? "rotate-180"
-                                            : ""
-                                        }`}
-                                      />
-                                    </td>
-                                  </tr>
-
-                                  {/* Accordion content */}
-                                  {openAccordionId === po.id && (
-                                    <tr>
-                                      <td
-                                        colSpan={6}
-                                        className="px-3 pb-3 border-t border-slate-200 bg-slate-50"
-                                      >
-                                        <div
-                                          id={`po-${po.id}`}
-                                          className="mt-2"
                                         >
-                                          <div className="mb-2 p-2 bg-slate-50 rounded-lg">
-                                            <div className="flex items-center justify-between mb-2">
-                                              <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
-                                                <div className="flex items-center gap-1.5">
-                                                  <Calendar className="w-4 h-4" />
-                                                  <span>
-                                                    <span className="font-medium">
-                                                      Created:
-                                                    </span>{" "}
-                                                    {po.createdAt
-                                                      ? new Date(
-                                                          po.createdAt,
-                                                        ).toLocaleString()
-                                                      : "No date"}
-                                                  </span>
-                                                </div>
-                                                {po.ordered_at && (
+                                          {po.status}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                        <ChevronDown
+                                          className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${
+                                            openAccordionId === po.id
+                                              ? "rotate-180"
+                                              : ""
+                                          }`}
+                                        />
+                                      </td>
+                                    </tr>
+
+                                    {/* Accordion content */}
+                                    {openAccordionId === po.id && (
+                                      <tr>
+                                        <td
+                                          colSpan={6}
+                                          className="px-4 pb-3 border-t border-slate-200 bg-slate-50"
+                                        >
+                                          <div
+                                            id={`po-${po.id}`}
+                                            className="mt-2"
+                                          >
+                                            <div className="mb-2 p-2 bg-slate-50 rounded-lg">
+                                              <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
                                                   <div className="flex items-center gap-1.5">
                                                     <Calendar className="w-4 h-4" />
                                                     <span>
                                                       <span className="font-medium">
-                                                        Ordered:
+                                                        Created:
                                                       </span>{" "}
-                                                      {new Date(
-                                                        po.ordered_at,
-                                                      ).toLocaleDateString()}
+                                                      {po.createdAt
+                                                        ? new Date(
+                                                            po.createdAt,
+                                                          ).toLocaleString()
+                                                        : "No date"}
                                                     </span>
                                                   </div>
-                                                )}
-                                                {po.total_amount && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <FileText className="w-4 h-4" />
-                                                    <span>
-                                                      <span className="font-medium">
-                                                        Total:
-                                                      </span>{" "}
-                                                      <span className="font-semibold">
-                                                        $
-                                                        {formatMoney(
-                                                          po.total_amount,
-                                                        )}
+                                                  {po.ordered_at && (
+                                                    <div className="flex items-center gap-1.5">
+                                                      <Calendar className="w-4 h-4" />
+                                                      <span>
+                                                        <span className="font-medium">
+                                                          Ordered:
+                                                        </span>{" "}
+                                                        {new Date(
+                                                          po.ordered_at,
+                                                        ).toLocaleDateString()}
                                                       </span>
-                                                    </span>
-                                                  </div>
-                                                )}
-                                                {po.delivery_charge && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <FileText className="w-4 h-4" />
-                                                    <span>
-                                                      <span className="font-medium">
-                                                        Delivery Charge:
-                                                      </span>{" "}
-                                                      <span className="font-semibold">
-                                                        $
-                                                        {formatMoney(
-                                                          po.delivery_charge,
-                                                        )}
+                                                    </div>
+                                                  )}
+                                                  {po.total_amount && (
+                                                    <div className="flex items-center gap-1.5">
+                                                      <FileText className="w-4 h-4" />
+                                                      <span>
+                                                        <span className="font-medium">
+                                                          Total:
+                                                        </span>{" "}
+                                                        <span className="font-semibold">
+                                                          $
+                                                          {formatMoney(
+                                                            po.total_amount,
+                                                          )}
+                                                        </span>
                                                       </span>
-                                                    </span>
-                                                  </div>
-                                                )}
-                                                {po.invoice_date && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <Calendar className="w-4 h-4" />
-                                                    <span>
-                                                      <span className="font-medium">
-                                                        Invoice Date:
-                                                      </span>{" "}
-                                                      {new Date(
-                                                        po.invoice_date,
-                                                      ).toLocaleDateString()}
-                                                    </span>
-                                                  </div>
-                                                )}
-                                                {po.mto?.project && (
-                                                  <span className="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded border border-slate-200">
-                                                    Project:{" "}
-                                                    {po.mto.project.project_id}{" "}
-                                                    - {po.mto.project.name}
-                                                  </span>
-                                                )}
-                                                {po.orderedBy?.employee && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <User className="w-4 h-4" />
-                                                    <span>
-                                                      <span className="font-medium">
-                                                        Ordered by:
-                                                      </span>{" "}
+                                                    </div>
+                                                  )}
+                                                  {po.delivery_charge && (
+                                                    <div className="flex items-center gap-1.5">
+                                                      <FileText className="w-4 h-4" />
+                                                      <span>
+                                                        <span className="font-medium">
+                                                          Delivery Charge:
+                                                        </span>{" "}
+                                                        <span className="font-semibold">
+                                                          $
+                                                          {formatMoney(
+                                                            po.delivery_charge,
+                                                          )}
+                                                        </span>
+                                                      </span>
+                                                    </div>
+                                                  )}
+                                                  {po.invoice_date && (
+                                                    <div className="flex items-center gap-1.5">
+                                                      <Calendar className="w-4 h-4" />
+                                                      <span>
+                                                        <span className="font-medium">
+                                                          Invoice Date:
+                                                        </span>{" "}
+                                                        {new Date(
+                                                          po.invoice_date,
+                                                        ).toLocaleDateString()}
+                                                      </span>
+                                                    </div>
+                                                  )}
+                                                  {po.mto?.project && (
+                                                    <span className="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded border border-slate-200">
+                                                      Project:{" "}
                                                       {
-                                                        po.orderedBy.employee
-                                                          .first_name
+                                                        po.mto.project
+                                                          .project_id
                                                       }{" "}
-                                                      {
-                                                        po.orderedBy.employee
-                                                          .last_name
-                                                      }
+                                                      - {po.mto.project.name}
                                                     </span>
-                                                  </div>
-                                                )}
-                                              </div>
-                                              <div className="flex items-center gap-2">
-                                                {po.status !== "CANCELLED" && (
+                                                  )}
+                                                  {po.orderedBy?.employee && (
+                                                    <div className="flex items-center gap-1.5">
+                                                      <User className="w-4 h-4" />
+                                                      <span>
+                                                        <span className="font-medium">
+                                                          Ordered by:
+                                                        </span>{" "}
+                                                        {
+                                                          po.orderedBy.employee
+                                                            .first_name
+                                                        }{" "}
+                                                        {
+                                                          po.orderedBy.employee
+                                                            .last_name
+                                                        }
+                                                      </span>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                  {po.status !==
+                                                    "CANCELLED" && (
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handlePOCancel(po.id);
+                                                      }}
+                                                      className="cursor-pointer px-2 py-1 border border-orange-300 rounded-lg hover:bg-orange-50 text-xs text-orange-700 flex items-center gap-1.5"
+                                                    >
+                                                      <X className="w-3 h-3" />
+                                                      <span>Cancel PO</span>
+                                                    </button>
+                                                  )}
                                                   <button
                                                     onClick={(e) => {
                                                       e.stopPropagation();
-                                                      handlePOCancel(po.id);
+                                                      handlePODelete(po.id);
                                                     }}
-                                                    className="cursor-pointer px-2 py-1 border border-orange-300 rounded-lg hover:bg-orange-50 text-xs text-orange-700 flex items-center gap-1.5"
+                                                    disabled={
+                                                      deletingPOId === po.id
+                                                    }
+                                                    className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${
+                                                      deletingPOId === po.id
+                                                        ? "opacity-50 cursor-not-allowed"
+                                                        : ""
+                                                    }`}
                                                   >
-                                                    <X className="w-3 h-3" />
-                                                    <span>Cancel PO</span>
+                                                    {deletingPOId === po.id ? (
+                                                      <>
+                                                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
+                                                        <span>Deleting...</span>
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <Trash2 className="w-3 h-3" />
+                                                        <span>Delete PO</span>
+                                                      </>
+                                                    )}
                                                   </button>
-                                                )}
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handlePODelete(po.id);
-                                                  }}
-                                                  disabled={
-                                                    deletingPOId === po.id
-                                                  }
-                                                  className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${
-                                                    deletingPOId === po.id
-                                                      ? "opacity-50 cursor-not-allowed"
-                                                      : ""
-                                                  }`}
-                                                >
-                                                  {deletingPOId === po.id ? (
-                                                    <>
-                                                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
-                                                      <span>Deleting...</span>
-                                                    </>
-                                                  ) : (
-                                                    <>
-                                                      <Trash2 className="w-3 h-3" />
-                                                      <span>Delete PO</span>
-                                                    </>
-                                                  )}
-                                                </button>
-                                              </div>
-                                            </div>
-                                            {/* Editable Notes Section */}
-                                            <div className="mt-2 relative">
-                                              <div className="flex items-start gap-2 text-xs text-gray-600">
-                                                <NotebookText className="w-4 h-4 mt-2" />
-                                                <div className="flex-1 relative">
-                                                  <textarea
-                                                    rows="2"
-                                                    value={
-                                                      editableNotes[po.id] !==
-                                                      undefined
-                                                        ? editableNotes[po.id]
-                                                        : po.notes || ""
-                                                    }
-                                                    onChange={(e) =>
-                                                      handleNotesChange(
-                                                        po.id,
-                                                        e.target.value,
-                                                      )
-                                                    }
-                                                    onClick={(e) =>
-                                                      e.stopPropagation()
-                                                    }
-                                                    className="w-full border border-slate-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent text-xs"
-                                                    placeholder="Add notes for this purchase order..."
-                                                  />
-                                                  {/* Save status indicator */}
-                                                  {saveStatus[po.id] ===
-                                                    "saving" && (
-                                                    <span className="absolute bottom-2 right-2 text-xs text-slate-500 font-medium flex items-center gap-1 bg-white px-1 rounded">
-                                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-500"></div>
-                                                      Saving...
-                                                    </span>
-                                                  )}
-                                                  {saveStatus[po.id] ===
-                                                    "saved" && (
-                                                    <span className="absolute bottom-2 right-2 text-xs text-green-600 font-medium flex items-center gap-1 bg-white px-1 rounded">
-                                                      <Check className="w-3 h-3" />
-                                                      Saved!
-                                                    </span>
-                                                  )}
                                                 </div>
                                               </div>
-                                            </div>
-                                            {/* Invoice Section */}
-                                            {po.invoice_url ? (
-                                              <div className="mt-2">
-                                                <div className="border border-slate-200 rounded-lg p-2 flex items-center justify-between bg-white">
-                                                  <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-10 h-10 bg-slate-100 border border-slate-200 rounded flex items-center justify-center">
-                                                      <FileText className="w-5 h-5 text-slate-500" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                      <div className="text-xs font-medium text-gray-800 truncate">
-                                                        {po.invoice_url
-                                                          .filename ||
-                                                          "Invoice"}
-                                                      </div>
-                                                      <div className="text-xs text-slate-500 truncate">
-                                                        {po.invoice_url
-                                                          .mime_type ||
-                                                          po.invoice_url
-                                                            .extension}
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                  <div className="flex items-center gap-2 shrink-0">
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedInvoiceFile({
-                                                          name:
-                                                            po.invoice_url
-                                                              .filename ||
-                                                            "Invoice",
-                                                          url: `/${po.invoice_url.url}`,
-                                                          type:
-                                                            po.invoice_url
-                                                              .mime_type ||
-                                                            (po.invoice_url
-                                                              .extension
-                                                              ? `application/${po.invoice_url.extension}`
-                                                              : "application/pdf"),
-                                                          size:
-                                                            po.invoice_url
-                                                              .size || 0,
-                                                          isExisting: true,
-                                                        });
-                                                        setShowInvoicePreview(
-                                                          true,
-                                                        );
-                                                      }}
-                                                      className="cursor-pointer px-2 py-1 border border-slate-300 rounded-lg hover:bg-slate-50 text-xs text-slate-700"
-                                                    >
-                                                      View
-                                                    </button>
-                                                    <button
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleInvoiceDelete(
-                                                          po.id,
-                                                        );
-                                                      }}
-                                                      disabled={
-                                                        deletingInvoicePOId ===
-                                                        po.id
+                                              {/* Editable Notes Section */}
+                                              <div className="mt-2 relative">
+                                                <div className="flex items-start gap-2 text-xs text-gray-600">
+                                                  <NotebookText className="w-4 h-4 mt-2" />
+                                                  <div className="flex-1 relative">
+                                                    <textarea
+                                                      rows="2"
+                                                      value={
+                                                        editableNotes[po.id] !==
+                                                        undefined
+                                                          ? editableNotes[po.id]
+                                                          : po.notes || ""
                                                       }
-                                                      className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${
-                                                        deletingInvoicePOId ===
-                                                        po.id
-                                                          ? "opacity-50 cursor-not-allowed"
-                                                          : ""
-                                                      }`}
-                                                    >
-                                                      {deletingInvoicePOId ===
-                                                      po.id ? (
-                                                        <>
-                                                          <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
-                                                          <span>
-                                                            Deleting...
-                                                          </span>
-                                                        </>
-                                                      ) : (
-                                                        <>
-                                                          <Trash2 className="w-3 h-3" />
-                                                          <span>Delete</span>
-                                                        </>
-                                                      )}
-                                                    </button>
-                                                    <a
-                                                      href={`/${po.invoice_url.url}`}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="cursor-pointer px-2 py-1 bg-primary/80 hover:bg-primary text-white rounded-lg text-xs"
-                                                    >
-                                                      Download
-                                                    </a>
+                                                      onChange={(e) =>
+                                                        handleNotesChange(
+                                                          po.id,
+                                                          e.target.value,
+                                                        )
+                                                      }
+                                                      onClick={(e) =>
+                                                        e.stopPropagation()
+                                                      }
+                                                      className="w-full border border-slate-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent text-xs"
+                                                      placeholder="Add notes for this purchase order..."
+                                                    />
+                                                    {/* Save status indicator */}
+                                                    {saveStatus[po.id] ===
+                                                      "saving" && (
+                                                      <span className="absolute bottom-2 right-2 text-xs text-slate-500 font-medium flex items-center gap-1 bg-white px-1 rounded">
+                                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-500"></div>
+                                                        Saving...
+                                                      </span>
+                                                    )}
+                                                    {saveStatus[po.id] ===
+                                                      "saved" && (
+                                                      <span className="absolute bottom-2 right-2 text-xs text-green-600 font-medium flex items-center gap-1 bg-white px-1 rounded">
+                                                        <Check className="w-3 h-3" />
+                                                        Saved!
+                                                      </span>
+                                                    )}
                                                   </div>
                                                 </div>
                                               </div>
-                                            ) : (
-                                              <div className="mt-2">
-                                                <div className="border border-slate-200 rounded-lg p-2 bg-white">
-                                                  <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
+                                              {/* Invoice Section */}
+                                              {po.invoice_url ? (
+                                                <div className="mt-2">
+                                                  <div className="border border-slate-200 rounded-lg p-2 flex items-center justify-between bg-white">
+                                                    <div className="flex items-center gap-3 min-w-0">
                                                       <div className="w-10 h-10 bg-slate-100 border border-slate-200 rounded flex items-center justify-center">
-                                                        <FileText className="w-5 h-5 text-slate-400" />
+                                                        <FileText className="w-5 h-5 text-slate-500" />
                                                       </div>
-                                                      <div>
-                                                        <div className="text-xs font-medium text-gray-800">
-                                                          No invoice uploaded
+                                                      <div className="min-w-0">
+                                                        <div className="text-xs font-medium text-gray-800 truncate">
+                                                          {po.invoice_url
+                                                            .filename ||
+                                                            "Invoice"}
                                                         </div>
-                                                        <div className="text-xs text-slate-500">
-                                                          Upload an invoice file
-                                                          for this purchase
-                                                          order
+                                                        <div className="text-xs text-slate-500 truncate">
+                                                          {po.invoice_url
+                                                            .mime_type ||
+                                                            po.invoice_url
+                                                              .extension}
                                                         </div>
                                                       </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                      <input
-                                                        ref={(el) => {
-                                                          invoiceFileInputRefs.current[
-                                                            po.id
-                                                          ] = el;
-                                                        }}
-                                                        type="file"
-                                                        accept=".pdf,.doc,.docx,image/*"
-                                                        onChange={(e) => {
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                      <button
+                                                        onClick={(e) => {
                                                           e.stopPropagation();
-                                                          handleInvoiceFileChange(
-                                                            po.id,
-                                                            e,
+                                                          setSelectedInvoiceFile(
+                                                            {
+                                                              name:
+                                                                po.invoice_url
+                                                                  .filename ||
+                                                                "Invoice",
+                                                              url: `/${po.invoice_url.url}`,
+                                                              type:
+                                                                po.invoice_url
+                                                                  .mime_type ||
+                                                                (po.invoice_url
+                                                                  .extension
+                                                                  ? `application/${po.invoice_url.extension}`
+                                                                  : "application/pdf"),
+                                                              size:
+                                                                po.invoice_url
+                                                                  .size || 0,
+                                                              isExisting: true,
+                                                            },
+                                                          );
+                                                          setShowInvoicePreview(
+                                                            true,
                                                           );
                                                         }}
-                                                        className="hidden"
-                                                        id={`invoice-upload-${po.id}`}
+                                                        className="cursor-pointer px-2 py-1 border border-slate-300 rounded-lg hover:bg-slate-50 text-xs text-slate-700"
+                                                      >
+                                                        View
+                                                      </button>
+                                                      <button
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          handleInvoiceDelete(
+                                                            po.id,
+                                                          );
+                                                        }}
                                                         disabled={
-                                                          uploadingInvoicePOId ===
+                                                          deletingInvoicePOId ===
                                                           po.id
                                                         }
-                                                      />
-                                                      <label
-                                                        htmlFor={`invoice-upload-${po.id}`}
-                                                        className={`cursor-pointer px-2 py-1 border border-slate-300 rounded-lg hover:bg-slate-50 text-xs text-slate-700 flex items-center gap-2 ${
-                                                          uploadingInvoicePOId ===
+                                                        className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${
+                                                          deletingInvoicePOId ===
                                                           po.id
                                                             ? "opacity-50 cursor-not-allowed"
                                                             : ""
                                                         }`}
-                                                        onClick={(e) =>
-                                                          e.stopPropagation()
-                                                        }
                                                       >
-                                                        {uploadingInvoicePOId ===
+                                                        {deletingInvoicePOId ===
                                                         po.id ? (
                                                           <>
-                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-600"></div>
+                                                            <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
                                                             <span>
-                                                              Uploading...
+                                                              Deleting...
                                                             </span>
                                                           </>
                                                         ) : (
                                                           <>
-                                                            <Upload className="w-3 h-3" />
-                                                            <span>
-                                                              Upload Invoice
-                                                            </span>
+                                                            <Trash2 className="w-3 h-3" />
+                                                            <span>Delete</span>
                                                           </>
                                                         )}
-                                                      </label>
+                                                      </button>
+                                                      <a
+                                                        href={`/${po.invoice_url.url}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="cursor-pointer px-2 py-1 bg-primary/80 hover:bg-primary text-white rounded-lg text-xs"
+                                                      >
+                                                        Download
+                                                      </a>
                                                     </div>
                                                   </div>
                                                 </div>
-                                              </div>
-                                            )}
-                                          </div>
-
-                                          {/* Items table */}
-                                          {po.items && po.items.length > 0 && (
-                                            <div className="overflow-x-auto">
-                                              <table className="w-full border border-slate-200 rounded-lg">
-                                                <thead className="bg-slate-50">
-                                                  <tr>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                      Image
-                                                    </th>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                      Category
-                                                    </th>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                      Details
-                                                    </th>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                      Quantity
-                                                    </th>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                      Remaining/Received
-                                                    </th>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                      Unit Price (including GST)
-                                                    </th>
-                                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                      Total
-                                                    </th>
-                                                  </tr>
-                                                </thead>
-                                                <tbody className="bg-white divide-y divide-slate-200">
-                                                  {po.items.map((item) => {
-                                                    const orderedQty =
-                                                      parseFloat(
-                                                        item.quantity || 0,
-                                                      ) || 0;
-                                                    const receivedQty =
-                                                      parseFloat(
-                                                        item.quantity_received ||
-                                                          0,
-                                                      ) || 0;
-                                                    const remainingQty =
-                                                      Math.max(
-                                                        0,
-                                                        orderedQty -
-                                                          receivedQty,
-                                                      );
-                                                    const measurementUnit =
-                                                      item.item
-                                                        ?.measurement_unit ||
-                                                      "";
-                                                    return (
-                                                      <tr
-                                                        key={item.id}
-                                                        className="hover:bg-slate-50"
-                                                      >
-                                                        <td className="px-3 py-2 whitespace-nowrap">
-                                                          <div className="flex items-center">
-                                                            {item.item?.image
-                                                              ?.url ? (
-                                                              <Image
-                                                                loading="lazy"
-                                                                src={`/${item.item.image.url}`}
-                                                                alt={
-                                                                  item.item
-                                                                    .item_id
-                                                                }
-                                                                className="w-10 h-10 object-cover rounded border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
-                                                                width={40}
-                                                                height={40}
-                                                                onClick={() =>
-                                                                  handleImageClick(
-                                                                    item.item
-                                                                      .image,
-                                                                  )
-                                                                }
-                                                              />
-                                                            ) : (
-                                                              <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                                                                <Package className="w-5 h-5 text-slate-400" />
-                                                              </div>
-                                                            )}
+                                              ) : (
+                                                <div className="mt-2">
+                                                  <div className="border border-slate-200 rounded-lg p-2 bg-white">
+                                                    <div className="flex items-center justify-between">
+                                                      <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-slate-100 border border-slate-200 rounded flex items-center justify-center">
+                                                          <FileText className="w-5 h-5 text-slate-400" />
+                                                        </div>
+                                                        <div>
+                                                          <div className="text-xs font-medium text-gray-800">
+                                                            No invoice uploaded
                                                           </div>
-                                                        </td>
-                                                        <td className="px-3 py-2">
-                                                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                                            {item.item
-                                                              ?.category || "-"}
-                                                          </span>
-                                                        </td>
-                                                        <td className="px-3 py-2">
-                                                          <div className="text-xs text-gray-600 space-y-1">
-                                                            {(() => {
-                                                              const supplierRef =
-                                                                item.item?.itemSuppliers?.find(
-                                                                  (is) =>
-                                                                    is.supplier
-                                                                      ?.supplier_id ===
-                                                                    po.supplier
-                                                                      ?.supplier_id,
-                                                                )
-                                                                  ?.supplier_reference ||
-                                                                item.item
-                                                                  ?.supplier_reference;
-
-                                                              return (
-                                                                supplierRef && (
-                                                                  <div>
-                                                                    <span className="font-medium">
-                                                                      Supplier
-                                                                      Ref:
-                                                                    </span>{" "}
-                                                                    {
-                                                                      supplierRef
-                                                                    }
-                                                                  </div>
-                                                                )
-                                                              );
-                                                            })()}
-                                                            {item.item
-                                                              ?.sheet && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Brand:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .sheet
-                                                                    .brand ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Color:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .sheet
-                                                                      .color
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Finish:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .sheet
-                                                                      .finish
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Face:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .sheet
-                                                                    .face ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Dimensions:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .sheet
-                                                                      .dimensions
-                                                                  }
-                                                                </div>
-                                                              </>
-                                                            )}
-                                                            {item.item
-                                                              ?.handle && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Brand:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .handle
-                                                                    .brand ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Color:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .handle
-                                                                      .color
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Type:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .handle
-                                                                      .type
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Dimensions:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .handle
-                                                                      .dimensions
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Material:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .handle
-                                                                    .material ||
-                                                                    "-"}
-                                                                </div>
-                                                              </>
-                                                            )}
-                                                            {item.item
-                                                              ?.hardware && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Brand:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .hardware
-                                                                    .brand ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Name:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .hardware
-                                                                      .name
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Type:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .hardware
-                                                                      .type
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Dimensions:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .hardware
-                                                                      .dimensions
-                                                                  }
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Sub
-                                                                    Category:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .hardware
-                                                                      .sub_category
-                                                                  }
-                                                                </div>
-                                                              </>
-                                                            )}
-                                                            {item.item
-                                                              ?.accessory && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Name:
-                                                                  </span>{" "}
-                                                                  {
-                                                                    item.item
-                                                                      .accessory
-                                                                      .name
-                                                                  }
-                                                                </div>
-                                                              </>
-                                                            )}
-                                                            {item.item
-                                                              ?.edging_tape && (
-                                                              <>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Brand:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .edging_tape
-                                                                    .brand ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Color:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .edging_tape
-                                                                    .color ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Finish:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .edging_tape
-                                                                    .finish ||
-                                                                    "-"}
-                                                                </div>
-                                                                <div>
-                                                                  <span className="font-medium">
-                                                                    Dimensions:
-                                                                  </span>{" "}
-                                                                  {item.item
-                                                                    .edging_tape
-                                                                    .dimensions ||
-                                                                    "-"}
-                                                                </div>
-                                                              </>
-                                                            )}
-                                                            {!item.item
-                                                              ?.sheet &&
-                                                              !item.item
-                                                                ?.handle &&
-                                                              !item.item
-                                                                ?.hardware &&
-                                                              !item.item
-                                                                ?.accessory &&
-                                                              !item.item
-                                                                ?.edging_tape && (
-                                                                <div>
-                                                                  {item.item
-                                                                    ?.description ||
-                                                                    item.notes ||
-                                                                    "-"}
-                                                                </div>
-                                                              )}
+                                                          <div className="text-xs text-slate-500">
+                                                            Upload an invoice
+                                                            file for this
+                                                            purchase order
                                                           </div>
-                                                          {item.notes &&
-                                                            item.item
-                                                              ?.description &&
-                                                            item.notes !==
-                                                              item.item
-                                                                ?.description && (
-                                                              <div className="text-xs text-gray-500 mt-1 flex items-start gap-1">
-                                                                <FileText className="w-3 h-3 mt-0.5" />
-                                                                <span>
-                                                                  {item.notes}
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-3 py-2 whitespace-nowrap">
-                                                          <div className="text-xs text-gray-600">
-                                                            {orderedQty}
-                                                            {measurementUnit && (
-                                                              <span className="text-gray-400 ml-1">
-                                                                {
-                                                                  measurementUnit
-                                                                }
+                                                        </div>
+                                                      </div>
+                                                      <div className="flex items-center gap-2">
+                                                        <input
+                                                          ref={(el) => {
+                                                            invoiceFileInputRefs.current[
+                                                              po.id
+                                                            ] = el;
+                                                          }}
+                                                          type="file"
+                                                          accept=".pdf,.doc,.docx,image/*"
+                                                          onChange={(e) => {
+                                                            e.stopPropagation();
+                                                            handleInvoiceFileChange(
+                                                              po.id,
+                                                              e,
+                                                            );
+                                                          }}
+                                                          className="hidden"
+                                                          id={`invoice-upload-${po.id}`}
+                                                          disabled={
+                                                            uploadingInvoicePOId ===
+                                                            po.id
+                                                          }
+                                                        />
+                                                        <label
+                                                          htmlFor={`invoice-upload-${po.id}`}
+                                                          className={`cursor-pointer px-2 py-1 border border-slate-300 rounded-lg hover:bg-slate-50 text-xs text-slate-700 flex items-center gap-2 ${
+                                                            uploadingInvoicePOId ===
+                                                            po.id
+                                                              ? "opacity-50 cursor-not-allowed"
+                                                              : ""
+                                                          }`}
+                                                          onClick={(e) =>
+                                                            e.stopPropagation()
+                                                          }
+                                                        >
+                                                          {uploadingInvoicePOId ===
+                                                          po.id ? (
+                                                            <>
+                                                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-600"></div>
+                                                              <span>
+                                                                Uploading...
                                                               </span>
-                                                            )}
-                                                          </div>
-                                                        </td>
-                                                        <td className="px-3 py-2 whitespace-nowrap">
-                                                          <div className="flex flex-col gap-1">
-                                                            <div className="text-sm text-gray-600">
-                                                              <span className="font-medium">
-                                                                Remaining:
-                                                              </span>{" "}
-                                                              {remainingQty}
-                                                              {item.item
-                                                                ?.measurement_unit && (
-                                                                <span className="text-gray-400 ml-1">
-                                                                  {
+                                                            </>
+                                                          ) : (
+                                                            <>
+                                                              <Upload className="w-3 h-3" />
+                                                              <span>
+                                                                Upload Invoice
+                                                              </span>
+                                                            </>
+                                                          )}
+                                                        </label>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            {/* Items table */}
+                                            {po.items &&
+                                              po.items.length > 0 && (
+                                                <div className="overflow-x-auto">
+                                                  <table className="w-full border border-slate-200 rounded-lg">
+                                                    <thead className="bg-slate-50">
+                                                      <tr>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                          Image
+                                                        </th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                          Category
+                                                        </th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                          Details
+                                                        </th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                          Quantity
+                                                        </th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                          Remaining/Received
+                                                        </th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                          Unit Price (including
+                                                          GST)
+                                                        </th>
+                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                          Total
+                                                        </th>
+                                                      </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-slate-200">
+                                                      {po.items.map((item) => {
+                                                        const orderedQty =
+                                                          parseFloat(
+                                                            item.quantity || 0,
+                                                          ) || 0;
+                                                        const receivedQty =
+                                                          parseFloat(
+                                                            item.quantity_received ||
+                                                              0,
+                                                          ) || 0;
+                                                        const remainingQty =
+                                                          Math.max(
+                                                            0,
+                                                            orderedQty -
+                                                              receivedQty,
+                                                          );
+                                                        const measurementUnit =
+                                                          item.item
+                                                            ?.measurement_unit ||
+                                                          "";
+                                                        return (
+                                                          <tr
+                                                            key={item.id}
+                                                            className="hover:bg-slate-50"
+                                                          >
+                                                            <td className="px-3 py-2 whitespace-nowrap">
+                                                              <div className="flex items-center">
+                                                                {item.item
+                                                                  ?.image
+                                                                  ?.url ? (
+                                                                  <Image
+                                                                    loading="lazy"
+                                                                    src={`/${item.item.image.url}`}
+                                                                    alt={
+                                                                      item.item
+                                                                        .item_id
+                                                                    }
+                                                                    className="w-10 h-10 object-cover rounded border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+                                                                    width={40}
+                                                                    height={40}
+                                                                    onClick={() =>
+                                                                      handleImageClick(
+                                                                        item
+                                                                          .item
+                                                                          .image,
+                                                                      )
+                                                                    }
+                                                                  />
+                                                                ) : (
+                                                                  <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                                                    <Package className="w-5 h-5 text-slate-400" />
+                                                                  </div>
+                                                                )}
+                                                              </div>
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                                                                {item.item
+                                                                  ?.category ||
+                                                                  "-"}
+                                                              </span>
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                              <div className="text-xs text-gray-600 space-y-1">
+                                                                {(() => {
+                                                                  const supplierRef =
+                                                                    item.item?.itemSuppliers?.find(
+                                                                      (is) =>
+                                                                        is
+                                                                          .supplier
+                                                                          ?.supplier_id ===
+                                                                        po
+                                                                          .supplier
+                                                                          ?.supplier_id,
+                                                                    )
+                                                                      ?.supplier_reference ||
                                                                     item.item
-                                                                      .measurement_unit
-                                                                  }
-                                                                </span>
-                                                              )}
-                                                            </div>
-                                                            <div className="text-sm text-gray-600">
-                                                              <span className="font-medium">
-                                                                Received:
-                                                              </span>{" "}
-                                                              {receivedQty}
-                                                              {item.item
-                                                                ?.measurement_unit && (
-                                                                <span className="text-gray-400 ml-1">
-                                                                  {
-                                                                    item.item
-                                                                      .measurement_unit
-                                                                  }
-                                                                </span>
-                                                              )}
-                                                            </div>
-                                                          </div>
-                                                        </td>
-                                                        <td className="px-3 py-2 whitespace-nowrap">
-                                                          <span className="text-xs text-gray-600">
-                                                            $
-                                                            {parseFloat(
-                                                              item.unit_price,
-                                                            ).toFixed(2)}
-                                                          </span>
-                                                        </td>
-                                                        <td className="px-3 py-2 whitespace-nowrap">
-                                                          <span className="text-xs font-semibold text-gray-900">
-                                                            $
-                                                            {formatMoney(
-                                                              parseFloat(
-                                                                item.quantity,
-                                                              ) *
-                                                                parseFloat(
+                                                                      ?.supplier_reference;
+
+                                                                  return (
+                                                                    supplierRef && (
+                                                                      <div>
+                                                                        <span className="font-medium">
+                                                                          Supplier
+                                                                          Ref:
+                                                                        </span>{" "}
+                                                                        {
+                                                                          supplierRef
+                                                                        }
+                                                                      </div>
+                                                                    )
+                                                                  );
+                                                                })()}
+                                                                {item.item
+                                                                  ?.sheet && (
+                                                                  <>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Brand:
+                                                                      </span>{" "}
+                                                                      {item.item
+                                                                        .sheet
+                                                                        .brand ||
+                                                                        "-"}
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Color:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .sheet
+                                                                          .color
+                                                                      }
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Finish:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .sheet
+                                                                          .finish
+                                                                      }
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Face:
+                                                                      </span>{" "}
+                                                                      {item.item
+                                                                        .sheet
+                                                                        .face ||
+                                                                        "-"}
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Dimensions:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .sheet
+                                                                          .dimensions
+                                                                      }
+                                                                    </div>
+                                                                  </>
+                                                                )}
+                                                                {item.item
+                                                                  ?.handle && (
+                                                                  <>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Brand:
+                                                                      </span>{" "}
+                                                                      {item.item
+                                                                        .handle
+                                                                        .brand ||
+                                                                        "-"}
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Color:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .handle
+                                                                          .color
+                                                                      }
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Type:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .handle
+                                                                          .type
+                                                                      }
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Dimensions:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .handle
+                                                                          .dimensions
+                                                                      }
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Material:
+                                                                      </span>{" "}
+                                                                      {item.item
+                                                                        .handle
+                                                                        .material ||
+                                                                        "-"}
+                                                                    </div>
+                                                                  </>
+                                                                )}
+                                                                {item.item
+                                                                  ?.hardware && (
+                                                                  <>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Brand:
+                                                                      </span>{" "}
+                                                                      {item.item
+                                                                        .hardware
+                                                                        .brand ||
+                                                                        "-"}
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Name:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .hardware
+                                                                          .name
+                                                                      }
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Type:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .hardware
+                                                                          .type
+                                                                      }
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Dimensions:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .hardware
+                                                                          .dimensions
+                                                                      }
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Sub
+                                                                        Category:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .hardware
+                                                                          .sub_category
+                                                                      }
+                                                                    </div>
+                                                                  </>
+                                                                )}
+                                                                {item.item
+                                                                  ?.accessory && (
+                                                                  <>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Name:
+                                                                      </span>{" "}
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .accessory
+                                                                          .name
+                                                                      }
+                                                                    </div>
+                                                                  </>
+                                                                )}
+                                                                {item.item
+                                                                  ?.edging_tape && (
+                                                                  <>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Brand:
+                                                                      </span>{" "}
+                                                                      {item.item
+                                                                        .edging_tape
+                                                                        .brand ||
+                                                                        "-"}
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Color:
+                                                                      </span>{" "}
+                                                                      {item.item
+                                                                        .edging_tape
+                                                                        .color ||
+                                                                        "-"}
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Finish:
+                                                                      </span>{" "}
+                                                                      {item.item
+                                                                        .edging_tape
+                                                                        .finish ||
+                                                                        "-"}
+                                                                    </div>
+                                                                    <div>
+                                                                      <span className="font-medium">
+                                                                        Dimensions:
+                                                                      </span>{" "}
+                                                                      {item.item
+                                                                        .edging_tape
+                                                                        .dimensions ||
+                                                                        "-"}
+                                                                    </div>
+                                                                  </>
+                                                                )}
+                                                                {!item.item
+                                                                  ?.sheet &&
+                                                                  !item.item
+                                                                    ?.handle &&
+                                                                  !item.item
+                                                                    ?.hardware &&
+                                                                  !item.item
+                                                                    ?.accessory &&
+                                                                  !item.item
+                                                                    ?.edging_tape && (
+                                                                    <div>
+                                                                      {item.item
+                                                                        ?.description ||
+                                                                        item.notes ||
+                                                                        "-"}
+                                                                    </div>
+                                                                  )}
+                                                              </div>
+                                                              {item.notes &&
+                                                                item.item
+                                                                  ?.description &&
+                                                                item.notes !==
+                                                                  item.item
+                                                                    ?.description && (
+                                                                  <div className="text-xs text-gray-500 mt-1 flex items-start gap-1">
+                                                                    <FileText className="w-3 h-3 mt-0.5" />
+                                                                    <span>
+                                                                      {
+                                                                        item.notes
+                                                                      }
+                                                                    </span>
+                                                                  </div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-3 py-2 whitespace-nowrap">
+                                                              <div className="text-xs text-gray-600">
+                                                                {orderedQty}
+                                                                {measurementUnit && (
+                                                                  <span className="text-gray-400 ml-1">
+                                                                    {
+                                                                      measurementUnit
+                                                                    }
+                                                                  </span>
+                                                                )}
+                                                              </div>
+                                                            </td>
+                                                            <td className="px-3 py-2 whitespace-nowrap">
+                                                              <div className="flex flex-col gap-1">
+                                                                <div className="text-sm text-gray-600">
+                                                                  <span className="font-medium">
+                                                                    Remaining:
+                                                                  </span>{" "}
+                                                                  {remainingQty}
+                                                                  {item.item
+                                                                    ?.measurement_unit && (
+                                                                    <span className="text-gray-400 ml-1">
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .measurement_unit
+                                                                      }
+                                                                    </span>
+                                                                  )}
+                                                                </div>
+                                                                <div className="text-sm text-gray-600">
+                                                                  <span className="font-medium">
+                                                                    Received:
+                                                                  </span>{" "}
+                                                                  {receivedQty}
+                                                                  {item.item
+                                                                    ?.measurement_unit && (
+                                                                    <span className="text-gray-400 ml-1">
+                                                                      {
+                                                                        item
+                                                                          .item
+                                                                          .measurement_unit
+                                                                      }
+                                                                    </span>
+                                                                  )}
+                                                                </div>
+                                                              </div>
+                                                            </td>
+                                                            <td className="px-3 py-2 whitespace-nowrap">
+                                                              <span className="text-xs text-gray-600">
+                                                                $
+                                                                {parseFloat(
                                                                   item.unit_price,
-                                                                ),
-                                                            )}
-                                                          </span>
+                                                                ).toFixed(2)}
+                                                              </span>
+                                                            </td>
+                                                            <td className="px-3 py-2 whitespace-nowrap">
+                                                              <span className="text-xs font-semibold text-gray-900">
+                                                                $
+                                                                {formatMoney(
+                                                                  parseFloat(
+                                                                    item.quantity,
+                                                                  ) *
+                                                                    parseFloat(
+                                                                      item.unit_price,
+                                                                    ),
+                                                                )}
+                                                              </span>
+                                                            </td>
+                                                          </tr>
+                                                        );
+                                                      })}
+                                                    </tbody>
+                                                    <tfoot className="bg-slate-100 border-t-2 border-slate-300">
+                                                      <tr>
+                                                        <td
+                                                          colSpan="6"
+                                                          className="px-3 py-2 text-right text-xs font-medium text-slate-700"
+                                                        >
+                                                          Order Total:
+                                                        </td>
+                                                        <td className="px-3 py-2 text-xs font-semibold text-slate-900">
+                                                          $
+                                                          {formatMoney(
+                                                            po.total_amount ||
+                                                              0,
+                                                          )}
                                                         </td>
                                                       </tr>
-                                                    );
-                                                  })}
-                                                </tbody>
-                                                <tfoot className="bg-slate-100 border-t-2 border-slate-300">
-                                                  <tr>
-                                                    <td
-                                                      colSpan="6"
-                                                      className="px-3 py-2 text-right text-xs font-medium text-slate-700"
-                                                    >
-                                                      Order Total:
-                                                    </td>
-                                                    <td className="px-3 py-2 text-xs font-semibold text-slate-900">
-                                                      $
-                                                      {formatMoney(
-                                                        po.total_amount || 0,
-                                                      )}
-                                                    </td>
-                                                  </tr>
-                                                  <tr>
-                                                    <td
-                                                      colSpan="6"
-                                                      className="px-3 py-2 text-right text-xs font-medium text-slate-700"
-                                                    >
-                                                      Delivery Charge (inc. 10%
-                                                      GST):
-                                                    </td>
-                                                    <td className="px-3 py-2 text-xs font-semibold text-slate-900">
-                                                      $
-                                                      {formatMoney(
-                                                        (parseFloat(
-                                                          po.delivery_charge,
-                                                        ) || 0) * 1.1,
-                                                      )}
-                                                    </td>
-                                                  </tr>
-                                                  <tr className="border-t-2 border-slate-400">
-                                                    <td
-                                                      colSpan="6"
-                                                      className="px-3 py-2 text-right text-sm font-bold text-slate-800"
-                                                    >
-                                                      Grand Total:
-                                                    </td>
-                                                    <td className="px-3 py-2 text-sm font-bold text-slate-900">
-                                                      $
-                                                      {formatMoney(
-                                                        (parseFloat(
-                                                          po.total_amount,
-                                                        ) || 0) +
-                                                          (parseFloat(
-                                                            po.delivery_charge,
-                                                          ) || 0) *
-                                                            1.1,
-                                                      )}
-                                                    </td>
-                                                  </tr>
-                                                </tfoot>
-                                              </table>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
+                                                      <tr>
+                                                        <td
+                                                          colSpan="6"
+                                                          className="px-3 py-2 text-right text-xs font-medium text-slate-700"
+                                                        >
+                                                          Delivery Charge (inc.
+                                                          10% GST):
+                                                        </td>
+                                                        <td className="px-3 py-2 text-xs font-semibold text-slate-900">
+                                                          $
+                                                          {formatMoney(
+                                                            (parseFloat(
+                                                              po.delivery_charge,
+                                                            ) || 0) * 1.1,
+                                                          )}
+                                                        </td>
+                                                      </tr>
+                                                      <tr className="border-t-2 border-slate-400">
+                                                        <td
+                                                          colSpan="6"
+                                                          className="px-3 py-2 text-right text-sm font-bold text-slate-800"
+                                                        >
+                                                          Grand Total:
+                                                        </td>
+                                                        <td className="px-3 py-2 text-sm font-bold text-slate-900">
+                                                          $
+                                                          {formatMoney(
+                                                            (parseFloat(
+                                                              po.total_amount,
+                                                            ) || 0) +
+                                                              (parseFloat(
+                                                                po.delivery_charge,
+                                                              ) || 0) *
+                                                                1.1,
+                                                          )}
+                                                        </td>
+                                                      </tr>
+                                                    </tfoot>
+                                                  </table>
+                                                </div>
+                                              )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </React.Fragment>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
 
                     {/* Fixed Pagination Footer */}

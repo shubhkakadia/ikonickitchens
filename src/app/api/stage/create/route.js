@@ -14,6 +14,38 @@ export async function POST(request) {
     const { lot_id, name, status, notes, startDate, endDate, assigned_to } =
       await request.json();
 
+    if (startDate || endDate) {
+      const lot = await prisma.lot.findUnique({
+        where: { lot_id: lot_id.toLowerCase() },
+        select: { startDate: true, installationDueDate: true },
+      });
+      const stageStartDate = startDate ? new Date(startDate) : null;
+      const stageEndDate = endDate ? new Date(endDate) : null;
+
+      if (!lot?.startDate || !lot?.installationDueDate) {
+        return NextResponse.json(
+          {
+            status: false,
+            message:
+              "Set the parent lot start and installation due dates before scheduling a stage",
+          },
+          { status: 400 },
+        );
+      }
+      if (
+        (stageStartDate && stageStartDate < lot.startDate) ||
+        (stageEndDate && stageEndDate > lot.installationDueDate)
+      ) {
+        return NextResponse.json(
+          {
+            status: false,
+            message: "Stage dates must stay within the parent lot date range",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     // Use transaction to ensure atomicity - stage creation and employee assignments succeed or fail together
     const stageId = await prisma.$transaction(async (tx) => {
       // Create the stage
@@ -23,12 +55,14 @@ export async function POST(request) {
           name: name.toLowerCase(),
           status,
           notes,
-          startDate: startDate && startDate.trim() !== ""
-            ? processDateTimeField(startDate)
-            : null,
-          endDate: endDate && endDate.trim() !== ""
-            ? processDateTimeField(endDate)
-            : null,
+          startDate:
+            startDate && startDate.trim() !== ""
+              ? processDateTimeField(startDate)
+              : null,
+          endDate:
+            endDate && endDate.trim() !== ""
+              ? processDateTimeField(endDate)
+              : null,
         },
       });
 
@@ -83,9 +117,9 @@ export async function POST(request) {
       "stage",
       stage.stage_id,
       "CREATE",
-      `Stage created successfully: ${stage.name} for lot: ${stage.lot_id} and project: ${stage.lot?.project?.name}`
+      `Stage created successfully: ${stage.name} for lot: ${stage.lot_id} and project: ${stage.lot?.project?.name}`,
     );
-    
+
     // Send notification if stage is completed
     if (stage.status === "DONE") {
       try {
@@ -97,37 +131,43 @@ export async function POST(request) {
             stage_name: stage.name,
             status: stage.status,
             project_name: stage.lot?.project?.name || "Unknown Project",
-            client_name: stage.lot?.project?.client?.client_name || "Unknown Client",
+            client_name:
+              stage.lot?.project?.client?.client_name || "Unknown Client",
           },
-          "stage_completed"
+          "stage_completed",
         );
       } catch (notificationError) {
-        console.error("Failed to send stage completion notification:", notificationError);
+        console.error(
+          "Failed to send stage completion notification:",
+          notificationError,
+        );
         // Don't fail the request if notification fails
       }
     }
-    
+
     if (!logged) {
-      console.error(`Failed to log stage creation: ${stage.stage_id} - ${stage.name}`);
+      console.error(
+        `Failed to log stage creation: ${stage.stage_id} - ${stage.name}`,
+      );
       return NextResponse.json(
         {
           status: true,
           message: "Stage created successfully",
           data: stage,
-          warning: "Note: Creation succeeded but logging failed"
+          warning: "Note: Creation succeeded but logging failed",
         },
-        { status: 201 }
+        { status: 201 },
       );
     }
     return NextResponse.json(
       { status: true, message: "Stage created successfully", data: stage },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error in POST /api/stage/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

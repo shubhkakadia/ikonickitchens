@@ -15,6 +15,52 @@ export async function PATCH(request, { params }) {
     const { name, status, notes, startDate, endDate, assigned_to } =
       await request.json();
 
+    const existingStage = await prisma.stage.findUnique({
+      where: { stage_id: id },
+      include: {
+        lot: {
+          select: { startDate: true, installationDueDate: true },
+        },
+      },
+    });
+
+    if (!existingStage) {
+      return NextResponse.json(
+        { status: false, message: "Stage not found" },
+        { status: 404 },
+      );
+    }
+
+    const stageStartDate = startDate ? new Date(startDate) : null;
+    const stageEndDate = endDate ? new Date(endDate) : null;
+    if (stageStartDate || stageEndDate) {
+      if (
+        !existingStage.lot.startDate ||
+        !existingStage.lot.installationDueDate
+      ) {
+        return NextResponse.json(
+          {
+            status: false,
+            message:
+              "Set the parent lot start and installation due dates before scheduling a stage",
+          },
+          { status: 400 },
+        );
+      }
+      if (
+        (stageStartDate && stageStartDate < existingStage.lot.startDate) ||
+        (stageEndDate && stageEndDate > existingStage.lot.installationDueDate)
+      ) {
+        return NextResponse.json(
+          {
+            status: false,
+            message: "Stage dates must stay within the parent lot date range",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     // Use transaction to ensure atomicity - all operations succeed or all fail
     const stage = await prisma.$transaction(async (tx) => {
       // Update the stage basic information

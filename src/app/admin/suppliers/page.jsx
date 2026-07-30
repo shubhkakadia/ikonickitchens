@@ -53,7 +53,7 @@ export default function page() {
   const [suppliers, setSuppliers] = useState([]);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
@@ -199,6 +199,7 @@ export default function page() {
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
+      setError(null);
       // Get the session token when needed
       const sessionToken = getToken();
 
@@ -244,6 +245,7 @@ export default function page() {
       setSortField(field);
       setSortOrder("asc");
     }
+    setShowSortDropdown(false);
   };
 
   const handleItemsPerPageChange = (value) => {
@@ -270,6 +272,7 @@ export default function page() {
 
   const handleReset = () => {
     resetFilters();
+    setCurrentPage(1);
   };
 
   const handleColumnToggle = (column) => {
@@ -414,7 +417,7 @@ export default function page() {
                     <div className="p-4 shrink-0 border-b border-slate-200">
                       <div className="flex items-center justify-between gap-3">
                         {/* search bar */}
-                        <div className="flex items-center gap-2 flex-1 max-w-sm relative">
+                        <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
                           <Search className="h-4 w-4 absolute left-3 text-slate-400" />
                           <input
                             type="text"
@@ -455,6 +458,24 @@ export default function page() {
                                     className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
                                   >
                                     Name {getSortIcon("name")}
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleSort("total_statement_due")
+                                    }
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Total Statement Due{" "}
+                                    {getSortIcon("total_statement_due")}
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleSort("active_po_count")
+                                    }
+                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                  >
+                                    Active PO Count{" "}
+                                    {getSortIcon("active_po_count")}
                                   </button>
                                 </div>
                               </div>

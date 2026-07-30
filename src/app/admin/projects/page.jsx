@@ -142,37 +142,26 @@ export default function page() {
           project.client?.client_name?.toLowerCase().includes(searchLower);
         if (!matchesSearch) return false;
       }
-      // Client Name filter
-      if (selectedClientName.length === 0) {
-        return false;
+      // Client filters follow the Employees table convention: an empty
+      // selection means no restriction while the available options load.
+      if (selectedClientName.length > 0) {
+        const projectClientName = project.client?.client_name;
+        const matchesUnassigned =
+          selectedClientName.includes("Unassigned") && !projectClientName;
+        const matchesClientName =
+          !!projectClientName && selectedClientName.includes(projectClientName);
+
+        if (!matchesUnassigned && !matchesClientName) return false;
       }
 
-      // Check if "Unassigned" is selected and project has no client
-      if (selectedClientName.includes("Unassigned")) {
-        if (!project.client?.client_name) return true;
-      }
-
-      // Check if the project's client name is in the selected list
-      const projectClientName = project.client?.client_name;
-      if (
-        !projectClientName ||
-        !selectedClientName.includes(projectClientName)
-      ) {
-        return false;
-      }
-
-      // Client Type filter
-      if (selectedClientType.length === 0) {
-        return false;
-      }
-
-      // Check if the project's client type is in the selected list
-      const projectClientType = project.client?.client_type;
-      if (
-        !projectClientType ||
-        !selectedClientType.includes(projectClientType)
-      ) {
-        return false;
+      if (selectedClientType.length > 0) {
+        const projectClientType = project.client?.client_type;
+        if (
+          !projectClientType ||
+          !selectedClientType.includes(projectClientType)
+        ) {
+          return false;
+        }
       }
 
       return true;
@@ -262,6 +251,8 @@ export default function page() {
 
   const fetchProjects = async () => {
     try {
+      setLoading(true);
+      setError("");
       // Get the session token when needed
       const sessionToken = getToken();
 
@@ -284,50 +275,43 @@ export default function page() {
         data: {},
       };
 
-      axios
-        .request(config)
-        .then((response) => {
-          setLoading(false);
-          if (response.data.status) {
-            setProjects(response.data.data);
-            // Extract distinct client names from projects and add "Unassigned" option
-            const names = [
-              ...new Set(
-                response.data.data
-                  .map((project) => project.client?.client_name)
-                  .filter(Boolean),
-              ),
-            ];
-            const types = [
-              ...new Set(
-                response.data.data
-                  .map((project) => project.client?.client_type)
-                  .filter(Boolean),
-              ),
-            ];
+      const response = await axios.request(config);
 
-            // Add "Unassigned" option if there are projects without clients
-            const hasUnassignedProjects = response.data.data.some(
-              (project) => !project.client?.client_name,
-            );
+      if (response.data.status) {
+        setProjects(response.data.data);
+        // Extract distinct client names from projects and add "Unassigned" option
+        const names = [
+          ...new Set(
+            response.data.data
+              .map((project) => project.client?.client_name)
+              .filter(Boolean),
+          ),
+        ];
+        const types = [
+          ...new Set(
+            response.data.data
+              .map((project) => project.client?.client_type)
+              .filter(Boolean),
+          ),
+        ];
 
-            if (hasUnassignedProjects) {
-              names.push("Unassigned");
-            }
+        // Add "Unassigned" option if there are projects without clients
+        const hasUnassignedProjects = response.data.data.some(
+          (project) => !project.client?.client_name,
+        );
 
-            setDistinctClientName(names);
-            setDistinctClientType(types);
-          } else {
-            setError(response.data.message);
-          }
-        })
-        .catch((error) => {
-          setLoading(false);
-          console.error("Error fetching projects:", error);
-          setError(error.response?.data?.message || "Failed to fetch projects");
-        });
+        if (hasUnassignedProjects) {
+          names.push("Unassigned");
+        }
+
+        setDistinctClientName(names);
+        setDistinctClientType(types);
+      } else {
+        setError(response.data.message);
+      }
     } catch (error) {
       console.error("Error fetching projects:", error);
+      setError(error.response?.data?.message || "Failed to fetch projects");
     } finally {
       setLoading(false);
     }
@@ -347,6 +331,7 @@ export default function page() {
       setSortField(field);
       setSortOrder("asc");
     }
+    setShowSortDropdown(false);
   };
 
   const handleClientNameToggle = (clientName) => {
@@ -429,6 +414,7 @@ export default function page() {
 
   const handleReset = () => {
     resetFilters();
+    setCurrentPage(1);
   };
 
   const getSortIcon = (field) => {

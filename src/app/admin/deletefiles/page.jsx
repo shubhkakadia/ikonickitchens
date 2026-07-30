@@ -859,7 +859,7 @@ export default function DeleteFilesPage() {
                         </div>
 
                         {/* Scrollable Content Section */}
-                        <div className="flex-1 overflow-auto p-4">
+                        <div className="flex-1 overflow-auto">
                           {loading ? (
                             <div className="flex items-center justify-center min-h-[400px]">
                               <div className="text-center">
@@ -1029,7 +1029,7 @@ export default function DeleteFilesPage() {
                         </div>
 
                         {/* Records Table */}
-                        <div className="flex-1 overflow-auto p-4">
+                        <div className="flex-1 overflow-auto">
                           {recordsLoading ? (
                             <div className="flex items-center justify-center min-h-[400px]">
                               <div className="text-center">
@@ -1064,26 +1064,26 @@ export default function DeleteFilesPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="overflow-x-auto">
-                              <table className="w-full border-collapse">
-                                <thead>
-                                  <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                            <div className="min-w-full">
+                              <table className="min-w-full divide-y divide-slate-200">
+                                <thead className="bg-slate-50 sticky top-0 z-10">
+                                  <tr>
+                                    <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                       ID (UUID)
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                       Entity ID
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                       Entity Type
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                       Slug
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                       Deleted At
                                     </th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                    <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
                                       Actions
                                     </th>
                                   </tr>

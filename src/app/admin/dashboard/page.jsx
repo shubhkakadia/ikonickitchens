@@ -56,23 +56,23 @@ ChartJS.register(
 
 // Color palette for charts
 const CHART_COLORS = [
-  "#B92F34", // Primary Red
-  "#000080", // Primary Blue
-  "#059669", // Emerald
-  "#7C3AED", // Violet
-  "#F59E0B", // Amber
-  "#EC4899", // Pink
-  "#06B6D4", // Cyan
-  "#8B5CF6", // Purple
+  "#B92F34", // Brand Red
+  "#000080", // Brand Navy
+  "#0F766E", // Teal
+  "#334155", // Slate
+  "#D96D70", // Soft Red
+  "#3343A0", // Soft Navy
+  "#14B8A6", // Light Teal
+  "#64748B", // Steel
 ];
 
 // Supplier colors for line chart
 const SUPPLIER_COLORS = {
   polytec: "#B92F34",
   eurofit: "#000080",
-  hafele: "#059669",
-  blum: "#7C3AED",
-  other: "#F59E0B",
+  hafele: "#0F766E",
+  blum: "#334155",
+  other: "#D96D70",
 };
 
 const barChartOptions = {
@@ -125,14 +125,14 @@ const KPICard = ({
 }) => (
   <div
     onClick={onClick}
-    className={`bg-white rounded-lg border border-slate-200 p-2 md:p-2.5 xl:p-3 transition-all duration-300 group ${onClick ? "cursor-pointer" : ""}`}
+    className={`bg-white rounded-xl border border-slate-200 p-2 md:p-2.5 xl:p-3  transition-all duration-300 group hover:border-primary/25 hover:shadow-md ${onClick ? "cursor-pointer" : ""}`}
   >
     <div className="flex items-start justify-between">
       <div className="flex-1">
         <p className="text-[9px] md:text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
           {title}
         </p>
-        <h3 className="text-lg md:text-xl font-bold text-slate-800 leading-tight">
+        <h3 className="text-lg md:text-xl font-bold text-primary leading-tight">
           {prefix}
           {typeof value === "number" ? value.toLocaleString() : value}
         </h3>
@@ -154,10 +154,11 @@ const KPICard = ({
 // Chart Card Wrapper Component
 const ChartCard = ({ title, children, className = "" }) => (
   <div
-    className={`bg-white rounded-xl border border-slate-200 overflow-hidden ${className}`}
+    className={`bg-white rounded-xl border border-slate-200  overflow-hidden ${className}`}
   >
-    <div className="px-5 py-4 border-b border-slate-100">
-      <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+    <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+      <span className="h-5 w-1 rounded-full bg-secondary" />
+      <h3 className="text-sm font-semibold text-primary">{title}</h3>
     </div>
     <div className="p-5">{children}</div>
   </div>
@@ -731,11 +732,11 @@ export default function page() {
 
   return (
     <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
+      <div className="flex h-screen bg-slate-50">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <CRMLayout />
-          <div className="h-full w-full overflow-auto">
+          <div className="flex-1 w-full overflow-auto">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
@@ -764,16 +765,16 @@ export default function page() {
                 </div>
               </div>
             ) : (
-              <div className="p-4 md:p-5 xl:p-6 space-y-4">
+              <div className="p-4 space-y-4">
                 {/* Header with Greeting */}
-                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6 xl:mb-8">
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6 xl:mb-8 rounded-2xl border border-primary/10 bg-white p-5">
                   <div>
                     <div className="flex items-center gap-3 mb-3">
                       <div>
-                        <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-slate-800">
+                        <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-primary">
                           {getGreeting()}
                         </h1>
-                        <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-slate-800">
+                        <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-primary">
                           {employeeData && (
                             <span className="text-secondary">
                               {employeeData.first_name}
@@ -810,12 +811,12 @@ export default function page() {
                           className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
                           title={`Last updated: ${formatTimestampAdelaide(storageUsage.timestamp)} (Adelaide time)`}
                         >
-                          <Database className="w-4 h-4 text-blue-600" />
+                          <Database className="w-4 h-4 text-primary" />
                           <span>Storage</span>
                           <ChevronDown className="w-4 h-4" />
                         </button>
                         {storageDropdownOpen && (
-                          <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg z-10 shadow-lg p-2">
+                          <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg z-10  p-2">
                             <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50">
                               <span className="text-xs font-medium text-slate-600">
                                 DB
@@ -998,7 +999,7 @@ export default function page() {
                         title="Active Projects"
                         value={dashboardData?.activeProjects || 0}
                         icon={FolderKanban}
-                        color="bg-linear-to-br from-blue-500 to-blue-600"
+                        color="bg-linear-to-br from-primary to-primary/75"
                         subtitle="Currently in progress"
                         onClick={() => router.push("/admin/projects")}
                       />
@@ -1006,14 +1007,14 @@ export default function page() {
                         title="Active Lots"
                         value={dashboardData?.activeLots || 0}
                         icon={Layers}
-                        color="bg-linear-to-br from-emerald-500 to-emerald-600"
+                        color="bg-linear-to-br from-primary/80 to-slate-700"
                         subtitle="Across all projects"
                       />
                       <KPICard
                         title="Active MTOs"
                         value={dashboardData?.activeMTOs || 0}
                         icon={ClipboardList}
-                        color="bg-linear-to-br from-violet-500 to-violet-600"
+                        color="bg-linear-to-br from-secondary to-secondary/80"
                         subtitle="Materials to order"
                         onClick={() =>
                           router.push("/admin/suppliers/materialstoorder")
@@ -1023,7 +1024,7 @@ export default function page() {
                         title="Purchase Orders"
                         value={dashboardData?.activePurchaseOrders || 0}
                         icon={ShoppingCart}
-                        color="bg-linear-to-br from-amber-500 to-amber-600"
+                        color="bg-linear-to-br from-slate-700 to-slate-800"
                         subtitle="Active orders"
                         onClick={() =>
                           router.push("/admin/suppliers/purchaseorder")
@@ -1033,7 +1034,7 @@ export default function page() {
                         title="Projects Completed"
                         value={dashboardData?.projectsCompletedThisMonth || 0}
                         icon={Target}
-                        color="bg-linear-to-br from-green-500 to-green-600"
+                        color="bg-linear-to-br from-emerald-600 to-emerald-700"
                         subtitle="This month"
                       />
                       {/* <KPICard
@@ -1058,8 +1059,8 @@ export default function page() {
                       {sortedStagesDue.length > 0 ? (
                         <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
                           <table className="w-full">
-                            <thead className="sticky top-0 bg-white">
-                              <tr className="border-b border-slate-100">
+                            <thead className="sticky top-0 bg-slate-50">
+                              <tr className="border-b border-primary/10">
                                 <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                   Stage
                                 </th>
@@ -1084,7 +1085,7 @@ export default function page() {
                                 return (
                                   <tr
                                     key={stage.stage_id}
-                                    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                                    className="border-b border-slate-100 hover:bg-primary/3 transition-colors"
                                   >
                                     <td className="py-3 px-3">
                                       <span className="inline-flex items-center gap-2">
@@ -1154,12 +1155,15 @@ export default function page() {
                   </div>
                   <div className="xl:flex-1 min-w-0">
                     {/* Upcoming Meetings */}
-                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col h-full">
+                    <div className="bg-white rounded-xl border border-slate-200  overflow-hidden flex flex-col h-full">
                       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-slate-700">
-                          Upcoming Meetings
-                        </h3>
-                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <div className="flex items-center gap-2">
+                          <span className="h-5 w-1 rounded-full bg-secondary" />
+                          <h3 className="text-sm font-semibold text-primary">
+                            Upcoming Meetings
+                          </h3>
+                        </div>
+                        <Calendar className="w-4 h-4 text-primary/60" />
                       </div>
                       <div className="divide-y divide-slate-100 flex-1 overflow-y-auto">
                         {dashboardData?.upcomingMeetings &&
@@ -1200,7 +1204,7 @@ export default function page() {
                                       {meeting.lots.slice(0, 2).map((l) => (
                                         <span
                                           key={l.lot_id}
-                                          className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-50 text-blue-600 truncate max-w-20"
+                                          className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-medium bg-primary/10 text-primary truncate max-w-20"
                                         >
                                           {l.lot_id}
                                         </span>
@@ -1233,7 +1237,7 @@ export default function page() {
                                                     className="w-6 h-6 rounded-full border-2 border-white object-cover"
                                                   />
                                                 ) : (
-                                                  <div className="w-6 h-6 rounded-full border-2 border-white bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                                                  <div className="w-6 h-6 rounded-full border-2 border-white bg-linear-to-br from-primary to-primary/75 flex items-center justify-center">
                                                     <span className="text-[10px] font-bold text-white">
                                                       {participant.employee
                                                         ?.first_name?.[0] ||
@@ -1281,7 +1285,7 @@ export default function page() {
                       <div className="p-3 border-t border-slate-100 bg-slate-50">
                         <button
                           onClick={() => router.push("/admin/calendar")}
-                          className="cursor-pointer w-full py-2 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-white rounded-lg border border-slate-200 transition-all text-center"
+                          className="cursor-pointer w-full py-2 text-xs font-medium text-primary hover:bg-primary/5 rounded-lg border border-primary/15 transition-all text-center"
                         >
                           View All Meetings
                         </button>
@@ -1348,8 +1352,8 @@ export default function page() {
                     {dashboardData?.top10items?.length > 0 ? (
                       <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                         <table className="w-full">
-                          <thead className="sticky top-0 bg-white">
-                            <tr className="border-b border-slate-100">
+                          <thead className="sticky top-0 bg-slate-50">
+                            <tr className="border-b border-primary/10">
                               <th className="text-center py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-10">
                                 #
                               </th>
@@ -1368,10 +1372,10 @@ export default function page() {
                             {dashboardData.top10items.map((item, index) => (
                               <tr
                                 key={item.item_id}
-                                className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+                                className="border-b border-slate-100 hover:bg-primary/3 transition-colors"
                               >
                                 <td className="py-3 px-2 text-center">
-                                  <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-linear-to-br from-slate-600 to-slate-700 rounded-full">
+                                  <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-linear-to-br from-primary to-primary/75 rounded-full">
                                     {index + 1}
                                   </span>
                                 </td>

@@ -2059,7 +2059,7 @@ export default function page() {
               </div>
             ) : (
               <>
-                <div className="px-4 py-2 shrink-0">
+                <div className="px-8 py-2 shrink-0">
                   <div className="flex justify-between items-center">
                     <h1 className="text-xl font-bold text-slate-700">
                       Lots at a Glance
@@ -2093,7 +2093,7 @@ export default function page() {
                   </div>
                 </div>
 
-                <div className="px-4 shrink-0">
+                <div className="px-8 shrink-0">
                   <div className="flex gap-1 border-b border-slate-200">
                     <button
                       onClick={() => setActiveTab("overview")}
@@ -2119,7 +2119,7 @@ export default function page() {
                 </div>
 
                 {activeTab === "overview" ? (
-                  <div className="flex-1 flex flex-col overflow-hidden px-4 py-4">
+                  <div className="flex-1 flex flex-col overflow-hidden px-8 py-4">
                     <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
                       {/* Fixed Header Section */}
                       <div className="p-4 shrink-0 border-b border-slate-200">

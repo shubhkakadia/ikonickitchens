@@ -1375,8 +1375,8 @@ export default function page() {
       "Client Name",
       "Project Name",
       "Lot ID",
-      "Percentage Completed",
       ...stages,
+      "Percentage Completed",
     ];
   }, []);
 
@@ -1385,8 +1385,8 @@ export default function page() {
     "Client Name",
     "Project Name",
     "Lot ID",
-    "Percentage Completed",
     ...stages,
+    "Percentage Completed",
   ]);
 
   useEffect(() => {
@@ -2333,25 +2333,11 @@ export default function page() {
                             <table className="min-w-full divide-y divide-slate-200 table-fixed">
                               <thead className="bg-slate-50 sticky top-0 z-20">
                                 <tr>
-                                  <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[250px] min-w-[250px] max-w-[250px]">
+                                  <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[180px] min-w-[180px] max-w-[180px]">
                                     Client Name
                                   </th>
-                                  <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-[200px] z-30 bg-slate-50 w-[500px] min-w-[500px] max-w-[500px]">
+                                  <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-[180px] z-30 bg-slate-50 w-[350px] min-w-[350px] max-w-[350px]">
                                     Project Name - Lot Number
-                                  </th>
-                                  <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px] border-r border-slate-200 sticky top-0 left-[700px] z-30 bg-slate-50">
-                                    <div className="flex flex-col items-center justify-end gap-2 h-full">
-                                      <span
-                                        className="whitespace-nowrap"
-                                        style={{
-                                          writingMode: "vertical-rl",
-                                          textOrientation: "mixed",
-                                          transform: "rotate(180deg)",
-                                        }}
-                                      >
-                                        Percentage Completed
-                                      </span>
-                                    </div>
                                   </th>
                                   {stages.map((stage) => {
                                     const filterStatus =
@@ -2406,6 +2392,20 @@ export default function page() {
                                       </th>
                                     );
                                   })}
+                                  <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px] border-l border-slate-200">
+                                    <div className="flex flex-col items-center justify-end gap-2 h-full">
+                                      <span
+                                        className="whitespace-nowrap"
+                                        style={{
+                                          writingMode: "vertical-rl",
+                                          textOrientation: "mixed",
+                                          transform: "rotate(180deg)",
+                                        }}
+                                      >
+                                        Percentage Completed
+                                      </span>
+                                    </div>
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody className="bg-white divide-y divide-slate-200">
@@ -2442,7 +2442,7 @@ export default function page() {
                                         onClick={(e) =>
                                           handleClientNameClick(lot, e)
                                         }
-                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[250px] min-w-[250px] max-w-[250px]"
+                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[180px] min-w-[180px] max-w-[180px]"
                                         title="Click to open client"
                                       >
                                         <span>
@@ -2454,14 +2454,11 @@ export default function page() {
                                         onClick={(e) =>
                                           handleProjectNameClick(lot, e)
                                         }
-                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-[200px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[500px] min-w-[500px] max-w-[500px]"
+                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-[180px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[350px] min-w-[350px] max-w-[350px]"
                                         title="Click to open project"
                                       >
                                         {lot.project?.name || "N/A"} -{" "}
                                         {lot.lot_id}
-                                      </td>
-                                      <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center sticky left-[700px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px]">
-                                        {getPercentageCompleted(lot)}%
                                       </td>
                                       {stages.map((stage) => {
                                         const status = getStageStatus(
@@ -2577,6 +2574,9 @@ export default function page() {
                                           </td>
                                         );
                                       })}
+                                      <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center border-l border-slate-200 whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px]">
+                                        {getPercentageCompleted(lot)}%
+                                      </td>
                                     </tr>
                                   ))
                                 )}

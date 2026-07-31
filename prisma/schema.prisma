@@ -166,20 +166,21 @@ model contact {
 }
 
 model client {
-  client_id      String    @id @default(uuid())
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  client_type    String
-  client_slug    String?   @unique
-  client_name    String    @unique
-  client_address String?   @db.LongText
-  client_phone   String?
-  client_email   String?
-  client_website String?
-  client_notes   String?   @db.LongText
-  is_deleted     Boolean   @default(false)
-  contacts       contact[]
-  projects       project[]
+  client_id         String             @id @default(uuid())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  client_type       String
+  client_slug       String?            @unique
+  client_name       String             @unique
+  client_address    String?            @db.LongText
+  client_phone      String?
+  client_email      String?
+  client_website    String?
+  client_notes      String?            @db.LongText
+  is_deleted        Boolean            @default(false)
+  contacts          contact[]
+  projects          project[]
+  customer_invoices customer_invoice[]
 
   @@index([client_name])
   @@index([client_id])
@@ -204,32 +205,79 @@ model project {
 }
 
 model lot {
-  id                     String              @id @default(uuid())
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  lot_id                 String              @unique
-  project_id             String
-  name                   String
-  status                 LotStatus           @default(ACTIVE)
-  startDate              DateTime?
-  installationDueDate    DateTime?
-  notes                  String?             @db.LongText
-  installer              employees?          @relation(fields: [installer_id], references: [employee_id], onDelete: SetNull)
-  installer_id           String?
-  installer_notes        String?             @db.LongText
-  materials_to_orders_id String?
-  material_selection_id  String?             @unique
-  is_deleted             Boolean             @default(false)
-  materials_to_orders    materials_to_order? @relation(fields: [materials_to_orders_id], references: [id], onDelete: SetNull)
-  project                project             @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
-  tabs                   lot_tab[]
-  material_selection     material_selection?
-  stages                 stage[]
-  meetingLots            meeting[]
-  stock_transactions     stock_transaction[]
+  id                      String              @id @default(uuid())
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  lot_id                  String              @unique
+  project_id              String
+  name                    String
+  status                  LotStatus           @default(ACTIVE)
+  startDate               DateTime?
+  installationDueDate     DateTime?
+  notes                   String?             @db.LongText
+  installer               employees?          @relation(fields: [installer_id], references: [employee_id], onDelete: SetNull)
+  installer_id            String?
+  installer_notes         String?             @db.LongText
+  materials_to_orders_id  String?
+  material_selection_id   String?             @unique
+  is_deleted              Boolean             @default(false)
+  contract_amount         Decimal?            @db.Decimal(10, 2)
+  revised_contract_amount Decimal?            @db.Decimal(10, 2)
+  total_paid_amount       Decimal?            @db.Decimal(10, 2)
+  materials_to_orders     materials_to_order? @relation(fields: [materials_to_orders_id], references: [id], onDelete: SetNull)
+  project                 project             @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  tabs                    lot_tab[]
+  material_selection      material_selection?
+  stages                  stage[]
+  meetingLots             meeting[]
+  stock_transactions      stock_transaction[]
+  variations              variation[]
+  customer_invoices       customer_invoice[]
 
   @@index([project_id])
   @@index([materials_to_orders_id], map: "lot_materials_to_orders_id_fkey")
+}
+
+enum variation_status {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+model variation {
+  id                  String            @id @default(uuid())
+  date                DateTime
+  name                String
+  description         String?           @db.LongText
+  amount              Decimal           @db.Decimal(10, 2)
+  status              variation_status  @default(PENDING)
+  lot_id              String
+  lot                 lot               @relation(fields: [lot_id], references: [lot_id], onDelete: Cascade)
+  customer_invoice_id String?
+  customer_invoice    customer_invoice? @relation(fields: [customer_invoice_id], references: [id], onDelete: SetNull)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([lot_id])
+  @@index([date])
+}
+
+model customer_invoice {
+  id         String      @id @default(uuid())
+  invoice_no String      @unique
+  client_id  String
+  date       DateTime
+  amount     Decimal     @db.Decimal(10, 2)
+  paid_at    DateTime?
+  client     client      @relation(fields: [client_id], references: [client_id], onDelete: Cascade)
+  lot        lot[]
+  variation  variation[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([date])
 }
 
 model stage {

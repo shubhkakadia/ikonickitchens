@@ -2442,10 +2442,13 @@ export default function page() {
                                         onClick={(e) =>
                                           handleClientNameClick(lot, e)
                                         }
-                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[180px] min-w-[180px] max-w-[180px]"
-                                        title="Click to open client"
+                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[180px] min-w-[180px] max-w-[180px] overflow-hidden"
+                                        title={
+                                          lot.project?.client?.client_name ||
+                                          "N/A"
+                                        }
                                       >
-                                        <span>
+                                        <span className="block truncate">
                                           {lot.project?.client?.client_name ||
                                             "N/A"}
                                         </span>
@@ -2454,11 +2457,13 @@ export default function page() {
                                         onClick={(e) =>
                                           handleProjectNameClick(lot, e)
                                         }
-                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-[180px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[350px] min-w-[350px] max-w-[350px]"
-                                        title="Click to open project"
+                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-[180px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[350px] min-w-[350px] max-w-[350px] overflow-hidden"
+                                        title={`${lot.project?.name || "N/A"} - ${lot.lot_id}`}
                                       >
-                                        {lot.project?.name || "N/A"} -{" "}
-                                        {lot.lot_id}
+                                        <span className="block truncate">
+                                          {lot.project?.name || "N/A"} -{" "}
+                                          {lot.lot_id}
+                                        </span>
                                       </td>
                                       {stages.map((stage) => {
                                         const status = getStageStatus(

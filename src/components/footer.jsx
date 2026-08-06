@@ -266,9 +266,23 @@ export default function Footer() {
 
       {/* Bottom Bar */}
       <div className="container mx-auto px-4 py-4">
-        <div className="flex flex-col md:flex-row justify-between items-center">
+        <div className="flex flex-col items-center justify-between gap-2 md:flex-row">
           <div className="text-gray-400 text-sm mb-2 md:mb-0 text-center">
             © 2026 Ikonic Kitchens and Cabinets | All Rights Reserved
+          </div>
+          <div className="flex items-center gap-4 text-center text-sm">
+            <Link
+              href="/privacy-policy"
+              className="text-gray-400 transition-colors duration-200 hover:text-[#B92F34]"
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="/terms-of-service"
+              className="text-gray-400 transition-colors duration-200 hover:text-[#B92F34]"
+            >
+              Terms of Service
+            </Link>
           </div>
           <div className="text-gray-400 text-sm text-center">
             Developed by{" "}

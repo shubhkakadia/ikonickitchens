@@ -105,7 +105,7 @@ const FileItemWithNotes = ({
       }
 
       const response = await axios.patch(
-        `/api/lot_file/${file.id}`,
+        `/api/v1/lot_file/${file.id}`,
         { notes: notesValue },
         {
           headers: {
@@ -158,7 +158,7 @@ const FileItemWithNotes = ({
       }
 
       const response = await axios.post(
-        `/api/maintenance_checklist/upsert`,
+        `/api/v1/maintenance_checklist/upsert`,
         {
           lot_file_id: file.id,
           prepared_by_office: checklistData.preparedByOffice,

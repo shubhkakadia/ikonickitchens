@@ -95,7 +95,7 @@ export default function page() {
     const loadNextProjectId = async () => {
       try {
         const response = await axios.get(
-          `/api/project/next-id?client_id=${encodeURIComponent(client.client_id)}`,
+          `/api/v1/project/next-id?client_id=${encodeURIComponent(client.client_id)}`,
           { headers: { Authorization: `Bearer ${getToken()}` } },
         );
         if (response.data.status)
@@ -143,7 +143,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.get(`/api/client/${id}`, {
+      const response = await axios.get(`/api/v1/client/${id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -177,7 +177,7 @@ export default function page() {
       try {
         const token = getToken();
         const response = await axios.get(
-          `/api/client/slug-availability?slug=${encodeURIComponent(slug)}&excludeId=${encodeURIComponent(id)}`,
+          `/api/v1/client/slug-availability?slug=${encodeURIComponent(slug)}&excludeId=${encodeURIComponent(id)}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         setSlugAvailability(response.data.available);
@@ -241,7 +241,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.patch(`/api/client/${id}`, dataToSend, {
+      const response = await axios.patch(`/api/v1/client/${id}`, dataToSend, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -531,9 +531,12 @@ export default function page() {
         toast.error("No valid session found. Please login again.");
         return;
       }
-      const response = await axios.delete(`/api/client/${client.client_id}`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
+      const response = await axios.delete(
+        `/api/v1/client/${client.client_id}`,
+        {
+          headers: { Authorization: `Bearer ${sessionToken}` },
+        },
+      );
       if (!response?.data?.status) {
         toast.error(response?.data?.message || "Failed to delete client");
         return;
@@ -636,7 +639,7 @@ export default function page() {
         lots: lotsToSend,
       };
 
-      const response = await axios.post("/api/project/create", data, {
+      const response = await axios.post("/api/v1/project/create", data, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },

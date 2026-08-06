@@ -34,6 +34,29 @@ This is an API routing change. It does **not** require a Prisma schema or databa
 
 ---
 
+## Migration status — 6 August 2026
+
+The routing and web-call migration is complete:
+
+- [x] All 88 current API route files are now under `src/app/api/v1`.
+- [x] The frontend application calls have been updated to use the `/api/v1/...` prefix.
+- [x] A repository scan found 212 frontend references to `/api/v1/` and no remaining direct unversioned `/api/...` application calls outside API route implementations.
+- [x] Added shared API version and JSON response helpers in `src/lib/api/`.
+- [x] Extracted the `health`, `signin`, `signout`, and `signup` v1 operations into server-only handlers; their App Router files are now thin adapters.
+
+The unversioned route entry points are no longer present in the repository. This means deployed clients must use `/api/v1`; add temporary legacy adapters before release if an older web deployment or another installed client still needs `/api/...` URLs. The following work is still required before the migration can be considered fully complete:
+
+- [ ] Decide whether legacy compatibility routes are required and, if so, add thin adapters that delegate to the v1 implementation.
+- [ ] Document the remaining public v1 endpoints in `docs/openapi/v1.yaml` (health and authentication are complete).
+- [ ] Add and run v1/legacy contract tests, including upload and range-request coverage.
+- [ ] Run `npm run lint`, `npm run build`, and staging smoke tests for `MASTER`, `ADMIN`, and `MANAGER` users.
+- [ ] Configure mobile environments, secure token storage, and v1-only mobile services.
+- [ ] Add version/client observability and publish a legacy-route deprecation and sunset policy.
+
+This guide now serves as the completion checklist for the remaining validation, mobile, and release work.
+
+---
+
 ## 1. Versioning rules
 
 ### 1.1 Use URL path versioning
@@ -75,7 +98,7 @@ The existing API uses action-oriented paths such as `/all`, `/create`, and `/ups
 
 ## 2. Current repository assessment
 
-At the time of writing, the backend contains 78 Next.js App Router `route.js` files under `src/app/api`. Frontend calls are mostly embedded directly in components using `axios` and paths such as `"/api/client/all"`.
+The backend has 88 Next.js App Router route files, all under `src/app/api/v1`. Frontend application calls have been migrated to `/api/v1/...`.
 
 Authentication is already suitable for native mobile clients:
 
@@ -94,7 +117,7 @@ Important current characteristics to retain in v1:
 - Upload routes handle multipart bodies, file streaming, range requests, and downloads.
 - Sign-in is rate limited.
 
-Before implementation, create a tracking issue or checklist for every route returned by:
+The route inventory has been migrated. Retain it as a verification checklist for every route returned by:
 
 ```bash
 find src/app/api -name 'route.js' -o -name 'route.ts' | sort
@@ -102,16 +125,16 @@ find src/app/api -name 'route.js' -o -name 'route.ts' | sort
 
 The route groups that need a v1 equivalent are:
 
-| Domain | Current route group |
-| --- | --- |
-| Authentication | `signin`, `signout`, `signup` |
-| Access and users | `user`, `module_access`, `notification_config` |
-| Core business | `client`, `contact`, `project`, `lot`, `stage`, `employee` |
-| Inventory | `item`, `stock_tally`, `stock_transaction`, `reserve_item_stock` |
-| Procurement | `supplier`, `materials_to_order`, `materials_to_order_item`, `purchase_order` |
-| Documents | `lot_file`, `lot_tab_notes`, `uploads`, `deletedmedia`, `deletedrecords` |
-| Scheduling and operations | `meeting`, `maintenance_checklist`, `dashboard`, `search`, `logs` |
-| Configuration and operations | `config`, `health`, `admin/cleanup-sessions` |
+| Domain                       | Current route group                                                           |
+| ---------------------------- | ----------------------------------------------------------------------------- |
+| Authentication               | `signin`, `signout`, `signup`                                                 |
+| Access and users             | `user`, `module_access`, `notification_config`                                |
+| Core business                | `client`, `contact`, `project`, `lot`, `stage`, `employee`                    |
+| Inventory                    | `item`, `stock_tally`, `stock_transaction`, `reserve_item_stock`              |
+| Procurement                  | `supplier`, `materials_to_order`, `materials_to_order_item`, `purchase_order` |
+| Documents                    | `lot_file`, `lot_tab_notes`, `uploads`, `deletedmedia`, `deletedrecords`      |
+| Scheduling and operations    | `meeting`, `maintenance_checklist`, `dashboard`, `search`, `logs`             |
+| Configuration and operations | `config`, `health`, `admin/cleanup-sessions`                                  |
 
 ---
 
@@ -170,8 +193,8 @@ Do not expose Prisma records indiscriminately. Explicit response selections are 
 Create `src/lib/api/version.js`:
 
 ```js
-export const CURRENT_API_VERSION = "v1"
-export const CURRENT_API_PREFIX = `/api/${CURRENT_API_VERSION}`
+export const CURRENT_API_VERSION = "v1";
+export const CURRENT_API_PREFIX = `/api/${CURRENT_API_VERSION}`;
 ```
 
 The server does not need this constant to discover routes, but clients, tests, logs, and deprecation helpers should share it.
@@ -181,13 +204,10 @@ The server does not need this constant to discover routes, but clients, tests, l
 Create `src/lib/api/response.js`:
 
 ```js
-import { NextResponse } from "next/server"
+import { NextResponse } from "next/server";
 
 export function apiSuccess(data, message = "Success", status = 200) {
-  return NextResponse.json(
-    { status: true, message, data },
-    { status },
-  )
+  return NextResponse.json({ status: true, message, data }, { status });
 }
 
 export function apiError(message, status = 500, details) {
@@ -198,7 +218,7 @@ export function apiError(message, status = 500, details) {
       ...(details === undefined ? {} : { details }),
     },
     { status },
-  )
+  );
 }
 ```
 
@@ -206,18 +226,18 @@ Keep current v1 response keys compatible. Do not replace `status` with another f
 
 Recommended status codes:
 
-| Situation | Status |
-| --- | ---: |
-| Successful read/update | 200 |
-| Successful creation | 201 |
-| Invalid input | 400 |
-| Missing/expired token | 401 |
-| Authenticated but forbidden | 403 |
-| Missing record | 404 |
-| Duplicate/conflict | 409 |
-| Validation failure | 422 |
-| Rate limited | 429 |
-| Unexpected server failure | 500 |
+| Situation                   | Status |
+| --------------------------- | -----: |
+| Successful read/update      |    200 |
+| Successful creation         |    201 |
+| Invalid input               |    400 |
+| Missing/expired token       |    401 |
+| Authenticated but forbidden |    403 |
+| Missing record              |    404 |
+| Duplicate/conflict          |    409 |
+| Validation failure          |    422 |
+| Rate limited                |    429 |
+| Unexpected server failure   |    500 |
 
 If an existing endpoint returns a different success code and clients depend on it, retain that behavior in v1 and normalize it only in a future major version.
 
@@ -227,25 +247,25 @@ Start with a low-risk read endpoint, then sign-in, then one complete CRUD domain
 
 ```js
 // src/server/api/v1/clients/clientById.js
-import "server-only"
+import "server-only";
 
-import { prisma } from "@/lib/db"
-import { validateAdminAuth } from "@/lib/validators/authFromToken"
-import { withLogging } from "@/lib/withLogging"
-import { apiError, apiSuccess } from "@/lib/api/response"
+import { prisma } from "@/lib/db";
+import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { withLogging } from "@/lib/withLogging";
+import { apiError, apiSuccess } from "@/lib/api/response";
 
 export async function getClient(request, { params }) {
-  const authError = await validateAdminAuth(request)
-  if (authError) return authError
+  const authError = await validateAdminAuth(request);
+  if (authError) return authError;
 
-  const { id } = await params
+  const { id } = await params;
   const client = await prisma.client.findFirst({
     where: { client_id: id, is_deleted: false },
     // Keep the existing explicit select here.
-  })
+  });
 
-  if (!client) return apiError("Client not found", 404)
-  return apiSuccess(client, "Client fetched successfully")
+  if (!client) return apiError("Client not found", 404);
+  return apiSuccess(client, "Client fetched successfully");
 }
 
 export async function updateClient(request, { params }) {
@@ -265,7 +285,7 @@ export {
   getClient as GET,
   updateClient as PATCH,
   deleteClient as DELETE,
-} from "@/server/api/v1/clients/clientById"
+} from "@/server/api/v1/clients/clientById";
 ```
 
 During the compatibility period, replace the old route implementation with another thin adapter:
@@ -276,7 +296,7 @@ export {
   getClient as GET,
   updateClient as PATCH,
   deleteClient as DELETE,
-} from "@/server/api/v1/clients/clientById"
+} from "@/server/api/v1/clients/clientById";
 ```
 
 Both URLs now execute exactly the same code. Repeat this extraction pattern; do not copy the original route into both directories.
@@ -308,15 +328,15 @@ For each route:
 
 Example mappings:
 
-| Old | Versioned v1 |
-| --- | --- |
-| `POST /api/signin` | `POST /api/v1/signin` |
-| `POST /api/signout` | `POST /api/v1/signout` |
-| `GET /api/client/all` | `GET /api/v1/client/all` |
-| `GET/PATCH/DELETE /api/client/:id` | `GET/PATCH/DELETE /api/v1/client/:id` |
-| `GET /api/project/:id/used-materials` | `GET /api/v1/project/:id/used-materials` |
+| Old                                      | Versioned v1                                |
+| ---------------------------------------- | ------------------------------------------- |
+| `POST /api/signin`                       | `POST /api/v1/signin`                       |
+| `POST /api/signout`                      | `POST /api/v1/signout`                      |
+| `GET /api/client/all`                    | `GET /api/v1/client/all`                    |
+| `GET/PATCH/DELETE /api/client/:id`       | `GET/PATCH/DELETE /api/v1/client/:id`       |
+| `GET /api/project/:id/used-materials`    | `GET /api/v1/project/:id/used-materials`    |
 | `POST /api/maintenance_checklist/upsert` | `POST /api/v1/maintenance_checklist/upsert` |
-| `POST /api/uploads/lots/:path*` | `POST /api/v1/uploads/lots/:path*` |
+| `POST /api/uploads/lots/:path*`          | `POST /api/v1/uploads/lots/:path*`          |
 
 ### Step 6: Treat authentication as a public mobile contract
 
@@ -415,39 +435,39 @@ Choose a real removal date only after deployed clients are migrated. Track legac
 The current web app embeds `/api/...` strings throughout components. Create `src/lib/api/client.js`:
 
 ```js
-import axios from "axios"
-import { CURRENT_API_PREFIX } from "@/lib/api/version"
+import axios from "axios";
+import { CURRENT_API_PREFIX } from "@/lib/api/version";
 
 export const apiClient = axios.create({
   baseURL: CURRENT_API_PREFIX,
   timeout: 30_000,
-})
+});
 
 apiClient.interceptors.request.use((config) => {
   // Read the token from the existing auth state/storage abstraction.
-  const token = getStoredSessionToken()
+  const token = getStoredSessionToken();
 
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers.Authorization = `Bearer ${token}`;
   }
 
-  config.headers["X-Client-Platform"] = "web"
+  config.headers["X-Client-Platform"] = "web";
   config.headers["X-Client-Version"] =
-    process.env.NEXT_PUBLIC_APP_VERSION || "development"
+    process.env.NEXT_PUBLIC_APP_VERSION || "development";
 
-  return config
-})
+  return config;
+});
 
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      clearStoredSession()
+      clearStoredSession();
       // Notify the auth layer or redirect from a client-safe location.
     }
-    return Promise.reject(error)
+    return Promise.reject(error);
   },
-)
+);
 ```
 
 Import the real token getter and clear-session functions used by this project; do not create competing authentication storage.
@@ -465,24 +485,24 @@ Do not include secrets in any `NEXT_PUBLIC_*` variable.
 Components should not construct endpoint paths. Add modules such as `src/lib/api/clients.js`:
 
 ```js
-import { apiClient } from "./client"
+import { apiClient } from "./client";
 
 export async function listClients(params) {
-  const response = await apiClient.get("/client/all", { params })
-  return response.data
+  const response = await apiClient.get("/client/all", { params });
+  return response.data;
 }
 
 export async function getClient(id) {
-  const response = await apiClient.get(`/client/${encodeURIComponent(id)}`)
-  return response.data
+  const response = await apiClient.get(`/client/${encodeURIComponent(id)}`);
+  return response.data;
 }
 
 export async function updateClient(id, payload) {
   const response = await apiClient.patch(
     `/client/${encodeURIComponent(id)}`,
     payload,
-  )
-  return response.data
+  );
+  return response.data;
 }
 ```
 
@@ -493,13 +513,13 @@ This produces `/api/v1/client/...` because the Axios instance owns the prefix.
 Replace:
 
 ```js
-axios.get("/api/client/all", { headers: { Authorization: `Bearer ${token}` } })
+axios.get("/api/client/all", { headers: { Authorization: `Bearer ${token}` } });
 ```
 
 with:
 
 ```js
-listClients()
+listClients();
 ```
 
 Start with authentication and shared components (`SearchBar`, `ProtectedRoute`, `ContactSection`, `StockTally`), then migrate admin pages in the same domain order as the backend.
@@ -544,36 +564,36 @@ Production must use HTTPS. Do not disable iOS App Transport Security or Android 
 Example Axios setup for React Native/Expo:
 
 ```js
-import axios from "axios"
-import * as SecureStore from "expo-secure-store"
+import axios from "axios";
+import * as SecureStore from "expo-secure-store";
 
 export const apiClient = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_BASE_URL,
   timeout: 30_000,
-})
+});
 
 apiClient.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync("session_token")
+  const token = await SecureStore.getItemAsync("session_token");
 
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers.Authorization = `Bearer ${token}`;
   }
 
-  config.headers["X-Client-Platform"] = "mobile"
-  config.headers["X-Client-Version"] = getApplicationVersion()
-  return config
-})
+  config.headers["X-Client-Platform"] = "mobile";
+  config.headers["X-Client-Version"] = getApplicationVersion();
+  return config;
+});
 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      await SecureStore.deleteItemAsync("session_token")
-      notifySignedOut()
+      await SecureStore.deleteItemAsync("session_token");
+      notifySignedOut();
     }
-    return Promise.reject(error)
+    return Promise.reject(error);
   },
-)
+);
 ```
 
 Use the platform's secure credential storage (Keychain/Keystore through a library such as Expo SecureStore). Do not store the bearer token in AsyncStorage, Redux persistence, logs, analytics, crash reports, or source code.
@@ -684,13 +704,13 @@ For a future `v2`, keep `v1` handlers intact and add new `v2` handlers only wher
 
 The migration is complete when:
 
-- [ ] Every current endpoint has an inventoried `/api/v1` equivalent.
+- [x] Every current endpoint has an inventoried `/api/v1` equivalent.
 - [ ] One server handler owns each v1 operation; route files do not duplicate business logic.
 - [ ] Authentication, authorization, rate limits, activity logging, and soft deletion still work.
 - [ ] Upload, download, and range-request behavior is preserved.
 - [ ] The v1 contract is documented in OpenAPI.
 - [ ] The web app uses a centralized v1 client and domain service modules.
-- [ ] No unintended direct unversioned application calls remain in frontend code.
+- [x] No unintended direct unversioned application calls remain in frontend code.
 - [ ] The mobile app uses an absolute v1 base URL and secure token storage.
 - [ ] Automated tests cover v1 and temporary legacy aliases.
 - [ ] Staging smoke tests pass for all user types.

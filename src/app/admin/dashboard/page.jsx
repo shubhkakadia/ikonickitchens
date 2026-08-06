@@ -284,7 +284,7 @@ export default function page() {
       const year = dashboardYearFilter === "all" ? "all" : dashboardYearFilter;
 
       const response = await axios.post(
-        "/api/dashboard",
+        "/api/v1/dashboard",
         {
           month,
           year,
@@ -319,7 +319,7 @@ export default function page() {
 
       if (!sessionToken) return;
 
-      const response = await axios.get("/api/logs", {
+      const response = await axios.get("/api/v1/logs", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -362,7 +362,7 @@ export default function page() {
       if (!sessionToken) return;
 
       const response = await axios.get(
-        `/api/employee/${userData.user.employee_id}`,
+        `/api/v1/employee/${userData.user.employee_id}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,

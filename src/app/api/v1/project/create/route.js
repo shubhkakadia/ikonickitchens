@@ -10,7 +10,8 @@ export async function POST(request) {
   try {
     const authError = await validateAdminAuth(request);
     if (authError) return authError;
-    const { name, project_id, client_id, startDate, lots } = await request.json();
+    const { name, project_id, client_id, startDate, lots } =
+      await request.json();
     // Normalize client_id - handle empty string, null, or undefined
     const normalizedClientId =
       client_id && client_id.trim() !== ""
@@ -18,7 +19,10 @@ export async function POST(request) {
         : null;
     if (!normalizedClientId && !project_id) {
       return NextResponse.json(
-        { status: false, message: "Project ID is required when no client is selected" },
+        {
+          status: false,
+          message: "Project ID is required when no client is selected",
+        },
         { status: 400 },
       );
     }
@@ -49,23 +53,39 @@ export async function POST(request) {
             select: { client_id: true, client_slug: true },
           });
           if (!existingClient) {
-            const error = new Error("Client not found with client id: " + client_id);
+            const error = new Error(
+              "Client not found with client id: " + client_id,
+            );
             error.statusCode = 404;
             throw error;
           }
           const existingProjects = await tx.project.findMany({
-            where: { project_id: { startsWith: `IKC-${existingClient.client_slug}-` } },
+            where: {
+              project_id: { startsWith: `IKC-${existingClient.client_slug}-` },
+            },
             select: { project_id: true },
           });
-          const sequence = getNextProjectSequence(existingProjects.map(({ project_id: existingProjectId }) => existingProjectId), existingClient.client_slug);
+          const sequence = getNextProjectSequence(
+            existingProjects.map(
+              ({ project_id: existingProjectId }) => existingProjectId,
+            ),
+            existingClient.client_slug,
+          );
           if (!sequence) {
-            const error = new Error("Project ID sequence limit reached for this client");
+            const error = new Error(
+              "Project ID sequence limit reached for this client",
+            );
             error.statusCode = 409;
             throw error;
           }
-          generatedProjectId = formatProjectId(existingClient.client_slug, sequence);
+          generatedProjectId = formatProjectId(
+            existingClient.client_slug,
+            sequence,
+          );
           if (!generatedProjectId) {
-            const error = new Error("Client slug must be exactly 4 letters before creating a project");
+            const error = new Error(
+              "Client slug must be exactly 4 letters before creating a project",
+            );
             error.statusCode = 409;
             throw error;
           }

@@ -190,7 +190,7 @@ export default function page() {
     setReservingItemId(mtoItem.id);
     try {
       const response = await axios.post(
-        "/api/reserve_item_stock/create",
+        "/api/v1/reserve_item_stock/create",
         {
           item_id: mtoItem.item.item_id,
           quantity: mtoItem.quantity, // Reserve all available stock
@@ -259,7 +259,7 @@ export default function page() {
     setReservingItemId(mtoItemId);
     try {
       const response = await axios.delete(
-        `/api/reserve_item_stock/${reservationId}`,
+        `/api/v1/reserve_item_stock/${reservationId}`,
         { headers: { Authorization: `Bearer ${sessionToken}` } },
       );
 
@@ -318,9 +318,12 @@ export default function page() {
       const sessionToken = getToken();
       if (!sessionToken) return;
 
-      const response = await axios.get("/api/materials_to_order/cumulative", {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
+      const response = await axios.get(
+        "/api/v1/materials_to_order/cumulative",
+        {
+          headers: { Authorization: `Bearer ${sessionToken}` },
+        },
+      );
 
       if (response.data.status) {
         setCumulativeData(response.data.data || []);
@@ -414,7 +417,7 @@ export default function page() {
         });
         return;
       }
-      const response = await axios.get("/api/materials_to_order/all", {
+      const response = await axios.get("/api/v1/materials_to_order/all", {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (response.data.status) {
@@ -473,7 +476,7 @@ export default function page() {
     setIsSavingQuantityOrderedById((prev) => ({ ...prev, [mtoItemId]: true }));
     try {
       const response = await axios.patch(
-        `/api/materials_to_order_item/${mtoItemId}`,
+        `/api/v1/materials_to_order_item/${mtoItemId}`,
         { quantity_ordered: parsed },
         { headers: { Authorization: `Bearer ${sessionToken}` } },
       );
@@ -1008,7 +1011,7 @@ export default function page() {
       });
 
       const response = await axios.post(
-        `/api/uploads/materials-to-order/${selectedMtoForMedia.id}`,
+        `/api/v1/uploads/materials-to-order/${selectedMtoForMedia.id}`,
         formData,
         {
           headers: {
@@ -1068,7 +1071,7 @@ export default function page() {
       }
 
       const response = await axios.delete(
-        `/api/uploads/materials-to-order/${selectedMtoForMedia.id}?mediaId=${pendingDeleteMediaId}`,
+        `/api/v1/uploads/materials-to-order/${selectedMtoForMedia.id}?mediaId=${pendingDeleteMediaId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -1133,7 +1136,7 @@ export default function page() {
       }
 
       const response = await axios.delete(
-        `/api/materials_to_order/${mtoPendingDelete.id}`,
+        `/api/v1/materials_to_order/${mtoPendingDelete.id}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,

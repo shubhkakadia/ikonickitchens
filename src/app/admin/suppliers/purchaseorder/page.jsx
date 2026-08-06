@@ -184,7 +184,7 @@ export default function page() {
         });
         return;
       }
-      const response = await axios.get("/api/purchase_order/all", {
+      const response = await axios.get("/api/v1/purchase_order/all", {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (response.data.status) {
@@ -605,7 +605,7 @@ export default function page() {
 
       // Use the new batch receive endpoint (atomic transaction)
       const response = await axios.post(
-        `/api/purchase_order/received_items`,
+        `/api/v1/purchase_order/received_items`,
         {
           purchase_order_id: selectedPOId,
           items: itemsToProcess,
@@ -676,7 +676,7 @@ export default function page() {
       formData.append("invoice", file);
 
       const response = await axios.patch(
-        `/api/purchase_order/${poId}`,
+        `/api/v1/purchase_order/${poId}`,
         formData,
         {
           headers: {
@@ -739,7 +739,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/purchase_order/${invoicePendingDelete}`,
+        `/api/v1/purchase_order/${invoicePendingDelete}`,
         { invoice_url: null },
         {
           headers: {
@@ -802,7 +802,7 @@ export default function page() {
       }
 
       const response = await axios.delete(
-        `/api/purchase_order/${poPendingDelete.id}`,
+        `/api/v1/purchase_order/${poPendingDelete.id}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -862,7 +862,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/purchase_order/${poId}`,
+        `/api/v1/purchase_order/${poId}`,
         { status: "CANCELLED" },
         {
           headers: {
@@ -928,7 +928,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/purchase_order/${poId}`,
+        `/api/v1/purchase_order/${poId}`,
         { notes: notesValue },
         {
           headers: {

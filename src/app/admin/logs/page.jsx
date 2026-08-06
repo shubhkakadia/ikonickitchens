@@ -390,7 +390,7 @@ export default function page() {
         let config = {
           method: "get",
           maxBodyLength: Infinity,
-          url: "/api/logs",
+          url: "/api/v1/logs",
           headers: {
             Authorization: `Bearer ${sessionToken}`,
             ...{},

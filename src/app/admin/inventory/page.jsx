@@ -245,7 +245,7 @@ export default function page() {
       let config = {
         method: "get",
         maxBodyLength: Infinity,
-        url: `/api/item/all/${apiCategory}`,
+        url: `/api/v1/item/all/${apiCategory}`,
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           ...{},

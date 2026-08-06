@@ -78,7 +78,7 @@ const GroupedItemsTable = ({
     setIsSavingQuantityOrderedById((prev) => ({ ...prev, [mtoItemId]: true }));
     try {
       const response = await axios.patch(
-        `/api/materials_to_order_item/${mtoItemId}`,
+        `/api/v1/materials_to_order_item/${mtoItemId}`,
         { quantity_ordered: parsed },
         { headers: { Authorization: `Bearer ${sessionToken}` } },
       );
@@ -526,7 +526,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
       const sessionToken = getToken();
       if (!sessionToken) return;
       const response = await axios.get(
-        `/api/materials_to_order/by-supplier/${supplierId}`,
+        `/api/v1/materials_to_order/by-supplier/${supplierId}`,
         {
           headers: { Authorization: `Bearer ${sessionToken}` },
         },
@@ -719,7 +719,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
       });
 
       const response = await axios.post(
-        `/api/uploads/materials-to-order/${selectedMtoForMedia.id}`,
+        `/api/v1/uploads/materials-to-order/${selectedMtoForMedia.id}`,
         formData,
         {
           headers: {
@@ -779,7 +779,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
       }
 
       const response = await axios.delete(
-        `/api/uploads/materials-to-order/${selectedMtoForMedia.id}?mediaId=${pendingDeleteMediaId}`,
+        `/api/v1/uploads/materials-to-order/${selectedMtoForMedia.id}?mediaId=${pendingDeleteMediaId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,

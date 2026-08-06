@@ -53,7 +53,7 @@ const FileItemWithNotes = ({
       }
 
       const response = await axios.patch(
-        `/api/lot_file/${file.id}`,
+        `/api/v1/lot_file/${file.id}`,
         { notes: notesValue },
         {
           headers: {
@@ -289,7 +289,7 @@ export default function SiteMeasurementsSection({
 
       formData.append("site_group", siteGroup);
 
-      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
+      const apiUrl = `/api/v1/uploads/lots/${id.toUpperCase()}/${
         selectedLotData.lot_id
       }/site_measurements`;
 

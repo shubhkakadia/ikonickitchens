@@ -128,7 +128,7 @@ export default function AddItemModal({
         const sessionToken = getToken();
         if (!sessionToken) return;
 
-        const response = await axios.get("/api/supplier/all", {
+        const response = await axios.get("/api/v1/supplier/all", {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
@@ -160,7 +160,7 @@ export default function AddItemModal({
         const config = {
           method: "post",
           maxBodyLength: Infinity,
-          url: `/api/config/read_all_by_category`,
+          url: `/api/v1/config/read_all_by_category`,
           headers: {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
@@ -200,7 +200,7 @@ export default function AddItemModal({
         const config = {
           method: "post",
           maxBodyLength: Infinity,
-          url: `/api/config/read_all_by_category`,
+          url: `/api/v1/config/read_all_by_category`,
           headers: {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
@@ -427,7 +427,7 @@ export default function AddItemModal({
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: `/api/config/create`,
+        url: `/api/v1/config/create`,
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -447,7 +447,7 @@ export default function AddItemModal({
             const config = {
               method: "post",
               maxBodyLength: Infinity,
-              url: `/api/config/read_all_by_category`,
+              url: `/api/v1/config/read_all_by_category`,
               headers: {
                 Authorization: `Bearer ${sessionToken}`,
                 "Content-Type": "application/json",
@@ -504,7 +504,7 @@ export default function AddItemModal({
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: `/api/config/create`,
+        url: `/api/v1/config/create`,
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -524,7 +524,7 @@ export default function AddItemModal({
             const config = {
               method: "post",
               maxBodyLength: Infinity,
-              url: `/api/config/read_all_by_category`,
+              url: `/api/v1/config/read_all_by_category`,
               headers: {
                 Authorization: `Bearer ${sessionToken}`,
                 "Content-Type": "application/json",
@@ -629,7 +629,7 @@ export default function AddItemModal({
           data.append(key, value);
         }
       });
-      const response = await axios.post("/api/item/create", data, {
+      const response = await axios.post("/api/v1/item/create", data, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "multipart/form-data",

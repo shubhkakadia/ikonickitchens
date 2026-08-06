@@ -1,9 +1,12 @@
-import { prisma } from "@/lib/db";
-import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
-import { withLogging } from "@/lib/withLogging";
+import "server-only"
 
-export async function POST(request) {
+import bcrypt from "bcrypt"
+import { NextResponse } from "next/server"
+
+import { prisma } from "@/lib/db"
+import { withLogging } from "@/lib/withLogging"
+
+export async function signup(request) {
   try {
     const {
       username,
@@ -12,12 +15,11 @@ export async function POST(request) {
       is_active,
       employee_id,
       module_access,
-    } = await request.json();
+    } = await request.json()
 
-    // Check if user already exists by username
     const existingUser = await prisma.users.findUnique({
       where: { username },
-    });
+    })
 
     if (existingUser) {
       return NextResponse.json(
@@ -26,15 +28,13 @@ export async function POST(request) {
           message: "Username already exists",
         },
         { status: 409 },
-      );
+      )
     }
 
-    // If employee_id is provided, validate it exists in employees table and is not already linked
     if (employee_id && employee_id.trim() !== "") {
-      // Check if the employee exists in the employees table
       const existingEmployee = await prisma.employees.findUnique({
         where: { employee_id },
-      });
+      })
 
       if (!existingEmployee) {
         return NextResponse.json(
@@ -44,13 +44,12 @@ export async function POST(request) {
               "Employee ID does not exist. Please provide a valid employee ID or leave it empty.",
           },
           { status: 400 },
-        );
+        )
       }
 
-      // Check if this employee_id is already linked to a user
       const existingUserWithEmployeeId = await prisma.users.findUnique({
         where: { employee_id },
-      });
+      })
 
       if (existingUserWithEmployeeId) {
         return NextResponse.json(
@@ -59,19 +58,16 @@ export async function POST(request) {
             message: "Employee ID is already linked to another user",
           },
           { status: 409 },
-        );
+        )
       }
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10)
+    let newUser
+    let moduleAccess
 
-    // Use transaction to ensure atomicity - both user and module_access must succeed or both fail
-    let newUser;
-    let moduleAccess;
     try {
       await prisma.$transaction(async (tx) => {
-        // Create new user
         newUser = await tx.users.create({
           data: {
             username,
@@ -81,9 +77,8 @@ export async function POST(request) {
             employee_id:
               employee_id && employee_id.trim() !== "" ? employee_id : null,
           },
-        });
+        })
 
-        // Create module access - if this fails, user creation will be rolled back
         moduleAccess = await tx.module_access.create({
           data: {
             user_id: newUser.id,
@@ -115,17 +110,17 @@ export async function POST(request) {
             config: module_access.config,
             calendar: module_access.calendar,
           },
-        });
-      });
+        })
+      })
     } catch (error) {
-      console.error("Error creating user or module access in signup:", error);
+      console.error("Error creating user or module access in signup:", error)
       return NextResponse.json(
         {
           status: false,
           message: "Internal server error while creating user or module access",
         },
         { status: 500 },
-      );
+      )
     }
 
     const logged = await withLogging(
@@ -134,11 +129,12 @@ export async function POST(request) {
       newUser.id,
       "CREATE",
       `User created successfully: ${newUser.username}`,
-    );
+    )
+
     if (!logged) {
       console.error(
         `Failed to log user creation: ${newUser.id} - ${newUser.username}`,
-      );
+      )
       return NextResponse.json(
         {
           status: true,
@@ -147,8 +143,9 @@ export async function POST(request) {
           warning: "Note: Creation succeeded but logging failed",
         },
         { status: 201 },
-      );
+      )
     }
+
     return NextResponse.json(
       {
         status: true,
@@ -156,15 +153,15 @@ export async function POST(request) {
         data: { user: newUser, module_access: moduleAccess },
       },
       { status: 201 },
-    );
+    )
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error("Signup error:", error)
     return NextResponse.json(
       {
         status: false,
         message: "Internal server error",
       },
       { status: 500 },
-    );
+    )
   }
 }

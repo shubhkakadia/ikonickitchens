@@ -380,7 +380,7 @@ function SchedulerView({
           notes: detailForm.notes,
         });
         await axios.patch(
-          `/api/lot/${item.id}`,
+          `/api/v1/lot/${item.id}`,
           {
             startDate: detailForm.startDate,
             installationDueDate: detailForm.endDate,
@@ -397,7 +397,7 @@ function SchedulerView({
           notes: detailForm.notes,
         });
         await axios.patch(
-          `/api/stage/${item.stage_id}`,
+          `/api/v1/stage/${item.stage_id}`,
           {
             name: item.name,
             status: item.status,
@@ -483,7 +483,7 @@ function SchedulerView({
           endDate,
         });
         await axios.patch(
-          `/api/lot/${scheduleData.id}`,
+          `/api/v1/lot/${scheduleData.id}`,
           { startDate, installationDueDate: endDate },
           { headers },
         );
@@ -495,7 +495,7 @@ function SchedulerView({
           endDate,
         });
         await axios.patch(
-          `/api/stage/${scheduleData.id}`,
+          `/api/v1/stage/${scheduleData.id}`,
           {
             name: scheduleData.name,
             status: scheduleData.status,
@@ -508,7 +508,7 @@ function SchedulerView({
         );
       } else {
         await axios.post(
-          "/api/stage/create",
+          "/api/v1/stage/create",
           {
             lot_id: scheduleData.lotId,
             name: scheduleData.name,
@@ -601,7 +601,7 @@ function SchedulerView({
 
       if (dragData.type === "lot") {
         await axios.patch(
-          `/api/lot/${dragData.id}`,
+          `/api/v1/lot/${dragData.id}`,
           {
             startDate: nextStartValue,
             installationDueDate: nextEndValue,
@@ -610,7 +610,7 @@ function SchedulerView({
         );
       } else {
         await axios.patch(
-          `/api/stage/${dragData.id}`,
+          `/api/v1/stage/${dragData.id}`,
           {
             name: dragData.name,
             status: dragData.status,
@@ -1410,7 +1410,7 @@ export default function page() {
       const config = {
         method: "get",
         maxBodyLength: Infinity,
-        url: "/api/lot/active",
+        url: "/api/v1/lot/active",
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -1911,7 +1911,7 @@ export default function page() {
       if (!stageObj || !stageObj.stage_id) {
         // Stage doesn't exist yet, we need to create it
         const createResponse = await axios.post(
-          "/api/stage/create",
+          "/api/v1/stage/create",
           {
             lot_id: lot.lot_id,
             name: stage.toLowerCase(),
@@ -1945,7 +1945,7 @@ export default function page() {
       } else {
         // Stage exists, update it
         const response = await axios.patch(
-          `/api/stage/${stageObj.stage_id}`,
+          `/api/v1/stage/${stageObj.stage_id}`,
           {
             name: stageObj.name,
             status: newStatus,

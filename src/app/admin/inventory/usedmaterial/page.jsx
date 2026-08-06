@@ -95,7 +95,7 @@ export default function page() {
       const sessionToken = getToken();
       if (!sessionToken) return;
 
-      const response = await axios.get("/api/stock_transaction/used", {
+      const response = await axios.get("/api/v1/stock_transaction/used", {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
 
@@ -118,7 +118,7 @@ export default function page() {
       const sessionToken = getToken();
       if (!sessionToken) return;
 
-      const response = await axios.get("/api/project/all", {
+      const response = await axios.get("/api/v1/project/all", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -159,7 +159,7 @@ export default function page() {
       }
 
       const response = await axios.get(
-        "/api/materials_to_order/used_material_list",
+        "/api/v1/materials_to_order/used_material_list",
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -224,7 +224,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/materials_to_order/${mtoId}`,
+        `/api/v1/materials_to_order/${mtoId}`,
         { used_material_completed: completed },
         {
           headers: {
@@ -423,7 +423,7 @@ export default function page() {
 
       // Create stock transaction with type USED
       const response = await axios.post(
-        `/api/stock_transaction/create`,
+        `/api/v1/stock_transaction/create`,
         {
           item_id: itemId,
           quantity: quantityToUse,
@@ -634,7 +634,7 @@ export default function page() {
       const sessionToken = getToken();
       if (!sessionToken) return;
 
-      const response = await axios.get(`/api/item/all/${category}`, {
+      const response = await axios.get(`/api/v1/item/all/${category}`, {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
 
@@ -817,7 +817,7 @@ export default function page() {
       // Create stock transactions for all items
       const promises = selectedItems.map((item) =>
         axios.post(
-          `/api/stock_transaction/create`,
+          `/api/v1/stock_transaction/create`,
           {
             item_id: item.item_id,
             quantity: parseFloat(item.quantity),

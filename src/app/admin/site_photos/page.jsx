@@ -154,7 +154,7 @@ export default function SitePhotosPage() {
       }
 
       const response = await axios.get(
-        `/api/employee/${userData.user.employee_id}`,
+        `/api/v1/employee/${userData.user.employee_id}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -278,11 +278,14 @@ export default function SitePhotosPage() {
       const userId = getUserData()?.user?.id;
       if (!userId) return;
 
-      const response = await axios.get(`/api/notification_config/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
+      const response = await axios.get(
+        `/api/v1/notification_config/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
         },
-      });
+      );
 
       if (response.data.status) {
         setNotificationConfig({
@@ -317,7 +320,7 @@ export default function SitePhotosPage() {
       };
 
       const response = await axios.patch(
-        `/api/notification_config/${userId}`,
+        `/api/v1/notification_config/${userId}`,
         updatedConfig,
         {
           headers: {
@@ -381,7 +384,7 @@ export default function SitePhotosPage() {
         return;
       }
 
-      const response = await axios.get(`/api/lot/installer/${userId}`, {
+      const response = await axios.get(`/api/v1/lot/installer/${userId}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -433,7 +436,7 @@ export default function SitePhotosPage() {
       const sessionToken = getToken();
       if (!sessionToken) return;
 
-      const response = await axios.get(`/api/lot/${lotId}`, {
+      const response = await axios.get(`/api/v1/lot/${lotId}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -692,7 +695,7 @@ export default function SitePhotosPage() {
 
       // Use the API tab kind (maps site_photos/measurement_photos to site_measurements)
       const apiTabKind = TAB_KIND_TO_API_TAB[tabKind] || tabKind;
-      const apiUrl = `/api/uploads/lots/${lot.project.project_id.toUpperCase()}/${lot.lot_id}/${apiTabKind}`;
+      const apiUrl = `/api/v1/uploads/lots/${lot.project.project_id.toUpperCase()}/${lot.lot_id}/${apiTabKind}`;
 
       // Show progress toast
       showProgressToast(files.length);
@@ -731,7 +734,7 @@ export default function SitePhotosPage() {
               if (notes && notes.trim()) {
                 try {
                   await axios.patch(
-                    `/api/lot_file/${fileId}`,
+                    `/api/v1/lot_file/${fileId}`,
                     { notes },
                     {
                       headers: {
@@ -860,7 +863,7 @@ export default function SitePhotosPage() {
       const notesToSave = editingFileNotes[fileId] ?? fileNotes[fileId] ?? "";
 
       const response = await axios.patch(
-        `/api/lot_file/${fileId}`,
+        `/api/v1/lot_file/${fileId}`,
         { notes: notesToSave },
         {
           headers: {
@@ -944,7 +947,7 @@ export default function SitePhotosPage() {
       // Convert tab enum to slug format (e.g., DELIVERY_PHOTOS -> delivery_photos)
       const tabSlug = tab.tab.toLowerCase();
 
-      const deleteUrl = `/api/uploads/lots/${lot.project.project_id.toUpperCase()}/${lot.lot_id}/${tabSlug}/${selectedFile.filename}`;
+      const deleteUrl = `/api/v1/uploads/lots/${lot.project.project_id.toUpperCase()}/${lot.lot_id}/${tabSlug}/${selectedFile.filename}`;
 
       const response = await axios.delete(deleteUrl, {
         headers: {
@@ -1001,7 +1004,7 @@ export default function SitePhotosPage() {
     const pathWithoutPrefix = file.url.startsWith("mediauploads/")
       ? file.url.substring("mediauploads/".length)
       : file.url;
-    return `/api/uploads/lots/${pathWithoutPrefix}`;
+    return `/api/v1/uploads/lots/${pathWithoutPrefix}`;
   };
 
   const getFileIcon = (fileKind) => {

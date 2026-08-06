@@ -197,7 +197,7 @@ export default function EmployeeDetailPage() {
         const config = {
           method: "post",
           maxBodyLength: Infinity,
-          url: `/api/config/read_all_by_category`,
+          url: `/api/v1/config/read_all_by_category`,
           headers: {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
@@ -266,7 +266,7 @@ export default function EmployeeDetailPage() {
         return;
       }
 
-      const response = await axios.get(`/api/employee/${id}`, {
+      const response = await axios.get(`/api/v1/employee/${id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -431,7 +431,7 @@ export default function EmployeeDetailPage() {
         showProgressToast(1);
       }
 
-      const response = await axios.patch(`/api/employee/${id}`, dataToSend, {
+      const response = await axios.patch(`/api/v1/employee/${id}`, dataToSend, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": contentType,
@@ -667,7 +667,7 @@ export default function EmployeeDetailPage() {
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: `/api/config/create`,
+        url: `/api/v1/config/create`,
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -687,7 +687,7 @@ export default function EmployeeDetailPage() {
             const config = {
               method: "post",
               maxBodyLength: Infinity,
-              url: `/api/config/read_all_by_category`,
+              url: `/api/v1/config/read_all_by_category`,
               headers: {
                 Authorization: `Bearer ${sessionToken}`,
                 "Content-Type": "application/json",
@@ -781,12 +781,16 @@ export default function EmployeeDetailPage() {
         password: userEditData.password,
       };
 
-      const response = await axios.patch(`/api/user/${user.id}`, updateData, {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          "Content-Type": "application/json",
+      const response = await axios.patch(
+        `/api/v1/user/${user.id}`,
+        updateData,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (response.data.status) {
         toast.success("User updated successfully");
@@ -890,7 +894,7 @@ export default function EmployeeDetailPage() {
         module_access: moduleAccess,
       };
 
-      const response = await axios.post(`/api/signup`, createData, {
+      const response = await axios.post(`/api/v1/signup`, createData, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -963,7 +967,7 @@ export default function EmployeeDetailPage() {
         return;
       }
 
-      const response = await axios.delete(`/api/user/${id}`, {
+      const response = await axios.delete(`/api/v1/user/${id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -999,7 +1003,7 @@ export default function EmployeeDetailPage() {
       }
 
       const response = await axios.delete(
-        `/api/employee/${employee.employee_id}`,
+        `/api/v1/employee/${employee.employee_id}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,

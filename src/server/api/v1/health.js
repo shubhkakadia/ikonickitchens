@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server";
+import "server-only"
 
-export async function GET() {
+import { NextResponse } from "next/server"
+
+export async function getHealth() {
   return NextResponse.json(
     {
       status: "ok",
@@ -8,5 +10,5 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     },
     { status: 200 },
-  );
+  )
 }

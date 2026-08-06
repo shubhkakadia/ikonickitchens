@@ -26,7 +26,11 @@ function getItemName(item) {
   if (item.accessory?.name) return item.accessory.name;
 
   if (item.edging_tape) {
-    return [item.edging_tape.brand, item.edging_tape.color, item.edging_tape.finish]
+    return [
+      item.edging_tape.brand,
+      item.edging_tape.color,
+      item.edging_tape.finish,
+    ]
       .filter(Boolean)
       .join(" - ");
   }
@@ -100,7 +104,8 @@ export async function GET(request, { params }) {
         .map((supplier) => Number(supplier.price))
         .filter((price) => Number.isFinite(price));
       const unitPrice = prices.length ? Math.min(...prices) : null;
-      const estimatedCost = unitPrice === null ? null : transaction.quantity * unitPrice;
+      const estimatedCost =
+        unitPrice === null ? null : transaction.quantity * unitPrice;
       const category = transaction.item.category;
 
       totalQuantity += transaction.quantity;

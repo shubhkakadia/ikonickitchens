@@ -75,7 +75,7 @@ export default function CreateMaterialsToOrderModal({
       const sessionToken = getToken();
       if (!sessionToken) return;
 
-      const response = await axios.get(`/api/item/all/${category}`, {
+      const response = await axios.get(`/api/v1/item/all/${category}`, {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
 
@@ -260,7 +260,7 @@ export default function CreateMaterialsToOrderModal({
       };
 
       const response = await axios.post(
-        "/api/materials_to_order/create",
+        "/api/v1/materials_to_order/create",
         requestData,
         {
           headers: {
@@ -281,7 +281,7 @@ export default function CreateMaterialsToOrderModal({
           });
 
           await axios.post(
-            `/api/uploads/materials-to-order/${mtoId}`,
+            `/api/v1/uploads/materials-to-order/${mtoId}`,
             formData,
             {
               headers: {

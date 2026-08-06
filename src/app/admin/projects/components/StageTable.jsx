@@ -55,7 +55,7 @@ export default function StageTable({
         return;
       }
 
-      const response = await axios.get("/api/employee/all", {
+      const response = await axios.get("/api/v1/employee/all", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -207,7 +207,7 @@ export default function StageTable({
         return null;
       }
 
-      const response = await axios.post("/api/stage/create", stageData, {
+      const response = await axios.post("/api/v1/stage/create", stageData, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -296,7 +296,7 @@ export default function StageTable({
       }
 
       const response = await axios.patch(
-        `/api/stage/${existingStage.stage_id}`,
+        `/api/v1/stage/${existingStage.stage_id}`,
         stageData,
         {
           headers: {
@@ -505,7 +505,7 @@ export default function StageTable({
         return;
       }
 
-      const response = await axios.delete(`/api/stage/${stageToDelete}`, {
+      const response = await axios.delete(`/api/v1/stage/${stageToDelete}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },

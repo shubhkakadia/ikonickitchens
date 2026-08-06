@@ -185,7 +185,9 @@ export async function POST(request) {
       {
         status: true,
         message: "Employee created successfully",
-        ...(logged ? {} : { warning: "Note: Creation succeeded but logging failed" }),
+        ...(logged
+          ? {}
+          : { warning: "Note: Creation succeeded but logging failed" }),
         ...(imageUploadWarning ? { imageWarning: imageUploadWarning } : {}),
         data: updatedEmployee,
       },

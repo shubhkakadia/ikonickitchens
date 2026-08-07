@@ -284,7 +284,7 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("Error in POST /api/search:", error);
+    console.error("Error in POST /api/v1/search:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

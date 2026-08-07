@@ -24,7 +24,7 @@ export async function GET(request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/employee/all_inactive:", error);
+    console.error("Error in GET /api/v1/employee/all_inactive:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 },

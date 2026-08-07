@@ -4,7 +4,7 @@ import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 
 /**
- * POST /api/purchase_order/received_items
+ * POST /api/v1/purchase_order/received_items
  * Receive multiple items for a purchase order in a single transaction
  *
  * Request body:
@@ -328,7 +328,10 @@ export async function POST(request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in POST /api/purchase_order/received_items:", error);
+    console.error(
+      "Error in POST /api/v1/purchase_order/received_items:",
+      error,
+    );
     return NextResponse.json(
       {
         status: false,

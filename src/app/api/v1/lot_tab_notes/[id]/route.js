@@ -20,7 +20,7 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/lot_tab_notes/[id]:", error);
+    console.error("Error in GET /api/v1/lot_tab_notes/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -60,7 +60,7 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/lot_tab_notes/[id]:", error);
+    console.error("Error in PATCH /api/v1/lot_tab_notes/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

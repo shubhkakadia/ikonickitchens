@@ -20,7 +20,7 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/module_access/[id]:", error);
+    console.error("Error in GET /api/v1/module_access/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -101,7 +101,7 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/module_access/[id]:", error);
+    console.error("Error in PATCH /api/v1/module_access/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

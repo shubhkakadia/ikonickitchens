@@ -64,7 +64,7 @@ export async function POST(request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error in POST /api/contact/create:", error);
+    console.error("Error in POST /api/v1/contact/create:", error);
     return NextResponse.json(
       {
         status: false,

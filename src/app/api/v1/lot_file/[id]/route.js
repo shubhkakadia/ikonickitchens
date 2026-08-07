@@ -35,7 +35,7 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/lot_file/[id]:", error);
+    console.error("Error in PATCH /api/v1/lot_file/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

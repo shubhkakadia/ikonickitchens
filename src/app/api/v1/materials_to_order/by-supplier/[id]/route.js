@@ -94,7 +94,7 @@ export async function GET(request, { params }) {
     );
   } catch (error) {
     console.error(
-      "Error in GET /api/materials_to_order/by-supplier/[id]:",
+      "Error in GET /api/v1/materials_to_order/by-supplier/[id]:",
       error,
     );
     return NextResponse.json(

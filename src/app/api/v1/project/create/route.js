@@ -166,7 +166,7 @@ export async function POST(request) {
 
     return NextResponse.json(responseData, { status: 201 });
   } catch (error) {
-    console.error("Error in POST /api/project/create:", error);
+    console.error("Error in POST /api/v1/project/create:", error);
     if (error.statusCode) {
       return NextResponse.json(
         { status: false, message: error.message },

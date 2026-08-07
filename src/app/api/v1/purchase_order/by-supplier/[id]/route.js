@@ -61,7 +61,10 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/purchase_order/by-supplier/[id]:", error);
+    console.error(
+      "Error in GET /api/v1/purchase_order/by-supplier/[id]:",
+      error,
+    );
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

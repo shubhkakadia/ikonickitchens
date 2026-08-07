@@ -60,7 +60,7 @@ export async function POST(request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error in POST /api/maintenance_checklist/upsert:", error);
+    console.error("Error in POST /api/v1/maintenance_checklist/upsert:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

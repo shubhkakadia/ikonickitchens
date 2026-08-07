@@ -106,7 +106,7 @@ export async function GET(request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/lot/sitemeasurements:", error);
+    console.error("Error in GET /api/v1/lot/sitemeasurements:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

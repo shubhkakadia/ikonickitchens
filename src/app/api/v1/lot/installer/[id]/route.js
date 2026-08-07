@@ -84,7 +84,7 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/lot/installer:", error);
+    console.error("Error in GET /api/v1/lot/installer:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

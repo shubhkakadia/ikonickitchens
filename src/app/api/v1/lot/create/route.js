@@ -67,7 +67,7 @@ export async function POST(request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error in POST /api/lot/create:", error);
+    console.error("Error in POST /api/v1/lot/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

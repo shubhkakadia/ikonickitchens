@@ -237,7 +237,7 @@ export async function POST(request) {
       data: meeting,
     });
   } catch (error) {
-    console.error("Error in POST /api/meeting/create:", error);
+    console.error("Error in POST /api/v1/meeting/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

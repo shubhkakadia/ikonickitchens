@@ -223,7 +223,7 @@ export async function PATCH(request, { params }) {
       data: updatedMeeting,
     });
   } catch (error) {
-    console.error(`Error in PATCH /api/meeting/${params.id}:`, error);
+    console.error(`Error in PATCH /api/v1/meeting/${params.id}:`, error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -269,7 +269,7 @@ export async function DELETE(request, { params }) {
       message: "Meeting deleted successfully",
     });
   } catch (error) {
-    console.error(`Error in DELETE /api/meeting/${params.id}:`, error);
+    console.error(`Error in DELETE /api/v1/meeting/${params.id}:`, error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

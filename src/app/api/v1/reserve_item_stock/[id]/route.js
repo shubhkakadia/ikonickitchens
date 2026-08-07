@@ -42,7 +42,7 @@ export async function GET(request, { params }) {
       data: reservation,
     });
   } catch (error) {
-    console.error("Error in GET /api/reserve_item_stock/[id]:", error);
+    console.error("Error in GET /api/v1/reserve_item_stock/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -183,7 +183,7 @@ export async function PATCH(request, { params }) {
       data: updatedReservation,
     });
   } catch (error) {
-    console.error("Error in PATCH /api/reserve_item_stock/[id]:", error);
+    console.error("Error in PATCH /api/v1/reserve_item_stock/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -281,7 +281,7 @@ export async function DELETE(request, { params }) {
       message: "Stock reservation deleted successfully",
     });
   } catch (error) {
-    console.error("Error in DELETE /api/reserve_item_stock/[id]:", error);
+    console.error("Error in DELETE /api/v1/reserve_item_stock/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

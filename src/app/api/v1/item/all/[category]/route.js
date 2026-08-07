@@ -50,7 +50,7 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/item/all/[category]:", error);
+    console.error("Error in GET /api/v1/item/all/[category]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

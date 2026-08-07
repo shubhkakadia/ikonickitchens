@@ -57,7 +57,7 @@ export async function GET(request, { params }) {
       },
     });
   } catch (error) {
-    console.error("Error in GET /api/reserve_item_stock/item/[id]:", error);
+    console.error("Error in GET /api/v1/reserve_item_stock/item/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

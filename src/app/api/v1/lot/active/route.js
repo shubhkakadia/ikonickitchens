@@ -65,7 +65,7 @@ export async function GET(request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/lot/active:", error);
+    console.error("Error in GET /api/v1/lot/active:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

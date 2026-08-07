@@ -39,7 +39,7 @@ export async function GET(request) {
       data: meetings,
     });
   } catch (error) {
-    console.error("Error in GET /api/meeting/all:", error);
+    console.error("Error in GET /api/v1/meeting/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

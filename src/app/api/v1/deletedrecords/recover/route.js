@@ -157,7 +157,7 @@ export async function PATCH(request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/deletedrecords/recover:", error);
+    console.error("Error in PATCH /api/v1/deletedrecords/recover:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

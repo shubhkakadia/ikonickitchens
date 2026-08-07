@@ -60,7 +60,7 @@ export async function GET(request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/purchase_order/all:", error);
+    console.error("Error in GET /api/v1/purchase_order/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

@@ -151,7 +151,7 @@ export async function POST(request) {
 
     return NextResponse.json(responseData, { status: 201 });
   } catch (error) {
-    console.error("Error in POST /api/client/create:", error);
+    console.error("Error in POST /api/v1/client/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

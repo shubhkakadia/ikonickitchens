@@ -783,7 +783,7 @@ export async function POST(request) {
       { status: result.statusCode },
     );
   } catch (error) {
-    console.error("Error in POST /api/stock_transaction/create:", error);
+    console.error("Error in POST /api/v1/stock_transaction/create:", error);
     return NextResponse.json(
       {
         status: false,

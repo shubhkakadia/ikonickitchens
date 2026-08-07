@@ -190,7 +190,7 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error("Stock tally error:", error);
-    console.error("Error in POST /api/stock_tally:", error);
+    console.error("Error in POST /api/v1/stock_tally:", error);
     return NextResponse.json(
       {
         status: false,

@@ -13,7 +13,7 @@ export async function POST(request) {
       data: moduleAccess,
     });
   } catch (error) {
-    console.error("Error in POST /api/module_access/create:", error);
+    console.error("Error in POST /api/v1/module_access/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

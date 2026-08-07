@@ -31,7 +31,7 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/user/[id]:", error);
+    console.error("Error in GET /api/v1/user/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 },
@@ -180,7 +180,7 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/user/[id]:", error);
+    console.error("Error in PATCH /api/v1/user/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 },
@@ -230,7 +230,7 @@ export async function DELETE(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in DELETE /api/user/[id]:", error);
+    console.error("Error in DELETE /api/v1/user/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 },

@@ -36,7 +36,7 @@ export async function POST(request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in POST /api/config/read_all_by_category:", error);
+    console.error("Error in POST /api/v1/config/read_all_by_category:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

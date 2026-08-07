@@ -78,7 +78,7 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/notification_config/[user_id]:", error);
+    console.error("Error in GET /api/v1/notification_config/[user_id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 },
@@ -292,7 +292,10 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/notification_config/[user_id]:", error);
+    console.error(
+      "Error in PATCH /api/v1/notification_config/[user_id]:",
+      error,
+    );
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 },

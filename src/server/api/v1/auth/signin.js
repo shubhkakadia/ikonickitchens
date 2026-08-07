@@ -96,7 +96,6 @@ export async function signin(request) {
           username: user.username,
           user_type: user.user_type,
           is_active: user.is_active,
-          is_verified: user.is_verified,
           employee_id: user.employee_id,
         },
         token: sessionToken,

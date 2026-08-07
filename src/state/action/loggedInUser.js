@@ -64,7 +64,7 @@ export const logoutUser =
     try {
       if (authToken) {
         const response = await axios.post(
-          `/api/signout`,
+          `/api/v1/signout`,
           {}, // empty body (since fetch POST has no body)
           {
             headers: {
@@ -134,7 +134,7 @@ const signinAPI = async (formdata) => {
     let config = {
       method: "post",
       maxBodyLength: Infinity,
-      url: `${getBaseUrl()}/api/signin`,
+      url: `${getBaseUrl()}/api/v1/signin`,
       headers: {
         "Content-Type": "application/json",
       },

@@ -36,7 +36,7 @@ export default function page() {
         const sessionToken = getToken();
         if (!sessionToken) return;
 
-        const response = await axios.get("/api/client/allnames", {
+        const response = await axios.get("/api/v1/client/allnames", {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
           },
@@ -107,7 +107,7 @@ export default function page() {
     setIsProjectIdLoading(true);
     try {
       const response = await axios.get(
-        `/api/project/next-id?client_id=${encodeURIComponent(clientId)}`,
+        `/api/v1/project/next-id?client_id=${encodeURIComponent(clientId)}`,
         { headers: { Authorization: `Bearer ${getToken()}` } },
       );
       if (response.data.status) {
@@ -228,7 +228,7 @@ export default function page() {
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: "/api/project/create",
+        url: "/api/v1/project/create",
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -381,9 +381,13 @@ export default function page() {
                             name="project_id"
                             value={formData.project_id}
                             onChange={handleInputChange}
-                            disabled={isProjectIdLoading || Boolean(formData.client_id)}
+                            disabled={
+                              isProjectIdLoading || Boolean(formData.client_id)
+                            }
                             className={`w-full text-sm px-4 py-3 border rounded-lg focus:outline-none ${formData.client_id ? "text-slate-500 bg-slate-100 border-slate-300 cursor-not-allowed" : "text-slate-800 border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent"}`}
-                            placeholder={formData.client_id ? "Generating..." : "Eg. IK001"}
+                            placeholder={
+                              formData.client_id ? "Generating..." : "Eg. IK001"
+                            }
                             required
                           />
                           {errors.project_id && (
@@ -399,7 +403,8 @@ export default function page() {
                           ref={clientDropdownRef}
                         >
                           <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Client <span className="text-slate-400">(Optional)</span>
+                            Client{" "}
+                            <span className="text-slate-400">(Optional)</span>
                           </label>
                           <div className="relative">
                             <input

@@ -80,7 +80,7 @@ export default function CreatePurchaseOrderModal({
       const sessionToken = getToken();
       if (!sessionToken) return;
 
-      const response = await axios.get("/api/supplier/all", {
+      const response = await axios.get("/api/v1/supplier/all", {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
 
@@ -109,9 +109,12 @@ export default function CreatePurchaseOrderModal({
       const sessionToken = getToken();
       if (!sessionToken) return;
 
-      const response = await axios.get(`/api/item/by-supplier/${supplierId}`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
+      const response = await axios.get(
+        `/api/v1/item/by-supplier/${supplierId}`,
+        {
+          headers: { Authorization: `Bearer ${sessionToken}` },
+        },
+      );
 
       if (response.data.status) {
         setSupplierItems(response.data.data || []);
@@ -387,7 +390,7 @@ export default function CreatePurchaseOrderModal({
       formData.append("status", "ORDERED");
 
       const response = await axios.post(
-        "/api/purchase_order/create",
+        "/api/v1/purchase_order/create",
         formData,
         {
           headers: {

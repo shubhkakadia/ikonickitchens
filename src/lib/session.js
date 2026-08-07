@@ -31,9 +31,8 @@ export async function validateSession(sessionToken) {
       },
     });
 
-    // Check if user is still active and verified
-    if (!user.is_active || !user.is_verified) {
-      // Delete the session if user is no longer active or verified
+    // Delete the session if the user account is no longer active.
+    if (!user.is_active) {
       await prisma.sessions.delete({
         where: { id: session.id },
       });

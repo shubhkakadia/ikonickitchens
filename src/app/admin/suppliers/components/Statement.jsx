@@ -120,7 +120,7 @@ export default function Statement({ supplierId }) {
       }
 
       const response = await axios.get(
-        `/api/supplier/${supplierId}/statements`,
+        `/api/v1/supplier/${supplierId}/statements`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -314,7 +314,7 @@ export default function Statement({ supplierId }) {
       showProgressToast(1);
 
       const response = await axios.post(
-        `/api/supplier/${supplierId}/statements`,
+        `/api/v1/supplier/${supplierId}/statements`,
         formData,
         {
           headers: {
@@ -418,7 +418,7 @@ export default function Statement({ supplierId }) {
       }
 
       const response = await axios.patch(
-        `/api/supplier/${supplierId}/statements/${editingStatement.id}`,
+        `/api/v1/supplier/${supplierId}/statements/${editingStatement.id}`,
         formData,
         {
           headers: {
@@ -488,7 +488,7 @@ export default function Statement({ supplierId }) {
       }
 
       const response = await axios.delete(
-        `/api/supplier/${supplierId}/statements/${statementToDelete.id}`,
+        `/api/v1/supplier/${supplierId}/statements/${statementToDelete.id}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,

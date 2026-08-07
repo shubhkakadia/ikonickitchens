@@ -116,7 +116,7 @@ export default function page() {
         const config = {
           method: "post",
           maxBodyLength: Infinity,
-          url: `/api/config/read_all_by_category`,
+          url: `/api/v1/config/read_all_by_category`,
           headers: {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
@@ -210,7 +210,7 @@ export default function page() {
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: `/api/config/create`,
+        url: `/api/v1/config/create`,
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -230,7 +230,7 @@ export default function page() {
             const config = {
               method: "post",
               maxBodyLength: Infinity,
-              url: `/api/config/read_all_by_category`,
+              url: `/api/v1/config/read_all_by_category`,
               headers: {
                 Authorization: `Bearer ${sessionToken}`,
                 "Content-Type": "application/json",
@@ -412,7 +412,7 @@ export default function page() {
       }
 
       const response = await axios.post(
-        "/api/employee/create",
+        "/api/v1/employee/create",
         formDataToSend,
         {
           headers: {

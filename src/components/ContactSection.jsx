@@ -70,9 +70,13 @@ export default function ContactSection({
           parentId ||
           "",
       };
-      const response = await axios.patch(`/api/contact/${contactId}`, payload, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
+      const response = await axios.patch(
+        `/api/v1/contact/${contactId}`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${sessionToken}` },
+        },
+      );
       if (!response?.data?.status) {
         toast.error(response?.data?.message || "Failed to update contact");
         return;
@@ -112,7 +116,7 @@ export default function ContactSection({
         return;
       }
       const contactId = contactPendingDelete.id;
-      const response = await axios.delete(`/api/contact/${contactId}`, {
+      const response = await axios.delete(`/api/v1/contact/${contactId}`, {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
       if (!response?.data?.status) {
@@ -146,7 +150,7 @@ export default function ContactSection({
           parentId || "",
       };
 
-      const response = await axios.post("/api/contact/create", payload, {
+      const response = await axios.post("/api/v1/contact/create", payload, {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
 

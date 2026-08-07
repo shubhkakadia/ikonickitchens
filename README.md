@@ -20,12 +20,12 @@ The application is built with **Next.js 15.5.9**, **React 19.2.3**, **Prisma ORM
 - **Antivirus File Scanning** - ClamAV integration (`clamscan`) via `src/lib/clamav.js` / `scanFile.js`
 - **Multi-Supplier Items** - Items can now be linked to multiple suppliers with per-supplier pricing (`item_suppliers`)
 - **Site Measurements & Site Photos** - Dedicated admin pages/modules with drag-and-drop uploads (`react-dnd`)
-- **Deleted Records Recovery** - Soft-delete recovery workflow (`/api/deletedrecords`) beyond just media
+- **Deleted Records Recovery** - Soft-delete recovery workflow (`/api/v1/deletedrecords`) beyond just media
 - **Reserve Item Stock** - Stock reservation against MTO line items (`reserve_item_stock`)
 - **Auto Project ID Generation** - `src/lib/projectId.js` + slug validation/availability for clients
 - **Persisted Table Filters** - Redux `tableFilters` reducer persists filter state across admin list pages
 - **Constants/Config Module** - Admin-editable dropdown values (roles, hardware subcategories, units) via `constants_config`
-- **Site Search** - Global `/api/search` endpoint
+- **Site Search** - Global `/api/v1/search` endpoint
 - **Blogs Public Page** - New `/blogs` public route
 - **Image Handling** - `sharp`, `browser-image-compression`, `heic2any` for optimized/compatible uploads
 - **Self-Hosted CI/CD** - GitHub Actions workflow (`.github/workflows/deploy.yml`) auto-deploys `dev`/`main`, runs `prisma migrate deploy`, backs up MySQL before production deploys, and manages the app via PM2
@@ -453,7 +453,7 @@ ikonickitchens/
 
 ### Complete API Summary: 87 Endpoints
 
-Grouped by domain (route files under `src/app/api/`):
+Grouped by domain (route files under `src/app/api/v1/`):
 
 | Domain                | Endpoints                                                                                                                                                                                                                         | Notes                             |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
@@ -594,7 +594,7 @@ Grouped by domain (route files under `src/app/api/`):
 **Module Access Flow:**
 
 1. User logs in → session created
-2. Protected route component fetches `/api/module_access/[userId]`
+2. Protected route component fetches `/api/v1/module_access/[userId]`
 3. Current path mapped to a permission key
 4. Access denied → `AccessDenied` shown; access granted → protected content renders
 
@@ -642,7 +642,7 @@ site_measurements, calendar
 
 - Database-stored tokens (not stateless JWT)
 - Automatic expiration checking on every request
-- Manual cleanup endpoint: `/api/admin/cleanup-sessions` (Master Admin only)
+- Manual cleanup endpoint: `/api/v1/admin/cleanup-sessions` (Master Admin only)
 
 **Authorization Levels:**
 
@@ -744,11 +744,11 @@ site_measurements, calendar
 
 - ⚠️ **No caching layer** — every request hits the database directly
 - ⚠️ **In-memory rate limiter** won't scale across multiple app instances/processes — fine for a single PM2 process, but would need a shared store (Redis) to run multiple instances
-- ⚠️ **No error tracking service** (e.g. Sentry) wired in yet, despite the `/api/health` endpoint existing for basic uptime checks
+- ⚠️ **No error tracking service** (e.g. Sentry) wired in yet, despite the `/api/v1/health` endpoint existing for basic uptime checks
 
 ### 6. Monitoring & Observability
 
-- ✅ `/api/health` endpoint exists
+- ✅ `/api/v1/health` endpoint exists
 - ⚠️ **No dashboard/alerting** built on top of it yet (uptime monitoring, error tracking, performance metrics)
 
 ---
@@ -759,7 +759,7 @@ site_measurements, calendar
 
 1. **Wire up the existing `zod` validators** — `schemas.js`/`validateRequest.js` are already scaffolded; populate and apply them to at least the auth, item, and MTO/PO creation routes first. Priority: **HIGH** | Effort: **Medium**
 2. **Add CSRF protection** for state-changing form submissions. Priority: **HIGH** | Effort: **Low**
-3. **Wire `/api/health` into an uptime monitor** (e.g. UptimeRobot, Better Stack) and add basic error tracking (Sentry). Priority: **HIGH** | Effort: **Low**
+3. **Wire `/api/v1/health` into an uptime monitor** (e.g. UptimeRobot, Better Stack) and add basic error tracking (Sentry). Priority: **HIGH** | Effort: **Low**
 
 ### Short-Term Improvements
 
@@ -864,7 +864,7 @@ npx prisma generate # Generate Prisma client (outputs to generated/prisma)
 - **Redux Store:** `src/state/store/`
 - **Auth Context:** `src/contexts/auth.js`
 - **Protected Route HOC:** `src/components/ProtectedRoute.jsx`
-- **API Routes:** `src/app/api/` (87 endpoints)
+- **API Routes:** `src/app/api/v1/` (87 endpoints)
 - **Admin Pages:** `src/app/admin/` (29 pages)
 - **CI/CD:** `.github/workflows/deploy.yml`
 
@@ -884,7 +884,7 @@ npx prisma generate # Generate Prisma client (outputs to generated/prisma)
 - [ ] Input validation with Zod wired into API routes
 - [ ] CSRF protection
 - [ ] Multi-factor authentication
-- [ ] Error monitoring (Sentry or similar) connected to `/api/health`
+- [ ] Error monitoring (Sentry or similar) connected to `/api/v1/health`
 - [ ] Uptime monitoring/alerting
 - [ ] API pagination on high-volume endpoints
 - [ ] Automated test suite

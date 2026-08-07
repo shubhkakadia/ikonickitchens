@@ -108,7 +108,7 @@ export default function SiteMeasurementsPage() {
 
       const config = {
         method: "get",
-        url: "/api/lot/sitemeasurements",
+        url: "/api/v1/lot/sitemeasurements",
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -137,7 +137,7 @@ export default function SiteMeasurementsPage() {
         return;
       }
 
-      const response = await axios.get("/api/employee/all", {
+      const response = await axios.get("/api/v1/employee/all", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -224,7 +224,7 @@ export default function SiteMeasurementsPage() {
       if (!stageObj || !stageObj.stage_id) {
         // Create stage with assignment
         const createResponse = await axios.post(
-          "/api/stage/create",
+          "/api/v1/stage/create",
           {
             lot_id: currentLotForAssignment.lot_id,
             name: stageName.toLowerCase(),
@@ -253,7 +253,7 @@ export default function SiteMeasurementsPage() {
       } else {
         // Update existing stage
         const response = await axios.patch(
-          `/api/stage/${stageObj.stage_id}`,
+          `/api/v1/stage/${stageObj.stage_id}`,
           {
             name: stageObj.name,
             status: stageObj.status,
@@ -357,7 +357,7 @@ export default function SiteMeasurementsPage() {
       if (!stageObj || !stageObj.stage_id) {
         // Create stage
         const createResponse = await axios.post(
-          "/api/stage/create",
+          "/api/v1/stage/create",
           {
             lot_id: lot.lot_id,
             name: stageName.toLowerCase(),
@@ -385,7 +385,7 @@ export default function SiteMeasurementsPage() {
       } else {
         // Update stage
         const response = await axios.patch(
-          `/api/stage/${stageObj.stage_id}`,
+          `/api/v1/stage/${stageObj.stage_id}`,
           {
             name: stageObj.name,
             status: newStatus,

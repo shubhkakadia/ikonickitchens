@@ -357,8 +357,8 @@ export default function page() {
       // Use different endpoint based on active tab
       const endpoint =
         activeTab === "inactive"
-          ? "/api/employee/all_inactive"
-          : "/api/employee/all";
+          ? "/api/v1/employee/all_inactive"
+          : "/api/v1/employee/all";
 
       let config = {
         method: "get",

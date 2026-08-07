@@ -103,7 +103,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.get(`/api/supplier/${id}`, {
+      const response = await axios.get(`/api/v1/supplier/${id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -136,7 +136,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.get(`/api/item/by-supplier/${id}`, {
+      const response = await axios.get(`/api/v1/item/by-supplier/${id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -195,7 +195,7 @@ export default function page() {
         phone: formatPhone(editData.phone),
       };
 
-      const response = await axios.patch(`/api/supplier/${id}`, dataToSend, {
+      const response = await axios.patch(`/api/v1/supplier/${id}`, dataToSend, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -284,7 +284,7 @@ export default function page() {
         return;
       }
       const response = await axios.delete(
-        `/api/supplier/${supplier.supplier_id}`,
+        `/api/v1/supplier/${supplier.supplier_id}`,
         {
           headers: { Authorization: `Bearer ${sessionToken}` },
         },

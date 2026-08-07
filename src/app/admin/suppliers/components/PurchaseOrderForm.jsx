@@ -325,7 +325,7 @@ export default function PurchaseOrderForm({
       formData.append("status", "ORDERED");
 
       const response = await axios.post(
-        "/api/purchase_order/create",
+        "/api/v1/purchase_order/create",
         formData,
         {
           headers: {

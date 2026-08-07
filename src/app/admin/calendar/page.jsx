@@ -105,7 +105,7 @@ export default function CalendarPage() {
     try {
       setIsLoadingEvents(true);
       const token = getToken();
-      const response = await axios.get("/api/meeting/all", {
+      const response = await axios.get("/api/v1/meeting/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -401,7 +401,7 @@ export default function CalendarPage() {
   const fetchUsers = async () => {
     try {
       const token = getToken();
-      const response = await axios.get("/api/user/all", {
+      const response = await axios.get("/api/v1/user/all", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.data.status) {
@@ -415,7 +415,7 @@ export default function CalendarPage() {
   const fetchLots = async () => {
     try {
       const token = getToken();
-      const response = await axios.get("/api/lot/active", {
+      const response = await axios.get("/api/v1/lot/active", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.data.status) {
@@ -516,9 +516,12 @@ export default function CalendarPage() {
     try {
       setIsDeletingEvent(true);
       const token = getToken();
-      const response = await axios.delete(`/api/meeting/${eventToDelete.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.delete(
+        `/api/v1/meeting/${eventToDelete.id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       if (response.data.status) {
         toast.success("Event deleted successfully");
@@ -587,14 +590,14 @@ export default function CalendarPage() {
       console.log(editingEventId);
       if (editingEventId) {
         response = await axios.patch(
-          `/api/meeting/${editingEventId}`,
+          `/api/v1/meeting/${editingEventId}`,
           meetingData,
           {
             headers: { Authorization: `Bearer ${token}` },
           },
         );
       } else {
-        response = await axios.post("/api/meeting/create", meetingData, {
+        response = await axios.post("/api/v1/meeting/create", meetingData, {
           headers: { Authorization: `Bearer ${token}` },
         });
       }

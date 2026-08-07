@@ -262,7 +262,7 @@ export default function StatementsPage() {
       const sessionToken = getToken();
       if (!sessionToken) return;
 
-      const response = await axios.get("/api/supplier/all", {
+      const response = await axios.get("/api/v1/supplier/all", {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
 
@@ -355,7 +355,7 @@ export default function StatementsPage() {
         return;
       }
 
-      const response = await axios.get("/api/supplier/statements", {
+      const response = await axios.get("/api/v1/supplier/statements", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -845,7 +845,7 @@ export default function StatementsPage() {
       formData.append("notes", statementForm.notes || "");
 
       const response = await axios.post(
-        `/api/supplier/${statementForm.supplier_id}/statements`,
+        `/api/v1/supplier/${statementForm.supplier_id}/statements`,
         formData,
         {
           headers: {
@@ -990,7 +990,7 @@ export default function StatementsPage() {
         : editingStatement.id;
 
       const response = await axios.patch(
-        `/api/supplier/${supplierId}/statements/${statementId}`,
+        `/api/v1/supplier/${supplierId}/statements/${statementId}`,
         formData,
         {
           headers: {
@@ -1073,7 +1073,7 @@ export default function StatementsPage() {
       }
 
       const response = await axios.delete(
-        `/api/supplier/${statementToDelete.supplier_id}/statements/${statementToDelete.id}`,
+        `/api/v1/supplier/${statementToDelete.supplier_id}/statements/${statementToDelete.id}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,

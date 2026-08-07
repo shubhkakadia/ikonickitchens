@@ -150,7 +150,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.get(`/api/project/${id}`, {
+      const response = await axios.get(`/api/v1/project/${id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -229,7 +229,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.get(`/api/lot/${selectedLot.id}`, {
+      const response = await axios.get(`/api/v1/lot/${selectedLot.id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -260,7 +260,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.get("/api/client/allnames", {
+      const response = await axios.get("/api/v1/client/allnames", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -284,7 +284,7 @@ export default function page() {
         toast.error("No valid session found. Please login again.");
         return;
       }
-      const response = await axios.get("/api/employee/all", {
+      const response = await axios.get("/api/v1/employee/all", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -316,7 +316,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/project/${project.project_id}`,
+        `/api/v1/project/${project.project_id}`,
         {
           name: project.name,
           client_id: clientId,
@@ -376,7 +376,7 @@ export default function page() {
       };
 
       const response = await axios.post(
-        "/api/lot/create",
+        "/api/v1/lot/create",
         JSON.stringify(lotData),
         {
           headers: {
@@ -527,7 +527,7 @@ export default function page() {
         toast.error("No valid session found. Please login again.");
         return;
       }
-      const response = await axios.delete(`/api/lot/${selectedLot.id}`, {
+      const response = await axios.delete(`/api/v1/lot/${selectedLot.id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -557,7 +557,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.delete(`/api/project/${id}`, {
+      const response = await axios.delete(`/api/v1/project/${id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -605,7 +605,7 @@ export default function page() {
         return;
       }
       const response = await axios.patch(
-        `/api/project/${id}`,
+        `/api/v1/project/${id}`,
         projectEditData,
         {
           headers: {
@@ -643,7 +643,7 @@ export default function page() {
       if (selectedLotData?.id) {
         // Update lot information
         const response = await axios.patch(
-          `/api/lot/${selectedLotData.id}`,
+          `/api/v1/lot/${selectedLotData.id}`,
           editData,
           {
             headers: {
@@ -683,7 +683,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/lot/${selectedLotData.id}`,
+        `/api/v1/lot/${selectedLotData.id}`,
         { status: newStatus },
         {
           headers: {
@@ -720,7 +720,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/lot/${selectedLotData.id}`,
+        `/api/v1/lot/${selectedLotData.id}`,
         { installer_id: newInstallerEmployeeId || null },
         {
           headers: {
@@ -986,7 +986,7 @@ export default function page() {
       // Update all visible files
       const updatePromises = visibleFiles.map((file) =>
         axios.post(
-          `/api/maintenance_checklist/upsert`,
+          `/api/v1/maintenance_checklist/upsert`,
           {
             lot_file_id: file.id,
             prepared_by_office: checklistValues.prepared_by_office,
@@ -1052,7 +1052,7 @@ export default function page() {
         formData.append("notes", uploadNotes);
       }
 
-      const apiUrl = `/api/uploads/lots/${id.toUpperCase()}/${
+      const apiUrl = `/api/v1/uploads/lots/${id.toUpperCase()}/${
         selectedLotData.lot_id
       }/${categorySlug}`;
 
@@ -1178,7 +1178,7 @@ export default function page() {
       const tabEnum = getTabEnum(activeTab);
 
       const response = await axios.delete(
-        `/api/uploads/lots/${id.toUpperCase()}/${
+        `/api/v1/uploads/lots/${id.toUpperCase()}/${
           selectedLotData.lot_id
         }/${getCategorySlug(tabEnum)}/${fileToDelete.filename}`,
         {
@@ -1217,7 +1217,7 @@ export default function page() {
       }
 
       const response = await axios.patch(
-        `/api/lot/${selectedLotData.id}`,
+        `/api/v1/lot/${selectedLotData.id}`,
         {
           name: selectedLotData.name,
           startDate:
@@ -1283,7 +1283,7 @@ export default function page() {
         return;
       }
       const response = await axios.patch(
-        `/api/lot/${selectedLotData.id}`,
+        `/api/v1/lot/${selectedLotData.id}`,
         {
           installer_notes: notes,
         },
@@ -1345,13 +1345,13 @@ export default function page() {
       );
       if (lotTab) {
         response = await axios.patch(
-          `/api/lot_tab_notes/${lotTab.id}`,
+          `/api/v1/lot_tab_notes/${lotTab.id}`,
           { notes: content },
           { headers: { Authorization: `Bearer ${sessionToken}` } },
         );
       } else {
         response = await axios.post(
-          `/api/lot_tab_notes/create`,
+          `/api/v1/lot_tab_notes/create`,
           {
             lot_id: selectedLotData.lot_id,
             tab: tabEnum,

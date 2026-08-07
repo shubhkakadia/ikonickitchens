@@ -661,7 +661,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
       }
 
       const response = await axios.get(
-        `${getBaseUrl()}/api/material_selection/lot/${lot_id}`,
+        `${getBaseUrl()}/api/v1/material_selection/lot/${lot_id}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -920,7 +920,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
       }
 
       const response = await axios.get(
-        `${getBaseUrl()}/api/material_selection/version/${versionId}`,
+        `${getBaseUrl()}/api/v1/material_selection/version/${versionId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -968,12 +968,15 @@ export default function MaterialSelection({ lot_id, project_id }) {
       // The API might accept lot_id as a query parameter or we need to find it differently
       // For now, we'll try the standard API and handle gracefully if it fails
       try {
-        const response = await axios.get(`${getBaseUrl()}/api/lot/${lot_id}`, {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
+        const response = await axios.get(
+          `${getBaseUrl()}/api/v1/lot/${lot_id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
           },
-        });
+        );
 
         if (response.data.status && response.data.data) {
           setLotData(response.data.data);
@@ -1230,7 +1233,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
       const formData = collectFormData();
 
       const response = await axios.post(
-        `${getBaseUrl()}/api/material_selection/create`,
+        `${getBaseUrl()}/api/v1/material_selection/create`,
         formData,
         {
           headers: {
@@ -1302,7 +1305,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
       }
 
       const response = await axios.get(
-        `${getBaseUrl()}/api/material_selection/version/${selectedVersionId}`,
+        `${getBaseUrl()}/api/v1/material_selection/version/${selectedVersionId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -1966,7 +1969,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
       });
 
       const response = await axios.post(
-        `/api/uploads/material-selection/${materialSelectionData.id}`,
+        `/api/v1/uploads/material-selection/${materialSelectionData.id}`,
         formData,
         {
           headers: {
@@ -2006,7 +2009,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
     try {
       const sessionToken = getToken();
       const response = await axios.delete(
-        `/api/uploads/material-selection/${materialSelectionData.id}?mediaId=${mediaId}`,
+        `/api/v1/uploads/material-selection/${materialSelectionData.id}?mediaId=${mediaId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,

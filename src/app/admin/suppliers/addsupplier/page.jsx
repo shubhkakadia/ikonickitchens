@@ -111,7 +111,7 @@ export default function page() {
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: "/api/supplier/create",
+        url: "/api/v1/supplier/create",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${sessionToken}`,

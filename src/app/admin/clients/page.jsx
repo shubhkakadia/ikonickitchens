@@ -239,7 +239,7 @@ export default function page() {
       let config = {
         method: "get",
         maxBodyLength: Infinity,
-        url: "/api/client/all",
+        url: "/api/v1/client/all",
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           ...{},

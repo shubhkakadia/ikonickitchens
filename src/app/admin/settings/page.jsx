@@ -164,7 +164,7 @@ export default function SettingsPage() {
       }
 
       const userId = userData.user.id;
-      const response = await axios.get(`/api/user/${userId}`, {
+      const response = await axios.get(`/api/v1/user/${userId}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -202,11 +202,14 @@ export default function SettingsPage() {
       const userId = userData?.user?.id;
       if (!userId) return;
 
-      const response = await axios.get(`/api/notification_config/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
+      const response = await axios.get(
+        `/api/v1/notification_config/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
         },
-      });
+      );
 
       if (response.data.status) {
         setNotificationConfig({
@@ -270,7 +273,7 @@ export default function SettingsPage() {
       };
 
       const response = await axios.patch(
-        `/api/notification_config/${userId}`,
+        `/api/v1/notification_config/${userId}`,
         updatedConfig,
         {
           headers: {
@@ -377,7 +380,7 @@ export default function SettingsPage() {
         password: passwordData.newPassword,
       };
 
-      const response = await axios.patch(`/api/user/${userId}`, updateData, {
+      const response = await axios.patch(`/api/v1/user/${userId}`, updateData, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",

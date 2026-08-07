@@ -440,7 +440,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
       try {
         const sessionToken = getToken();
         const response = await axios.get(
-          `/api/materials_to_order/${relevantMto.id}`,
+          `/api/v1/materials_to_order/${relevantMto.id}`,
           {
             headers: {
               Authorization: `Bearer ${sessionToken}`,
@@ -566,7 +566,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
       }
 
       const sessionToken = getToken();
-      const response = await axios.get(`/api/item/all/${category}`, {
+      const response = await axios.get(`/api/v1/item/all/${category}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -947,7 +947,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
 
       const sessionToken = getToken();
       const response = await axios.delete(
-        `/api/materials_to_order/${currentMtoId}`,
+        `/api/v1/materials_to_order/${currentMtoId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -1108,7 +1108,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         };
 
         const response = await axios.patch(
-          `/api/materials_to_order/${currentMtoId}`,
+          `/api/v1/materials_to_order/${currentMtoId}`,
           requestData,
           {
             headers: {
@@ -1166,7 +1166,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         };
 
         const response = await axios.post(
-          "/api/materials_to_order/create",
+          "/api/v1/materials_to_order/create",
           requestData,
           {
             headers: {
@@ -1280,7 +1280,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         }
 
         const draftResponse = await axios.post(
-          "/api/materials_to_order/create",
+          "/api/v1/materials_to_order/create",
           {
             project_id: project.project_id,
             lot_ids: selectedLots.map((lot) => lot.lot_id),
@@ -1321,7 +1321,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
       showProgressToast(files.length);
 
       const response = await axios.post(
-        `/api/uploads/materials-to-order/${mtoId}`,
+        `/api/v1/uploads/materials-to-order/${mtoId}`,
         formData,
         {
           headers: {
@@ -1336,7 +1336,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         completeUpload(files.length);
         // Refresh media files
         const mtoResponse = await axios.get(
-          `/api/materials_to_order/${mtoId}`,
+          `/api/v1/materials_to_order/${mtoId}`,
           {
             headers: {
               Authorization: `Bearer ${sessionToken}`,
@@ -1376,7 +1376,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
     try {
       const sessionToken = getToken();
       const response = await axios.delete(
-        `/api/uploads/materials-to-order/${currentMtoId}?mediaId=${mediaId}`,
+        `/api/v1/uploads/materials-to-order/${currentMtoId}?mediaId=${mediaId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -1390,7 +1390,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
         setMediaFiles((prev) => prev.filter((media) => media.id !== mediaId));
         // Refresh MTO data
         const mtoResponse = await axios.get(
-          `/api/materials_to_order/${currentMtoId}`,
+          `/api/v1/materials_to_order/${currentMtoId}`,
           {
             headers: {
               Authorization: `Bearer ${sessionToken}`,

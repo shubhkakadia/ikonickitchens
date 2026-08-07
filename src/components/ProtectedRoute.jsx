@@ -255,7 +255,7 @@ export function AdminRoute({
 
       const userId = user.user.id;
       try {
-        const response = await axios.get(`/api/module_access/${userId}`, {
+        const response = await axios.get(`/api/v1/module_access/${userId}`, {
           headers: {
             Authorization: `Bearer ${getToken()}`,
           },

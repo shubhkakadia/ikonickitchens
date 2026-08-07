@@ -213,7 +213,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.get("/api/supplier/all", {
+      const response = await axios.get("/api/v1/supplier/all", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },

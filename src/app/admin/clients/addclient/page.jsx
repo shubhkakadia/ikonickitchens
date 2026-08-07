@@ -84,7 +84,7 @@ export default function page() {
       try {
         const token = getToken();
         const response = await axios.get(
-          `/api/client/slug-availability?slug=${encodeURIComponent(slug)}`,
+          `/api/v1/client/slug-availability?slug=${encodeURIComponent(slug)}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         setSlugAvailability(response.data.available);
@@ -188,7 +188,7 @@ export default function page() {
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: "/api/client/create",
+        url: "/api/v1/client/create",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${sessionToken}`,

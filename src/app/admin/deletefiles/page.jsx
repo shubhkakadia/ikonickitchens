@@ -109,7 +109,7 @@ export default function DeleteFilesPage() {
         return;
       }
 
-      const response = await axios.get("/api/deletedmedia/all", {
+      const response = await axios.get("/api/v1/deletedmedia/all", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -143,7 +143,7 @@ export default function DeleteFilesPage() {
         return;
       }
 
-      const response = await axios.get("/api/deletedrecords/all", {
+      const response = await axios.get("/api/v1/deletedrecords/all", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -179,7 +179,7 @@ export default function DeleteFilesPage() {
       }
 
       const response = await axios.patch(
-        "/api/deletedrecords/recover",
+        "/api/v1/deletedrecords/recover",
         {
           id: record.id,
           entity_type: record.entity_type,
@@ -257,7 +257,7 @@ export default function DeleteFilesPage() {
 
       const filename = fileToDelete.filename;
       const response = await axios.delete(
-        `/api/deletedmedia/${encodeURIComponent(filename)}`,
+        `/api/v1/deletedmedia/${encodeURIComponent(filename)}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -411,7 +411,7 @@ export default function DeleteFilesPage() {
       const filenames = selectedFiles.map((file) => file.filename);
 
       // Call batch delete endpoint
-      const response = await axios.delete("/api/deletedmedia/all", {
+      const response = await axios.delete("/api/v1/deletedmedia/all", {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },

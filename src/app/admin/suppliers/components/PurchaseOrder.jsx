@@ -77,7 +77,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
         return;
       }
       const response = await axios.get(
-        `/api/purchase_order/by-supplier/${supplierId}`,
+        `/api/v1/purchase_order/by-supplier/${supplierId}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -151,7 +151,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
       showProgressToast(1);
 
       const response = await axios.patch(
-        `/api/purchase_order/${poId}`,
+        `/api/v1/purchase_order/${poId}`,
         formData,
         {
           headers: {
@@ -218,7 +218,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
       }
 
       const response = await axios.patch(
-        `/api/purchase_order/${invoicePendingDelete}`,
+        `/api/v1/purchase_order/${invoicePendingDelete}`,
         { invoice_url: null },
         {
           headers: {
@@ -281,7 +281,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
       }
 
       const response = await axios.delete(
-        `/api/purchase_order/${poPendingDelete.id}`,
+        `/api/v1/purchase_order/${poPendingDelete.id}`,
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -341,7 +341,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
       }
 
       const response = await axios.patch(
-        `/api/purchase_order/${poId}`,
+        `/api/v1/purchase_order/${poId}`,
         { status: "CANCELLED" },
         {
           headers: {

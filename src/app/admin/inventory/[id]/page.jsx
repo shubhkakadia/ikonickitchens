@@ -287,7 +287,7 @@ export default function page() {
         const config = {
           method: "post",
           maxBodyLength: Infinity,
-          url: `/api/config/read_all_by_category`,
+          url: `/api/v1/config/read_all_by_category`,
           headers: {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
@@ -327,7 +327,7 @@ export default function page() {
         const config = {
           method: "post",
           maxBodyLength: Infinity,
-          url: `/api/config/read_all_by_category`,
+          url: `/api/v1/config/read_all_by_category`,
           headers: {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
@@ -367,7 +367,7 @@ export default function page() {
         const config = {
           method: "post",
           maxBodyLength: Infinity,
-          url: `/api/config/read_all_by_category`,
+          url: `/api/v1/config/read_all_by_category`,
           headers: {
             Authorization: `Bearer ${sessionToken}`,
             "Content-Type": "application/json",
@@ -402,7 +402,7 @@ export default function page() {
         if (!sessionToken) return;
 
         const response = await axios.post(
-          "/api/config/read_all_by_category",
+          "/api/v1/config/read_all_by_category",
           { category: "brand" },
           {
             headers: {
@@ -518,7 +518,7 @@ export default function page() {
         });
         return;
       }
-      const response = await axios.get(`/api/item/${id}`, {
+      const response = await axios.get(`/api/v1/item/${id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -577,7 +577,7 @@ export default function page() {
       if (!sessionToken) {
         return;
       }
-      const response = await axios.get(`/api/supplier/all`, {
+      const response = await axios.get(`/api/v1/supplier/all`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
@@ -627,7 +627,7 @@ export default function page() {
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: `/api/config/create`,
+        url: `/api/v1/config/create`,
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -647,7 +647,7 @@ export default function page() {
             const config = {
               method: "post",
               maxBodyLength: Infinity,
-              url: `/api/config/read_all_by_category`,
+              url: `/api/v1/config/read_all_by_category`,
               headers: {
                 Authorization: `Bearer ${sessionToken}`,
                 "Content-Type": "application/json",
@@ -772,7 +772,7 @@ export default function page() {
       }
 
       const response = await axios.post(
-        "/api/config/create",
+        "/api/v1/config/create",
         { category: "brand", value },
         { headers: { Authorization: `Bearer ${sessionToken}` } },
       );
@@ -827,7 +827,7 @@ export default function page() {
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: `/api/config/create`,
+        url: `/api/v1/config/create`,
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -847,7 +847,7 @@ export default function page() {
             const config = {
               method: "post",
               maxBodyLength: Infinity,
-              url: `/api/config/read_all_by_category`,
+              url: `/api/v1/config/read_all_by_category`,
               headers: {
                 Authorization: `Bearer ${sessionToken}`,
                 "Content-Type": "application/json",
@@ -901,7 +901,7 @@ export default function page() {
       const config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: `/api/config/create`,
+        url: `/api/v1/config/create`,
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "application/json",
@@ -921,7 +921,7 @@ export default function page() {
             const config = {
               method: "post",
               maxBodyLength: Infinity,
-              url: `/api/config/read_all_by_category`,
+              url: `/api/v1/config/read_all_by_category`,
               headers: {
                 Authorization: `Bearer ${sessionToken}`,
                 "Content-Type": "application/json",
@@ -1123,7 +1123,7 @@ export default function page() {
         showProgressToast(1);
       }
 
-      const response = await axios.patch(`/api/item/${id}`, formDataToSend, {
+      const response = await axios.patch(`/api/v1/item/${id}`, formDataToSend, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
           "Content-Type": "multipart/form-data",
@@ -1251,7 +1251,7 @@ export default function page() {
         return;
       }
 
-      const response = await axios.delete(`/api/item/${id}`, {
+      const response = await axios.delete(`/api/v1/item/${id}`, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },

@@ -1,5 +1,6 @@
 import "server-only";
 
+import crypto from "crypto";
 import { Expo } from "expo-server-sdk";
 
 import { prisma } from "@/lib/db";
@@ -8,6 +9,7 @@ const MAX_RECIPIENTS_PER_EVENT = 1000;
 const RECEIPT_BATCH_SIZE = 1000;
 const RECEIPT_DELAY_MS = 15 * 60 * 1000;
 const RECEIPT_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const RECEIPT_EXPIRY_WARNING_MS = 22 * 60 * 60 * 1000;
 const RECEIPT_FETCH_MAX_ATTEMPTS = 4;
 const RECEIPT_RETRY_BASE_DELAY_MS = 1000;
 const RETRYABLE_NETWORK_CODES = new Set([
@@ -120,9 +122,26 @@ async function logDeliveryError({ code, message, entityId, tokenId }) {
   }
 }
 
-async function fetchReceiptsWithRetry(expo, receiptIds) {
+async function logPushMonitor(entityId, description) {
+  try {
+    await prisma.logs.create({
+      data: {
+        user_id: null,
+        entity_type: "push_receipt",
+        entity_id: entityId,
+        action: "OTHER",
+        description,
+      },
+    });
+  } catch (loggingError) {
+    console.error("Failed to persist Expo receipt monitor audit:", loggingError);
+  }
+}
+
+async function fetchReceiptsWithRetry(expo, receiptIds, onAttempt) {
   for (let attempt = 1; attempt <= RECEIPT_FETCH_MAX_ATTEMPTS; attempt += 1) {
     try {
+      await onAttempt?.(attempt);
       return await expo.getPushNotificationReceiptsAsync(receiptIds);
     } catch (error) {
       const retryable = isRetryableExpoRequestError(error);
@@ -196,6 +215,11 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
   const tokenRecords = await prisma.push_tokens.findMany({
     where: {
       enabled: true,
+      session: {
+        is: {
+          expires_at: { gt: new Date() },
+        },
+      },
       user: {
         is_active: true,
         employee_id: { in: [...employeeIds] },
@@ -224,6 +248,9 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
       where: { id: { in: invalidTokenIds } },
       data: {
         enabled: false,
+        session_id: null,
+        disabled_at: new Date(),
+        last_error_code: "InvalidExpoPushToken",
         last_error: "Invalid Expo push token",
       },
     });
@@ -238,6 +265,8 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
   }
 
   const expo = getExpoClient();
+  const eventId = crypto.randomUUID();
+  const receiptAvailableAt = new Date(Date.now() + RECEIPT_DELAY_MS);
   const messages = validTokens.map(({ expo_push_token }) => ({
     to: expo_push_token,
     sound: "default",
@@ -265,9 +294,11 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
 
       if (ticket.status === "ok") {
         successfulTickets.push({
+          event_id: eventId,
           expo_ticket_id: ticket.id,
           push_token_id: tokenRecord.id,
           lot_id: lot.lot_id,
+          next_attempt_at: receiptAvailableAt,
         });
         sent += 1;
         continue;
@@ -279,6 +310,10 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
         where: { id: tokenRecord.id },
         data: {
           enabled: error.code !== "DeviceNotRegistered",
+          ...(error.code === "DeviceNotRegistered"
+            ? { session_id: null, disabled_at: new Date() }
+            : {}),
+          last_error_code: error.code,
           last_error: `${error.code}: ${error.message}`,
         },
       });
@@ -313,6 +348,9 @@ export async function processPushNotificationReceipts() {
   const now = new Date();
   const readyBefore = new Date(now.getTime() - RECEIPT_DELAY_MS);
   const expiredBefore = new Date(now.getTime() - RECEIPT_EXPIRY_MS);
+  const expiryWarningBefore = new Date(
+    now.getTime() - RECEIPT_EXPIRY_WARNING_MS,
+  );
 
   const expiredTickets = await prisma.push_notification_tickets.updateMany({
     where: {
@@ -321,6 +359,7 @@ export async function processPushNotificationReceipts() {
     },
     data: {
       status: "EXPIRED",
+      next_attempt_at: null,
       receipt_checked_at: now,
       error_message: "Expo receipt was not available within 24 hours",
     },
@@ -330,6 +369,7 @@ export async function processPushNotificationReceipts() {
     where: {
       status: "PENDING",
       createdAt: { lte: readyBefore },
+      OR: [{ next_attempt_at: null }, { next_attempt_at: { lte: now } }],
     },
     select: {
       expo_ticket_id: true,
@@ -339,6 +379,30 @@ export async function processPushNotificationReceipts() {
     orderBy: { createdAt: "asc" },
     take: RECEIPT_BATCH_SIZE,
   });
+
+  const expiringTicketCount = await prisma.push_notification_tickets.count({
+    where: {
+      status: "PENDING",
+      createdAt: {
+        gt: expiredBefore,
+        lte: expiryWarningBefore,
+      },
+    },
+  });
+
+  if (expiredTickets.count > 0) {
+    await logPushMonitor(
+      "expiry-monitor",
+      `${expiredTickets.count} Expo push receipt(s) expired before processing`,
+    );
+  }
+
+  if (expiringTicketCount > 0) {
+    await logPushMonitor(
+      "expiry-warning-monitor",
+      `${expiringTicketCount} Expo push receipt(s) remain unprocessed within two hours of expiry`,
+    );
+  }
 
   if (pendingTickets.length === 0) {
     return {
@@ -360,7 +424,19 @@ export async function processPushNotificationReceipts() {
   for (const chunk of expo.chunkPushNotificationReceiptIds([
     ...ticketById.keys(),
   ])) {
-    const receipts = await fetchReceiptsWithRetry(expo, chunk);
+    const receipts = await fetchReceiptsWithRetry(
+      expo,
+      chunk,
+      async () => {
+        await prisma.push_notification_tickets.updateMany({
+          where: { expo_ticket_id: { in: chunk } },
+          data: {
+            attempt_count: { increment: 1 },
+            next_attempt_at: new Date(Date.now() + RECEIPT_DELAY_MS),
+          },
+        });
+      },
+    );
 
     for (const [receiptId, receipt] of Object.entries(receipts)) {
       const pendingTicket = ticketById.get(receiptId);
@@ -373,7 +449,9 @@ export async function processPushNotificationReceipts() {
           where: { expo_ticket_id: receiptId },
           data: {
             status: "DELIVERED",
+            next_attempt_at: null,
             receipt_checked_at: now,
+            receipt_result: JSON.stringify(receipt),
             error_code: null,
             error_message: null,
           },
@@ -388,7 +466,9 @@ export async function processPushNotificationReceipts() {
           where: { expo_ticket_id: receiptId },
           data: {
             status: "ERROR",
+            next_attempt_at: null,
             receipt_checked_at: now,
+            receipt_result: JSON.stringify(receipt),
             error_code: error.code,
             error_message: error.message,
           },
@@ -397,6 +477,10 @@ export async function processPushNotificationReceipts() {
           where: { id: pendingTicket.push_token_id },
           data: {
             enabled: error.code !== "DeviceNotRegistered",
+            ...(error.code === "DeviceNotRegistered"
+              ? { session_id: null, disabled_at: now }
+              : {}),
+            last_error_code: error.code,
             last_error: `${error.code}: ${error.message}`,
           },
         }),
@@ -408,6 +492,13 @@ export async function processPushNotificationReceipts() {
         tokenId: pendingTicket.push_token_id,
       });
     }
+  }
+
+  if (checked >= 10 && failed / checked >= 0.25) {
+    await logPushMonitor(
+      "failure-rate-monitor",
+      `Abnormal Expo receipt failure rate: ${failed}/${checked} (${Math.round((failed / checked) * 100)}%)`,
+    );
   }
 
   return { checked, delivered, failed, expired: expiredTickets.count };

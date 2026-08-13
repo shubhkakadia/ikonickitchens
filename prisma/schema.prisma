@@ -85,19 +85,23 @@ model sessions {
 }
 
 model push_tokens {
-  id                   String                      @id @default(uuid())
-  user_id              String
-  session_id           String?
-  expo_push_token      String                      @unique
-  platform             String
-  enabled              Boolean                     @default(true)
-  last_registered_at   DateTime                    @default(now())
-  last_error           String?                     @db.LongText
-  createdAt            DateTime                    @default(now())
-  updatedAt            DateTime                    @updatedAt
-  user                 users                       @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  session              sessions?                   @relation(fields: [session_id], references: [id], onDelete: SetNull)
-  notification_tickets push_notification_tickets[]
+  id                     String                      @id @default(uuid())
+  user_id                String
+  session_id             String?
+  expo_push_token        String                      @unique
+  platform               String
+  enabled                Boolean                     @default(true)
+  revocation_handle_hash String?
+  consented_at           DateTime?
+  disabled_at            DateTime?
+  last_registered_at     DateTime                    @default(now())
+  last_error_code        String?
+  last_error             String?                     @db.LongText
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+  user                   users                       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  session                sessions?                   @relation(fields: [session_id], references: [id], onDelete: SetNull)
+  notification_tickets   push_notification_tickets[]
 
   @@index([user_id])
   @@index([session_id])
@@ -106,10 +110,14 @@ model push_tokens {
 
 model push_notification_tickets {
   id                 String      @id @default(uuid())
+  event_id           String
   expo_ticket_id     String      @unique
   push_token_id      String
   lot_id             String?
   status             String      @default("PENDING")
+  attempt_count      Int         @default(0)
+  next_attempt_at    DateTime?
+  receipt_result     String?     @db.LongText
   error_code         String?
   error_message      String?     @db.LongText
   receipt_checked_at DateTime?
@@ -120,6 +128,8 @@ model push_notification_tickets {
 
   @@index([push_token_id])
   @@index([lot_id])
+  @@index([event_id])
+  @@index([status, next_attempt_at])
   @@index([status, createdAt])
 }
 

@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rateLimit";
 
 const SUPPORTED_PLATFORMS = new Set(["ios", "android"]);
+const REVOCATION_HANDLE_BYTES = 32;
 const pushTokenRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,
@@ -37,6 +38,14 @@ function validateExpoPushToken(expoPushToken) {
     expoPushToken.length <= 191 &&
     Expo.isExpoPushToken(expoPushToken)
   );
+}
+
+function createRevocationHandle() {
+  return crypto.randomBytes(REVOCATION_HANDLE_BYTES).toString("base64url");
+}
+
+function hashRevocationHandle(handle) {
+  return crypto.createHash("sha256").update(handle, "utf8").digest("hex");
 }
 
 async function enforceRateLimit(request) {
@@ -75,38 +84,54 @@ async function registerPushToken(request, sessionData) {
     }
 
     const now = new Date();
+    const revocationHandle = createRevocationHandle();
+    const revocationHandleHash = hashRevocationHandle(revocationHandle);
 
-    const pushToken = await prisma.push_tokens.upsert({
-      where: { expo_push_token: body.expo_push_token },
-      create: {
-        user_id: sessionData.userId,
-        session_id: sessionData.sessionId,
-        expo_push_token: body.expo_push_token,
-        platform: body.platform,
-        enabled: true,
-        last_registered_at: now,
-      },
-      update: {
-        user_id: sessionData.userId,
-        session_id: sessionData.sessionId,
-        platform: body.platform,
-        enabled: true,
-        last_registered_at: now,
-        last_error: null,
-      },
+    const pushToken = await prisma.$transaction(async (tx) => {
+      const registration = await tx.push_tokens.upsert({
+        where: { expo_push_token: body.expo_push_token },
+        create: {
+          user_id: sessionData.userId,
+          session_id: sessionData.sessionId,
+          expo_push_token: body.expo_push_token,
+          platform: body.platform,
+          enabled: true,
+          revocation_handle_hash: revocationHandleHash,
+          consented_at: now,
+          disabled_at: null,
+          last_registered_at: now,
+        },
+        update: {
+          user_id: sessionData.userId,
+          session_id: sessionData.sessionId,
+          platform: body.platform,
+          enabled: true,
+          revocation_handle_hash: revocationHandleHash,
+          consented_at: now,
+          disabled_at: null,
+          last_registered_at: now,
+          last_error_code: null,
+          last_error: null,
+        },
+      });
+
+      await tx.logs.create({
+        data: {
+          user_id: sessionData.userId,
+          entity_type: "push_token",
+          entity_id: registration.id,
+          action: "UPDATE",
+          description: `Registered an ${body.platform} push notification device`,
+        },
+      });
+
+      return registration;
     });
 
-    await prisma.logs.create({
-      data: {
-        user_id: sessionData.userId,
-        entity_type: "push_token",
-        entity_id: pushToken.id,
-        action: "UPDATE",
-        description: `Registered an ${body.platform} push notification device`,
-      },
+    return apiSuccess({
+      registration_id: pushToken.id,
+      revocation_handle: revocationHandle,
     });
-
-    return apiSuccess(null);
   } catch (error) {
     console.error("Push token registration error:", error);
     return apiError("Internal server error");
@@ -136,6 +161,7 @@ async function disablePushToken(request, sessionData) {
       data: {
         enabled: false,
         session_id: null,
+        disabled_at: new Date(),
       },
     });
 

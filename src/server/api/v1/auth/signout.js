@@ -26,6 +26,7 @@ export async function signout(request) {
         data: {
           enabled: false,
           session_id: null,
+          disabled_at: new Date(),
         },
       }),
       prisma.sessions.delete({

@@ -22,6 +22,7 @@ model users {
   module_access            module_access?
   purchase_order           purchase_order[]          @relation("PurchaseOrderOrderedBy")
   sessions                 sessions[]
+  push_tokens              push_tokens[]
   employee                 employees?                @relation(fields: [employee_id], references: [employee_id], onDelete: SetNull)
   notification_config      notification_config?
   materials_to_order_items materials_to_order_item[]
@@ -68,18 +69,58 @@ model module_access {
 }
 
 model sessions {
-  id         String   @id @default(uuid())
-  user_id    String
-  token      String   @unique
-  user_type  String
-  expires_at DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id          String        @id @default(uuid())
+  user_id     String
+  token       String        @unique
+  user_type   String
+  expires_at  DateTime
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        users         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  push_tokens push_tokens[]
 
   @@index([user_id])
   @@index([user_type])
   @@index([expires_at])
+}
+
+model push_tokens {
+  id                   String                      @id @default(uuid())
+  user_id              String
+  session_id           String?
+  expo_push_token      String                      @unique
+  platform             String
+  enabled              Boolean                     @default(true)
+  last_registered_at   DateTime                    @default(now())
+  last_error           String?                     @db.LongText
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+  user                 users                       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  session              sessions?                   @relation(fields: [session_id], references: [id], onDelete: SetNull)
+  notification_tickets push_notification_tickets[]
+
+  @@index([user_id])
+  @@index([session_id])
+  @@index([enabled])
+}
+
+model push_notification_tickets {
+  id                 String      @id @default(uuid())
+  expo_ticket_id     String      @unique
+  push_token_id      String
+  lot_id             String?
+  status             String      @default("PENDING")
+  error_code         String?
+  error_message      String?     @db.LongText
+  receipt_checked_at DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  push_token         push_tokens @relation(fields: [push_token_id], references: [id], onDelete: Cascade)
+  lot                lot?        @relation(fields: [lot_id], references: [lot_id], onDelete: SetNull)
+
+  @@index([push_token_id])
+  @@index([lot_id])
+  @@index([status, createdAt])
 }
 
 model employees {
@@ -205,32 +246,33 @@ model project {
 }
 
 model lot {
-  id                     String              @id @default(uuid())
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  lot_id                 String              @unique
-  project_id             String
-  name                   String
-  status                 LotStatus           @default(ACTIVE)
-  startDate              DateTime?
-  installationDueDate    DateTime?
-  notes                  String?             @db.LongText
-  installer              employees?          @relation(fields: [installer_id], references: [employee_id], onDelete: SetNull)
-  installer_id           String?
-  installer_notes        String?             @db.LongText
-  materials_to_orders_id String?
-  material_selection_id  String?             @unique
-  is_deleted             Boolean             @default(false)
-  materials_to_orders    materials_to_order? @relation(fields: [materials_to_orders_id], references: [id], onDelete: SetNull)
+  id                        String                      @id @default(uuid())
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  lot_id                    String                      @unique
+  project_id                String
+  name                      String
+  status                    LotStatus                   @default(ACTIVE)
+  startDate                 DateTime?
+  installationDueDate       DateTime?
+  notes                     String?                     @db.LongText
+  installer                 employees?                  @relation(fields: [installer_id], references: [employee_id], onDelete: SetNull)
+  installer_id              String?
+  installer_notes           String?                     @db.LongText
+  materials_to_orders_id    String?
+  material_selection_id     String?                     @unique
+  is_deleted                Boolean                     @default(false)
+  materials_to_orders       materials_to_order?         @relation(fields: [materials_to_orders_id], references: [id], onDelete: SetNull)
   //   contract_amount         Decimal?            @db.Decimal(10, 2)
   // revised_contract_amount Decimal?            @db.Decimal(10, 2)
   // total_paid_amount       Decimal?            @db.Decimal(10, 2)
-  project                project             @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
-  tabs                   lot_tab[]
-  material_selection     material_selection?
-  stages                 stage[]
-  meetingLots            meeting[]
-  stock_transactions     stock_transaction[]
+  project                   project                     @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  tabs                      lot_tab[]
+  material_selection        material_selection?
+  stages                    stage[]
+  meetingLots               meeting[]
+  stock_transactions        stock_transaction[]
+  push_notification_tickets push_notification_tickets[]
   //   variations              variation[]
   // customer_invoices       customer_invoice[]
 
@@ -731,7 +773,7 @@ model logs {
   entity_type String
   entity_id   String
   action      LogAction
-  description String?
+  description String?   @db.LongText
   createdAt   DateTime  @default(now())
   user        users?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
 

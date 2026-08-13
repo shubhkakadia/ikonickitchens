@@ -817,6 +817,7 @@ This project is **production-ready for enterprise deployment** and continues to 
 ```env
 # Database (Prisma 7 driver adapter — MariaDB)
 DATABASE_HOST=
+EXPO_PUSH_ACCESS_TOKEN=
 DATABASE_PORT=3306
 DATABASE_USER=
 DATABASE_PASSWORD=

@@ -6,6 +6,8 @@ import {
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { sendProjectUpdate } from "@/lib/pushNotifications";
+import { getUserFromToken } from "@/lib/validators/authFromToken";
 
 export async function PATCH(request, { params }) {
   try {
@@ -164,6 +166,20 @@ export async function PATCH(request, { params }) {
         );
         // Don't fail the request if notification fails
       }
+    }
+
+    try {
+      const session = await getUserFromToken(request);
+      await sendProjectUpdate({
+        lotId: updatedStage.lot_id,
+        actorUserId: session?.user_id,
+      });
+    } catch (pushError) {
+      console.error(
+        "Failed to send project update push notification:",
+        pushError,
+      );
+      // The stage update must not fail when the push provider is unavailable.
     }
 
     if (!logged) {

@@ -3,6 +3,7 @@ import { sendNotification } from "@/lib/notification";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { processPushNotificationReceipts } from "@/lib/pushNotifications";
 
 // Extend dayjs with timezone support
 dayjs.extend(utc);
@@ -168,4 +169,25 @@ export function initializeMeetingReminderCron() {
   });
 
   console.log("✓ Cron job initialized: Meeting reminder (1h before)");
+}
+
+/**
+ * Expo recommends checking push receipts after tickets have had time to be
+ * delivered. This worker also disables devices reported as unregistered.
+ */
+export function initializePushReceiptCron() {
+  cron.schedule("*/15 * * * *", async () => {
+    try {
+      const result = await processPushNotificationReceipts();
+      if (result.checked > 0) {
+        console.log(
+          `[Cron] Processed ${result.checked} Expo push receipt(s): ${result.delivered} delivered, ${result.failed} failed, ${result.expired} expired`,
+        );
+      }
+    } catch (error) {
+      console.error("[Cron] Expo push receipt processing failed:", error);
+    }
+  });
+
+  console.log("✓ Cron job initialized: Expo push receipts");
 }

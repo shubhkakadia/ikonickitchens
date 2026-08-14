@@ -78,6 +78,7 @@ export async function revokePushToken(request) {
       where: { id: registrationId },
       select: {
         id: true,
+        user_id: true,
         revocation_handle_hash: true,
       },
     });
@@ -86,16 +87,31 @@ export async function revokePushToken(request) {
       registration &&
       handlesMatch(revocationHandle, registration.revocation_handle_hash)
     ) {
-      await prisma.push_tokens.updateMany({
-        where: {
-          id: registration.id,
-          revocation_handle_hash: registration.revocation_handle_hash,
-        },
-        data: {
-          enabled: false,
-          session_id: null,
-          disabled_at: new Date(),
-        },
+      await prisma.$transaction(async (tx) => {
+        const disabled = await tx.push_tokens.updateMany({
+          where: {
+            id: registration.id,
+            enabled: true,
+            revocation_handle_hash: registration.revocation_handle_hash,
+          },
+          data: {
+            enabled: false,
+            session_id: null,
+            disabled_at: new Date(),
+          },
+        });
+
+        if (disabled.count > 0) {
+          await tx.logs.create({
+            data: {
+              user_id: registration.user_id,
+              entity_type: "push_token",
+              entity_id: registration.id,
+              action: "UPDATE",
+              description: "Revoked a push notification device",
+            },
+          });
+        }
       });
     }
 

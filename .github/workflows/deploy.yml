@@ -5,6 +5,9 @@ on:
     branches:
       - dev
       - main
+  # Manual re-deploy of a chosen branch; the target check below still
+  # rejects anything other than dev or main.
+  workflow_dispatch:
 
 # The deployment only needs to read the repository.
 permissions:
@@ -67,7 +70,7 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          for tool in rsync npm pm2 realpath; do
+          for tool in rsync npm pm2 realpath curl; do
             command -v "$tool" >/dev/null 2>&1 || {
               echo "Required command is unavailable: $tool" >&2
               exit 1
@@ -242,3 +245,24 @@ jobs:
           fi
 
           pm2 save
+
+      - name: Verify application health
+        env:
+          HEALTH_TIMEOUT_SECONDS: "60"
+        run: |
+          set -Eeuo pipefail
+
+          health_url="http://127.0.0.1:${APP_PORT}/api/v1/health"
+          deadline=$(( SECONDS + HEALTH_TIMEOUT_SECONDS ))
+
+          # pm2 exiting 0 only means the process spawned, not that it serves.
+          until curl --fail --silent --max-time 5 "$health_url" >/dev/null 2>&1; do
+            if (( SECONDS >= deadline )); then
+              echo "Application did not become healthy within ${HEALTH_TIMEOUT_SECONDS}s: $health_url" >&2
+              pm2 logs "$PM2_NAME" --lines 50 --nostream || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+          echo "Application is healthy: $health_url"

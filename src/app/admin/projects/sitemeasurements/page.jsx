@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "@/components/sidebar";
 import { AdminRoute } from "@/components/ProtectedRoute";
-import CRMLayout from "@/components/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -18,16 +17,12 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import { replaceTab } from "@/state/reducer/tabs";
-import { v4 as uuidv4 } from "uuid";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 
 export default function SiteMeasurementsPage() {
   const { getToken } = useAuth();
   const router = useRouter();
-  const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingLots, setPendingLots] = useState([]);
@@ -427,13 +422,6 @@ export default function SiteMeasurementsPage() {
 
     const projectHref = `/admin/projects/${lot.project.project_id}`;
     router.push(projectHref);
-    dispatch(
-      replaceTab({
-        id: uuidv4(),
-        title: lot.project.name,
-        href: projectHref,
-      }),
-    );
   };
 
   // Handle drop for react-dnd
@@ -631,8 +619,6 @@ export default function SiteMeasurementsPage() {
         <div className="flex h-screen bg-tertiary">
           <Sidebar />
           <div className="flex-1 flex flex-col overflow-hidden">
-            <CRMLayout />
-
             <div className="flex-1 overflow-hidden flex flex-col">
               <div className="px-4 py-2 border-b border-slate-200 bg-white shrink-0">
                 <div className="flex items-center gap-3">

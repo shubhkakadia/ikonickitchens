@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   isPinned: false,
+  employeeDropdownOpen: true,
   projectDropdownOpen: true,
   suppliersDropdownOpen: true,
   inventoryDropdownOpen: true,
@@ -20,6 +21,9 @@ const sidebarSlice = createSlice({
     toggleProjectDropdown: (state) => {
       state.projectDropdownOpen = !state.projectDropdownOpen;
     },
+    toggleEmployeeDropdown: (state) => {
+      state.employeeDropdownOpen = !state.employeeDropdownOpen;
+    },
     toggleSuppliersDropdown: (state) => {
       state.suppliersDropdownOpen = !state.suppliersDropdownOpen;
     },
@@ -28,6 +32,9 @@ const sidebarSlice = createSlice({
     },
     setProjectDropdown: (state, action) => {
       state.projectDropdownOpen = action.payload;
+    },
+    setEmployeeDropdown: (state, action) => {
+      state.employeeDropdownOpen = action.payload;
     },
     setSuppliersDropdown: (state, action) => {
       state.suppliersDropdownOpen = action.payload;
@@ -41,10 +48,12 @@ const sidebarSlice = createSlice({
 export const {
   togglePinned,
   setPinned,
+  toggleEmployeeDropdown,
   toggleProjectDropdown,
   toggleSuppliersDropdown,
   toggleInventoryDropdown,
   setProjectDropdown,
+  setEmployeeDropdown,
   setSuppliersDropdown,
   setInventoryDropdown,
 } = sidebarSlice.actions;

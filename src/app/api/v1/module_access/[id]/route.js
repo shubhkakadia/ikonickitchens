@@ -66,6 +66,9 @@ export async function PATCH(request, { params }) {
           site_measurements: data.site_measurements,
           config: data.config,
           calendar: data.calendar,
+          add_clock_punch: data.add_clock_punch,
+          clock_punch_details: data.clock_punch_details,
+          all_clock_punches: data.all_clock_punches,
         },
       });
     } catch (error) {

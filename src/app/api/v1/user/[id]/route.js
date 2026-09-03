@@ -144,6 +144,9 @@ export async function PATCH(request, { params }) {
           site_measurements: updateData.module_access.site_measurements,
           config: updateData.module_access.config,
           calendar: updateData.module_access.calendar,
+          add_clock_punch: updateData.module_access.add_clock_punch,
+          clock_punch_details: updateData.module_access.clock_punch_details,
+          all_clock_punches: updateData.module_access.all_clock_punches,
         },
       });
       user = {

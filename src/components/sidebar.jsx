@@ -8,7 +8,6 @@ import {
   InspectionPanel,
   Warehouse,
   LogOut,
-  SquareArrowOutUpRight,
   ChevronDown,
   ChevronUp,
   Trash2,
@@ -25,14 +24,13 @@ import { usePathname } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDispatch, useSelector } from "react-redux";
-import { addTab, replaceTab } from "@/state/reducer/tabs";
 import {
   togglePinned,
+  toggleEmployeeDropdown,
   toggleProjectDropdown,
   toggleSuppliersDropdown,
   toggleInventoryDropdown,
 } from "@/state/reducer/sidebar";
-import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import versions from "@/config/versions.json";
 
@@ -40,9 +38,9 @@ export default function Sidebar() {
   const dispatch = useDispatch();
   const pathname = usePathname();
   const { logout } = useAuth();
-  const { activeTab } = useSelector((state) => state.tabs);
   const {
     isPinned,
+    employeeDropdownOpen,
     projectDropdownOpen,
     suppliersDropdownOpen,
     inventoryDropdownOpen,
@@ -72,7 +70,13 @@ export default function Sidebar() {
       label: "Employees",
       href: "/admin/employees",
       access: false,
-      subtabs: [],
+      subtabs: [
+        {
+          name: "Clock Punches",
+          href: "/admin/employees/punches",
+          access: false,
+        },
+      ],
     },
     {
       icon: User,
@@ -222,16 +226,20 @@ export default function Sidebar() {
 
               if (item.subtabs.length > 0) {
                 const dropdownOpen =
-                  item.label === "Projects"
-                    ? projectDropdownOpen
-                    : item.label === "Suppliers"
-                      ? suppliersDropdownOpen
-                      : item.label === "Inventory"
-                        ? inventoryDropdownOpen
-                        : false;
+                  item.label === "Employees"
+                    ? employeeDropdownOpen
+                    : item.label === "Projects"
+                      ? projectDropdownOpen
+                      : item.label === "Suppliers"
+                        ? suppliersDropdownOpen
+                        : item.label === "Inventory"
+                          ? inventoryDropdownOpen
+                          : false;
 
                 const toggleDropdown = () => {
-                  if (item.label === "Projects")
+                  if (item.label === "Employees")
+                    dispatch(toggleEmployeeDropdown());
+                  else if (item.label === "Projects")
                     dispatch(toggleProjectDropdown());
                   else if (item.label === "Suppliers")
                     dispatch(toggleSuppliersDropdown());
@@ -253,13 +261,6 @@ export default function Sidebar() {
                       <button
                         onClick={() => {
                           router.push(item.href);
-                          dispatch(
-                            replaceTab({
-                              id: uuidv4(),
-                              title: item.label,
-                              href: item.href,
-                            }),
-                          );
                         }}
                         className={`flex items-center gap-2 cursor-pointer text-sm ${
                           isExpanded ? "flex-1" : ""
@@ -287,56 +288,21 @@ export default function Sidebar() {
                       </button>
 
                       {isExpanded && (
-                        <>
-                          <button
-                            onClick={toggleDropdown}
-                            className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
-                            aria-label={
-                              dropdownOpen
-                                ? `Close ${item.label.toLowerCase()} dropdown`
-                                : `Open ${item.label.toLowerCase()} dropdown`
-                            }
-                          >
-                            {dropdownOpen ? (
-                              <ChevronUp className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                            )}
-                          </button>
-
-                          <div
-                            className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              dispatch(
-                                addTab({
-                                  id: uuidv4(),
-                                  title: item.label,
-                                  href: item.href,
-                                }),
-                              );
-                            }}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                dispatch(
-                                  addTab({
-                                    id: uuidv4(),
-                                    title: item.label,
-                                    href: item.href,
-                                  }),
-                                );
-                              }
-                            }}
-                            aria-label={`Open ${item.label} in new tab`}
-                          >
-                            <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-                          </div>
-                        </>
+                        <button
+                          onClick={toggleDropdown}
+                          className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
+                          aria-label={
+                            dropdownOpen
+                              ? `Close ${item.label.toLowerCase()} dropdown`
+                              : `Open ${item.label.toLowerCase()} dropdown`
+                          }
+                        >
+                          {dropdownOpen ? (
+                            <ChevronUp className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                          )}
+                        </button>
                       )}
                     </div>
 
@@ -349,13 +315,6 @@ export default function Sidebar() {
                               key={link.href}
                               onClick={() => {
                                 router.push(link.href);
-                                dispatch(
-                                  replaceTab({
-                                    id: uuidv4(),
-                                    title: link.name,
-                                    href: link.href,
-                                  }),
-                                );
                               }}
                               className={`w-full text-left cursor-pointer rounded-lg border transition-all duration-200 flex items-center gap-2 ${
                                 isExpanded
@@ -383,22 +342,6 @@ export default function Sidebar() {
                                   <span className="text-sm font-medium">
                                     {link.name}
                                   </span>
-                                  <div
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      dispatch(
-                                        addTab({
-                                          id: uuidv4(),
-                                          title: link.name,
-                                          href: link.href,
-                                        }),
-                                      );
-                                    }}
-                                    className="ml-auto p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
-                                  >
-                                    <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-                                  </div>
                                 </>
                               )}
                             </button>
@@ -414,13 +357,6 @@ export default function Sidebar() {
                 <button
                   onClick={() => {
                     router.push(item.href);
-                    dispatch(
-                      replaceTab({
-                        id: uuidv4(),
-                        title: item.label,
-                        href: item.href,
-                      }),
-                    );
                   }}
                   key={item.href}
                   className={`cursor-pointer rounded-lg transition-all duration-200 flex items-center gap-2 border ${
@@ -440,48 +376,15 @@ export default function Sidebar() {
                     }`}
                   />
                   {isExpanded && (
-                    <>
-                      <h1
-                        className={`text-sm font-medium flex-1 text-left ${
-                          isActive
-                            ? "text-white"
-                            : "text-slate-300 group-hover:text-white"
-                        }`}
-                      >
-                        {item.label}
-                      </h1>
-                      <div
-                        className="p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          dispatch(
-                            addTab({
-                              id: uuidv4(),
-                              title: item.label,
-                              href: item.href,
-                            }),
-                          );
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            dispatch(
-                              addTab({
-                                id: uuidv4(),
-                                title: item.label,
-                                href: item.href,
-                              }),
-                            );
-                          }
-                        }}
-                        aria-label={`Open ${item.label} in new tab`}
-                      >
-                        <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-                      </div>
-                    </>
+                    <h1
+                      className={`text-sm font-medium flex-1 text-left ${
+                        isActive
+                          ? "text-white"
+                          : "text-slate-300 group-hover:text-white"
+                      }`}
+                    >
+                      {item.label}
+                    </h1>
                   )}
                 </button>
               );
@@ -492,13 +395,6 @@ export default function Sidebar() {
             <button
               onClick={() => {
                 router.push("/admin/settings");
-                dispatch(
-                  replaceTab({
-                    id: uuidv4(),
-                    title: "Settings",
-                    href: "/admin/settings",
-                  }),
-                );
               }}
               className={`cursor-pointer rounded-lg border transition-all duration-200 flex items-center gap-2 ${
                 isExpanded ? "px-3 py-2.5" : "px-2 py-2 justify-center"
@@ -517,48 +413,15 @@ export default function Sidebar() {
                 }`}
               />
               {isExpanded && (
-                <>
-                  <h1
-                    className={`text-sm font-medium ${
-                      pathname === "/admin/settings"
-                        ? "text-white"
-                        : "text-slate-300 group-hover:text-white"
-                    }`}
-                  >
-                    Settings
-                  </h1>
-                  <div
-                    className="ml-auto p-1.5 rounded-md hover:bg-slate-700/70 transition-colors duration-200 cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dispatch(
-                        addTab({
-                          id: uuidv4(),
-                          title: "Settings",
-                          href: "/admin/settings",
-                        }),
-                      );
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        dispatch(
-                          addTab({
-                            id: uuidv4(),
-                            title: "Settings",
-                            href: "/admin/settings",
-                          }),
-                        );
-                      }
-                    }}
-                    aria-label="Open Settings in new tab"
-                  >
-                    <SquareArrowOutUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
-                  </div>
-                </>
+                <h1
+                  className={`text-sm font-medium ${
+                    pathname === "/admin/settings"
+                      ? "text-white"
+                      : "text-slate-300 group-hover:text-white"
+                  }`}
+                >
+                  Settings
+                </h1>
               )}
             </button>
 

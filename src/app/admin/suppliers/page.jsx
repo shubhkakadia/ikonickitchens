@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import Sidebar from "@/components/sidebar";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import TabsController from "@/components/tabscontroller";
 import PaginationFooter from "@/components/PaginationFooter";
@@ -21,9 +20,6 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import { replaceTab } from "@/state/reducer/tabs";
-import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
 import {
@@ -35,7 +31,6 @@ const TABLE_KEY = "suppliers";
 
 export default function page() {
   const router = useRouter();
-  const dispatch = useDispatch();
   const { getToken } = useAuth();
   const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
   const [sortField, setSortField] = usePersistedTableFilter(
@@ -363,7 +358,6 @@ export default function page() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -398,10 +392,7 @@ export default function page() {
                     </h1>
                     <div className="flex items-center gap-2">
                       <SearchBar />
-                      <TabsController
-                        href="/admin/suppliers/addsupplier"
-                        title="Add Supplier"
-                      >
+                      <TabsController href="/admin/suppliers/addsupplier">
                         <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
                           <Plus className="h-4 w-4" />
                           Add Supplier
@@ -659,13 +650,6 @@ export default function page() {
                                     onClick={() => {
                                       router.push(
                                         `/admin/suppliers/${supplier.supplier_id}`,
-                                      );
-                                      dispatch(
-                                        replaceTab({
-                                          id: uuidv4(),
-                                          title: supplier.name,
-                                          href: `/admin/suppliers/${supplier.supplier_id}`,
-                                        }),
                                       );
                                     }}
                                     className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"

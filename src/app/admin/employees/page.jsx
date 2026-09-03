@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import Sidebar from "@/components/sidebar";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import PaginationFooter from "@/components/PaginationFooter";
 import {
@@ -24,9 +23,6 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import { replaceTab } from "@/state/reducer/tabs";
-import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
 import {
@@ -39,7 +35,6 @@ const TABLE_KEY = "employees";
 export default function page() {
   const router = useRouter();
   const { getToken } = useAuth();
-  const dispatch = useDispatch();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -399,7 +394,6 @@ export default function page() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -434,10 +428,7 @@ export default function page() {
                     </h1>
                     <div className="flex items-center gap-2">
                       <SearchBar />
-                      <TabsController
-                        href="/admin/employees/addemployee"
-                        title="Add Employee"
-                      >
+                      <TabsController href="/admin/employees/addemployee">
                         <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
                           <Plus className="h-4 w-4" />
                           Add Employee
@@ -777,13 +768,6 @@ export default function page() {
                                   onClick={() => {
                                     router.push(
                                       `/admin/employees/${e.employee_id}`,
-                                    );
-                                    dispatch(
-                                      replaceTab({
-                                        id: uuidv4(),
-                                        title: e.first_name + " " + e.last_name,
-                                        href: `/admin/employees/${e.employee_id}`,
-                                      }),
                                     );
                                   }}
                                   className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"

@@ -1,7 +1,6 @@
 "use client";
 import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import Sidebar from "@/components/sidebar";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import PaginationFooter from "@/components/PaginationFooter";
 import {
@@ -28,9 +27,6 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
-import { useDispatch } from "react-redux";
-import { replaceTab } from "@/state/reducer/tabs";
-import { v4 as uuidv4 } from "uuid";
 import SearchBar from "@/components/SearchBar";
 import {
   usePersistedTableFilter,
@@ -55,7 +51,6 @@ const formatCurrency = (value) => {
 };
 
 export default function StatementsPage() {
-  const dispatch = useDispatch();
   const { getToken } = useAuth();
   const [statements, setStatements] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -173,13 +168,6 @@ export default function StatementsPage() {
   useEffect(() => {
     fetchStatements();
     fetchSuppliers();
-    dispatch(
-      replaceTab({
-        id: uuidv4(),
-        title: "Statements",
-        href: "/admin/suppliers/statements",
-      }),
-    );
   }, []);
 
   // Reset to the first page whenever the displayed statement set changes.
@@ -1171,7 +1159,6 @@ export default function StatementsPage() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-full">

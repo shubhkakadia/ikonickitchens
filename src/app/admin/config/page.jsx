@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import Sidebar from "@/components/sidebar.jsx";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import PaginationFooter from "@/components/PaginationFooter";
 import { useState, useEffect, useMemo } from "react";
@@ -285,7 +284,6 @@ export default function ConfigPage() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="px-4 py-2 shrink-0">
               <div className="flex items-center justify-between">

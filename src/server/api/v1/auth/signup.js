@@ -1,10 +1,10 @@
-import "server-only"
+import "server-only";
 
-import bcrypt from "bcrypt"
-import { NextResponse } from "next/server"
+import bcrypt from "bcrypt";
+import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/db"
-import { withLogging } from "@/lib/withLogging"
+import { prisma } from "@/lib/db";
+import { withLogging } from "@/lib/withLogging";
 
 export async function signup(request) {
   try {
@@ -15,11 +15,11 @@ export async function signup(request) {
       is_active,
       employee_id,
       module_access,
-    } = await request.json()
+    } = await request.json();
 
     const existingUser = await prisma.users.findUnique({
       where: { username },
-    })
+    });
 
     if (existingUser) {
       return NextResponse.json(
@@ -28,13 +28,13 @@ export async function signup(request) {
           message: "Username already exists",
         },
         { status: 409 },
-      )
+      );
     }
 
     if (employee_id && employee_id.trim() !== "") {
       const existingEmployee = await prisma.employees.findUnique({
         where: { employee_id },
-      })
+      });
 
       if (!existingEmployee) {
         return NextResponse.json(
@@ -44,12 +44,12 @@ export async function signup(request) {
               "Employee ID does not exist. Please provide a valid employee ID or leave it empty.",
           },
           { status: 400 },
-        )
+        );
       }
 
       const existingUserWithEmployeeId = await prisma.users.findUnique({
         where: { employee_id },
-      })
+      });
 
       if (existingUserWithEmployeeId) {
         return NextResponse.json(
@@ -58,13 +58,13 @@ export async function signup(request) {
             message: "Employee ID is already linked to another user",
           },
           { status: 409 },
-        )
+        );
       }
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
-    let newUser
-    let moduleAccess
+    const hashedPassword = await bcrypt.hash(password, 10);
+    let newUser;
+    let moduleAccess;
 
     try {
       await prisma.$transaction(async (tx) => {
@@ -77,7 +77,7 @@ export async function signup(request) {
             employee_id:
               employee_id && employee_id.trim() !== "" ? employee_id : null,
           },
-        })
+        });
 
         moduleAccess = await tx.module_access.create({
           data: {
@@ -109,18 +109,21 @@ export async function signup(request) {
             site_measurements: module_access.site_measurements,
             config: module_access.config,
             calendar: module_access.calendar,
+            add_clock_punch: module_access.add_clock_punch ?? false,
+            clock_punch_details: module_access.clock_punch_details ?? false,
+            all_clock_punches: module_access.all_clock_punches ?? false,
           },
-        })
-      })
+        });
+      });
     } catch (error) {
-      console.error("Error creating user or module access in signup:", error)
+      console.error("Error creating user or module access in signup:", error);
       return NextResponse.json(
         {
           status: false,
           message: "Internal server error while creating user or module access",
         },
         { status: 500 },
-      )
+      );
     }
 
     const logged = await withLogging(
@@ -129,12 +132,12 @@ export async function signup(request) {
       newUser.id,
       "CREATE",
       `User created successfully: ${newUser.username}`,
-    )
+    );
 
     if (!logged) {
       console.error(
         `Failed to log user creation: ${newUser.id} - ${newUser.username}`,
-      )
+      );
       return NextResponse.json(
         {
           status: true,
@@ -143,7 +146,7 @@ export async function signup(request) {
           warning: "Note: Creation succeeded but logging failed",
         },
         { status: 201 },
-      )
+      );
     }
 
     return NextResponse.json(
@@ -153,15 +156,15 @@ export async function signup(request) {
         data: { user: newUser, module_access: moduleAccess },
       },
       { status: 201 },
-    )
+    );
   } catch (error) {
-    console.error("Signup error:", error)
+    console.error("Signup error:", error);
     return NextResponse.json(
       {
         status: false,
         message: "Internal server error",
       },
       { status: 500 },
-    )
+    );
   }
 }

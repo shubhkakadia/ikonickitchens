@@ -1,6 +1,5 @@
 "use client";
 import { AdminRoute } from "@/components/ProtectedRoute";
-import CRMLayout from "@/components/tabs";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import { stages } from "@/components/constants";
@@ -20,9 +19,6 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import { addTab, replaceTab } from "@/state/reducer/tabs";
-import { v4 as uuidv4 } from "uuid";
 import SearchBar from "@/components/SearchBar";
 import {
   usePersistedTableFilter,
@@ -1348,7 +1344,6 @@ function SchedulerView({
 export default function page() {
   const { getToken } = useAuth();
   const router = useRouter();
-  const dispatch = useDispatch();
   const [activeLots, setActiveLots] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
@@ -1807,13 +1802,6 @@ export default function page() {
 
     const projectHref = `/admin/projects/${lot.project.project_id}`;
     router.push(projectHref);
-    dispatch(
-      replaceTab({
-        id: uuidv4(),
-        title: lot.project.name,
-        href: projectHref,
-      }),
-    );
   };
 
   // Handle client name click - navigate to client page
@@ -1830,13 +1818,6 @@ export default function page() {
 
     const clientHref = `/admin/clients/${lot.project.client.client_id}`;
     router.push(clientHref);
-    dispatch(
-      replaceTab({
-        id: uuidv4(),
-        title: lot.project.client.client_name,
-        href: clientHref,
-      }),
-    );
   };
 
   // Handle status square click
@@ -2031,7 +2012,6 @@ export default function page() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-full">

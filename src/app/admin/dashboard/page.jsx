@@ -1,6 +1,5 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -39,6 +38,7 @@ import {
 import { Doughnut, Bar } from "react-chartjs-2";
 import Sidebar from "../../../components/sidebar";
 import SearchBar from "@/components/SearchBar";
+import ClockPunchCard from "./components/ClockPunchCard";
 
 // Register Chart.js components
 ChartJS.register(
@@ -735,7 +735,6 @@ export default function page() {
       <div className="flex h-screen bg-slate-50">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 w-full overflow-auto">
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -991,6 +990,10 @@ export default function page() {
                     </button>
                   </div>
                 </div>
+
+                {/* Time clock — only rendered for users linked to an employee */}
+                <ClockPunchCard />
+
                 <div className="flex flex-col xl:flex-row gap-4">
                   <div className="xl:flex-3 min-w-0 space-y-4">
                     {/* KPI Cards */}

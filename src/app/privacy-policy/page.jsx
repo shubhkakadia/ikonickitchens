@@ -5,14 +5,43 @@ import Footer from "@/components/footer";
 export const metadata = {
   title: "Privacy Policy | Ikonic Kitchens and Cabinets",
   description:
-    "How Ikonic Kitchens and Cabinets collects, uses and protects personal information.",
+    "How Ikonic Kitchens and Cabinets collects, uses and protects personal information across our website and staff mobile app.",
 };
 
+const subheading = "mt-6 mb-2 text-lg font-semibold text-slate-900";
+
 const sections = [
+  {
+    title: "Who this policy covers",
+    content: (
+      <>
+        <p>
+          This policy applies to two related services:
+        </p>
+        <ul>
+          <li>
+            our public website, which anyone can browse and use to contact us
+            or request a quote; and
+          </li>
+          <li>
+            the Ikonic Kitchens and Cabinets management platform and staff
+            mobile app, which is a private tool available only to our employees
+            and authorised staff who are issued an account by us.
+          </li>
+        </ul>
+        <p>
+          The staff app is not a consumer product. Accounts are created by an
+          administrator, and access to information inside the app is limited by
+          per-user permissions.
+        </p>
+      </>
+    ),
+  },
   {
     title: "Information we collect",
     content: (
       <>
+        <h3 className={subheading}>From website visitors and customers</h3>
         <p>
           We collect personal information that you choose to provide when you
           contact us, request a quote or subscribe to our newsletter. This may
@@ -25,6 +54,56 @@ const sections = [
           address, pages visited and information stored in your browser for
           website functionality.
         </p>
+
+        <h3 className={subheading}>From staff app and platform users</h3>
+        <p>
+          To operate the business management platform and staff app, we collect
+          and hold:
+        </p>
+        <ul>
+          <li>
+            <strong>Employee and account details</strong> &mdash; first and last
+            name, employee ID, username, work email address, phone numbers
+            (including a secondary and emergency contact number where
+            provided), role, and other employment records kept in our HR
+            module;
+          </li>
+          <li>
+            <strong>Profile photographs</strong> &mdash; a profile image where
+            one is uploaded for an employee record;
+          </li>
+          <li>
+            <strong>Project photographs and videos</strong> &mdash; site
+            photos, progress and completion photos and videos captured or
+            uploaded against a job, which may incidentally include images of
+            people or of a customer&rsquo;s premises;
+          </li>
+          <li>
+            <strong>Project documents and notes</strong> &mdash; drawings,
+            plans, site measurements, quotes, purchase orders, checklists, free
+            text notes and comments recorded against a client, project or work
+            package;
+          </li>
+          <li>
+            <strong>Push-notification device tokens</strong> &mdash; the Expo
+            push token issued to your device, the device platform (iOS or
+            Android), the linked account and session, whether notifications are
+            enabled, and delivery status information such as timestamps and
+            error codes returned by the push service;
+          </li>
+          <li>
+            <strong>Activity and audit records</strong> &mdash; a log of actions
+            taken in the platform (such as creating, updating or deleting a
+            record) attributed to the user who performed them, together with
+            sign-in session records; and
+          </li>
+          <li>
+            <strong>App usage and performance diagnostics</strong> &mdash;
+            crash reports, error traces, performance measurements, app version,
+            operating system version and device model, collected through EAS
+            Observe (Expo&rsquo;s diagnostics service).
+          </li>
+        </ul>
       </>
     ),
   },
@@ -38,9 +117,79 @@ const sections = [
           <li>prepare quotes and provide our kitchen, cabinetry and related services;</li>
           <li>communicate about your project, account or requested information;</li>
           <li>send newsletters and marketing updates where you have subscribed;</li>
-          <li>improve, secure and maintain our website and business operations; and</li>
+          <li>
+            run our business operations &mdash; scheduling and assigning work,
+            tracking project stages, managing inventory, suppliers and purchase
+            orders, and keeping employment and payroll records;
+          </li>
+          <li>
+            send work-related push notifications to staff devices, such as job
+            assignments, stage changes and updates on a work package;
+          </li>
+          <li>
+            authenticate users, enforce access permissions, and maintain the
+            audit trail that records who changed what and when;
+          </li>
+          <li>
+            diagnose crashes and errors, monitor performance and improve the
+            stability of the app and website; and
+          </li>
           <li>meet legal, regulatory and record-keeping obligations.</li>
         </ul>
+        <p>
+          We do not use any of this information for automated decision-making
+          that produces legal or similarly significant effects.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "Push notifications",
+    content: (
+      <>
+        <p>
+          The staff app can send push notifications about work assigned to you.
+          When you enable notifications, your device is issued a push token by
+          Expo, which we store against your account and session so we can
+          address a message to your device. We record when notifications were
+          enabled, and we keep delivery receipts and error codes so we can tell
+          whether a notification was delivered.
+        </p>
+        <p>
+          Notifications are delivered through the Expo push notification service
+          (Expo Application Services), which in turn hands the message to Apple
+          Push Notification service (APNs) for iOS devices and to Google&rsquo;s
+          Firebase Cloud Messaging for Android devices. The notification content
+          and the device token pass through those services in order to reach
+          your device.
+        </p>
+        <p>
+          You can turn notifications off at any time in the app settings or in
+          your device&rsquo;s operating system settings. When notifications are
+          disabled, or when you sign out or a device token is revoked or
+          reported invalid by the push service, we mark the token as disabled
+          and stop sending to it.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "Diagnostics and analytics",
+    content: (
+      <>
+        <p>
+          We use EAS Observe, part of Expo Application Services, to collect app
+          usage and performance diagnostics from the staff app. This includes
+          crash reports and stack traces, error and performance data, the app
+          and operating system version, device model and the account or session
+          associated with an event. We use it only to find and fix faults and to
+          improve the reliability of the app.
+        </p>
+        <p>
+          We do not use advertising SDKs, advertising identifiers or
+          cross-application tracking, we do not build advertising or behavioural
+          profiles, and we do not sell or rent personal information to anyone.
+        </p>
       </>
     ),
   },
@@ -64,6 +213,14 @@ const sections = [
           collect information under their own privacy policies when you view or
           follow their links.
         </p>
+        <p>
+          The service providers we rely on for the staff app and platform
+          include Expo Application Services (app builds, push notifications and
+          EAS Observe diagnostics), Apple Push Notification service and Google
+          Firebase Cloud Messaging (notification delivery), our hosting and
+          database providers, and Xero for accounting where finance records are
+          synchronised. Each handles information under its own privacy policy.
+        </p>
       </>
     ),
   },
@@ -72,37 +229,102 @@ const sections = [
     content: (
       <p>
         We do not sell personal information. We may share it with trusted
-        service providers who help us operate our website, communications or
-        business services, or where disclosure is required or permitted by
-        law. We only share information needed for the relevant purpose and
-        expect providers to handle it appropriately.
+        service providers who help us operate our website, app, communications
+        or business services, or where disclosure is required or permitted by
+        law. Some of these providers store or process information overseas. We
+        only share information needed for the relevant purpose and expect
+        providers to handle it appropriately.
       </p>
     ),
   },
   {
     title: "Storage, security and retention",
     content: (
-      <p>
-        We take reasonable steps to protect personal information from misuse,
-        interference, loss and unauthorised access, modification or disclosure.
-        No internet transmission or storage system is completely secure. We
-        retain information only for as long as reasonably needed for the
-        purposes described in this policy, our business records, or legal
-        requirements.
-      </p>
+      <>
+        <p>
+          Platform records are held in our database, and uploaded photographs,
+          videos and documents are stored on our file storage. Access requires
+          an account issued by us and is further restricted by module-level
+          permissions, so staff only see the areas of the platform they are
+          authorised to use. Passwords are stored using one-way hashing, access
+          is over encrypted connections, sessions expire, and actions that
+          change records are written to an audit log.
+        </p>
+        <p>
+          We take reasonable steps to protect personal information from misuse,
+          interference, loss and unauthorised access, modification or
+          disclosure. No internet transmission or storage system is completely
+          secure.
+        </p>
+        <p>
+          We retain information only for as long as reasonably needed for the
+          purposes described in this policy, our business records, or legal
+          requirements. In practice:
+        </p>
+        <ul>
+          <li>
+            project records, documents, photographs and videos are kept for the
+            life of the job and afterwards as part of our business and warranty
+            records;
+          </li>
+          <li>
+            employment records are kept for the period required by Australian
+            employment, tax and superannuation law;
+          </li>
+          <li>
+            push tokens are kept while the device is registered, and are
+            disabled when notifications are switched off, when you sign out, or
+            when the push service reports the token as no longer valid;
+          </li>
+          <li>
+            expired sessions are cleared automatically; and
+          </li>
+          <li>
+            diagnostics collected through EAS Observe are retained according to
+            that service&rsquo;s retention period and are used only for fault
+            diagnosis.
+          </li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    title: "Deleting your information",
+    content: (
+      <>
+        <p>
+          Records removed in the platform are first marked as deleted and hidden
+          from everyday use, which lets us recover from mistakes and preserve
+          the audit trail, before being permanently removed in line with the
+          retention periods above.
+        </p>
+        <p>
+          You can ask us to delete personal information we hold about you by
+          emailing{" "}
+          <a href="mailto:info@ikonickitchens.com.au">
+            info@ikonickitchens.com.au
+          </a>
+          . If you are a staff app user, you can also ask us to delete your
+          account and its associated device tokens. We will action deletion
+          requests unless we are required to keep the information &mdash; for
+          example employment, tax or financial records that we must retain by
+          law &mdash; and we will tell you if that is the case.
+        </p>
+      </>
     ),
   },
   {
     title: "Access, correction and concerns",
     content: (
       <p>
-        You may request access to, or correction of, personal information we
-        hold about you, or raise a privacy concern, by emailing{" "}
+        You may request access to, or correction or deletion of, personal
+        information we hold about you, or raise a privacy concern, by emailing{" "}
         <a href="mailto:info@ikonickitchens.com.au">
           info@ikonickitchens.com.au
-        </a>
-        . We will respond within a reasonable time. This policy is intended to
-        operate in accordance with applicable Australian privacy laws.
+        </a>{" "}
+        or by writing to us at the postal address below. We will respond within
+        a reasonable time, and generally within 30 days. This policy is intended
+        to operate in accordance with applicable Australian privacy laws.
       </p>
     ),
   },
@@ -130,14 +352,16 @@ export default function PrivacyPolicyPage() {
             <h1 className="mb-4 text-4xl font-bold text-slate-900 sm:text-5xl">
               Privacy Policy
             </h1>
-            <p className="text-slate-600">Effective date: 6 August 2026</p>
+            <p className="text-slate-600">Effective date: 28 August 2026</p>
+            <p className="text-slate-600">Last updated: 28 August 2026</p>
           </div>
 
           <div className="space-y-9 text-base leading-relaxed text-slate-700">
             <p>
               Ikonic Kitchens and Cabinets respects your privacy. This policy
               explains how we handle personal information collected through
-              this website and when you contact us about our services.
+              this website, through our staff mobile app and business
+              management platform, and when you contact us about our services.
             </p>
 
             {sections.map((section) => (
@@ -156,7 +380,7 @@ export default function PrivacyPolicyPage() {
               <address className="not-italic">
                 Ikonic Kitchens and Cabinets<br />
                 5 Dundee Avenue, Holden Hill, South Australia 5088, Australia<br />
-                <a href="mailto:info@ikonickitchens.com.au">
+                <a href="mailto:info@ikonickitchens.com.au" className="font-medium text-[#B92F34] underline underline-offset-4">
                   info@ikonickitchens.com.au
                 </a>
               </address>

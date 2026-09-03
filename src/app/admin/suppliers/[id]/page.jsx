@@ -2,7 +2,6 @@
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import Sidebar from "@/components/sidebar";
-import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
 import {
   ChevronLeft,
@@ -355,7 +354,6 @@ export default function page() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -388,7 +386,7 @@ export default function page() {
               <div className="p-3">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
-                  <TabsController back={true} title="Suppliers">
+                  <TabsController back={true}>
                     <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
                       <ChevronLeft className="w-6 h-6 text-slate-600" />
                     </div>

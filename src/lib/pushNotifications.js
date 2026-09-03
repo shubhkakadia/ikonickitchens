@@ -12,6 +12,7 @@ const RECEIPT_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const RECEIPT_EXPIRY_WARNING_MS = 22 * 60 * 60 * 1000;
 const RECEIPT_FETCH_MAX_ATTEMPTS = 4;
 const RECEIPT_RETRY_BASE_DELAY_MS = 1000;
+const RECEIPT_RETRY_MAX_DELAY_MS = 6 * 60 * 60 * 1000;
 const RETRYABLE_NETWORK_CODES = new Set([
   "EAI_AGAIN",
   "ECONNREFUSED",
@@ -134,7 +135,10 @@ async function logPushMonitor(entityId, description) {
       },
     });
   } catch (loggingError) {
-    console.error("Failed to persist Expo receipt monitor audit:", loggingError);
+    console.error(
+      "Failed to persist Expo receipt monitor audit:",
+      loggingError,
+    );
   }
 }
 
@@ -273,10 +277,7 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
     title: "Project updated",
     body: "An assigned project has new information.",
     channelId: "project-updates",
-    data: {
-      screen: "projects",
-      lotId: lot.lot_id,
-    },
+    data: { screen: "projects" },
   }));
 
   let offset = 0;
@@ -375,6 +376,7 @@ export async function processPushNotificationReceipts() {
       expo_ticket_id: true,
       push_token_id: true,
       lot_id: true,
+      attempt_count: true,
     },
     orderBy: { createdAt: "asc" },
     take: RECEIPT_BATCH_SIZE,
@@ -424,15 +426,25 @@ export async function processPushNotificationReceipts() {
   for (const chunk of expo.chunkPushNotificationReceiptIds([
     ...ticketById.keys(),
   ])) {
+    const previousAttemptCount = Math.max(
+      0,
+      ...chunk.map(
+        (receiptId) => ticketById.get(receiptId)?.attempt_count || 0,
+      ),
+    );
     const receipts = await fetchReceiptsWithRetry(
       expo,
       chunk,
-      async () => {
+      async (attempt) => {
+        const retryDelay = Math.min(
+          RECEIPT_DELAY_MS * 2 ** (previousAttemptCount + attempt - 1),
+          RECEIPT_RETRY_MAX_DELAY_MS,
+        );
         await prisma.push_notification_tickets.updateMany({
           where: { expo_ticket_id: { in: chunk } },
           data: {
             attempt_count: { increment: 1 },
-            next_attempt_at: new Date(Date.now() + RECEIPT_DELAY_MS),
+            next_attempt_at: new Date(Date.now() + retryDelay),
           },
         });
       },

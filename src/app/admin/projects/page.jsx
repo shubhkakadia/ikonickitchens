@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import Sidebar from "@/components/sidebar";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import TabsController from "@/components/tabscontroller";
 import PaginationFooter from "@/components/PaginationFooter";
@@ -23,9 +22,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
-import { replaceTab } from "@/state/reducer/tabs";
 import { setActiveTab } from "@/state/reducer/projectTabs";
-import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
 import {
@@ -468,7 +465,6 @@ export default function page() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -503,10 +499,7 @@ export default function page() {
                     </h1>
                     <div className="flex items-center gap-2">
                       <SearchBar />
-                      <TabsController
-                        href="/admin/projects/addproject"
-                        title="Add Project"
-                      >
+                      <TabsController href="/admin/projects/addproject">
                         <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
                           <Plus className="h-4 w-4" />
                           Add Project
@@ -916,13 +909,6 @@ export default function page() {
                                     onClick={() => {
                                       router.push(
                                         `/admin/projects/${project.project_id}`,
-                                      );
-                                      dispatch(
-                                        replaceTab({
-                                          id: uuidv4(),
-                                          title: project.name,
-                                          href: `/admin/projects/${project.project_id}`,
-                                        }),
                                       );
                                     }}
                                     className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"

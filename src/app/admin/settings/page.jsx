@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
 import Sidebar from "@/components/sidebar";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import {
   AlertTriangle,
@@ -480,7 +479,6 @@ export default function SettingsPage() {
       <div className="flex h-screen bg-background text-foreground">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900">
             {loading ? (
               <div className="flex items-center justify-center h-full">

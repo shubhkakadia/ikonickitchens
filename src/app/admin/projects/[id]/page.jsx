@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useRef } from "react";
 import Sidebar from "@/components/sidebar";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import { useParams } from "next/navigation";
 import TabsController from "@/components/tabscontroller";
@@ -17,7 +16,6 @@ import {
   Trash,
   PanelsTopLeft,
   ChevronDown,
-  SquareArrowOutUpRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
@@ -26,9 +24,6 @@ import { useState } from "react";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
 import { CiMenuKebab } from "react-icons/ci";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import { addTab, replaceTab } from "@/state/reducer/tabs";
-import { v4 as uuidv4 } from "uuid";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import { tabs } from "@/components/constants";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -49,7 +44,6 @@ export default function page() {
   const { id } = useParams();
   const { getToken } = useAuth();
   const router = useRouter();
-  const dispatch = useDispatch();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1434,7 +1428,6 @@ export default function page() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -1466,7 +1459,7 @@ export default function page() {
             ) : (
               <div className="p-4">
                 <div className="flex items-center gap-4 mb-4">
-                  <TabsController back={true} title="Projects">
+                  <TabsController back={true}>
                     <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
                       <ChevronLeft className="w-6 h-6 text-slate-600" />
                     </div>
@@ -1931,14 +1924,6 @@ export default function page() {
                                           onClick={() => {
                                             const clientHref = `/admin/clients/${project.client.client_id}`;
                                             router.push(clientHref);
-                                            dispatch(
-                                              replaceTab({
-                                                id: uuidv4(),
-                                                title:
-                                                  project.client.client_name,
-                                                href: clientHref,
-                                              }),
-                                            );
                                           }}
                                           className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors truncate"
                                         >
@@ -1949,24 +1934,6 @@ export default function page() {
                                         </p>
                                       </div>
                                       <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            const clientHref = `/admin/clients/${project.client.client_id}`;
-                                            dispatch(
-                                              addTab({
-                                                id: uuidv4(),
-                                                title:
-                                                  project.client.client_name,
-                                                href: clientHref,
-                                              }),
-                                            );
-                                          }}
-                                          className="p-1.5 rounded hover:bg-slate-100 transition-colors duration-200 cursor-pointer"
-                                          title="Open client in new tab"
-                                        >
-                                          <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 hover:text-slate-600" />
-                                        </button>
                                         {!isEditing && (
                                           <>
                                             <button
@@ -2050,15 +2017,6 @@ export default function page() {
                                           onClick={() => {
                                             const installerHref = `/admin/employees/${selectedLotData.installer.employee_id}`;
                                             router.push(installerHref);
-                                            dispatch(
-                                              replaceTab({
-                                                id: uuidv4(),
-                                                title:
-                                                  `${selectedLotData.installer.first_name || ""} ${selectedLotData.installer.last_name || ""}`.trim() ||
-                                                  "Installer",
-                                                href: installerHref,
-                                              }),
-                                            );
                                           }}
                                           className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors truncate"
                                         >
@@ -2074,25 +2032,6 @@ export default function page() {
                                         </p>
                                       </div>
                                       <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            const installerHref = `/admin/employees/${selectedLotData.installer.employee_id}`;
-                                            dispatch(
-                                              addTab({
-                                                id: uuidv4(),
-                                                title:
-                                                  `${selectedLotData.installer.first_name || ""} ${selectedLotData.installer.last_name || ""}`.trim() ||
-                                                  "Installer",
-                                                href: installerHref,
-                                              }),
-                                            );
-                                          }}
-                                          className="p-1.5 rounded hover:bg-slate-100 transition-colors duration-200 cursor-pointer"
-                                          title="Open installer in new tab"
-                                        >
-                                          <SquareArrowOutUpRight className="w-4 h-4 text-slate-400 hover:text-slate-600" />
-                                        </button>
                                         {!isEditing && (
                                           <>
                                             <button

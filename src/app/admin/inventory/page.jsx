@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import Sidebar from "@/components/sidebar.jsx";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import TabsController from "@/components/tabscontroller";
 import PaginationFooter from "@/components/PaginationFooter";
@@ -12,9 +11,7 @@ import { toast } from "react-toastify";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
-import { replaceTab } from "@/state/reducer/tabs";
 import { setActiveTab } from "@/state/reducer/inventoryTabs";
-import { v4 as uuidv4 } from "uuid";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import {
   Plus,
@@ -970,7 +967,6 @@ export default function page() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -1005,10 +1001,7 @@ export default function page() {
                     </h1>
                     <div className="flex items-center gap-2">
                       <SearchBar />
-                      <TabsController
-                        href="/admin/inventory/additem"
-                        title="Add Item"
-                      >
+                      <TabsController href="/admin/inventory/additem">
                         <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
                           <Plus className="h-4 w-4" />
                           Add Item
@@ -1436,13 +1429,6 @@ export default function page() {
                                   onClick={() => {
                                     router.push(
                                       `/admin/inventory/${item.item_id}`,
-                                    );
-                                    dispatch(
-                                      replaceTab({
-                                        id: uuidv4(),
-                                        title: getItemTitle(item),
-                                        href: `/admin/inventory/${item.item_id}`,
-                                      }),
                                     );
                                   }}
                                   className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"

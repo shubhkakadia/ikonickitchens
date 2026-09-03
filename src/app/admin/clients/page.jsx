@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { v4 as uuidv4 } from "uuid";
 import {
   Plus,
   Search,
@@ -17,13 +16,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
 import Sidebar from "@/components/sidebar";
-import CRMLayout from "@/components/tabs";
 import { AdminRoute } from "@/components/ProtectedRoute";
 import TabsController from "@/components/tabscontroller";
 import PaginationFooter from "@/components/PaginationFooter";
-import { replaceTab } from "@/state/reducer/tabs";
 import "react-toastify/dist/ReactToastify.css";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import SearchBar from "@/components/SearchBar";
@@ -36,7 +32,6 @@ const TABLE_KEY = "clients";
 
 export default function page() {
   const router = useRouter();
-  const dispatch = useDispatch();
   const { getToken } = useAuth();
 
   const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
@@ -412,7 +407,6 @@ export default function page() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="flex-1 flex flex-col overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -447,10 +441,7 @@ export default function page() {
                     </h1>
                     <div className="flex items-center gap-2">
                       <SearchBar />
-                      <TabsController
-                        href="/admin/clients/addclient"
-                        title="Add Client"
-                      >
+                      <TabsController href="/admin/clients/addclient">
                         <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
                           <Plus className="h-4 w-4" />
                           Add Client
@@ -775,13 +766,6 @@ export default function page() {
                                   onClick={() => {
                                     router.push(
                                       `/admin/clients/${e.client_id}`,
-                                    );
-                                    dispatch(
-                                      replaceTab({
-                                        id: uuidv4(),
-                                        title: e.client_name,
-                                        href: `/admin/clients/${e.client_id}`,
-                                      }),
                                     );
                                   }}
                                 >

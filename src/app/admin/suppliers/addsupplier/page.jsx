@@ -1,6 +1,5 @@
 "use client";
 import { AdminRoute } from "@/components/ProtectedRoute";
-import CRMLayout from "@/components/tabs";
 import TabsController from "@/components/tabscontroller";
 import {
   ChevronLeft,
@@ -343,11 +342,10 @@ export default function page() {
       <div className="flex h-screen bg-tertiary">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <CRMLayout />
           <div className="h-full w-full overflow-y-auto">
             <div className="px-4 py-2">
               <div className="flex items-center gap-2 mb-4">
-                <TabsController back={true} title="Suppliers">
+                <TabsController back={true}>
                   <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
                     <ChevronLeft className="w-8 h-8 text-slate-600" />
                   </div>

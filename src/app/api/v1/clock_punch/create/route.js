@@ -2,18 +2,13 @@ import { NextResponse } from "next/server";
 
 import {
   authenticateClockPunchRequest,
-  clockPunchInclude,
-  getAllowedNextActions,
-  getClockPunchDayBounds,
-  getMinimumBreakEnd,
   isClockPunchReviewer,
   MINIMUM_BREAK_MINUTES,
   normalizeClockPunchAction,
 } from "@/lib/clockPunch";
+import { createClockPunch } from "@/lib/clockPunchService";
 import { prisma } from "@/lib/db";
 import { withLogging } from "@/lib/withLogging";
-
-const MAX_TRANSACTION_ATTEMPTS = 3;
 
 async function readJsonBody(request) {
   try {
@@ -26,94 +21,6 @@ async function readJsonBody(request) {
         { status: 400 },
       ),
     };
-  }
-}
-
-async function createPunch(employeeId, userId, action, punchType) {
-  for (let attempt = 1; attempt <= MAX_TRANSACTION_ATTEMPTS; attempt += 1) {
-    try {
-      const punchedAt = new Date();
-      const dayBounds = getClockPunchDayBounds(punchedAt);
-
-      return await prisma.$transaction(
-        async (tx) => {
-          const previousPunch = await tx.clock_punch.findFirst({
-            where: {
-              employee_id: employeeId,
-              review_status: { not: "REJECTED" },
-              punched_at: {
-                gte: dayBounds.start,
-                lt: dayBounds.end,
-              },
-            },
-            orderBy: [
-              { punched_at: "desc" },
-              { createdAt: "desc" },
-              { id: "desc" },
-            ],
-            select: {
-              id: true,
-              action: true,
-              punched_at: true,
-            },
-          });
-
-          const allowedActions = getAllowedNextActions(previousPunch?.action);
-          if (!allowedActions.includes(action)) {
-            return {
-              conflict: {
-                code: "INVALID_PUNCH_SEQUENCE",
-                previousPunch,
-                allowedActions,
-              },
-              punch: null,
-            };
-          }
-
-          if (action === "BREAK_OUT" && previousPunch?.action === "BREAK_IN") {
-            const minimumBreakEndsAt = getMinimumBreakEnd(
-              previousPunch.punched_at,
-            );
-
-            if (punchedAt < minimumBreakEndsAt) {
-              return {
-                conflict: {
-                  code: "MINIMUM_BREAK_NOT_MET",
-                  previousPunch,
-                  minimumBreakMinutes: MINIMUM_BREAK_MINUTES,
-                  minimumBreakEndsAt,
-                  remainingSeconds: Math.ceil(
-                    (minimumBreakEndsAt.getTime() - punchedAt.getTime()) / 1000,
-                  ),
-                  allowedActions: ["BREAK_OUT"],
-                },
-                punch: null,
-              };
-            }
-          }
-
-          const punch = await tx.clock_punch.create({
-            data: {
-              employee_id: employeeId,
-              user_id: userId,
-              action,
-              punch_type: punchType,
-              punched_at: punchedAt,
-            },
-            include: clockPunchInclude,
-          });
-
-          return { conflict: null, punch };
-        },
-        { isolationLevel: "Serializable" },
-      );
-    } catch (error) {
-      if (error?.code === "P2034" && attempt < MAX_TRANSACTION_ATTEMPTS) {
-        continue;
-      }
-
-      throw error;
-    }
   }
 }
 
@@ -230,12 +137,12 @@ export async function POST(request) {
       );
     }
 
-    const result = await createPunch(
-      targetEmployee.employee_id,
-      actor.id,
+    const result = await createClockPunch({
+      employeeId: targetEmployee.employee_id,
+      userId: actor.id,
       action,
-      isManualPunch ? "MANUAL" : "EMPLOYEE",
-    );
+      punchType: isManualPunch ? "MANUAL" : "EMPLOYEE",
+    });
 
     if (result.conflict) {
       const isMinimumBreakConflict =

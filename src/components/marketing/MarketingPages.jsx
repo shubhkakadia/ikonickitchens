@@ -137,9 +137,9 @@ export function HomePage() {
                 Cabinetmakers · Adelaide, South Australia
               </div>
               <h1>
-                Cabinetry made
+                Kitchens and cabinetry,
                 <br />
-                one room at a time.
+                crafted with precision.
               </h1>
               <p className="marketing-hero__lede">
                 Custom kitchens, wardrobes, bathroom vanities and laundries,

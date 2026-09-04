@@ -17,14 +17,7 @@ const standardProjectFiles = (numbers, extras = []) => [
   ...extras,
 ];
 
-const projectCollection = ({
-  folder,
-  slug,
-  title,
-  location,
-  cover,
-  files,
-}) => {
+const projectCollection = ({ folder, slug, title, location, cover, files }) => {
   const orderedFiles = [cover, ...files.filter((file) => file !== cover)];
 
   return {
@@ -225,7 +218,7 @@ export const heroSlides = [
 
 export const projects = [
   projectCollection({
-    folder: "1 Bella Street, Hopevally",
+    folder: "1 Bella Street Hopevally",
     slug: "1-bella-street-hope-valley",
     title: "1 Bella Street",
     location: "Hope Valley, South Australia",
@@ -233,7 +226,7 @@ export const projects = [
     files: standardProjectFiles(range(1, 10)),
   }),
   projectCollection({
-    folder: "1 Tensing Ave, Morphettville",
+    folder: "1 Tensing Ave Morphettville",
     slug: "1-tensing-avenue-morphettville",
     title: "1 Tensing Avenue",
     location: "Morphettville, South Australia",
@@ -241,7 +234,7 @@ export const projects = [
     files: standardProjectFiles([1, 2, 3, 4, 13]),
   }),
   projectCollection({
-    folder: "11 Karri Drive, Dernancourt",
+    folder: "11 Karri Drive Dernancourt",
     slug: "11-karri-drive-dernancourt",
     title: "11 Karri Drive",
     location: "Dernancourt, South Australia",
@@ -249,7 +242,7 @@ export const projects = [
     files: standardProjectFiles(range(1, 11)),
   }),
   projectCollection({
-    folder: "116 Walkleys Road, valley View",
+    folder: "116 Walkleys Road valley View",
     slug: "116-walkleys-road-valley-view",
     title: "116 Walkleys Road",
     location: "Valley View, South Australia",
@@ -257,7 +250,7 @@ export const projects = [
     files: standardProjectFiles(range(1, 7), ["image.png"]),
   }),
   projectCollection({
-    folder: "16 Arthur Street, Richmond",
+    folder: "16 Arthur Street Richmond",
     slug: "16-arthur-street-richmond",
     title: "16 Arthur Street",
     location: "Richmond, South Australia",
@@ -290,7 +283,7 @@ export const projects = [
     ),
   }),
   projectCollection({
-    folder: "33 Dwyer Road, Oaklands Park",
+    folder: "33 Dwyer Road Oaklands Park",
     slug: "33-dwyer-road-oaklands-park",
     title: "33 Dwyer Road",
     location: "Oaklands Park, South Australia",
@@ -298,7 +291,7 @@ export const projects = [
     files: standardProjectFiles(range(1, 9)),
   }),
   projectCollection({
-    folder: "388 Grand junction Road, Enfield",
+    folder: "388 Grand junction Road Enfield",
     slug: "388-grand-junction-road-enfield",
     title: "388 Grand Junction Road",
     location: "Enfield, South Australia",
@@ -315,7 +308,7 @@ export const projects = [
     ],
   }),
   projectCollection({
-    folder: "3A Parkmore Avenue, Stuart",
+    folder: "3A Parkmore Avenue Stuart",
     slug: "3a-parkmore-avenue-sturt",
     title: "3A Parkmore Avenue",
     location: "Sturt, South Australia",
@@ -323,7 +316,7 @@ export const projects = [
     files: standardProjectFiles(range(1, 11)),
   }),
   projectCollection({
-    folder: "3B everest Street, Henley Beach",
+    folder: "3B everest Street Henley Beach",
     slug: "3b-everest-street-henley-beach",
     title: "3B Everest Street",
     location: "Henley Beach, South Australia",
@@ -331,19 +324,18 @@ export const projects = [
     files: standardProjectFiles(range(1, 10)),
   }),
   projectCollection({
-    folder: "40 La Parouse Ave, Flinders Park",
+    folder: "40 La Parouse Ave Flinders Park",
     slug: "40-la-perouse-avenue-flinders-park",
     title: "40 La Perouse Avenue",
     location: "Flinders Park, South Australia",
     cover: "image.jpg",
-    files: standardProjectFiles([1, 9], [
-      "download.png",
-      "download (1).png",
-      "download (2).png",
-    ]),
+    files: standardProjectFiles(
+      [1, 9],
+      ["download.png", "download (1).png", "download (2).png"],
+    ),
   }),
   projectCollection({
-    folder: "40 Shelley Ave, Fulham Gardens",
+    folder: "40 Shelley Ave Fulham Gardens",
     slug: "40-shelley-avenue-fulham-gardens",
     title: "40 Shelley Avenue",
     location: "Fulham Gardens, South Australia",
@@ -351,7 +343,7 @@ export const projects = [
     files: standardProjectFiles(range(1, 9)),
   }),
   projectCollection({
-    folder: "42 Caroline Drive, Fulham Gardens",
+    folder: "42 Caroline Drive Fulham Gardens",
     slug: "42-caroline-drive-fulham-gardens",
     title: "42 Caroline Drive",
     location: "Fulham Gardens, South Australia",
@@ -367,7 +359,7 @@ export const projects = [
     ],
   }),
   projectCollection({
-    folder: "42A Stanley Street, Glengowrie",
+    folder: "42A Stanley Street Glengowrie",
     slug: "42a-stanley-street-glengowrie",
     title: "42A Stanley Street",
     location: "Glengowrie, South Australia",
@@ -375,7 +367,7 @@ export const projects = [
     files: standardProjectFiles(range(1, 14), ["image.png"]),
   }),
   projectCollection({
-    folder: "48 Wheaton Road, Plympton",
+    folder: "48 Wheaton Road Plympton",
     slug: "48-wheaton-road-plympton",
     title: "48 Wheaton Road",
     location: "Plympton, South Australia",
@@ -383,7 +375,7 @@ export const projects = [
     files: standardProjectFiles([...range(1, 7), 11]),
   }),
   projectCollection({
-    folder: "57 Arthur Street, Plympton Park",
+    folder: "57 Arthur Street Plympton Park",
     slug: "57-arthur-street-plympton-park",
     title: "57 Arthur Street",
     location: "Plympton Park, South Australia",
@@ -405,7 +397,7 @@ export const projects = [
     ],
   }),
   projectCollection({
-    folder: "6 Salisbury Tce, Camben Park",
+    folder: "6 Salisbury Tce Camben Park",
     slug: "6-salisbury-terrace-camden-park",
     title: "6 Salisbury Terrace",
     location: "Camden Park, South Australia",
@@ -413,7 +405,7 @@ export const projects = [
     files: standardProjectFiles([1, 2, 3, 4, 10]),
   }),
   projectCollection({
-    folder: "77 McArthur Ave, Plympton",
+    folder: "77 McArthur Ave Plympton",
     slug: "77-mcarthur-avenue-plympton",
     title: "77 McArthur Avenue",
     location: "Plympton, South Australia",
@@ -421,7 +413,7 @@ export const projects = [
     files: standardProjectFiles(range(1, 8)),
   }),
   projectCollection({
-    folder: "8 Scott Street, Firle",
+    folder: "8 Scott Street Firle",
     slug: "8-scott-street-firle",
     title: "8 Scott Street",
     location: "Firle, South Australia",
@@ -437,7 +429,7 @@ export const projects = [
     files: standardProjectFiles(range(1, 4)),
   }),
   projectCollection({
-    folder: "9A Chilworth Avenu, Enfield",
+    folder: "9A Chilworth Avenu Enfield",
     slug: "9a-chilworth-avenue-enfield",
     title: "9A Chilworth Avenue",
     location: "Enfield, South Australia",
@@ -445,7 +437,7 @@ export const projects = [
     files: standardProjectFiles([...range(1, 5), 11]),
   }),
   projectCollection({
-    folder: "9B Chilworth Avenue, Enfield",
+    folder: "9B Chilworth Avenue Enfield",
     slug: "9b-chilworth-avenue-enfield",
     title: "9B Chilworth Avenue",
     location: "Enfield, South Australia",

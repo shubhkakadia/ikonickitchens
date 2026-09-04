@@ -801,26 +801,47 @@ model logs {
 }
 
 model clock_punch {
-  id             String                 @id @default(uuid())
-  employee_id    String
-  user_id        String
-  action         ClockPunchAction
-  punch_type     ClockPunchType         @default(EMPLOYEE)
-  punched_at     DateTime               @default(now())
-  review_status  ClockPunchReviewStatus @default(PENDING)
-  reviewed_by_id String?
-  reviewed_at    DateTime?
-  review_notes   String?                @db.LongText
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  employee       employees              @relation(fields: [employee_id], references: [employee_id], onDelete: Restrict)
-  user           users                  @relation("ClockPunchUser", fields: [user_id], references: [id], onDelete: Restrict)
-  reviewed_by    users?                 @relation("ClockPunchReviewer", fields: [reviewed_by_id], references: [id], onDelete: SetNull)
+  id              String                 @id @default(uuid())
+  employee_id     String
+  user_id         String
+  action          ClockPunchAction
+  punch_type      ClockPunchType         @default(EMPLOYEE)
+  punched_at      DateTime               @default(now())
+  review_status   ClockPunchReviewStatus @default(PENDING)
+  reviewed_by_id  String?
+  reviewed_at     DateTime?
+  review_notes    String?                @db.LongText
+  nfc_tag_id      String?
+  idempotency_key String?                @unique @db.VarChar(128)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  employee        employees              @relation(fields: [employee_id], references: [employee_id], onDelete: Restrict)
+  user            users                  @relation("ClockPunchUser", fields: [user_id], references: [id], onDelete: Restrict)
+  reviewed_by     users?                 @relation("ClockPunchReviewer", fields: [reviewed_by_id], references: [id], onDelete: SetNull)
+  nfc_tag         nfc_punch_tag?         @relation(fields: [nfc_tag_id], references: [id], onDelete: SetNull)
 
   @@index([employee_id, punched_at])
   @@index([user_id])
   @@index([review_status, punched_at])
   @@index([reviewed_by_id])
+  @@index([nfc_tag_id])
+}
+
+model nfc_punch_tag {
+  id                      String        @id @default(uuid())
+  name                    String
+  location                String
+  token_hash              String?       @unique @db.Char(64)
+  pending_token_hash      String?       @unique @db.Char(64)
+  provisioning_expires_at DateTime?
+  is_active               Boolean       @default(false)
+  is_deleted              Boolean       @default(false)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  clock_punches           clock_punch[]
+
+  @@index([is_active, is_deleted])
+  @@index([provisioning_expires_at])
 }
 
 model constants_config {
@@ -915,6 +936,7 @@ enum ClockPunchAction {
 enum ClockPunchType {
   EMPLOYEE
   MANUAL
+  NFC
 }
 
 enum ClockPunchReviewStatus {

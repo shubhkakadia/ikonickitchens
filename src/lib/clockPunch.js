@@ -26,7 +26,7 @@ const CLOCK_PUNCH_REVIEW_STATUSES = new Set([
   "REJECTED",
 ]);
 
-const CLOCK_PUNCH_TYPES = new Set(["EMPLOYEE", "MANUAL"]);
+const CLOCK_PUNCH_TYPES = new Set(["EMPLOYEE", "MANUAL", "NFC"]);
 
 const CLOCK_PUNCH_BREAK_STATUSES = new Set([
   "ON_BREAK",
@@ -64,6 +64,13 @@ export const clockPunchInclude = {
     select: {
       id: true,
       username: true,
+    },
+  },
+  nfc_tag: {
+    select: {
+      id: true,
+      name: true,
+      location: true,
     },
   },
 };

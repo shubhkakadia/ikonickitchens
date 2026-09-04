@@ -1,6 +1,6 @@
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/footer";
+import MarketingShell from "@/components/marketing/MarketingShell";
+import LegalPage from "@/components/marketing/LegalPage";
 
 export const metadata = {
   title: "Privacy Policy | Ikonic Kitchens and Cabinets",
@@ -15,13 +15,11 @@ const sections = [
     title: "Who this policy covers",
     content: (
       <>
-        <p>
-          This policy applies to two related services:
-        </p>
+        <p>This policy applies to two related services:</p>
         <ul>
           <li>
-            our public website, which anyone can browse and use to contact us
-            or request a quote; and
+            our public website, which anyone can browse and use to contact us or
+            request a quote; and
           </li>
           <li>
             the Ikonic Kitchens and Cabinets management platform and staff
@@ -64,19 +62,18 @@ const sections = [
           <li>
             <strong>Employee and account details</strong> &mdash; first and last
             name, employee ID, username, work email address, phone numbers
-            (including a secondary and emergency contact number where
-            provided), role, and other employment records kept in our HR
-            module;
+            (including a secondary and emergency contact number where provided),
+            role, and other employment records kept in our HR module;
           </li>
           <li>
             <strong>Profile photographs</strong> &mdash; a profile image where
             one is uploaded for an employee record;
           </li>
           <li>
-            <strong>Project photographs and videos</strong> &mdash; site
-            photos, progress and completion photos and videos captured or
-            uploaded against a job, which may incidentally include images of
-            people or of a customer&rsquo;s premises;
+            <strong>Project photographs and videos</strong> &mdash; site photos,
+            progress and completion photos and videos captured or uploaded
+            against a job, which may incidentally include images of people or of
+            a customer&rsquo;s premises;
           </li>
           <li>
             <strong>Project documents and notes</strong> &mdash; drawings,
@@ -98,8 +95,8 @@ const sections = [
             sign-in session records; and
           </li>
           <li>
-            <strong>App usage and performance diagnostics</strong> &mdash;
-            crash reports, error traces, performance measurements, app version,
+            <strong>App usage and performance diagnostics</strong> &mdash; crash
+            reports, error traces, performance measurements, app version,
             operating system version and device model, collected through EAS
             Observe (Expo&rsquo;s diagnostics service).
           </li>
@@ -114,9 +111,16 @@ const sections = [
         <p>We use personal information to:</p>
         <ul>
           <li>respond to enquiries and arrange consultations;</li>
-          <li>prepare quotes and provide our kitchen, cabinetry and related services;</li>
-          <li>communicate about your project, account or requested information;</li>
-          <li>send newsletters and marketing updates where you have subscribed;</li>
+          <li>
+            prepare quotes and provide our kitchen, cabinetry and related
+            services;
+          </li>
+          <li>
+            communicate about your project, account or requested information;
+          </li>
+          <li>
+            send newsletters and marketing updates where you have subscribed;
+          </li>
           <li>
             run our business operations &mdash; scheduling and assigning work,
             tracking project stages, managing inventory, suppliers and purchase
@@ -208,10 +212,10 @@ const sections = [
           This website may use cookies, local storage and similar browser
           technologies to provide site features, remember session-related
           preferences in the authenticated administration area, and help keep
-          the website secure. Our contact page includes a Google Maps embed,
-          and our website links to social-media services. Those services may
-          collect information under their own privacy policies when you view or
-          follow their links.
+          the website secure. Our contact page includes a Google Maps embed, and
+          our website links to social-media services. Those services may collect
+          information under their own privacy policies when you view or follow
+          their links.
         </p>
         <p>
           The service providers we rely on for the staff app and platform
@@ -276,9 +280,7 @@ const sections = [
             disabled when notifications are switched off, when you sign out, or
             when the push service reports the token as no longer valid;
           </li>
-          <li>
-            expired sessions are cleared automatically; and
-          </li>
+          <li>expired sessions are cleared automatically; and</li>
           <li>
             diagnostics collected through EAS Observe are retained according to
             that service&rsquo;s retention period and are used only for fault
@@ -332,8 +334,8 @@ const sections = [
     title: "Changes to this policy",
     content: (
       <p>
-        We may update this Privacy Policy from time to time. The current
-        version will always be published on this page, with its effective date.
+        We may update this Privacy Policy from time to time. The current version
+        will always be published on this page, with its effective date.
       </p>
     ),
   },
@@ -341,59 +343,32 @@ const sections = [
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
-      <Navbar bar={true} />
-      <main className="px-4 pb-16 pt-32 sm:px-6 lg:px-8">
-        <article className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-xl sm:p-10 lg:p-12">
-          <div className="mb-10 border-b border-slate-200 pb-8">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#B92F34]">
+    <MarketingShell>
+      <LegalPage
+        title="Privacy policy"
+        updated="Effective 28 August 2026 · Last updated 28 August 2026"
+        intro="Ikonic Kitchens and Cabinets respects your privacy. This policy explains how we handle personal information collected through this website, our staff mobile app and business management platform, and when you contact us about our services."
+        sections={sections}
+      >
+        <>
+          <section className="marketing-legal__section">
+            <h2>Contact us</h2>
+            <address className="marketing-legal__contact">
               Ikonic Kitchens and Cabinets
-            </p>
-            <h1 className="mb-4 text-4xl font-bold text-slate-900 sm:text-5xl">
-              Privacy Policy
-            </h1>
-            <p className="text-slate-600">Effective date: 28 August 2026</p>
-            <p className="text-slate-600">Last updated: 28 August 2026</p>
-          </div>
-
-          <div className="space-y-9 text-base leading-relaxed text-slate-700">
-            <p>
-              Ikonic Kitchens and Cabinets respects your privacy. This policy
-              explains how we handle personal information collected through
-              this website, through our staff mobile app and business
-              management platform, and when you contact us about our services.
-            </p>
-
-            {sections.map((section) => (
-              <section key={section.title}>
-                <h2 className="mb-3 text-2xl font-bold text-slate-900">
-                  {section.title}
-                </h2>
-                <div className="space-y-4 [&_a]:font-medium [&_a]:text-[#B92F34] [&_a]:underline [&_a]:underline-offset-4 [&_li]:ml-5 [&_li]:list-disc [&_li]:pl-1">
-                  {section.content}
-                </div>
-              </section>
-            ))}
-
-            <section>
-              <h2 className="mb-3 text-2xl font-bold text-slate-900">Contact us</h2>
-              <address className="not-italic">
-                Ikonic Kitchens and Cabinets<br />
-                5 Dundee Avenue, Holden Hill, South Australia 5088, Australia<br />
-                <a href="mailto:info@ikonickitchens.com.au" className="font-medium text-[#B92F34] underline underline-offset-4">
-                  info@ikonickitchens.com.au
-                </a>
-              </address>
-            </section>
-
-            <p className="border-t border-slate-200 pt-6 text-sm text-slate-500">
-              For the rules that apply to use of this website, please read our{" "}
-              <Link href="/terms-of-service">Terms of Service</Link>.
-            </p>
-          </div>
-        </article>
-      </main>
-      <Footer />
-    </div>
+              <br />
+              5 Dundee Avenue, Holden Hill, South Australia 5088, Australia
+              <br />
+              <a href="mailto:info@ikonickitchens.com.au">
+                info@ikonickitchens.com.au
+              </a>
+            </address>
+          </section>
+          <p className="marketing-legal__afterword">
+            For the rules that apply to use of this website, please read our{" "}
+            <Link href="/terms-of-service">Terms of Service</Link>.
+          </p>
+        </>
+      </LegalPage>
+    </MarketingShell>
   );
 }

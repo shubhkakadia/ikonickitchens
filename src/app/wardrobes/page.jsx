@@ -1,18 +1,16 @@
-"use client";
-import React from "react";
-import GalleryPage from "@/components/gallerypage";
+import MarketingShell from "@/components/marketing/MarketingShell";
+import { CollectionPage } from "@/components/marketing/MarketingPages";
+import { collectionBySlug } from "@/data/marketing";
 
-export default function page() {
-  const wardrobesimages = [
-    "/Gallery/Wardrobe/1.webp",
-    "/Gallery/Wardrobe/2.webp",
-    "/Gallery/Wardrobe/3.webp",
-  ];
+export const metadata = {
+  title: "Custom Wardrobes | Ikonic Kitchens & Cabinets",
+  description: collectionBySlug.wardrobes.description,
+};
+
+export default function WardrobesPage() {
   return (
-    <GalleryPage
-      title="Wardrobes"
-      description="Transform your wardrobe into a personal sanctuary with our expertly crafted designs. From modern minimalism to traditional elegance, we create spaces that inspire and rejuvenate."
-      images={wardrobesimages}
-    />
+    <MarketingShell>
+      <CollectionPage collection={collectionBySlug.wardrobes} />
+    </MarketingShell>
   );
 }

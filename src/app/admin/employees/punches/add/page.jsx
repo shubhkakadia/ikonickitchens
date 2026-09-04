@@ -652,7 +652,9 @@ export default function page() {
                                     <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-600">
                                       {punch.punch_type === "MANUAL"
                                         ? "Manual"
-                                        : "Employee"}
+                                        : punch.punch_type === "NFC"
+                                          ? "NFC"
+                                          : "Employee"}
                                     </td>
                                     <td className="whitespace-nowrap px-4 py-2.5">
                                       <span

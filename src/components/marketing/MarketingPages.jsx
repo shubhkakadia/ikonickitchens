@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import emailjs from "@emailjs/browser";
+import MarketingImageModal from "@/components/marketing/MarketingImageModal";
 import {
   blogPosts,
   collections,
@@ -158,21 +159,6 @@ export function HomePage() {
                 >
                   Request a quote
                 </Link>
-              </div>
-            </div>
-
-            <div className="marketing-hero__stats">
-              <div>
-                <div className="marketing-hero__stat-value">4</div>
-                <div className="marketing-hero__stat-label">
-                  cabinetry collections for the rooms throughout your home
-                </div>
-              </div>
-              <div>
-                <div className="marketing-hero__stat-value">SA</div>
-                <div className="marketing-hero__stat-label">
-                  workshop based in Holden Hill, South Australia
-                </div>
               </div>
             </div>
           </div>
@@ -352,7 +338,14 @@ export function HomePage() {
 }
 
 export function PortfolioPage() {
-  const filters = ["All", "Kitchens", "Wardrobes", "Bathrooms", "Laundry"];
+  const filters = [
+    "All",
+    "Projects",
+    "Kitchens",
+    "Wardrobes",
+    "Bathrooms",
+    "Laundry",
+  ];
   const [filter, setFilter] = useState("All");
   const visible =
     filter === "All"
@@ -381,13 +374,13 @@ export function PortfolioPage() {
       </div>
 
       <div className="marketing-work-grid" aria-live="polite">
-        {visible.map((project) => (
+        {visible.map((project, index) => (
           <Link href={project.href} key={project.slug}>
             <ImageFrame
               src={project.cover}
               alt={project.title}
               className="marketing-work-card__image"
-              priority
+              priority={index < 4}
               zoom
             />
             <div className="marketing-work-card__meta">
@@ -407,20 +400,6 @@ export function PortfolioPage() {
 
 export function CollectionPage({ collection }) {
   const [selectedImage, setSelectedImage] = useState(null);
-
-  useEffect(() => {
-    if (!selectedImage) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") setSelectedImage(null);
-    };
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [selectedImage]);
 
   const [hero, portrait, firstLandscape, ...remaining] = collection.images;
 
@@ -573,33 +552,11 @@ export function CollectionPage({ collection }) {
       </div>
 
       {selectedImage && (
-        <div
-          className="marketing-lightbox"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${collection.title} image viewer`}
-          onClick={() => setSelectedImage(null)}
-        >
-          <button
-            type="button"
-            className="marketing-lightbox__close"
-            aria-label="Close image viewer"
-            onClick={() => setSelectedImage(null)}
-          >
-            ×
-          </button>
-          <div
-            className="marketing-lightbox__image"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Image
-              src={selectedImage}
-              alt={`${collection.title} enlarged`}
-              fill
-              sizes="90vw"
-            />
-          </div>
-        </div>
+        <MarketingImageModal
+          src={selectedImage}
+          alt={`${collection.title} enlarged image`}
+          onClose={() => setSelectedImage(null)}
+        />
       )}
     </div>
   );

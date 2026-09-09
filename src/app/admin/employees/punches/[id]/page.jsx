@@ -11,6 +11,8 @@ import {
   Info,
   ListChecks,
   MessageSquare,
+  PencilLine,
+  Plus,
   RotateCcw,
   UserRound,
   X,
@@ -32,6 +34,7 @@ import {
 
 const CLOCK_PUNCH_TIME_ZONE = "Australia/Adelaide";
 const MAX_REVIEW_NOTES_LENGTH = 5000;
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const actionStyles = {
   CLOCK_IN: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -65,6 +68,14 @@ const timeFormatter = new Intl.DateTimeFormat("en-AU", {
   hour12: true,
 });
 
+// Feeds <input type="time">, which always wants a 24 hour HH:mm value.
+const inputTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: CLOCK_PUNCH_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
 const stampFormatter = new Intl.DateTimeFormat("en-AU", {
   timeZone: CLOCK_PUNCH_TIME_ZONE,
   day: "2-digit",
@@ -87,6 +98,12 @@ function toDisplayTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return timeFormatter.format(date);
+}
+
+function toInputTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return inputTimeFormatter.format(date);
 }
 
 function toDisplayStamp(value) {
@@ -117,9 +134,11 @@ function employeeName(group) {
 
 export default function page() {
   const { id } = useParams();
-  const { userData, isAdmin } = useAuth();
+  const { userData, isAdmin, isMasterAdmin } = useAuth();
   const token = userData?.token || null;
   const canReview = isAdmin();
+  // Overwriting the time a punch was recorded at is a master admin override.
+  const canEditTime = isMasterAdmin();
 
   const [employeeGroup, setEmployeeGroup] = useState(null);
   const [groupDate, setGroupDate] = useState("");
@@ -134,6 +153,15 @@ export default function page() {
   const [notesPunch, setNotesPunch] = useState(null);
   const [notesDraft, setNotesDraft] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  const [isAddingMissing, setIsAddingMissing] = useState(false);
+  const [missingDrafts, setMissingDrafts] = useState([]);
+  const [isSavingMissing, setIsSavingMissing] = useState(false);
+
+  const [timePunch, setTimePunch] = useState(null);
+  const [timeDraft, setTimeDraft] = useState("");
+  const [timeNotesDraft, setTimeNotesDraft] = useState("");
+  const [isSavingTime, setIsSavingTime] = useState(false);
 
   const fetchGroup = useCallback(
     async (signal) => {
@@ -321,6 +349,198 @@ export default function page() {
     setNotesDraft(punch.review_notes || "");
   };
 
+  // A forgotten punch - usually a clock out - is filled in from the gaps the
+  // day summary already knows about, so the added actions always continue the
+  // day's sequence rather than starting a new one.
+  const openMissingEditor = () => {
+    setMissingDrafts(
+      summary.missing.map((item) => ({
+        action: item.code,
+        label: item.label,
+        time: "",
+      })),
+    );
+    setIsAddingMissing(true);
+  };
+
+  const closeMissingEditor = () => {
+    setIsAddingMissing(false);
+    setMissingDrafts([]);
+  };
+
+  const updateMissingDraft = (action, time) => {
+    setMissingDrafts((previous) =>
+      previous.map((draft) =>
+        draft.action === action ? { ...draft, time } : draft,
+      ),
+    );
+  };
+
+  const lastPunchTime = summary.lastPunch
+    ? toInputTime(summary.lastPunch.punched_at)
+    : "";
+
+  // Times have to be filled from the top down: the sequence cannot skip a punch
+  // and pick up again at a later one.
+  const buildMissingPunches = () => {
+    const filled = [];
+    let blankLabel = "";
+
+    for (const draft of missingDrafts) {
+      if (!draft.time) {
+        if (!blankLabel) blankLabel = draft.label;
+        continue;
+      }
+
+      if (blankLabel) {
+        return {
+          error: `Set a time for ${blankLabel} before adding ${draft.label}`,
+          punches: null,
+        };
+      }
+
+      if (!TIME_PATTERN.test(draft.time)) {
+        return {
+          error: `${draft.label} needs a valid time in HH:mm format`,
+          punches: null,
+        };
+      }
+
+      const previous = filled.at(-1);
+      if (previous && draft.time <= previous.time) {
+        return {
+          error: `${draft.label} must be later than ${previous.label} at ${previous.time}`,
+          punches: null,
+        };
+      }
+
+      filled.push(draft);
+    }
+
+    if (filled.length === 0) {
+      return { error: "Set a time for at least one punch", punches: null };
+    }
+
+    if (lastPunchTime && filled[0].time <= lastPunchTime) {
+      return {
+        error: `${filled[0].label} must be later than the last punch at ${toDisplayTime(
+          summary.lastPunch.punched_at,
+        )}`,
+        punches: null,
+      };
+    }
+
+    return { error: null, punches: filled };
+  };
+
+  const handleSaveMissing = async (approve) => {
+    const { error: draftError, punches: draftPunches } = buildMissingPunches();
+    if (draftError) {
+      toast.error(draftError);
+      return;
+    }
+
+    try {
+      setIsSavingMissing(true);
+
+      const response = await axios.post(
+        "/api/v1/clock_punch/manual",
+        {
+          employee_id: employeeGroup.employee_id,
+          date: groupDate,
+          approve,
+          punches: draftPunches.map((draft) => ({
+            action: draft.action,
+            time: draft.time,
+          })),
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (!response.data.status) {
+        toast.error(response.data.message || "Failed to add the missing punch");
+        return;
+      }
+
+      toast.success(response.data.message);
+      closeMissingEditor();
+      await fetchGroup();
+    } catch (requestError) {
+      console.error("Error adding missing clock punches:", requestError);
+      toast.error(
+        requestError.response?.data?.message ||
+          "Failed to add the missing punch. Please try again.",
+      );
+    } finally {
+      setIsSavingMissing(false);
+    }
+  };
+
+  const openTimeEditor = (punch) => {
+    setTimePunch(punch);
+    setTimeDraft(toInputTime(punch.punched_at));
+    setTimeNotesDraft(punch.review_notes || "");
+  };
+
+  const closeTimeEditor = () => {
+    setTimePunch(null);
+    setTimeDraft("");
+    setTimeNotesDraft("");
+  };
+
+  const handleSaveTime = async () => {
+    if (!timePunch) return;
+
+    const originalTime = toInputTime(timePunch.punched_at);
+    const originalNotes = timePunch.review_notes || "";
+
+    if (!TIME_PATTERN.test(timeDraft)) {
+      toast.error("Enter a valid time in HH:mm format");
+      return;
+    }
+
+    if (timeDraft === originalTime && timeNotesDraft === originalNotes) {
+      closeTimeEditor();
+      return;
+    }
+
+    try {
+      setIsSavingTime(true);
+
+      const response = await axios.patch(
+        `/api/v1/clock_punch/${timePunch.id}`,
+        {
+          punched_at_time: timeDraft,
+          ...(timeNotesDraft !== originalNotes
+            ? { review_notes: timeNotesDraft }
+            : {}),
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (!response.data.status) {
+        toast.error(response.data.message || "Failed to update the punch time");
+        return;
+      }
+
+      toast.success(
+        `${formatClockPunchAction(
+          timePunch.action,
+        )} moved from ${originalTime} to ${timeDraft}`,
+      );
+      closeTimeEditor();
+      await fetchGroup();
+    } catch (requestError) {
+      console.error("Error updating punch time:", requestError);
+      toast.error(
+        requestError.response?.data?.message ||
+          "Failed to update the punch time. Please try again.",
+      );
+    } finally {
+      setIsSavingTime(false);
+    }
+  };
+
   const actionButtonClasses = (disabled, tone) => {
     if (disabled) {
       return "border-slate-200 text-slate-300 cursor-not-allowed";
@@ -461,11 +681,26 @@ export default function page() {
 
               {/* Day Status Section */}
               <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <ListChecks className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl font-bold text-slate-800">
-                    Day Status
-                  </h2>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <ListChecks className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-bold text-slate-800">
+                      Day Status
+                    </h2>
+                  </div>
+
+                  {canReview && summary.missing.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={openMissingEditor}
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/80 hover:bg-primary text-white text-sm font-medium transition-all duration-200"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {`Add Missing Punch${
+                        summary.missing.length === 1 ? "" : "es"
+                      }`}
+                    </button>
+                  )}
                 </div>
 
                 {summary.missing.length > 0 ? (
@@ -634,6 +869,21 @@ export default function page() {
                                 {canReview && (
                                   <td className="whitespace-nowrap px-4 py-2.5">
                                     <div className="flex items-center justify-end gap-1.5">
+                                      {canEditTime && (
+                                        <button
+                                          type="button"
+                                          title="Edit punch time"
+                                          onClick={() => openTimeEditor(punch)}
+                                          disabled={isBusy}
+                                          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${actionButtonClasses(
+                                            isBusy,
+                                            "border-primary/40 text-primary hover:bg-primary/10",
+                                          )}`}
+                                        >
+                                          <PencilLine className="h-4 w-4" />
+                                        </button>
+                                      )}
+
                                       <button
                                         type="button"
                                         title="Approve"
@@ -752,6 +1002,214 @@ export default function page() {
             : ""
         }
       />
+
+      {isAddingMissing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h3 className="text-lg font-bold text-slate-800">
+                Add Missing Punch{missingDrafts.length === 1 ? "" : "es"}
+              </h3>
+              <button
+                type="button"
+                onClick={closeMissingEditor}
+                className="cursor-pointer rounded-lg p-1 text-slate-500 transition-colors hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-4">
+              <p className="text-sm text-slate-600">
+                {formatLongDate(groupDate)} &bull; {employeeName(employeeGroup)}
+              </p>
+
+              {summary.lastPunch ? (
+                <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <p className="text-sm text-slate-600">
+                    The last punch recorded was{" "}
+                    {formatClockPunchAction(summary.lastPunch.action)} at{" "}
+                    {toDisplayTime(summary.lastPunch.punched_at)}. Anything
+                    added has to come after it.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <p className="text-sm text-slate-600">
+                    No active punches are recorded for this day yet.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {missingDrafts.map((draft, index) => (
+                  <div
+                    key={draft.action}
+                    className="flex flex-wrap items-center justify-between gap-3"
+                  >
+                    <div>
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                          actionStyles[draft.action] || actionStyles.CLOCK_OUT
+                        }`}
+                      >
+                        {formatClockPunchAction(draft.action)}
+                      </span>
+                      {index > 0 && (
+                        <p className="mt-1 text-xs text-slate-400">
+                          Optional &mdash; leave blank to skip
+                        </p>
+                      )}
+                    </div>
+
+                    <input
+                      type="time"
+                      value={draft.time}
+                      onChange={(event) =>
+                        updateMissingDraft(draft.action, event.target.value)
+                      }
+                      className="w-40 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-800 transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-slate-400">
+                Times are Adelaide time on {groupDate}. Added punches are
+                recorded as manual entries against your account.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={closeMissingEditor}
+                className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveMissing(false)}
+                disabled={isSavingMissing}
+                className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSavingMissing ? "Adding..." : "Add"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveMissing(true)}
+                disabled={isSavingMissing}
+                className="cursor-pointer flex items-center gap-2 rounded-lg bg-primary/80 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {isSavingMissing ? "Adding..." : "Add & Approve"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {timePunch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h3 className="text-lg font-bold text-slate-800">
+                Edit Punch Time
+              </h3>
+              <button
+                type="button"
+                onClick={closeTimeEditor}
+                className="cursor-pointer rounded-lg p-1 text-slate-500 transition-colors hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-4">
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <p className="text-sm text-amber-800">
+                  Overwriting a recorded punch time changes the hours for this
+                  day. The change is kept in the activity log.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="mb-1 text-sm font-medium text-slate-700">
+                    Punch
+                  </p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {formatClockPunchAction(timePunch.action)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Recorded at {toDisplayTime(timePunch.punched_at)} on{" "}
+                    {formatLongDate(groupDate)}
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="punch-time"
+                    className="mb-1 block text-sm font-medium text-slate-700"
+                  >
+                    New time <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="punch-time"
+                    type="time"
+                    value={timeDraft}
+                    onChange={(event) => setTimeDraft(event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-800 transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-primary"
+                  />
+                  <p className="mt-1 text-xs text-slate-400">
+                    Adelaide time, on the same day as the original punch
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="punch-time-notes"
+                  className="mb-1 block text-sm font-medium text-slate-700"
+                >
+                  Review notes
+                </label>
+                <textarea
+                  id="punch-time-notes"
+                  value={timeNotesDraft}
+                  onChange={(event) => setTimeNotesDraft(event.target.value)}
+                  maxLength={MAX_REVIEW_NOTES_LENGTH}
+                  rows={3}
+                  placeholder="Explain why this time was overwritten..."
+                  className="w-full resize-y rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-800 transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={closeTimeEditor}
+                className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTime}
+                disabled={isSavingTime || !timeDraft}
+                className="cursor-pointer rounded-lg bg-primary/80 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSavingTime ? "Saving..." : "Save Time"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {notesPunch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

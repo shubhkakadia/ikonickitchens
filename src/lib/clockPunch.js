@@ -45,6 +45,8 @@ const CLOCK_PUNCH_GROUP_REVIEW_STATUSES = new Set([
 
 const REVIEWER_USER_TYPES = new Set(["admin", "master-admin"]);
 
+const MASTER_ADMIN_USER_TYPES = new Set(["master-admin"]);
+
 export const clockPunchInclude = {
   employee: {
     select: {
@@ -144,6 +146,19 @@ export function getClockPunchInstant(date, time) {
 
   const instant = dayjs.tz(`${date}T${time}:00`, CLOCK_PUNCH_TIME_ZONE);
   return instant.isValid() ? instant.toDate() : null;
+}
+
+// The Adelaide calendar date a punch belongs to, which is the day group the
+// admin UI renders it under.
+export function getClockPunchLocalDate(value) {
+  const localDate = dayjs(value).tz(CLOCK_PUNCH_TIME_ZONE);
+  return localDate.isValid() ? localDate.format("YYYY-MM-DD") : null;
+}
+
+// The Adelaide wall clock time (HH:mm) a punch was recorded at.
+export function getClockPunchLocalTime(value) {
+  const localDate = dayjs(value).tz(CLOCK_PUNCH_TIME_ZONE);
+  return localDate.isValid() ? localDate.format("HH:mm") : null;
 }
 
 export function getMinimumBreakEnd(breakStartedAt) {
@@ -252,6 +267,11 @@ export function groupClockPunchesByDate(punches, currentTime = new Date()) {
 
 export function isClockPunchReviewer(userType) {
   return REVIEWER_USER_TYPES.has(String(userType || "").toLowerCase());
+}
+
+// Only master admins may overwrite the time a punch was recorded at.
+export function isClockPunchTimeEditor(userType) {
+  return MASTER_ADMIN_USER_TYPES.has(String(userType || "").toLowerCase());
 }
 
 export async function canViewAllClockPunches(userId, userType) {

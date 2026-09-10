@@ -474,7 +474,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
             className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
               poActiveTab === "active"
                 ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             }`}
           >
             Active
@@ -484,7 +484,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
             className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
               poActiveTab === "completed"
                 ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             }`}
           >
             Completed
@@ -494,7 +494,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
             className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
               poActiveTab === "cancelled"
                 ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             }`}
           >
             Cancelled
@@ -585,7 +585,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                     >
                       <td className="px-4 py-3">
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-gray-800 truncate">
+                          <span className="text-sm font-semibold text-slate-800 truncate">
                             {po.order_no}
                           </span>
                           <span className="text-xs text-slate-600 truncate">
@@ -626,7 +626,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                     ? "bg-green-100 text-green-800"
                                     : po.status === "CANCELLED"
                                       ? "bg-red-100 text-red-800"
-                                      : "bg-gray-100 text-gray-800"
+                                      : "bg-slate-100 text-slate-800"
                           }`}
                         >
                           {po.status}
@@ -651,7 +651,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                           <div id={`po-${po.id}`} className="mt-2">
                             <div className="mb-2 p-2 bg-slate-50 rounded-lg">
                               <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-4 text-xs text-gray-600">
+                                <div className="flex items-center gap-4 text-xs text-slate-600">
                                   <div className="flex items-center gap-1.5">
                                     <Calendar className="w-4 h-4" />
                                     <span>
@@ -776,7 +776,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                 </div>
                               </div>
                               {po.notes && (
-                                <div className="mt-2 flex items-start gap-2 text-xs text-gray-600">
+                                <div className="mt-2 flex items-start gap-2 text-xs text-slate-600">
                                   <NotebookText className="w-4 h-4 mt-0.5" />
                                   <span>
                                     <span className="font-medium">Notes:</span>{" "}
@@ -793,7 +793,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                         <FileText className="w-5 h-5 text-slate-500" />
                                       </div>
                                       <div className="min-w-0">
-                                        <div className="text-xs font-medium text-gray-800 truncate">
+                                        <div className="text-xs font-medium text-slate-800 truncate">
                                           {po.invoice_url.filename || "Invoice"}
                                         </div>
                                         <div className="text-xs text-slate-500 truncate">
@@ -877,7 +877,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                           <FileText className="w-5 h-5 text-slate-400" />
                                         </div>
                                         <div>
-                                          <div className="text-xs font-medium text-gray-800">
+                                          <div className="text-xs font-medium text-slate-800">
                                             No invoice uploaded
                                           </div>
                                           <div className="text-xs text-slate-500">
@@ -939,25 +939,25 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                 <table className="w-full border border-slate-200 rounded-lg">
                                   <thead className="bg-slate-50">
                                     <tr>
-                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                         Image
                                       </th>
-                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                         Category
                                       </th>
-                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                         Details
                                       </th>
-                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                         Quantity
                                       </th>
-                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                         Received
                                       </th>
-                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                         Unit Price (excluding GST)
                                       </th>
-                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                                         Total
                                       </th>
                                     </tr>
@@ -1002,7 +1002,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                           </span>
                                         </td>
                                         <td className="px-3 py-2">
-                                          <div className="text-xs text-gray-600 space-y-1">
+                                          <div className="text-xs text-slate-600 space-y-1">
                                             {item.item?.sheet && (
                                               <>
                                                 <div>
@@ -1172,34 +1172,34 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                             item.item?.description &&
                                             item.notes !==
                                               item.item?.description && (
-                                              <div className="text-xs text-gray-500 mt-1 flex items-start gap-1">
+                                              <div className="text-xs text-slate-500 mt-1 flex items-start gap-1">
                                                 <FileText className="w-3 h-3 mt-0.5" />
                                                 <span>{item.notes}</span>
                                               </div>
                                             )}
                                         </td>
                                         <td className="px-3 py-2 whitespace-nowrap">
-                                          <div className="text-xs text-gray-600">
+                                          <div className="text-xs text-slate-600">
                                             {item.quantity}
                                             {item.item?.measurement_unit && (
-                                              <span className="text-gray-400 ml-1">
+                                              <span className="text-slate-400 ml-1">
                                                 {item.item.measurement_unit}
                                               </span>
                                             )}
                                           </div>
                                         </td>
                                         <td className="px-3 py-2 whitespace-nowrap">
-                                          <span className="text-xs text-gray-600">
+                                          <span className="text-xs text-slate-600">
                                             {item.quantity_received || 0}
                                             {item.item?.measurement_unit && (
-                                              <span className="text-gray-400 ml-1">
+                                              <span className="text-slate-400 ml-1">
                                                 {item.item.measurement_unit}
                                               </span>
                                             )}
                                           </span>
                                         </td>
                                         <td className="px-3 py-2 whitespace-nowrap">
-                                          <span className="text-xs text-gray-600">
+                                          <span className="text-xs text-slate-600">
                                             $
                                             {parseFloat(
                                               item.unit_price,
@@ -1207,7 +1207,7 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                           </span>
                                         </td>
                                         <td className="px-3 py-2 whitespace-nowrap">
-                                          <span className="text-xs font-semibold text-gray-900">
+                                          <span className="text-xs font-semibold text-slate-900">
                                             $
                                             {formatMoney(
                                               parseFloat(item.quantity) *
@@ -1222,12 +1222,12 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                     <tr className="border-t border-slate-200">
                                       <td
                                         colSpan="6"
-                                        className="px-4 py-3 text-right text-xs font-medium text-gray-700"
+                                        className="px-4 py-3 text-right text-xs font-medium text-slate-700"
                                       >
                                         Order Total:
                                       </td>
                                       <td className="px-3 py-2">
-                                        <span className="text-xs font-semibold text-gray-900">
+                                        <span className="text-xs font-semibold text-slate-900">
                                           $
                                           {formatMoney(
                                             po.items.reduce(
@@ -1244,12 +1244,12 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                     <tr>
                                       <td
                                         colSpan="6"
-                                        className="px-4 py-3 text-right text-xs font-medium text-gray-700"
+                                        className="px-4 py-3 text-right text-xs font-medium text-slate-700"
                                       >
                                         GST Amount (10%):
                                       </td>
                                       <td className="px-3 py-2">
-                                        <span className="text-xs font-semibold text-gray-900">
+                                        <span className="text-xs font-semibold text-slate-900">
                                           $
                                           {formatMoney(
                                             Math.ceil(
@@ -1270,12 +1270,12 @@ export default function PurchaseOrder({ supplierId, onCountChange }) {
                                     <tr className="border-t border-slate-200">
                                       <td
                                         colSpan="6"
-                                        className="px-4 py-3 text-right text-xs font-bold text-gray-700"
+                                        className="px-4 py-3 text-right text-xs font-bold text-slate-700"
                                       >
                                         Grand Total:
                                       </td>
                                       <td className="px-3 py-2">
-                                        <span className="text-xs font-bold text-gray-900">
+                                        <span className="text-xs font-bold text-slate-900">
                                           $
                                           {formatMoney(
                                             po.items.reduce(

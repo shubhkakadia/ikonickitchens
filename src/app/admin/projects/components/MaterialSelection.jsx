@@ -2277,7 +2277,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                     onClick={() => setActiveTab(sectionKey)}
                     className={`cursor-pointer px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
                       activeTab === sectionKey
-                        ? "border-secondary text-secondary"
+                        ? "border-primary text-primary"
                         : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
                     }`}
                   >

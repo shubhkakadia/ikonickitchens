@@ -1,7 +1,6 @@
 "use client";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import Sidebar from "@/components/sidebar";
 import { stages } from "@/components/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import SearchBar from "@/components/SearchBar";
+import TextEditor from "@/components/TextEditor/TextEditor";
 import {
   usePersistedTableFilter,
   useTableFilterActions,
@@ -106,8 +106,28 @@ const formatScheduleDateWithDay = (value) => {
     : "Not set";
 };
 
+// Lot notes are authored in the rich text editor, so strip the markup before
+// showing them anywhere that expects plain text. Notes without markup (stages,
+// and lots saved before the editor) are left untouched.
+const toPlainText = (notes) => {
+  if (!notes) return "";
+  if (!/<\/?[a-z][^>]*>/i.test(notes)) return notes;
+  return notes
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+};
+
 const formatNotesLabel = (notes) => {
-  const value = notes?.trim();
+  const value = toPlainText(notes).trim();
   if (!value) return "No notes added";
   return value.length > 500 ? `${value.slice(0, 500)}...` : value;
 };
@@ -314,7 +334,7 @@ function SchedulerView({
       case "NA":
         return "bg-slate-500";
       default:
-        return "bg-gray-600";
+        return "bg-slate-600";
     }
   };
 
@@ -965,7 +985,7 @@ function SchedulerView({
           <p
             className="absolute top-12 z-1 max-w-[250px] truncate text-xs text-slate-500"
             style={{ left: displayedBarStyle?.left || "0.5rem" }}
-            title={notes || "No notes added"}
+            title={toPlainText(notes) || "No notes added"}
           >
             {formatNotesLabel(notes)}
           </p>
@@ -975,7 +995,7 @@ function SchedulerView({
   };
 
   return (
-    <div className="flex-1 min-h-0 m-4">
+    <div className="flex-1 min-h-0 px-4 py-4">
       <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
           <div>
@@ -1296,21 +1316,37 @@ function SchedulerView({
                 Notes
               </p>
               {detailForm ? (
-                <textarea
-                  value={detailForm?.notes || ""}
-                  onChange={(event) =>
-                    setDetailForm((current) => ({
-                      ...current,
-                      notes: event.target.value,
-                    }))
-                  }
-                  rows={5}
-                  className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="No notes added"
-                />
+                selectedScheduleDetails.type === "lot" ? (
+                  <div className="mt-1">
+                    <TextEditor
+                      initialContent={detailForm?.notes || ""}
+                      onChange={(content) =>
+                        setDetailForm((current) => ({
+                          ...current,
+                          notes: content,
+                        }))
+                      }
+                      placeholder="No notes added"
+                    />
+                  </div>
+                ) : (
+                  <textarea
+                    value={detailForm?.notes || ""}
+                    onChange={(event) =>
+                      setDetailForm((current) => ({
+                        ...current,
+                        notes: event.target.value,
+                      }))
+                    }
+                    rows={5}
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="No notes added"
+                  />
+                )
               ) : (
                 <p className="mt-1 max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-                  {selectedScheduleDetails.item.notes || "No notes added"}
+                  {toPlainText(selectedScheduleDetails.item.notes) ||
+                    "No notes added"}
                 </p>
               )}
             </div>
@@ -1512,11 +1548,11 @@ export default function page() {
       case "DONE":
         return "bg-green-100 text-green-800 border-green-200";
       case "NOT_STARTED":
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-slate-100 text-slate-800 border-slate-200";
       case "NA":
         return "bg-slate-100 text-slate-600 border-slate-200";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-slate-100 text-slate-800 border-slate-200";
     }
   };
 
@@ -1528,11 +1564,11 @@ export default function page() {
       case "DONE":
         return "bg-green-600";
       case "NOT_STARTED":
-        return "bg-gray-600";
+        return "bg-slate-600";
       case "NA":
         return "bg-slate-500";
       default:
-        return "bg-gray-600";
+        return "bg-slate-600";
     }
   };
 
@@ -2008,371 +2044,314 @@ export default function page() {
   }, []);
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-sm text-slate-600 font-medium">
-                    Loading lots at a glance details...
-                  </p>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-sm text-red-600 mb-4 font-medium">
-                    {error}
-                  </p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="px-8 py-2 shrink-0">
-                  <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-slate-700">
-                      Lots at a Glance
-                    </h1>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                        <span className="text-xs font-medium text-slate-600">
-                          Status:
+    <AdminShell>
+      <main className="flex h-full min-h-0 flex-col overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+              <p className="text-sm text-slate-600 font-medium">
+                Loading lots at a glance details...
+              </p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="px-4 py-2 shrink-0">
+              <div className="flex justify-between items-center">
+                <h1 className="text-xl font-bold text-slate-700">
+                  Lots at a Glance
+                </h1>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span className="text-xs font-medium text-slate-600">
+                      Status:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-4 w-4 rounded bg-slate-600" />
+                        <span className="text-xs text-slate-600">
+                          Not Started
                         </span>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1.5">
-                            <div className="h-4 w-4 rounded bg-gray-600" />
-                            <span className="text-xs text-slate-600">
-                              Not Started
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="h-4 w-4 rounded bg-yellow-600" />
-                            <span className="text-xs text-slate-600">
-                              In Progress
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="h-4 w-4 rounded bg-green-600" />
-                            <span className="text-xs text-slate-600">Done</span>
-                          </div>
-                        </div>
                       </div>
-                      <SearchBar />
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-4 w-4 rounded bg-yellow-600" />
+                        <span className="text-xs text-slate-600">
+                          In Progress
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-4 w-4 rounded bg-green-600" />
+                        <span className="text-xs text-slate-600">Done</span>
+                      </div>
                     </div>
                   </div>
+                  <SearchBar />
                 </div>
+              </div>
+            </div>
 
-                <div className="px-8 shrink-0">
-                  <div className="flex gap-1 border-b border-slate-200">
-                    <button
-                      onClick={() => setActiveTab("overview")}
-                      className={`cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-                        activeTab === "overview"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700"
-                      }`}
-                    >
-                      Overview
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("scheduler")}
-                      className={`cursor-pointer border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-                        activeTab === "scheduler"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700"
-                      }`}
-                    >
-                      Scheduler
-                    </button>
-                  </div>
-                </div>
+            <div className="px-4 shrink-0 border-b border-slate-200">
+              <nav className="flex space-x-6">
+                <button
+                  onClick={() => setActiveTab("overview")}
+                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "overview"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                  }`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => setActiveTab("scheduler")}
+                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "scheduler"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                  }`}
+                >
+                  Scheduler
+                </button>
+              </nav>
+            </div>
 
-                {activeTab === "overview" ? (
-                  <div className="flex-1 flex flex-col overflow-hidden px-8 py-4">
-                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                      {/* Fixed Header Section */}
-                      <div className="p-4 shrink-0 border-b border-slate-200">
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          {/* Search */}
-                          <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                            <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                            <input
-                              type="text"
-                              placeholder="Search by client name, project name or lot ID"
-                              className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                              value={search}
-                              onChange={(e) => setSearch(e.target.value)}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {/* Reset Button - Always visible when filters are active */}
-                            {hasActiveFilters && (
-                              <button
-                                onClick={handleResetFilters}
-                                className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                              >
-                                <RotateCcw className="h-4 w-4" />
-                                <span>Reset Filters</span>
-                              </button>
-                            )}
-                            {/* Export to Excel */}
-                            <div className="relative dropdown-container flex items-center">
-                              <button
-                                onClick={handleExportToExcel}
-                                disabled={
-                                  isExporting ||
-                                  filteredLots.length === 0 ||
-                                  selectedColumns.length === 0
-                                }
-                                className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                  isExporting ||
-                                  filteredLots.length === 0 ||
-                                  selectedColumns.length === 0
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : "cursor-pointer hover:bg-slate-100"
-                                }`}
-                              >
-                                <Sheet className="h-4 w-4" />
-                                <span>
-                                  {isExporting
-                                    ? "Exporting..."
-                                    : "Export to Excel"}
-                                </span>
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setShowColumnDropdown(!showColumnDropdown)
-                                }
-                                disabled={
-                                  isExporting || filteredLots.length === 0
-                                }
-                                className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                                  isExporting || filteredLots.length === 0
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : "cursor-pointer hover:bg-slate-100"
-                                }`}
-                              >
-                                <ChevronDown className="h-5 w-5" />
-                              </button>
-                              {showColumnDropdown && (
-                                <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                                  <div className="py-1">
-                                    <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                      <span className="font-semibold">
-                                        Select All
-                                      </span>
-                                      <input
-                                        type="checkbox"
-                                        checked={
-                                          selectedColumns.length ===
-                                          availableColumns.length
-                                        }
-                                        onChange={() =>
-                                          handleColumnToggle("Select All")
-                                        }
-                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                      />
-                                    </label>
-                                    {availableColumns.map((column) => (
-                                      <label
-                                        key={column}
-                                        className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                      >
-                                        <span>{column}</span>
-                                        <input
-                                          type="checkbox"
-                                          checked={selectedColumns.includes(
-                                            column,
-                                          )}
-                                          onChange={() =>
-                                            handleColumnToggle(column)
-                                          }
-                                          className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                        />
-                                      </label>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+            {activeTab === "overview" ? (
+              <div className="flex-1 flex flex-col overflow-hidden px-4 py-4">
+                <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                  {/* Fixed Header Section */}
+                  <div className="p-4 shrink-0 border-b border-slate-200">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      {/* Search */}
+                      <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
+                        <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search by client name, project name or lot ID"
+                          className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {/* Reset Button - Always visible when filters are active */}
+                        {hasActiveFilters && (
+                          <button
+                            onClick={handleResetFilters}
+                            className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            <span>Reset Filters</span>
+                          </button>
+                        )}
+                        {/* Export to Excel */}
+                        <div className="relative dropdown-container flex items-center">
+                          <button
+                            onClick={handleExportToExcel}
+                            disabled={
+                              isExporting ||
+                              filteredLots.length === 0 ||
+                              selectedColumns.length === 0
+                            }
+                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                              isExporting ||
+                              filteredLots.length === 0 ||
+                              selectedColumns.length === 0
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                            }`}
+                          >
+                            <Sheet className="h-4 w-4" />
+                            <span>
+                              {isExporting ? "Exporting..." : "Export to Excel"}
+                            </span>
+                          </button>
+                          <button
+                            onClick={() =>
+                              setShowColumnDropdown(!showColumnDropdown)
+                            }
+                            disabled={isExporting || filteredLots.length === 0}
+                            className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                              isExporting || filteredLots.length === 0
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-slate-100"
+                            }`}
+                          >
+                            <ChevronDown className="h-5 w-5" />
+                          </button>
+                          {showColumnDropdown && (
+                            <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                              <div className="py-1">
+                                <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                  <span className="font-semibold">
+                                    Select All
+                                  </span>
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      selectedColumns.length ===
+                                      availableColumns.length
+                                    }
+                                    onChange={() =>
+                                      handleColumnToggle("Select All")
+                                    }
+                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                  />
+                                </label>
+                                {availableColumns.map((column) => (
+                                  <label
+                                    key={column}
+                                    className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                  >
+                                    <span>{column}</span>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedColumns.includes(column)}
+                                      onChange={() =>
+                                        handleColumnToggle(column)
+                                      }
+                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    />
+                                  </label>
+                                ))}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
+                    </div>
+                  </div>
 
-                      {/* Filter Dropdowns - Positioned fixed over the table */}
-                      {stages.map((stage) => {
-                        const filterStatus = stageFilters[stage] || "ALL";
-                        if (
-                          !showFilterDropdowns[stage] ||
-                          !dropdownPositions[stage]
-                        )
-                          return null;
+                  {/* Filter Dropdowns - Positioned fixed over the table */}
+                  {stages.map((stage) => {
+                    const filterStatus = stageFilters[stage] || "ALL";
+                    if (
+                      !showFilterDropdowns[stage] ||
+                      !dropdownPositions[stage]
+                    )
+                      return null;
 
-                        return (
-                          <div
-                            key={`dropdown-${stage}`}
-                            className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 filter-dropdown-container"
-                            style={{
-                              top: `${dropdownPositions[stage].top}px`,
-                              right: `${dropdownPositions[stage].right}px`,
-                            }}
+                    return (
+                      <div
+                        key={`dropdown-${stage}`}
+                        className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 filter-dropdown-container"
+                        style={{
+                          top: `${dropdownPositions[stage].top}px`,
+                          right: `${dropdownPositions[stage].right}px`,
+                        }}
+                      >
+                        <div className="py-1">
+                          <button
+                            onClick={() =>
+                              handleStageFilterChange(stage, "ALL")
+                            }
+                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                              filterStatus === "ALL"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                            }`}
                           >
-                            <div className="py-1">
-                              <button
-                                onClick={() =>
-                                  handleStageFilterChange(stage, "ALL")
-                                }
-                                className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                  filterStatus === "ALL"
-                                    ? "bg-slate-100 font-medium"
-                                    : ""
-                                }`}
-                              >
-                                All Statuses
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleStageFilterChange(stage, "NOT_STARTED")
-                                }
-                                className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                  filterStatus === "NOT_STARTED"
-                                    ? "bg-slate-100 font-medium"
-                                    : ""
-                                }`}
-                              >
-                                Not Started
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleStageFilterChange(stage, "IN_PROGRESS")
-                                }
-                                className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                  filterStatus === "IN_PROGRESS"
-                                    ? "bg-slate-100 font-medium"
-                                    : ""
-                                }`}
-                              >
-                                In Progress
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleStageFilterChange(stage, "DONE")
-                                }
-                                className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                  filterStatus === "DONE"
-                                    ? "bg-slate-100 font-medium"
-                                    : ""
-                                }`}
-                              >
-                                Done
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleStageFilterChange(stage, "NA")
-                                }
-                                className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                                  filterStatus === "NA"
-                                    ? "bg-slate-100 font-medium"
-                                    : ""
-                                }`}
-                              >
-                                NA
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                            All Statuses
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleStageFilterChange(stage, "NOT_STARTED")
+                            }
+                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                              filterStatus === "NOT_STARTED"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                            }`}
+                          >
+                            Not Started
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleStageFilterChange(stage, "IN_PROGRESS")
+                            }
+                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                              filterStatus === "IN_PROGRESS"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                            }`}
+                          >
+                            In Progress
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleStageFilterChange(stage, "DONE")
+                            }
+                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                              filterStatus === "DONE"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                            }`}
+                          >
+                            Done
+                          </button>
+                          <button
+                            onClick={() => handleStageFilterChange(stage, "NA")}
+                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
+                              filterStatus === "NA"
+                                ? "bg-slate-100 font-medium"
+                                : ""
+                            }`}
+                          >
+                            NA
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
 
-                      {/* Scrollable Table Section */}
-                      <div className="flex-1 overflow-auto">
-                        {loading ? (
-                          <div className="p-8 text-center text-sm text-slate-500 font-medium">
-                            Loading active lots...
-                          </div>
-                        ) : error ? (
-                          <div className="p-8 text-center text-sm text-red-600 font-medium">
-                            {error}
-                          </div>
-                        ) : activeLots.length === 0 ? (
-                          <div className="p-8 text-center text-sm text-slate-500 font-medium">
-                            No active lots found
-                          </div>
-                        ) : (
-                          <div className="min-w-full">
-                            <table className="min-w-full divide-y divide-slate-200 table-fixed">
-                              <thead className="bg-slate-50 sticky top-0 z-20">
-                                <tr>
-                                  <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[180px] min-w-[180px] max-w-[180px]">
-                                    Client Name
-                                  </th>
-                                  <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-[180px] z-30 bg-slate-50 w-[350px] min-w-[350px] max-w-[350px]">
-                                    Project Name - Lot Number
-                                  </th>
-                                  {stages.map((stage) => {
-                                    const filterStatus =
-                                      stageFilters[stage] || "ALL";
-                                    const hasFilter = filterStatus !== "ALL";
+                  {/* Scrollable Table Section */}
+                  <div className="flex-1 overflow-auto">
+                    {loading ? (
+                      <div className="p-8 text-center text-sm text-slate-500 font-medium">
+                        Loading active lots...
+                      </div>
+                    ) : error ? (
+                      <div className="p-8 text-center text-sm text-red-600 font-medium">
+                        {error}
+                      </div>
+                    ) : activeLots.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-slate-500 font-medium">
+                        No active lots found
+                      </div>
+                    ) : (
+                      <div className="min-w-full">
+                        <table className="min-w-full divide-y divide-slate-200 table-fixed">
+                          <thead className="bg-slate-50 sticky top-0 z-20">
+                            <tr>
+                              <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[180px] min-w-[180px] max-w-[180px]">
+                                Client Name
+                              </th>
+                              <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-[180px] z-30 bg-slate-50 w-[350px] min-w-[350px] max-w-[350px]">
+                                Project Name - Lot Number
+                              </th>
+                              {stages.map((stage) => {
+                                const filterStatus =
+                                  stageFilters[stage] || "ALL";
+                                const hasFilter = filterStatus !== "ALL";
 
-                                    return (
-                                      <th
-                                        key={stage}
-                                        className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px]"
-                                      >
-                                        <div className="flex flex-col items-center justify-end gap-2 h-full">
-                                          <span
-                                            className="whitespace-nowrap"
-                                            style={{
-                                              writingMode: "vertical-rl",
-                                              textOrientation: "mixed",
-                                              transform: "rotate(180deg)",
-                                            }}
-                                          >
-                                            {stage}
-                                          </span>
-
-                                          <div className="relative filter-dropdown-container shrink-0">
-                                            <button
-                                              ref={(el) =>
-                                                (filterButtonRefs.current[
-                                                  stage
-                                                ] = el)
-                                              }
-                                              onClick={(e) =>
-                                                handleFilterButtonClick(
-                                                  stage,
-                                                  e,
-                                                )
-                                              }
-                                              className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${
-                                                hasFilter ? "bg-primary/20" : ""
-                                              }`}
-                                              title="Filter by status"
-                                            >
-                                              <Funnel
-                                                className={`h-3 w-3 ${
-                                                  hasFilter
-                                                    ? "text-primary"
-                                                    : "text-slate-400"
-                                                }`}
-                                              />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </th>
-                                    );
-                                  })}
-                                  <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px] border-l border-slate-200">
+                                return (
+                                  <th
+                                    key={stage}
+                                    className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px]"
+                                  >
                                     <div className="flex flex-col items-center justify-end gap-2 h-full">
                                       <span
                                         className="whitespace-nowrap"
@@ -2382,210 +2361,235 @@ export default function page() {
                                           transform: "rotate(180deg)",
                                         }}
                                       >
-                                        Percentage Completed
+                                        {stage}
                                       </span>
+
+                                      <div className="relative filter-dropdown-container shrink-0">
+                                        <button
+                                          ref={(el) =>
+                                            (filterButtonRefs.current[stage] =
+                                              el)
+                                          }
+                                          onClick={(e) =>
+                                            handleFilterButtonClick(stage, e)
+                                          }
+                                          className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${
+                                            hasFilter ? "bg-primary/20" : ""
+                                          }`}
+                                          title="Filter by status"
+                                        >
+                                          <Funnel
+                                            className={`h-3 w-3 ${
+                                              hasFilter
+                                                ? "text-primary"
+                                                : "text-slate-400"
+                                            }`}
+                                          />
+                                        </button>
+                                      </div>
                                     </div>
                                   </th>
-                                </tr>
-                              </thead>
-                              <tbody className="bg-white divide-y divide-slate-200">
-                                {filteredLots.length === 0 ? (
-                                  <tr>
-                                    <td
-                                      colSpan={stages.length + 3}
-                                      className="px-4 py-8 text-center text-sm text-slate-500"
-                                    >
-                                      <div className="flex flex-col items-center gap-3">
-                                        <p>
-                                          No lots match your filters. Try
-                                          adjusting your search or filters.
-                                        </p>
-                                        {hasActiveFilters && (
+                                );
+                              })}
+                              <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px] border-l border-slate-200">
+                                <div className="flex flex-col items-center justify-end gap-2 h-full">
+                                  <span
+                                    className="whitespace-nowrap"
+                                    style={{
+                                      writingMode: "vertical-rl",
+                                      textOrientation: "mixed",
+                                      transform: "rotate(180deg)",
+                                    }}
+                                  >
+                                    Percentage Completed
+                                  </span>
+                                </div>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-slate-200">
+                            {filteredLots.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={stages.length + 3}
+                                  className="px-4 py-8 text-center text-sm text-slate-500"
+                                >
+                                  <div className="flex flex-col items-center gap-3">
+                                    <p>
+                                      No lots match your filters. Try adjusting
+                                      your search or filters.
+                                    </p>
+                                    {hasActiveFilters && (
+                                      <button
+                                        onClick={handleResetFilters}
+                                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                                      >
+                                        <RotateCcw className="h-4 w-4" />
+                                        Reset Filters
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : (
+                              filteredLots.map((lot) => (
+                                <tr
+                                  key={lot.lot_id}
+                                  className="group hover:bg-slate-50 transition-colors duration-200"
+                                >
+                                  <td
+                                    onClick={(e) =>
+                                      handleClientNameClick(lot, e)
+                                    }
+                                    className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[180px] min-w-[180px] max-w-[180px] overflow-hidden"
+                                    title={
+                                      lot.project?.client?.client_name || "N/A"
+                                    }
+                                  >
+                                    <span className="block truncate">
+                                      {lot.project?.client?.client_name ||
+                                        "N/A"}
+                                    </span>
+                                  </td>
+                                  <td
+                                    onClick={(e) =>
+                                      handleProjectNameClick(lot, e)
+                                    }
+                                    className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-[180px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[350px] min-w-[350px] max-w-[350px] overflow-hidden"
+                                    title={`${lot.project?.name || "N/A"} - ${lot.lot_id}`}
+                                  >
+                                    <span className="block truncate">
+                                      {lot.project?.name || "N/A"} -{" "}
+                                      {lot.lot_id}
+                                    </span>
+                                  </td>
+                                  {stages.map((stage) => {
+                                    const status = getStageStatus(lot, stage);
+                                    const boxColor = getStatusBoxColor(status);
+                                    const dropdownKey = `${lot.lot_id}-${stage}`;
+                                    const isDropdownOpen =
+                                      statusDropdownOpen === dropdownKey;
+                                    const dropdownPosition =
+                                      statusDropdownPositions[dropdownKey];
+
+                                    return (
+                                      <td
+                                        key={stage}
+                                        className="px-2 py-3 text-sm text-center relative"
+                                      >
+                                        <div className="relative inline-block">
                                           <button
-                                            onClick={handleResetFilters}
-                                            className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                                          >
-                                            <RotateCcw className="h-4 w-4" />
-                                            Reset Filters
-                                          </button>
-                                        )}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ) : (
-                                  filteredLots.map((lot) => (
-                                    <tr
-                                      key={lot.lot_id}
-                                      className="group hover:bg-slate-50 transition-colors duration-200"
-                                    >
-                                      <td
-                                        onClick={(e) =>
-                                          handleClientNameClick(lot, e)
-                                        }
-                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[180px] min-w-[180px] max-w-[180px] overflow-hidden"
-                                        title={
-                                          lot.project?.client?.client_name ||
-                                          "N/A"
-                                        }
-                                      >
-                                        <span className="block truncate">
-                                          {lot.project?.client?.client_name ||
-                                            "N/A"}
-                                        </span>
-                                      </td>
-                                      <td
-                                        onClick={(e) =>
-                                          handleProjectNameClick(lot, e)
-                                        }
-                                        className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-[180px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[350px] min-w-[350px] max-w-[350px] overflow-hidden"
-                                        title={`${lot.project?.name || "N/A"} - ${lot.lot_id}`}
-                                      >
-                                        <span className="block truncate">
-                                          {lot.project?.name || "N/A"} -{" "}
-                                          {lot.lot_id}
-                                        </span>
-                                      </td>
-                                      {stages.map((stage) => {
-                                        const status = getStageStatus(
-                                          lot,
-                                          stage,
-                                        );
-                                        const boxColor =
-                                          getStatusBoxColor(status);
-                                        const dropdownKey = `${lot.lot_id}-${stage}`;
-                                        const isDropdownOpen =
-                                          statusDropdownOpen === dropdownKey;
-                                        const dropdownPosition =
-                                          statusDropdownPositions[dropdownKey];
+                                            onClick={(e) =>
+                                              handleStatusSquareClick(
+                                                lot,
+                                                stage,
+                                                e,
+                                              )
+                                            }
+                                            disabled={isUpdatingStatus}
+                                            className={`inline-block w-6 h-6 rounded ${boxColor} cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
+                                            title={`${formatStatus(status)} - Click to change`}
+                                          ></button>
 
-                                        return (
-                                          <td
-                                            key={stage}
-                                            className="px-2 py-3 text-sm text-center relative"
-                                          >
-                                            <div className="relative inline-block">
-                                              <button
-                                                onClick={(e) =>
-                                                  handleStatusSquareClick(
-                                                    lot,
-                                                    stage,
-                                                    e,
-                                                  )
-                                                }
-                                                disabled={isUpdatingStatus}
-                                                className={`inline-block w-6 h-6 rounded ${boxColor} cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
-                                                title={`${formatStatus(status)} - Click to change`}
-                                              ></button>
-
-                                              {isDropdownOpen &&
-                                                dropdownPosition && (
-                                                  <div
-                                                    className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 status-dropdown-container"
-                                                    style={{
-                                                      top: dropdownPosition.top
-                                                        ? `${dropdownPosition.top}px`
-                                                        : "auto",
-                                                      bottom:
-                                                        dropdownPosition.bottom
-                                                          ? `${dropdownPosition.bottom}px`
-                                                          : "auto",
-                                                      left: `${dropdownPosition.left}px`,
-                                                    }}
+                                          {isDropdownOpen &&
+                                            dropdownPosition && (
+                                              <div
+                                                className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 status-dropdown-container"
+                                                style={{
+                                                  top: dropdownPosition.top
+                                                    ? `${dropdownPosition.top}px`
+                                                    : "auto",
+                                                  bottom:
+                                                    dropdownPosition.bottom
+                                                      ? `${dropdownPosition.bottom}px`
+                                                      : "auto",
+                                                  left: `${dropdownPosition.left}px`,
+                                                }}
+                                              >
+                                                <div className="py-1">
+                                                  <button
+                                                    onClick={() =>
+                                                      handleStageStatusUpdate(
+                                                        lot,
+                                                        stage,
+                                                        "NOT_STARTED",
+                                                      )
+                                                    }
+                                                    disabled={isUpdatingStatus}
+                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                      status === "NOT_STARTED"
+                                                        ? "bg-slate-100 font-medium"
+                                                        : ""
+                                                    }`}
                                                   >
-                                                    <div className="py-1">
-                                                      <button
-                                                        onClick={() =>
-                                                          handleStageStatusUpdate(
-                                                            lot,
-                                                            stage,
-                                                            "NOT_STARTED",
-                                                          )
-                                                        }
-                                                        disabled={
-                                                          isUpdatingStatus
-                                                        }
-                                                        className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                          status ===
-                                                          "NOT_STARTED"
-                                                            ? "bg-slate-100 font-medium"
-                                                            : ""
-                                                        }`}
-                                                      >
-                                                        Not Started
-                                                      </button>
-                                                      <button
-                                                        onClick={() =>
-                                                          handleStageStatusUpdate(
-                                                            lot,
-                                                            stage,
-                                                            "IN_PROGRESS",
-                                                          )
-                                                        }
-                                                        disabled={
-                                                          isUpdatingStatus
-                                                        }
-                                                        className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                          status ===
-                                                          "IN_PROGRESS"
-                                                            ? "bg-slate-100 font-medium"
-                                                            : ""
-                                                        }`}
-                                                      >
-                                                        In Progress
-                                                      </button>
-                                                      <button
-                                                        onClick={() =>
-                                                          handleStageStatusUpdate(
-                                                            lot,
-                                                            stage,
-                                                            "DONE",
-                                                          )
-                                                        }
-                                                        disabled={
-                                                          isUpdatingStatus
-                                                        }
-                                                        className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                          status === "DONE"
-                                                            ? "bg-slate-100 font-medium"
-                                                            : ""
-                                                        }`}
-                                                      >
-                                                        Done
-                                                      </button>
-                                                    </div>
-                                                  </div>
-                                                )}
-                                            </div>
-                                          </td>
-                                        );
-                                      })}
-                                      <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center border-l border-slate-200 whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px]">
-                                        {getPercentageCompleted(lot)}%
+                                                    Not Started
+                                                  </button>
+                                                  <button
+                                                    onClick={() =>
+                                                      handleStageStatusUpdate(
+                                                        lot,
+                                                        stage,
+                                                        "IN_PROGRESS",
+                                                      )
+                                                    }
+                                                    disabled={isUpdatingStatus}
+                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                      status === "IN_PROGRESS"
+                                                        ? "bg-slate-100 font-medium"
+                                                        : ""
+                                                    }`}
+                                                  >
+                                                    In Progress
+                                                  </button>
+                                                  <button
+                                                    onClick={() =>
+                                                      handleStageStatusUpdate(
+                                                        lot,
+                                                        stage,
+                                                        "DONE",
+                                                      )
+                                                    }
+                                                    disabled={isUpdatingStatus}
+                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                      status === "DONE"
+                                                        ? "bg-slate-100 font-medium"
+                                                        : ""
+                                                    }`}
+                                                  >
+                                                    Done
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            )}
+                                        </div>
                                       </td>
-                                    </tr>
-                                  ))
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
+                                    );
+                                  })}
+                                  <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center border-l border-slate-200 whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px]">
+                                    {getPercentageCompleted(lot)}%
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
                       </div>
-                    </div>
+                    )}
                   </div>
-                ) : (
-                  <SchedulerView
-                    activeLots={activeLots}
-                    getStageStatus={getStageStatus}
-                    getToken={getToken}
-                    onRefresh={fetchActiveLots}
-                    onOptimisticUpdate={updateScheduleOptimistically}
-                  />
-                )}
-              </>
+                </div>
+              </div>
+            ) : (
+              <SchedulerView
+                activeLots={activeLots}
+                getStageStatus={getStageStatus}
+                getToken={getToken}
+                onRefresh={fetchActiveLots}
+                onOptimisticUpdate={updateScheduleOptimistically}
+              />
             )}
-          </div>
-        </div>
-      </div>
-    </AdminRoute>
+          </>
+        )}
+      </main>
+    </AdminShell>
   );
 }

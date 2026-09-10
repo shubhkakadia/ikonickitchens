@@ -3,6 +3,9 @@
 import axios from "axios";
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Calendar,
   CheckCircle2,
   ChevronDown,
@@ -10,6 +13,7 @@ import {
   Funnel,
   Plus,
   RotateCcw,
+  Search,
   Sheet,
   UserRound,
 } from "lucide-react";
@@ -310,6 +314,17 @@ export default function ViewAllPunchesPage() {
     "workingStatuses",
     WORKING_STATUS_OPTIONS,
   );
+  const [search, setSearch] = usePersistedTableFilter(TABLE_KEY, "search", "");
+  const [sortField, setSortField] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortField",
+    "date",
+  );
+  const [sortOrder, setSortOrder] = usePersistedTableFilter(
+    TABLE_KEY,
+    "sortOrder",
+    "desc",
+  );
   const { resetFilters } = useTableFilterActions(TABLE_KEY);
 
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -333,7 +348,10 @@ export default function ViewAllPunchesPage() {
     Boolean(endDate) ||
     Boolean(breakStatusParam) ||
     Boolean(reviewStatusParam) ||
-    Boolean(workingStatusParam);
+    Boolean(workingStatusParam) ||
+    search !== "" ||
+    sortField !== "date" ||
+    sortOrder !== "desc";
 
   const columnMap = useMemo(
     () => ({
@@ -455,9 +473,67 @@ export default function ViewAllPunchesPage() {
     workingStatusParam,
   ]);
 
-  const punchGroups = dateGroups.flatMap(
-    (dateGroup) => dateGroup.employee_groups || [],
-  );
+  // The API paginates by date, so the search and sort below refine the dates
+  // that are currently loaded rather than the whole result set.
+  const punchGroups = useMemo(() => {
+    const groups = dateGroups.flatMap(
+      (dateGroup) => dateGroup.employee_groups || [],
+    );
+
+    const searchLower = search.trim().toLowerCase();
+    const filtered = searchLower
+      ? groups.filter((group) =>
+          [
+            employeeName(group),
+            group.employee_id,
+            group.employee?.role,
+            group.date,
+            formatGroupDate(group.date),
+          ]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(searchLower)),
+        )
+      : [...groups];
+
+    const direction = sortOrder === "desc" ? -1 : 1;
+    filtered.sort((a, b) => {
+      if (sortField === "hours") {
+        return (Number(a.hours || 0) - Number(b.hours || 0)) * direction;
+      }
+
+      const aValue =
+        sortField === "employee"
+          ? employeeName(a).toLowerCase()
+          : String(a.date || "");
+      const bValue =
+        sortField === "employee"
+          ? employeeName(b).toLowerCase()
+          : String(b.date || "");
+
+      if (aValue === bValue) return 0;
+      return (aValue < bValue ? -1 : 1) * direction;
+    });
+
+    return filtered;
+  }, [dateGroups, search, sortField, sortOrder]);
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+    setOpenDropdown(null);
+  };
+
+  const getSortIcon = (field) => {
+    if (sortField !== field)
+      return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
+    if (sortOrder === "asc")
+      return <ArrowUp className="h-4 w-4 text-primary" />;
+    return <ArrowDown className="h-4 w-4 text-primary" />;
+  };
 
   const handleStatusToggle = (setSelected, options) => (value) => {
     if (value === "Select All") {
@@ -617,391 +693,472 @@ export default function ViewAllPunchesPage() {
     pagination.total_dates === 0 ||
     selectedColumns.length === 0;
 
+  // Only the very first load takes over the page; later refetches keep the
+  // toolbar in place and show the spinner inside the table.
+  const isInitialLoading = loading && dateGroups.length === 0;
+
+  if (isInitialLoading || error) {
+    return (
+      <AdminShell>
+        <div className="flex h-full flex-col overflow-hidden">
+          {isInitialLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                <p className="text-sm text-slate-600 font-medium">
+                  Loading clock punches...
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => setRefreshKey((value) => value + 1)}
+                  className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </AdminShell>
+    );
+  }
+
   return (
     <AdminShell>
       <main className="flex h-full min-h-0 flex-col overflow-hidden">
-        <div className="flex shrink-0 items-center justify-between gap-4 px-4 py-3">
-          <div>
+        <div className="px-4 py-2 shrink-0">
+          <div className="flex justify-between items-center">
             <h1 className="text-xl font-bold text-slate-700">Clock Punches</h1>
-            <p className="mt-0.5 text-sm text-slate-500">
-              Daily employee attendance in Adelaide time
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <SearchBar />
-            <TabsController href="/admin/employees/punches/add">
-              <div className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary/80 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-primary">
-                <Plus className="h-4 w-4" />
-                Add Punch
-              </div>
-            </TabsController>
+            <div className="flex items-center gap-2">
+              <SearchBar />
+              <TabsController href="/admin/employees/punches/add">
+                <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
+                  <Plus className="h-4 w-4" />
+                  Add Punch
+                </div>
+              </TabsController>
+            </div>
           </div>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-4">
           <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-700">
-                  Daily punch records
-                </p>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {pagination.total_dates} date
-                  {pagination.total_dates === 1 ? "" : "s"} •{" "}
-                  {pagination.total_punches} punch
-                  {pagination.total_punches === 1 ? "" : "es"}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {isAnyFilterActive && (
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    <span>Reset</span>
-                  </button>
-                )}
-
-                <div className="relative dropdown-container">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOpenDropdown(openDropdown === "dates" ? null : "dates")
-                    }
-                    className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                  >
-                    <Calendar className="h-4 w-4" />
-                    <span>Filter by Dates</span>
-                    {(startDate || endDate) && (
-                      <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                        Active
-                      </span>
-                    )}
-                  </button>
-                  {openDropdown === "dates" && (
-                    <div className="absolute top-full right-0 mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-4">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Start Date
-                          </label>
-                          <input
-                            type="date"
-                            value={startDate}
-                            onChange={(event) =>
-                              setStartDate(event.target.value)
-                            }
-                            max={endDate || undefined}
-                            className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">
-                            End Date
-                          </label>
-                          <input
-                            type="date"
-                            value={endDate}
-                            onChange={(event) => setEndDate(event.target.value)}
-                            min={startDate || undefined}
-                            className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                          />
-                        </div>
-                        {(startDate || endDate) && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setStartDate("");
-                              setEndDate("");
-                            }}
-                            className="w-full cursor-pointer text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors duration-200"
-                          >
-                            Clear Dates
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
+            <div className="p-4 shrink-0 border-b border-slate-200">
+              <div className="flex items-center justify-between gap-3">
+                {/* search bar */}
+                <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
+                  <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search punches with employee name, employee id, role, date"
+                    className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
                 </div>
-
-                <StatusFilterDropdown
-                  label="Break Status"
-                  options={BREAK_STATUS_OPTIONS}
-                  selected={breakStatuses}
-                  onToggle={handleStatusToggle(
-                    setBreakStatuses,
-                    BREAK_STATUS_OPTIONS,
+                {/* reset, filters, sort by, export to excel */}
+                <div className="flex items-center gap-2">
+                  {isAnyFilterActive && (
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      <span>Reset</span>
+                    </button>
                   )}
-                  isOpen={openDropdown === "break"}
-                  onOpenChange={(isOpen) =>
-                    setOpenDropdown(isOpen ? "break" : null)
-                  }
-                />
 
-                <StatusFilterDropdown
-                  label="Review Status"
-                  options={REVIEW_STATUS_OPTIONS}
-                  selected={reviewStatuses}
-                  onToggle={handleStatusToggle(
-                    setReviewStatuses,
-                    REVIEW_STATUS_OPTIONS,
-                  )}
-                  isOpen={openDropdown === "review"}
-                  onOpenChange={(isOpen) =>
-                    setOpenDropdown(isOpen ? "review" : null)
-                  }
-                />
+                  <div className="relative dropdown-container">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenDropdown(
+                          openDropdown === "dates" ? null : "dates",
+                        )
+                      }
+                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      <span>Filter by Dates</span>
+                      {(startDate || endDate) && (
+                        <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                          Active
+                        </span>
+                      )}
+                    </button>
+                    {openDropdown === "dates" && (
+                      <div className="absolute top-full right-0 mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-4">
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                              Start Date
+                            </label>
+                            <input
+                              type="date"
+                              value={startDate}
+                              onChange={(event) =>
+                                setStartDate(event.target.value)
+                              }
+                              max={endDate || undefined}
+                              className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                              End Date
+                            </label>
+                            <input
+                              type="date"
+                              value={endDate}
+                              onChange={(event) =>
+                                setEndDate(event.target.value)
+                              }
+                              min={startDate || undefined}
+                              className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                            />
+                          </div>
+                          {(startDate || endDate) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStartDate("");
+                                setEndDate("");
+                              }}
+                              className="w-full cursor-pointer text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors duration-200"
+                            >
+                              Clear Dates
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-                <StatusFilterDropdown
-                  label="Working Status"
-                  options={WORKING_STATUS_OPTIONS}
-                  selected={workingStatuses}
-                  onToggle={handleStatusToggle(
-                    setWorkingStatuses,
-                    WORKING_STATUS_OPTIONS,
-                  )}
-                  isOpen={openDropdown === "working"}
-                  onOpenChange={(isOpen) =>
-                    setOpenDropdown(isOpen ? "working" : null)
-                  }
-                />
-
-                <div className="relative dropdown-container flex items-center">
-                  <button
-                    type="button"
-                    onClick={handleExportToExcel}
-                    disabled={exportDisabled}
-                    className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                      exportDisabled
-                        ? "opacity-50 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-slate-100"
-                    }`}
-                  >
-                    <Sheet className="h-4 w-4" />
-                    <span>
-                      {isExporting || isPreparingExport
-                        ? "Exporting..."
-                        : "Export to Excel"}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOpenDropdown(
-                        openDropdown === "columns" ? null : "columns",
-                      )
+                  <StatusFilterDropdown
+                    label="Break Status"
+                    options={BREAK_STATUS_OPTIONS}
+                    selected={breakStatuses}
+                    onToggle={handleStatusToggle(
+                      setBreakStatuses,
+                      BREAK_STATUS_OPTIONS,
+                    )}
+                    isOpen={openDropdown === "break"}
+                    onOpenChange={(isOpen) =>
+                      setOpenDropdown(isOpen ? "break" : null)
                     }
-                    disabled={isExporting || isPreparingExport}
-                    className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                      isExporting || isPreparingExport
-                        ? "opacity-50 cursor-not-allowed"
-                        : "cursor-pointer hover:bg-slate-100"
-                    }`}
-                  >
-                    <ChevronDown className="h-5 w-5" />
-                  </button>
-                  {openDropdown === "columns" && (
-                    <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                      <div className="py-1">
-                        <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                          <span className="font-semibold">Select All</span>
-                          <input
-                            type="checkbox"
-                            checked={
-                              selectedColumns.length === EXPORT_COLUMNS.length
-                            }
-                            onChange={() => handleColumnToggle("Select All")}
-                            className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                          />
-                        </label>
-                        {EXPORT_COLUMNS.map((column) => (
-                          <label
-                            key={column}
-                            className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                          >
-                            <span>{column}</span>
+                  />
+
+                  <StatusFilterDropdown
+                    label="Review Status"
+                    options={REVIEW_STATUS_OPTIONS}
+                    selected={reviewStatuses}
+                    onToggle={handleStatusToggle(
+                      setReviewStatuses,
+                      REVIEW_STATUS_OPTIONS,
+                    )}
+                    isOpen={openDropdown === "review"}
+                    onOpenChange={(isOpen) =>
+                      setOpenDropdown(isOpen ? "review" : null)
+                    }
+                  />
+
+                  <StatusFilterDropdown
+                    label="Working Status"
+                    options={WORKING_STATUS_OPTIONS}
+                    selected={workingStatuses}
+                    onToggle={handleStatusToggle(
+                      setWorkingStatuses,
+                      WORKING_STATUS_OPTIONS,
+                    )}
+                    isOpen={openDropdown === "working"}
+                    onOpenChange={(isOpen) =>
+                      setOpenDropdown(isOpen ? "working" : null)
+                    }
+                  />
+
+                  <div className="relative dropdown-container">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenDropdown(openDropdown === "sort" ? null : "sort")
+                      }
+                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                    >
+                      <ArrowUpDown className="h-4 w-4" />
+                      <span>Sort by</span>
+                    </button>
+                    {openDropdown === "sort" && (
+                      <div className="absolute top-full right-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                        <div className="py-1">
+                          {[
+                            ["date", "Date"],
+                            ["employee", "Employee"],
+                            ["hours", "Working Hours"],
+                          ].map(([field, label]) => (
+                            <button
+                              key={field}
+                              type="button"
+                              onClick={() => handleSort(field)}
+                              className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                            >
+                              {label} {getSortIcon(field)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative dropdown-container flex items-center">
+                    <button
+                      type="button"
+                      onClick={handleExportToExcel}
+                      disabled={exportDisabled}
+                      className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                        exportDisabled
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer hover:bg-slate-100"
+                      }`}
+                    >
+                      <Sheet className="h-4 w-4" />
+                      <span>
+                        {isExporting || isPreparingExport
+                          ? "Exporting..."
+                          : "Export to Excel"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenDropdown(
+                          openDropdown === "columns" ? null : "columns",
+                        )
+                      }
+                      disabled={isExporting || isPreparingExport}
+                      className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                        isExporting || isPreparingExport
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer hover:bg-slate-100"
+                      }`}
+                    >
+                      <ChevronDown className="h-5 w-5" />
+                    </button>
+                    {openDropdown === "columns" && (
+                      <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                        <div className="py-1">
+                          <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                            <span className="font-semibold">Select All</span>
                             <input
                               type="checkbox"
-                              checked={selectedColumns.includes(column)}
-                              onChange={() => handleColumnToggle(column)}
+                              checked={
+                                selectedColumns.length === EXPORT_COLUMNS.length
+                              }
+                              onChange={() => handleColumnToggle("Select All")}
                               className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
                             />
                           </label>
-                        ))}
+                          {EXPORT_COLUMNS.map((column) => (
+                            <label
+                              key={column}
+                              className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                            >
+                              <span>{column}</span>
+                              <input
+                                type="checkbox"
+                                checked={selectedColumns.includes(column)}
+                                onChange={() => handleColumnToggle(column)}
+                                className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                              />
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="sticky top-0 z-10 bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
-                      Date
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
-                      Employee
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
-                      Working Hours
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
-                      Break Status
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
-                      Review Status
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
-                      Working Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {loading ? (
+              <div className="min-w-full">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="sticky top-0 z-10 bg-slate-50">
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="px-4 py-10 text-center text-sm font-medium text-slate-500"
+                      <th
+                        className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                        onClick={() => handleSort("date")}
                       >
-                        Loading clock punches...
-                      </td>
+                        <div className="flex items-center gap-2">
+                          Date
+                          {getSortIcon("date")}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                        onClick={() => handleSort("employee")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Employee
+                          {getSortIcon("employee")}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                        onClick={() => handleSort("hours")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Working Hours
+                          {getSortIcon("hours")}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
+                        Break Status
+                      </th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
+                        Review Status
+                      </th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
+                        Working Status
+                      </th>
                     </tr>
-                  ) : error ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center">
-                        <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-red-500" />
-                        <p className="text-sm font-medium text-red-600">
-                          {error}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setRefreshKey((value) => value + 1)}
-                          className="mt-4 cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 bg-white">
+                    {loading ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="px-4 py-4 text-sm text-slate-500 text-center"
                         >
-                          Try again
-                        </button>
-                      </td>
-                    </tr>
-                  ) : punchGroups.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center">
-                        <Coffee className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                        <p className="font-semibold text-slate-700">
-                          No clock punches found
-                        </p>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {isAnyFilterActive
-                            ? "No records match the selected filters. Try widening the date range or status filters."
-                            : "Employee attendance will appear here after the first punch is recorded."}
-                        </p>
-                      </td>
-                    </tr>
-                  ) : (
-                    punchGroups.map((group) => (
-                      <tr
-                        key={`${group.date}-${group.employee_id}`}
-                        onClick={() => openGroup(group)}
-                        title={
-                          group.reference_punch_id
-                            ? undefined
-                            : "This day has no active clock in to open"
-                        }
-                        className={`transition-colors hover:bg-slate-50 ${
-                          group.reference_punch_id ? "cursor-pointer" : ""
-                        }`}
-                      >
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <p className="text-sm font-semibold text-slate-800">
-                            {formatGroupDate(group.date)}
-                          </p>
-                          <p className="text-xs text-slate-500">{group.date}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                              <UserRound className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <p className="whitespace-nowrap text-sm font-medium text-slate-700">
-                                {employeeName(group)}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {group.employee_id}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-slate-700">
-                          {Number(group.hours || 0).toFixed(2)} hours
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                              breakStyles[group.break_status] ||
-                              breakStyles.NO_BREAK
-                            }`}
-                          >
-                            {formatLabel(group.break_status)}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          {canReview ? (
-                            <ReviewStatusDropdown
-                              group={group}
-                              isOpen={
-                                openStatusDropdownId ===
-                                `${group.date}-${group.employee_id}`
-                              }
-                              onOpenChange={(isOpen) =>
-                                setOpenStatusDropdownId(
-                                  isOpen
-                                    ? `${group.date}-${group.employee_id}`
-                                    : null,
-                                )
-                              }
-                              isUpdating={
-                                updatingStatusId ===
-                                `${group.date}-${group.employee_id}`
-                              }
-                              onSelect={(status) =>
-                                handleGroupReviewStatusChange(group, status)
-                              }
-                            />
-                          ) : (
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                                reviewStyles[group.review_status] ||
-                                reviewStyles.PENDING
-                              }`}
-                            >
-                              {group.review_status === "APPROVED" && (
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                              )}
-                              {formatLabel(group.review_status)}
-                            </span>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                              workingStyles[group.working_status] ||
-                              workingStyles.NOT_WORKING
-                            }`}
-                          >
-                            {formatLabel(group.working_status)}
-                          </span>
+                          Loading clock punches...
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : punchGroups.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-10 text-center">
+                          <Coffee className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                          <p className="font-semibold text-slate-700">
+                            No clock punches found
+                          </p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {search
+                              ? "No punches match your search on the loaded dates."
+                              : isAnyFilterActive
+                                ? "No records match the selected filters. Try widening the date range or status filters."
+                                : "Employee attendance will appear here after the first punch is recorded."}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      punchGroups.map((group) => (
+                        <tr
+                          key={`${group.date}-${group.employee_id}`}
+                          onClick={() => openGroup(group)}
+                          title={
+                            group.reference_punch_id
+                              ? undefined
+                              : "This day has no active clock in to open"
+                          }
+                          className={`transition-colors hover:bg-slate-50 ${
+                            group.reference_punch_id ? "cursor-pointer" : ""
+                          }`}
+                        >
+                          <td className="whitespace-nowrap px-4 py-3">
+                            <p className="text-sm font-semibold text-slate-800">
+                              {formatGroupDate(group.date)}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {group.date}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                                <UserRound className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <p className="whitespace-nowrap text-sm font-medium text-slate-700">
+                                  {employeeName(group)}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {group.employee_id}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-slate-700">
+                            {Number(group.hours || 0).toFixed(2)} hours
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            <span
+                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                breakStyles[group.break_status] ||
+                                breakStyles.NO_BREAK
+                              }`}
+                            >
+                              {formatLabel(group.break_status)}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            {canReview ? (
+                              <ReviewStatusDropdown
+                                group={group}
+                                isOpen={
+                                  openStatusDropdownId ===
+                                  `${group.date}-${group.employee_id}`
+                                }
+                                onOpenChange={(isOpen) =>
+                                  setOpenStatusDropdownId(
+                                    isOpen
+                                      ? `${group.date}-${group.employee_id}`
+                                      : null,
+                                  )
+                                }
+                                isUpdating={
+                                  updatingStatusId ===
+                                  `${group.date}-${group.employee_id}`
+                                }
+                                onSelect={(status) =>
+                                  handleGroupReviewStatusChange(group, status)
+                                }
+                              />
+                            ) : (
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                  reviewStyles[group.review_status] ||
+                                  reviewStyles.PENDING
+                                }`}
+                              >
+                                {group.review_status === "APPROVED" && (
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                )}
+                                {formatLabel(group.review_status)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            <span
+                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                workingStyles[group.working_status] ||
+                                workingStyles.NOT_WORKING
+                              }`}
+                            >
+                              {formatLabel(group.working_status)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {!loading && !error && pagination.total_dates > 0 && (

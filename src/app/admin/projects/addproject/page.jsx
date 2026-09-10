@@ -1,9 +1,8 @@
 "use client";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import TabsController from "@/components/tabscontroller";
 import { ChevronLeft, FolderOpen, ChevronDown, Layers } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
-import Sidebar from "@/components/sidebar";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
@@ -321,310 +320,297 @@ export default function page() {
   };
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="h-full w-full overflow-y-auto">
-            <div className="px-4 py-2">
-              <div className="flex items-center gap-2 mb-4">
-                <TabsController back={true}>
-                  <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
-                    <ChevronLeft className="w-8 h-8 text-slate-600" />
-                  </div>
-                </TabsController>
-                <h1 className="text-2xl font-bold text-slate-600">
-                  Add New Project
-                </h1>
+    <AdminShell>
+      <main className="h-full w-full overflow-y-auto">
+        <div className="px-4 py-2">
+          <div className="flex items-center gap-2 mb-4">
+            <TabsController back={true}>
+              <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
+                <ChevronLeft className="w-8 h-8 text-slate-600" />
               </div>
+            </TabsController>
+            <h1 className="text-2xl font-bold text-slate-600">
+              Add New Project
+            </h1>
+          </div>
 
-              {/* form */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <form onSubmit={handleSubmit} className="space-y-8">
-                  {/* Project Information Section */}
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <FolderOpen className="w-5 h-5 text-primary" />
-                      <h2 className="text-xl font-bold text-slate-800">
-                        Project Information
-                      </h2>
+          {/* form */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Project Information Section */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <FolderOpen className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-bold text-slate-800">
+                    Project Information
+                  </h2>
+                </div>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Project Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        placeholder="Eg. 5 Dundee Ave, Holden Hill SA 5088"
+                        required
+                      />
+                      {errors.name && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.name}
+                        </p>
+                      )}
                     </div>
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Project Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                            placeholder="Eg. 5 Dundee Ave, Holden Hill SA 5088"
-                            required
-                          />
-                          {errors.name && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {errors.name}
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Project ID <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="project_id"
-                            value={formData.project_id}
-                            onChange={handleInputChange}
-                            disabled={
-                              isProjectIdLoading || Boolean(formData.client_id)
-                            }
-                            className={`w-full text-sm px-4 py-3 border rounded-lg focus:outline-none ${formData.client_id ? "text-slate-500 bg-slate-100 border-slate-300 cursor-not-allowed" : "text-slate-800 border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent"}`}
-                            placeholder={
-                              formData.client_id ? "Generating..." : "Eg. IK001"
-                            }
-                            required
-                          />
-                          {errors.project_id && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {errors.project_id}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-4">
-                        <div
-                          className="relative flex-1"
-                          ref={clientDropdownRef}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Project ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="project_id"
+                        value={formData.project_id}
+                        onChange={handleInputChange}
+                        disabled={
+                          isProjectIdLoading || Boolean(formData.client_id)
+                        }
+                        className={`w-full text-sm px-4 py-3 border rounded-lg focus:outline-none ${formData.client_id ? "text-slate-500 bg-slate-100 border-slate-300 cursor-not-allowed" : "text-slate-800 border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent"}`}
+                        placeholder={
+                          formData.client_id ? "Generating..." : "Eg. IK001"
+                        }
+                        required
+                      />
+                      {errors.project_id && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.project_id}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="relative flex-1" ref={clientDropdownRef}>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Client{" "}
+                        <span className="text-slate-400">(Optional)</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={clientSearchTerm}
+                          onChange={handleClientSearchChange}
+                          onFocus={() => setIsClientDropdownOpen(true)}
+                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                          placeholder="Search or select client..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsClientDropdownOpen(!isClientDropdownOpen)
+                          }
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                         >
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Client{" "}
-                            <span className="text-slate-400">(Optional)</span>
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={clientSearchTerm}
-                              onChange={handleClientSearchChange}
-                              onFocus={() => setIsClientDropdownOpen(true)}
-                              className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                              placeholder="Search or select client..."
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setIsClientDropdownOpen(!isClientDropdownOpen)
-                              }
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                            >
-                              <ChevronDown
-                                className={`w-5 h-5 transition-transform duration-200 ${
-                                  isClientDropdownOpen ? "rotate-180" : ""
-                                }`}
-                              />
-                            </button>
-                          </div>
-                          {errors.client_id && (
-                            <p className="mt-1 text-sm text-red-600">
-                              {errors.client_id}
-                            </p>
-                          )}
+                          <ChevronDown
+                            className={`w-5 h-5 transition-transform duration-200 ${
+                              isClientDropdownOpen ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      {errors.client_id && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.client_id}
+                        </p>
+                      )}
 
-                          {isClientDropdownOpen && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                              {filteredClients.length > 0 ? (
-                                filteredClients.map((client) => (
-                                  <button
-                                    key={client.client_id}
-                                    type="button"
-                                    onClick={() =>
-                                      handleClientSelect(
-                                        client.client_id,
-                                        client.client_name,
-                                      )
-                                    }
-                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                  >
-                                    <div>
-                                      <div className="font-medium">
-                                        {client.client_name}
-                                      </div>
-                                      <div className="text-xs text-slate-500">
-                                        id: {client.client_id}
-                                      </div>
-                                    </div>
-                                  </button>
-                                ))
-                              ) : (
-                                <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                  No matching clients found
+                      {isClientDropdownOpen && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                          {filteredClients.length > 0 ? (
+                            filteredClients.map((client) => (
+                              <button
+                                key={client.client_id}
+                                type="button"
+                                onClick={() =>
+                                  handleClientSelect(
+                                    client.client_id,
+                                    client.client_name,
+                                  )
+                                }
+                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                              >
+                                <div>
+                                  <div className="font-medium">
+                                    {client.client_name}
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    id: {client.client_id}
+                                  </div>
                                 </div>
-                              )}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                              No matching clients found
                             </div>
                           )}
                         </div>
-                        <div className="flex-1">
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Start Date
-                          </label>
-                          <input
-                            type="date"
-                            name="startDate"
-                            value={formData.startDate}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Number of Lots
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={numberOfLots}
-                            onChange={handleNumberOfLotsChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                            placeholder="Enter number of lots"
-                          />
-                        </div>
-                      </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Number of Lots
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={numberOfLots}
+                        onChange={handleNumberOfLotsChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        placeholder="Enter number of lots"
+                      />
                     </div>
                   </div>
-
-                  {/* Lots Section */}
-                  {lots.length > 0 && (
-                    <div className="space-y-6 border-t pt-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Layers className="w-5 h-5 text-primary" />
-                        <h2 className="text-xl font-bold text-slate-800">
-                          Lot Information
-                        </h2>
-                      </div>
-                      <div className="space-y-6">
-                        {lots.map((lot, index) => (
-                          <div
-                            key={index}
-                            className="bg-slate-50 rounded-lg p-6 border border-slate-200"
-                          >
-                            <h3 className="text-lg font-semibold text-slate-700 mb-4">
-                              Lot {index + 1}
-                            </h3>
-                            <div className="space-y-4">
-                              <div className="flex flex-wrap gap-4">
-                                <div className="flex-1">
-                                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Lot ID{" "}
-                                    <span className="text-red-500">*</span>
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={lot.lotId}
-                                    onChange={(e) =>
-                                      handleLotChange(
-                                        index,
-                                        "lotId",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                    placeholder="Eg. Lot 1"
-                                    required
-                                  />
-                                  <p className="text-xs text-slate-500 mt-1">
-                                    Lot ID will be:{" "}
-                                    {formData.project_id
-                                      ? `${formData.project_id}-${lot.lotId || "XXX"}`
-                                      : "PROJECT_ID-XXX"}
-                                  </p>
-                                </div>
-                                <div className="flex-1">
-                                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Client Name{" "}
-                                    <span className="text-red-500">*</span>
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={lot.clientName}
-                                    onChange={(e) =>
-                                      handleLotChange(
-                                        index,
-                                        "clientName",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                    placeholder="Enter client name"
-                                    required
-                                  />
-                                </div>
-                                <div className="flex-1">
-                                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Installation Due Date
-                                  </label>
-                                  <input
-                                    type="date"
-                                    value={lot.installationDueDate}
-                                    onChange={(e) =>
-                                      handleLotChange(
-                                        index,
-                                        "installationDueDate",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                  Notes
-                                </label>
-                                <textarea
-                                  value={lot.notes}
-                                  onChange={(e) =>
-                                    handleLotChange(
-                                      index,
-                                      "notes",
-                                      e.target.value,
-                                    )
-                                  }
-                                  rows={3}
-                                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none resize-none"
-                                  placeholder="Enter any additional notes..."
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Submit Button */}
-                  <div className="flex justify-end pt-6">
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-                        isLoading
-                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                          : "bg-primary/80 hover:bg-primary text-white"
-                      }`}
-                    >
-                      {isLoading ? "Creating Project..." : "Create Project"}
-                    </button>
-                  </div>
-                </form>
+                </div>
               </div>
-            </div>
+
+              {/* Lots Section */}
+              {lots.length > 0 && (
+                <div className="space-y-6 border-t pt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Layers className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-bold text-slate-800">
+                      Lot Information
+                    </h2>
+                  </div>
+                  <div className="space-y-6">
+                    {lots.map((lot, index) => (
+                      <div
+                        key={index}
+                        className="bg-slate-50 rounded-lg p-6 border border-slate-200"
+                      >
+                        <h3 className="text-lg font-semibold text-slate-700 mb-4">
+                          Lot {index + 1}
+                        </h3>
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap gap-4">
+                            <div className="flex-1">
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Lot ID <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={lot.lotId}
+                                onChange={(e) =>
+                                  handleLotChange(
+                                    index,
+                                    "lotId",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                placeholder="Eg. Lot 1"
+                                required
+                              />
+                              <p className="text-xs text-slate-500 mt-1">
+                                Lot ID will be:{" "}
+                                {formData.project_id
+                                  ? `${formData.project_id}-${lot.lotId || "XXX"}`
+                                  : "PROJECT_ID-XXX"}
+                              </p>
+                            </div>
+                            <div className="flex-1">
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Client Name{" "}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={lot.clientName}
+                                onChange={(e) =>
+                                  handleLotChange(
+                                    index,
+                                    "clientName",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                placeholder="Enter client name"
+                                required
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                Installation Due Date
+                              </label>
+                              <input
+                                type="date"
+                                value={lot.installationDueDate}
+                                onChange={(e) =>
+                                  handleLotChange(
+                                    index,
+                                    "installationDueDate",
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Notes
+                            </label>
+                            <textarea
+                              value={lot.notes}
+                              onChange={(e) =>
+                                handleLotChange(index, "notes", e.target.value)
+                              }
+                              rows={3}
+                              className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none resize-none"
+                              placeholder="Enter any additional notes..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <div className="flex justify-end pt-6">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
+                    isLoading
+                      ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                      : "bg-primary/80 hover:bg-primary text-white"
+                  }`}
+                >
+                  {isLoading ? "Creating Project..." : "Create Project"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
-    </AdminRoute>
+      </main>
+    </AdminShell>
   );
 }

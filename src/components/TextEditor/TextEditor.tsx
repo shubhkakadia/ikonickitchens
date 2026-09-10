@@ -8,6 +8,8 @@ import TextAlign from "@tiptap/extension-text-align";
 import Highlight from "@tiptap/extension-highlight";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
+import { TaskList, TaskItem } from "@tiptap/extension-list";
+import { Placeholder } from "@tiptap/extensions";
 import {
   Bold,
   Italic,
@@ -15,6 +17,7 @@ import {
   Strikethrough,
   List,
   ListOrdered,
+  ListTodo,
   Quote,
   AlignLeft,
   AlignCenter,
@@ -24,9 +27,28 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+const HTML_TAG_PATTERN =
+  /<\/?(p|div|br|ul|ol|li|h[1-6]|strong|em|b|i|u|s|mark|span|blockquote|pre|code|a|img|table)\b[^>]*>/i;
+
+const escapeHtml = (value) =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// Notes saved before this editor existed are plain text. Tiptap parses its
+// initial content as HTML, so wrap those in paragraphs to keep line breaks
+// and stop stray characters from being read as markup.
+const normalizeContent = (value) => {
+  if (!value) return "";
+  if (HTML_TAG_PATTERN.test(value)) return value;
+  return value
+    .split(/\r?\n/)
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("");
+};
+
 const TextEditor = ({
   initialContent = "",
   onSave,
+  onChange,
   placeholder = "Start typing...",
 }) => {
   const [showHeadingDropdown, setShowHeadingDropdown] = useState(false);
@@ -46,6 +68,7 @@ const TextEditor = ({
     strike: false,
     bulletList: false,
     orderedList: false,
+    taskList: false,
     blockquote: false,
     codeBlock: false,
     alignLeft: false,
@@ -66,6 +89,20 @@ const TextEditor = ({
         },
       }),
       TiptapUnderline,
+      Placeholder.configure({
+        placeholder,
+      }),
+      TaskList.configure({
+        HTMLAttributes: {
+          class: "task-list",
+        },
+      }),
+      TaskItem.configure({
+        nested: true,
+        HTMLAttributes: {
+          class: "task-item",
+        },
+      }),
       TextStyle,
       Color,
       TextAlign.configure({
@@ -79,7 +116,7 @@ const TextEditor = ({
         },
       }),
     ],
-    content: initialContent,
+    content: normalizeContent(initialContent),
     editorProps: {
       attributes: {
         class: "prose max-w-none focus:outline-none min-h-[300px] p-4",
@@ -87,6 +124,10 @@ const TextEditor = ({
     },
     onUpdate: ({ editor }) => {
       updateButtonStates(editor);
+
+      if (onChange) {
+        onChange(editor.getHTML());
+      }
 
       // Debounced auto-save
       if (onSave) {
@@ -139,6 +180,7 @@ const TextEditor = ({
       strike: editor.isActive("strike"),
       bulletList: editor.isActive("bulletList"),
       orderedList: editor.isActive("orderedList"),
+      taskList: editor.isActive("taskList"),
       blockquote: editor.isActive("blockquote"),
       codeBlock: editor.isActive("codeBlock"),
       alignLeft: editor.isActive({ textAlign: "left" }),
@@ -170,9 +212,9 @@ const TextEditor = ({
   useEffect(() => {
     if (editor && initialContent !== undefined) {
       // Only update if content is actually different to prevent unnecessary resets
-      const currentContent = editor.getHTML();
-      if (currentContent !== initialContent) {
-        editor.commands.setContent(initialContent || "", { emitUpdate: false });
+      const normalized = normalizeContent(initialContent);
+      if (editor.getHTML() !== normalized) {
+        editor.commands.setContent(normalized, { emitUpdate: false });
       }
     }
   }, [initialContent, editor]);
@@ -228,7 +270,7 @@ const TextEditor = ({
       className={`p-2.5 rounded-md transition-all duration-200 ${
         isActive
           ? "bg-blue-500 text-white shadow-md"
-          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
       } ${disabled ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}`}
     >
       {children}
@@ -383,6 +425,51 @@ const TextEditor = ({
           display: list-item;
         }
         
+        .ProseMirror ul[data-type="taskList"] {
+          list-style: none;
+          padding-left: 0;
+          margin: 0.5em 0;
+        }
+        
+        .ProseMirror ul[data-type="taskList"] li {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5em;
+          margin: 0.25em 0;
+        }
+        
+        .ProseMirror ul[data-type="taskList"] li > label {
+          flex: 0 0 auto;
+          margin-top: 0.35em;
+          user-select: none;
+        }
+        
+        .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+          cursor: pointer;
+          width: 1em;
+          height: 1em;
+          accent-color: #2563eb;
+          margin: 0;
+        }
+        
+        .ProseMirror ul[data-type="taskList"] li > div {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        
+        .ProseMirror ul[data-type="taskList"] li > div > p {
+          margin: 0;
+        }
+        
+        .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+          color: #9ca3af;
+          text-decoration: line-through;
+        }
+        
+        .ProseMirror ul[data-type="taskList"] ul[data-type="taskList"] {
+          margin: 0.25em 0 0 1.5em;
+        }
+        
         .ProseMirror mark {
           padding: 0.1em 0.15em;
           border-radius: 0.2em;
@@ -419,7 +506,7 @@ const TextEditor = ({
 
       <div className="border border-slate-300 rounded-lg bg-white overflow-hidden">
         {/* Toolbar */}
-        <div className="border-b-2 border-gray-200 bg-linear-to-b from-gray-50 to-white px-3 py-3">
+        <div className="border-b-2 border-slate-200 bg-linear-to-b from-slate-50 to-white px-3 py-3">
           <div className="flex flex-wrap items-center gap-2">
             {/* Heading Dropdown */}
             <div className="relative dropdown-container">
@@ -434,7 +521,7 @@ const TextEditor = ({
                 className={`cursor-pointer px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 min-w-[130px] justify-between border ${
                   buttonStates.heading
                     ? "bg-blue-500 border-blue-500 text-white shadow-md"
-                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
                 }`}
               >
                 <span className="text-sm font-medium">
@@ -449,7 +536,7 @@ const TextEditor = ({
               </button>
 
               {showHeadingDropdown && (
-                <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl z-20 min-w-[180px] overflow-hidden">
+                <div className="absolute top-full left-0 mt-2 bg-white border-2 border-slate-200 rounded-lg shadow-xl z-20 min-w-[180px] overflow-hidden">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -457,7 +544,7 @@ const TextEditor = ({
                       editor.chain().focus().setParagraph().run();
                       setShowHeadingDropdown(false);
                     }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-sm border-b border-gray-100"
+                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-sm border-b border-slate-100"
                   >
                     Normal
                   </button>
@@ -468,7 +555,7 @@ const TextEditor = ({
                       editor.chain().focus().toggleHeading({ level: 1 }).run();
                       setShowHeadingDropdown(false);
                     }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-xl font-bold border-b border-gray-100"
+                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-xl font-bold border-b border-slate-100"
                   >
                     Heading 1
                   </button>
@@ -479,7 +566,7 @@ const TextEditor = ({
                       editor.chain().focus().toggleHeading({ level: 2 }).run();
                       setShowHeadingDropdown(false);
                     }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-lg font-bold border-b border-gray-100"
+                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-lg font-bold border-b border-slate-100"
                   >
                     Heading 2
                   </button>
@@ -498,7 +585,7 @@ const TextEditor = ({
               )}
             </div>
 
-            <div className="w-px h-8 bg-gray-300"></div>
+            <div className="w-px h-8 bg-slate-300"></div>
 
             {/* Text Formatting */}
             <div className="flex gap-1">
@@ -532,7 +619,7 @@ const TextEditor = ({
               </ToolbarButton>
             </div>
 
-            <div className="w-px h-8 bg-gray-300"></div>
+            <div className="w-px h-8 bg-slate-300"></div>
 
             {/* Text Color Dropdown */}
             <div className="relative dropdown-container">
@@ -546,8 +633,8 @@ const TextEditor = ({
                 }}
                 className={`cursor-pointer px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 border ${
                   currentTextColor !== "#000000"
-                    ? "bg-blue-50 border-blue-400 text-gray-900 shadow-md"
-                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                    ? "bg-blue-50 border-blue-400 text-slate-900 shadow-md"
+                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
                 }`}
                 title="Text Color"
               >
@@ -568,10 +655,10 @@ const TextEditor = ({
 
               {showTextColorDropdown && (
                 <div
-                  className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl z-20 p-3"
+                  className="absolute top-full left-0 mt-2 bg-white border-2 border-slate-200 rounded-lg shadow-xl z-20 p-3"
                   style={{ minWidth: "200px" }}
                 >
-                  <div className="mb-2 px-1 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  <div className="mb-2 px-1 text-xs font-semibold text-slate-600 uppercase tracking-wide">
                     Text Color
                   </div>
                   <div className="grid grid-cols-4 gap-2 mb-3">
@@ -584,10 +671,10 @@ const TextEditor = ({
                           editor.chain().focus().setColor(item.color).run();
                           setShowTextColorDropdown(false);
                         }}
-                        className={`w-10 h-10 rounded-lg border-2 hover:border-gray-500 hover:scale-110 transition-all shadow-sm ${
+                        className={`w-10 h-10 rounded-lg border-2 hover:border-slate-500 hover:scale-110 transition-all shadow-sm ${
                           currentTextColor === item.color
                             ? "border-blue-500 ring-2 ring-blue-300"
-                            : "border-gray-300"
+                            : "border-slate-300"
                         }`}
                         style={{ backgroundColor: item.color }}
                         title={item.name}
@@ -601,7 +688,7 @@ const TextEditor = ({
                       editor.chain().focus().unsetColor().run();
                       setShowTextColorDropdown(false);
                     }}
-                    className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors font-medium"
+                    className="w-full px-3 py-2 text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors font-medium"
                   >
                     Reset to Default
                   </button>
@@ -609,7 +696,7 @@ const TextEditor = ({
               )}
             </div>
 
-            <div className="w-px h-8 bg-gray-300"></div>
+            <div className="w-px h-8 bg-slate-300"></div>
 
             {/* Highlight Dropdown */}
             <div className="relative dropdown-container">
@@ -623,15 +710,15 @@ const TextEditor = ({
                 }}
                 className={`cursor-pointer px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 border ${
                   buttonStates.highlight
-                    ? "bg-gray-200 border-gray-400 text-gray-900 shadow-md"
-                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                    ? "bg-slate-200 border-slate-400 text-slate-900 shadow-md"
+                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
                 }`}
                 title="Highlight"
               >
                 <div className="flex items-center gap-1.5">
                   <span className="font-bold text-sm">A</span>
                   <div
-                    className="w-4 h-4 rounded border border-gray-300 transition-colors"
+                    className="w-4 h-4 rounded border border-slate-300 transition-colors"
                     style={{ backgroundColor: currentHighlightColor }}
                   ></div>
                 </div>
@@ -645,10 +732,10 @@ const TextEditor = ({
 
               {showHighlightDropdown && (
                 <div
-                  className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-200 rounded-lg shadow-xl z-20 p-3"
+                  className="absolute top-full left-0 mt-2 bg-white border-2 border-slate-200 rounded-lg shadow-xl z-20 p-3"
                   style={{ minWidth: "200px" }}
                 >
-                  <div className="mb-2 px-1 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  <div className="mb-2 px-1 text-xs font-semibold text-slate-600 uppercase tracking-wide">
                     Highlight Color
                   </div>
                   <div className="grid grid-cols-4 gap-2 mb-3">
@@ -668,7 +755,7 @@ const TextEditor = ({
 
                           setShowHighlightDropdown(false);
                         }}
-                        className="w-10 h-10 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all shadow-sm"
+                        className="w-10 h-10 rounded-lg border-2 border-slate-300 hover:border-slate-500 hover:scale-110 transition-all shadow-sm"
                         style={{ backgroundColor: item.color }}
                         title={item.name}
                       />
@@ -681,7 +768,7 @@ const TextEditor = ({
                       editor.chain().focus().unsetHighlight().run();
                       setShowHighlightDropdown(false);
                     }}
-                    className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors font-medium"
+                    className="w-full px-3 py-2 text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors font-medium"
                   >
                     Remove Highlight
                   </button>
@@ -689,7 +776,7 @@ const TextEditor = ({
               )}
             </div>
 
-            <div className="w-px h-8 bg-gray-300"></div>
+            <div className="w-px h-8 bg-slate-300"></div>
 
             {/* Lists and Blocks */}
             <div className="flex gap-1">
@@ -708,6 +795,13 @@ const TextEditor = ({
                 <ListOrdered size={18} strokeWidth={2.5} />
               </ToolbarButton>
               <ToolbarButton
+                onClick={() => editor.chain().focus().toggleTaskList().run()}
+                isActive={buttonStates.taskList}
+                title="Checklist"
+              >
+                <ListTodo size={18} strokeWidth={2.5} />
+              </ToolbarButton>
+              <ToolbarButton
                 onClick={() => editor.chain().focus().toggleBlockquote().run()}
                 isActive={buttonStates.blockquote}
                 title="Blockquote"
@@ -716,7 +810,7 @@ const TextEditor = ({
               </ToolbarButton>
             </div>
 
-            <div className="w-px h-8 bg-gray-300"></div>
+            <div className="w-px h-8 bg-slate-300"></div>
 
             {/* Alignment */}
             <div className="flex gap-1">
@@ -749,7 +843,7 @@ const TextEditor = ({
               </ToolbarButton>
             </div>
 
-            <div className="w-px h-8 bg-gray-300"></div>
+            <div className="w-px h-8 bg-slate-300"></div>
 
             {/* Undo/Redo */}
             <div className="flex gap-1">
@@ -778,12 +872,12 @@ const TextEditor = ({
 
         {/* Save Status Indicator */}
         {onSave && saveStatus !== "idle" && (
-          <div className="border-t border-gray-200 px-4 py-2 bg-gray-50">
+          <div className="border-t border-slate-200 px-4 py-2 bg-slate-50">
             <div className="flex items-center gap-2 text-sm">
               {saveStatus === "saving" && (
                 <>
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span className="text-gray-600">Saving...</span>
+                  <span className="text-slate-600">Saving...</span>
                 </>
               )}
               {saveStatus === "saved" && (

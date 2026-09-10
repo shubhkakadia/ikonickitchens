@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack -H 0.0.0.0",
     "build": "next build --turbopack",
     "start": "next start -H 0.0.0.0 -p $PORT",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:demo": "node scripts/seed-demo.mjs"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
-import Sidebar from "@/components/sidebar";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import TabsController from "@/components/tabscontroller";
 import PaginationFooter from "@/components/PaginationFooter";
 import {
@@ -460,509 +459,524 @@ export default function page() {
     return project?.client?.client_name || null;
   };
 
+  // Projects have no image, so the avatar cell always falls back to initials.
+  const projectInitials = (projectName) => {
+    const words = String(projectName || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (words.length === 0) return "-";
+    return words
+      .slice(0, 2)
+      .map((word) => word[0].toUpperCase())
+      .join("");
+  };
+
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-sm text-slate-600 font-medium">
-                    Loading projects details...
-                  </p>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-sm text-red-600 mb-4 font-medium">
-                    {error}
-                  </p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="px-4 py-2 shrink-0">
-                  <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-slate-700">
-                      Projects
-                    </h1>
-                    <div className="flex items-center gap-2">
-                      <SearchBar />
-                      <TabsController href="/admin/projects/addproject">
-                        <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
-                          <Plus className="h-4 w-4" />
-                          Add Project
-                        </div>
-                      </TabsController>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                    {/* Fixed Header Section */}
-                    <div className="p-4 shrink-0 border-b border-slate-200">
-                      <div className="flex items-center justify-between gap-3">
-                        {/* search bar */}
-                        <div className="flex items-center gap-2 flex-1 max-w-sm relative">
-                          <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                          <input
-                            type="text"
-                            placeholder="Search Project with name, project id"
-                            className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                          />
-                        </div>
-
-                        {/* reset, sort by, filter by, export to excel */}
-                        <div className="flex items-center gap-2">
-                          {isAnyFilterActive() && (
-                            <button
-                              onClick={handleReset}
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                              <span>Reset</span>
-                            </button>
-                          )}
-
-                          <div className="relative dropdown-container">
-                            <button
-                              onClick={() =>
-                                setShowClientTypeFilterDropdown(
-                                  !showClientTypeFilterDropdown,
-                                )
-                              }
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              <Funnel className="h-4 w-4" />
-                              <span>Filter by Client Type</span>
-                              {distinctClientType.length -
-                                selectedClientType.length >
-                                0 && (
-                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                  {distinctClientType.length -
-                                    selectedClientType.length}
-                                </span>
-                              )}
-                            </button>
-                            {showClientTypeFilterDropdown && (
-                              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                                <div className="py-1">
-                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        selectedClientType.length ===
-                                        distinctClientType.length
-                                      }
-                                      onChange={() =>
-                                        handleClientTypeToggle("Select All")
-                                      }
-                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                    />
-                                  </label>
-                                  {distinctClientType.map((role) => (
-                                    <label
-                                      key={role}
-                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                    >
-                                      <span>{role}</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedClientType.includes(
-                                          role,
-                                        )}
-                                        onChange={() =>
-                                          handleClientTypeToggle(role)
-                                        }
-                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                      />
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="relative dropdown-container">
-                            <button
-                              onClick={() =>
-                                setShowClientNameFilterDropdown(
-                                  !showClientNameFilterDropdown,
-                                )
-                              }
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              <Funnel className="h-4 w-4" />
-                              <span>Filter by Client Name</span>
-                              {distinctClientName.length -
-                                selectedClientName.length >
-                                0 && (
-                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                  {distinctClientName.length -
-                                    selectedClientName.length}
-                                </span>
-                              )}
-                            </button>
-                            {showClientNameFilterDropdown && (
-                              <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                                <div className="py-1">
-                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        selectedClientName.length ===
-                                        distinctClientName.length
-                                      }
-                                      onChange={() =>
-                                        handleClientNameToggle("Select All")
-                                      }
-                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                    />
-                                  </label>
-                                  {distinctClientName.map((name) => (
-                                    <label
-                                      key={name}
-                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                    >
-                                      <span>{name}</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedClientName.includes(
-                                          name,
-                                        )}
-                                        onChange={() =>
-                                          handleClientNameToggle(name)
-                                        }
-                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                      />
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="relative dropdown-container">
-                            <button
-                              onClick={() =>
-                                setShowSortDropdown(!showSortDropdown)
-                              }
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              <ArrowUpDown className="h-4 w-4" />
-                              <span>Sort by</span>
-                            </button>
-                            {showSortDropdown && (
-                              <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                                <div className="py-1">
-                                  <button
-                                    onClick={() => handleSort("project_id")}
-                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                  >
-                                    Project ID {getSortIcon("project_id")}
-                                  </button>
-                                  <button
-                                    onClick={() => handleSort("name")}
-                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                  >
-                                    Project Name {getSortIcon("name")}
-                                  </button>
-                                  <button
-                                    onClick={() => handleSort("number_of_lots")}
-                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                  >
-                                    Number of Lots{" "}
-                                    {getSortIcon("number_of_lots")}
-                                  </button>
-                                  <button
-                                    onClick={() => handleSort("client_name")}
-                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                  >
-                                    Client {getSortIcon("client_name")}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <div className="relative dropdown-container flex items-center">
-                            <button
-                              onClick={handleExportToExcel}
-                              disabled={
-                                isExporting ||
-                                filteredAndSortedProjects.length === 0 ||
-                                selectedColumns.length === 0
-                              }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                isExporting ||
-                                filteredAndSortedProjects.length === 0 ||
-                                selectedColumns.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
-                            >
-                              <Sheet className="h-4 w-4" />
-                              <span>
-                                {isExporting
-                                  ? "Exporting..."
-                                  : "Export to Excel"}
-                              </span>
-                            </button>
-                            <button
-                              onClick={() =>
-                                setShowColumnDropdown(!showColumnDropdown)
-                              }
-                              disabled={
-                                isExporting ||
-                                filteredAndSortedProjects.length === 0
-                              }
-                              className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                                isExporting ||
-                                filteredAndSortedProjects.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
-                            >
-                              <ChevronDown className="h-5 w-5" />
-                            </button>
-                            {showColumnDropdown && (
-                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                                <div className="py-1">
-                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        selectedColumns.length ===
-                                        availableColumns.length
-                                      }
-                                      onChange={() =>
-                                        handleColumnToggle("Select All")
-                                      }
-                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                    />
-                                  </label>
-                                  {availableColumns.map((column) => (
-                                    <label
-                                      key={column}
-                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                    >
-                                      <span>{column}</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedColumns.includes(
-                                          column,
-                                        )}
-                                        onChange={() =>
-                                          handleColumnToggle(column)
-                                        }
-                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                      />
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tabs Section */}
-                    <div className="px-4 shrink-0 border-b border-slate-200">
-                      <nav className="flex space-x-6">
-                        <button
-                          onClick={() => dispatch(setActiveTab("active"))}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "active"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
-                        >
-                          Active
-                        </button>
-                        <button
-                          onClick={() => dispatch(setActiveTab("completed"))}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "completed"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
-                        >
-                          Completed
-                        </button>
-                        <button
-                          onClick={() => dispatch(setActiveTab("cancelled"))}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "cancelled"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
-                        >
-                          Cancelled
-                        </button>
-                      </nav>
-                    </div>
-
-                    {/* Scrollable Table Section */}
-                    <div className="flex-1 overflow-auto">
-                      <div className="min-w-full">
-                        <table className="min-w-full divide-y divide-slate-200">
-                          <thead className="bg-slate-50 sticky top-0 z-10">
-                            <tr>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("name")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Name
-                                  {getSortIcon("name")}
-                                </div>
-                              </th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("project_id")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Project ID
-                                  {getSortIcon("project_id")}
-                                </div>
-                              </th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("number_of_lots")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Number of Lots
-                                  {getSortIcon("number_of_lots")}
-                                </div>
-                              </th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("client_name")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Client
-                                  {getSortIcon("client_name")}
-                                </div>
-                              </th>
-                            </tr>
-                          </thead>
-
-                          <tbody className="bg-white divide-y divide-slate-200">
-                            {loading ? (
-                              <tr>
-                                <td
-                                  className="px-4 py-4 text-sm text-slate-500 text-center"
-                                  colSpan={4}
-                                >
-                                  Loading projects...
-                                </td>
-                              </tr>
-                            ) : error ? (
-                              <tr>
-                                <td
-                                  className="px-4 py-4 text-sm text-red-600 text-center"
-                                  colSpan={4}
-                                >
-                                  {error}
-                                </td>
-                              </tr>
-                            ) : paginatedProjects.length === 0 ? (
-                              <tr>
-                                <td
-                                  className="px-4 py-4 text-sm text-slate-500 text-center"
-                                  colSpan={4}
-                                >
-                                  {search
-                                    ? "No projects found matching your search"
-                                    : "No projects found"}
-                                </td>
-                              </tr>
-                            ) : (
-                              paginatedProjects.map((project) => {
-                                const clientName = getClientName(project);
-                                return (
-                                  <tr
-                                    key={project.id}
-                                    onClick={() => {
-                                      router.push(
-                                        `/admin/projects/${project.project_id}`,
-                                      );
-                                    }}
-                                    className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
-                                  >
-                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                      {project.name || "-"}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                      {project.project_id || "-"}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                      <span className="inline-flex items-center justify-center min-w-8 px-2 py-1 bg-slate-50 text-slate-700 rounded-md font-medium">
-                                        {project.lots ? project.lots.length : 0}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-slate-600">
-                                      {clientName ? (
-                                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 border border-blue-200">
-                                          {clientName}
-                                        </span>
-                                      ) : (
-                                        <span className="text-slate-400 text-xs">
-                                          No client assigned
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    {/* Fixed Pagination Footer */}
-                    {!loading && !error && paginatedProjects.length > 0 && (
-                      <PaginationFooter
-                        totalItems={totalItems}
-                        itemsPerPage={itemsPerPage}
-                        currentPage={currentPage}
-                        onPageChange={handlePageChange}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                        itemsPerPageOptions={[50, 100, 250, 0]}
-                        showItemsPerPage={true}
-                      />
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+    <AdminShell>
+      <main className="flex h-full min-h-0 flex-col overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+              <p className="text-sm text-slate-600 font-medium">
+                Loading projects details...
+              </p>
+            </div>
           </div>
-        </div>
-      </div>
-    </AdminRoute>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="px-4 py-2 shrink-0">
+              <div className="flex justify-between items-center">
+                <h1 className="text-xl font-bold text-slate-700">Projects</h1>
+                <div className="flex items-center gap-2">
+                  <SearchBar />
+                  <TabsController href="/admin/projects/addproject">
+                    <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
+                      <Plus className="h-4 w-4" />
+                      Add Project
+                    </div>
+                  </TabsController>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                {/* Fixed Header Section */}
+                <div className="p-4 shrink-0 border-b border-slate-200">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* search bar */}
+                    <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
+                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search Project with name, project id"
+                        className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
+                    </div>
+
+                    {/* reset, sort by, filter by, export to excel */}
+                    <div className="flex items-center gap-2">
+                      {isAnyFilterActive() && (
+                        <button
+                          onClick={handleReset}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() =>
+                            setShowClientTypeFilterDropdown(
+                              !showClientTypeFilterDropdown,
+                            )
+                          }
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          <Funnel className="h-4 w-4" />
+                          <span>Filter by Client Type</span>
+                          {distinctClientType.length -
+                            selectedClientType.length >
+                            0 && (
+                            <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                              {distinctClientType.length -
+                                selectedClientType.length}
+                            </span>
+                          )}
+                        </button>
+                        {showClientTypeFilterDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                            <div className="py-1">
+                              <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                <span className="font-semibold">
+                                  Select All
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    selectedClientType.length ===
+                                    distinctClientType.length
+                                  }
+                                  onChange={() =>
+                                    handleClientTypeToggle("Select All")
+                                  }
+                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                />
+                              </label>
+                              {distinctClientType.map((role) => (
+                                <label
+                                  key={role}
+                                  className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                >
+                                  <span>{role}</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedClientType.includes(role)}
+                                    onChange={() =>
+                                      handleClientTypeToggle(role)
+                                    }
+                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() =>
+                            setShowClientNameFilterDropdown(
+                              !showClientNameFilterDropdown,
+                            )
+                          }
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          <Funnel className="h-4 w-4" />
+                          <span>Filter by Client Name</span>
+                          {distinctClientName.length -
+                            selectedClientName.length >
+                            0 && (
+                            <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                              {distinctClientName.length -
+                                selectedClientName.length}
+                            </span>
+                          )}
+                        </button>
+                        {showClientNameFilterDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                            <div className="py-1">
+                              <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                <span className="font-semibold">
+                                  Select All
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    selectedClientName.length ===
+                                    distinctClientName.length
+                                  }
+                                  onChange={() =>
+                                    handleClientNameToggle("Select All")
+                                  }
+                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                />
+                              </label>
+                              {distinctClientName.map((name) => (
+                                <label
+                                  key={name}
+                                  className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                >
+                                  <span>{name}</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedClientName.includes(name)}
+                                    onChange={() =>
+                                      handleClientNameToggle(name)
+                                    }
+                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() => setShowSortDropdown(!showSortDropdown)}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          <ArrowUpDown className="h-4 w-4" />
+                          <span>Sort by</span>
+                        </button>
+                        {showSortDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <div className="py-1">
+                              <button
+                                onClick={() => handleSort("project_id")}
+                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                              >
+                                Project ID {getSortIcon("project_id")}
+                              </button>
+                              <button
+                                onClick={() => handleSort("name")}
+                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                              >
+                                Project Name {getSortIcon("name")}
+                              </button>
+                              <button
+                                onClick={() => handleSort("number_of_lots")}
+                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                              >
+                                Number of Lots {getSortIcon("number_of_lots")}
+                              </button>
+                              <button
+                                onClick={() => handleSort("client_name")}
+                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                              >
+                                Client {getSortIcon("client_name")}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="relative dropdown-container flex items-center">
+                        <button
+                          onClick={handleExportToExcel}
+                          disabled={
+                            isExporting ||
+                            filteredAndSortedProjects.length === 0 ||
+                            selectedColumns.length === 0
+                          }
+                          className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                            isExporting ||
+                            filteredAndSortedProjects.length === 0 ||
+                            selectedColumns.length === 0
+                              ? "opacity-50 cursor-not-allowed"
+                              : "cursor-pointer hover:bg-slate-100"
+                          }`}
+                        >
+                          <Sheet className="h-4 w-4" />
+                          <span>
+                            {isExporting ? "Exporting..." : "Export to Excel"}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() =>
+                            setShowColumnDropdown(!showColumnDropdown)
+                          }
+                          disabled={
+                            isExporting ||
+                            filteredAndSortedProjects.length === 0
+                          }
+                          className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                            isExporting ||
+                            filteredAndSortedProjects.length === 0
+                              ? "opacity-50 cursor-not-allowed"
+                              : "cursor-pointer hover:bg-slate-100"
+                          }`}
+                        >
+                          <ChevronDown className="h-5 w-5" />
+                        </button>
+                        {showColumnDropdown && (
+                          <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                            <div className="py-1">
+                              <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                <span className="font-semibold">
+                                  Select All
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    selectedColumns.length ===
+                                    availableColumns.length
+                                  }
+                                  onChange={() =>
+                                    handleColumnToggle("Select All")
+                                  }
+                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                />
+                              </label>
+                              {availableColumns.map((column) => (
+                                <label
+                                  key={column}
+                                  className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                >
+                                  <span>{column}</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedColumns.includes(column)}
+                                    onChange={() => handleColumnToggle(column)}
+                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tabs Section */}
+                <div className="px-4 shrink-0 border-b border-slate-200">
+                  <nav className="flex space-x-6">
+                    <button
+                      onClick={() => dispatch(setActiveTab("active"))}
+                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === "active"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      Active
+                    </button>
+                    <button
+                      onClick={() => dispatch(setActiveTab("completed"))}
+                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === "completed"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      Completed
+                    </button>
+                    <button
+                      onClick={() => dispatch(setActiveTab("cancelled"))}
+                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === "cancelled"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      Cancelled
+                    </button>
+                  </nav>
+                </div>
+
+                {/* Scrollable Table Section */}
+                <div className="flex-1 overflow-auto">
+                  <div className="min-w-full">
+                    <table className="min-w-full divide-y divide-slate-200">
+                      <thead className="bg-slate-50 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                            Image
+                          </th>
+                          <th
+                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            onClick={() => handleSort("name")}
+                          >
+                            <div className="flex items-center gap-2">
+                              Name
+                              {getSortIcon("name")}
+                            </div>
+                          </th>
+                          <th
+                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            onClick={() => handleSort("project_id")}
+                          >
+                            <div className="flex items-center gap-2">
+                              Project ID
+                              {getSortIcon("project_id")}
+                            </div>
+                          </th>
+                          <th
+                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            onClick={() => handleSort("number_of_lots")}
+                          >
+                            <div className="flex items-center gap-2">
+                              Number of Lots
+                              {getSortIcon("number_of_lots")}
+                            </div>
+                          </th>
+                          <th
+                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            onClick={() => handleSort("client_name")}
+                          >
+                            <div className="flex items-center gap-2">
+                              Client
+                              {getSortIcon("client_name")}
+                            </div>
+                          </th>
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                            Client Type
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody className="bg-white divide-y divide-slate-200">
+                        {loading ? (
+                          <tr>
+                            <td
+                              className="px-4 py-4 text-sm text-slate-500 text-center"
+                              colSpan={6}
+                            >
+                              Loading projects...
+                            </td>
+                          </tr>
+                        ) : error ? (
+                          <tr>
+                            <td
+                              className="px-4 py-4 text-sm text-red-600 text-center"
+                              colSpan={6}
+                            >
+                              {error}
+                            </td>
+                          </tr>
+                        ) : paginatedProjects.length === 0 ? (
+                          <tr>
+                            <td
+                              className="px-4 py-4 text-sm text-slate-500 text-center"
+                              colSpan={6}
+                            >
+                              {search
+                                ? "No projects found matching your search"
+                                : "No projects found"}
+                            </td>
+                          </tr>
+                        ) : (
+                          paginatedProjects.map((project) => {
+                            const clientName = getClientName(project);
+                            return (
+                              <tr
+                                key={project.id}
+                                onClick={() => {
+                                  router.push(
+                                    `/admin/projects/${project.project_id}`,
+                                  );
+                                }}
+                                className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                              >
+                                <td className="px-4 py-3">
+                                  <div className="w-10 h-10">
+                                    <div className="w-10 h-10 bg-linear-to-br from-secondary to-primary rounded text-white text-center flex items-center justify-center font-bold text-sm">
+                                      {projectInitials(project.name)}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
+                                  {project.name || "-"}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  {project.project_id || "-"}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  <span className="inline-flex items-center justify-center min-w-8 px-2 py-1 bg-slate-50 text-slate-700 rounded-md font-medium">
+                                    {project.lots ? project.lots.length : 0}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-600">
+                                  {clientName ? (
+                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 border border-blue-200">
+                                      {clientName}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400 text-xs">
+                                      No client assigned
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  {project.client?.client_type ? (
+                                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 border border-slate-200">
+                                      {project.client.client_type}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400 text-xs">
+                                      -
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Fixed Pagination Footer */}
+                {!loading && !error && paginatedProjects.length > 0 && (
+                  <PaginationFooter
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    currentPage={currentPage}
+                    onPageChange={handlePageChange}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                    itemsPerPageOptions={[50, 100, 250, 0]}
+                    showItemsPerPage={true}
+                  />
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </main>
+    </AdminShell>
   );
 }

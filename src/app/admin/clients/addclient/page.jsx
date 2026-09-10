@@ -1,5 +1,5 @@
 "use client";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import TabsController from "@/components/tabscontroller";
 import {
   ChevronLeft,
@@ -16,7 +16,6 @@ import {
   PhoneCall,
 } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
-import Sidebar from "@/components/sidebar";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
@@ -424,376 +423,369 @@ export default function page() {
   };
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="h-full w-full overflow-y-auto">
-            <div className="px-4 py-2">
-              <div className="flex items-center gap-2 mb-4">
-                <TabsController back={true}>
-                  <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
-                    <ChevronLeft className="w-8 h-8 text-slate-600" />
+    <AdminShell>
+      <main className="h-full w-full overflow-y-auto">
+        <div className="px-4 py-2">
+          <div className="flex items-center gap-2 mb-4">
+            <TabsController back={true}>
+              <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
+                <ChevronLeft className="w-8 h-8 text-slate-600" />
+              </div>
+            </TabsController>
+            <h1 className="text-2xl font-bold text-slate-600">
+              Add New Client
+            </h1>
+          </div>
+
+          {/* form */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* personal information section */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-bold text-slate-800">
+                    Client Information
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Client Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="client_name"
+                      value={formData.client_name}
+                      onChange={handleInputChange}
+                      className={`w-full text-sm ${errors.client_name ? "border-red-500" : "border-slate-300"}text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${errors.client_name ? "border-red-500" : "border-slate-300"}`}
+                      placeholder="Eg. Bettio Construction"
+                      required
+                    />
+                    {errors.client_name && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.client_name}
+                      </p>
+                    )}
+                    <label className="block text-sm font-medium text-slate-700 mt-3 mb-2">
+                      Client Slug
+                    </label>
+                    <input
+                      type="text"
+                      name="client_slug"
+                      value={formData.client_slug}
+                      maxLength={4}
+                      onChange={(e) => {
+                        setSlugTouched(true);
+                        setFormData((previous) => ({
+                          ...previous,
+                          client_slug: normalizeClientSlug(e.target.value),
+                        }));
+                      }}
+                      className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${errors.client_slug ? "border-red-500" : "border-slate-300"}`}
+                      placeholder="BTTO"
+                    />
+                    <p
+                      className={`text-xs mt-1 ${slugAvailability === false ? "text-red-500" : "text-slate-500"}`}
+                    >
+                      {slugAvailability === false
+                        ? "This slug is already taken"
+                        : slugAvailability === true
+                          ? "Slug is available"
+                          : "4 letters; editable"}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      This slug is used to generate automated project IDs.
+                    </p>
                   </div>
-                </TabsController>
-                <h1 className="text-2xl font-bold text-slate-600">
-                  Add New Client
-                </h1>
+                  <div className="relative" ref={dropdownRef}>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Client Type <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        onFocus={() => setIsDropdownOpen(true)}
+                        className={`w-full text-sm ${errors.client_type ? "border-red-500" : "border-slate-300"}text-slate-800 px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${errors.client_type ? "border-red-500" : "border-slate-300"}`}
+                        placeholder="Search or select client type..."
+                        required
+                      />
+                      {errors.client_type && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.client_type}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <ChevronDown
+                          className={`w-5 h-5 transition-transform ${
+                            isDropdownOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {isDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        {filteredClientTypes.length > 0 ? (
+                          filteredClientTypes.map((type, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => handleClientTypeSelect(type)}
+                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                            >
+                              {type}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-slate-500">
+                            No matching client types found
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Client Address
+                  </label>
+                  <textarea
+                    name="client_address"
+                    value={formData.client_address}
+                    onChange={handleInputChange}
+                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                    placeholder="Eg. 6 Penna Ave, Glynde, SA 5070"
+                    rows={3}
+                  />
+                </div>
               </div>
 
-              {/* form */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <form onSubmit={handleSubmit} className="space-y-8">
-                  {/* personal information section */}
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <User className="w-5 h-5 text-primary" />
-                      <h2 className="text-xl font-bold text-slate-800">
-                        Client Information
-                      </h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Client Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          name="client_name"
-                          value={formData.client_name}
-                          onChange={handleInputChange}
-                          className={`w-full text-sm ${errors.client_name ? "border-red-500" : "border-slate-300"}text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${errors.client_name ? "border-red-500" : "border-slate-300"}`}
-                          placeholder="Eg. Bettio Construction"
-                          required
-                        />
-                        {errors.client_name && (
-                          <p className="text-red-500 text-xs mt-1">
-                            {errors.client_name}
-                          </p>
-                        )}
-                        <label className="block text-sm font-medium text-slate-700 mt-3 mb-2">
-                          Client Slug
-                        </label>
-                        <input
-                          type="text"
-                          name="client_slug"
-                          value={formData.client_slug}
-                          maxLength={4}
-                          onChange={(e) => {
-                            setSlugTouched(true);
-                            setFormData((previous) => ({
-                              ...previous,
-                              client_slug: normalizeClientSlug(e.target.value),
-                            }));
-                          }}
-                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${errors.client_slug ? "border-red-500" : "border-slate-300"}`}
-                          placeholder="BTTO"
-                        />
-                        <p
-                          className={`text-xs mt-1 ${slugAvailability === false ? "text-red-500" : "text-slate-500"}`}
-                        >
-                          {slugAvailability === false
-                            ? "This slug is already taken"
-                            : slugAvailability === true
-                              ? "Slug is available"
-                              : "4 letters; editable"}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          This slug is used to generate automated project IDs.
-                        </p>
-                      </div>
-                      <div className="relative" ref={dropdownRef}>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Client Type <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={handleSearchChange}
-                            onFocus={() => setIsDropdownOpen(true)}
-                            className={`w-full text-sm ${errors.client_type ? "border-red-500" : "border-slate-300"}text-slate-800 px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${errors.client_type ? "border-red-500" : "border-slate-300"}`}
-                            placeholder="Search or select client type..."
-                            required
-                          />
-                          {errors.client_type && (
-                            <p className="text-red-500 text-xs mt-1">
-                              {errors.client_type}
-                            </p>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                          >
-                            <ChevronDown
-                              className={`w-5 h-5 transition-transform ${
-                                isDropdownOpen ? "rotate-180" : ""
-                              }`}
-                            />
-                          </button>
-                        </div>
+              {/* Contact Information Section */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-slate-800">
+                    Contact Information
+                  </h2>
+                </div>
 
-                        {isDropdownOpen && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                            {filteredClientTypes.length > 0 ? (
-                              filteredClientTypes.map((type, index) => (
-                                <button
-                                  key={index}
-                                  type="button"
-                                  onClick={() => handleClientTypeSelect(type)}
-                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                >
-                                  {type}
-                                </button>
-                              ))
-                            ) : (
-                              <div className="px-4 py-3 text-sm text-slate-500">
-                                No matching client types found
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Mobile Phone
+                    </label>
+                    <input
+                      type="tel"
+                      name="client_phone"
+                      value={formData.client_phone}
+                      onChange={handleInputChange}
+                      className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
+                        formData.client_phone &&
+                        !validatePhone(formData.client_phone)
+                          ? "border-red-500"
+                          : "border-slate-300"
+                      }`}
+                      placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                    />
+                    {formData.client_phone &&
+                      !validatePhone(formData.client_phone) && (
+                        <p className="mt-1 text-xs text-red-500">
+                          {errors.client_phone ||
+                            "Please enter a valid Australian phone number"}
+                        </p>
+                      )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      name="client_email"
+                      value={formData.client_email}
+                      onChange={handleInputChange}
+                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                      placeholder="Eg. contact@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Website
+                    </label>
+                    <input
+                      type="url"
+                      name="client_website"
+                      value={formData.client_website}
+                      onChange={handleInputChange}
+                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                      placeholder="Eg. https://www.example.com"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-slate-800">
+                  Additional Notes
+                </h2>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    name="client_notes"
+                    value={formData.client_notes}
+                    onChange={handleInputChange}
+                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                    placeholder="Any additional notes about the client..."
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              {/* Contacts Section */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-slate-800">Contacts</h2>
+                  {contacts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={openAddContactModal}
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Contact
+                    </button>
+                  )}
+                </div>
+
+                {/* Empty State - No Contacts */}
+                {contacts.length === 0 && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
+                    <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <p className="text-slate-600 mb-4">
+                      No contacts have been added. Click to add a contact.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={openAddContactModal}
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium mx-auto"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Contact
+                    </button>
+                  </div>
+                )}
+
+                {/* Contact Cards */}
+                {contacts.length > 0 && (
+                  <div className="space-y-3">
+                    {contacts.map((contact, index) => (
+                      <div
+                        key={contact.id || index}
+                        className="bg-slate-50 border border-slate-200 rounded-lg p-4"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <User className="w-4 h-4 text-slate-600" />
+                              <h3 className="font-semibold text-slate-800">
+                                {contact.first_name} {contact.last_name}
+                              </h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                              {contact.email && (
+                                <div className="flex items-center gap-2">
+                                  <Mail className="w-4 h-4 text-slate-500" />
+                                  <span className="text-slate-700">
+                                    {contact.email}
+                                  </span>
+                                </div>
+                              )}
+                              {contact.phone && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="w-4 h-4 text-slate-500" />
+                                  <span className="text-slate-700">
+                                    {contact.phone}
+                                  </span>
+                                </div>
+                              )}
+                              {contact.role && (
+                                <div className="flex items-center gap-2">
+                                  <IdCardLanyard className="w-4 h-4 text-slate-500" />
+                                  <span className="text-slate-700">
+                                    {contact.role}
+                                  </span>
+                                </div>
+                              )}
+                              {contact.preferred_contact_method && (
+                                <div className="flex items-center gap-2">
+                                  <PhoneCall className="w-4 h-4 text-slate-500" />
+                                  <span className="text-slate-700 capitalize">
+                                    {contact.preferred_contact_method}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            {contact.notes && (
+                              <div className="mt-2 flex items-start gap-2">
+                                <NotebookText className="w-4 h-4 text-slate-500 mt-0.5" />
+                                <p className="text-sm text-slate-700">
+                                  {contact.notes}
+                                </p>
                               </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Client Address
-                      </label>
-                      <textarea
-                        name="client_address"
-                        value={formData.client_address}
-                        onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                        placeholder="Eg. 6 Penna Ave, Glynde, SA 5070"
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Contact Information Section */}
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-bold text-slate-800">
-                        Contact Information
-                      </h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Mobile Phone
-                        </label>
-                        <input
-                          type="tel"
-                          name="client_phone"
-                          value={formData.client_phone}
-                          onChange={handleInputChange}
-                          className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
-                            formData.client_phone &&
-                            !validatePhone(formData.client_phone)
-                              ? "border-red-500"
-                              : "border-slate-300"
-                          }`}
-                          placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                        />
-                        {formData.client_phone &&
-                          !validatePhone(formData.client_phone) && (
-                            <p className="mt-1 text-xs text-red-500">
-                              {errors.client_phone ||
-                                "Please enter a valid Australian phone number"}
-                            </p>
-                          )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Email Address
-                        </label>
-                        <input
-                          type="email"
-                          name="client_email"
-                          value={formData.client_email}
-                          onChange={handleInputChange}
-                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                          placeholder="Eg. contact@example.com"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Website
-                        </label>
-                        <input
-                          type="url"
-                          name="client_website"
-                          value={formData.client_website}
-                          onChange={handleInputChange}
-                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                          placeholder="Eg. https://www.example.com"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Notes Section */}
-                  <div className="space-y-6">
-                    <h2 className="text-xl font-bold text-slate-800">
-                      Additional Notes
-                    </h2>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Notes
-                      </label>
-                      <textarea
-                        name="client_notes"
-                        value={formData.client_notes}
-                        onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                        placeholder="Any additional notes about the client..."
-                        rows={4}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Contacts Section */}
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-xl font-bold text-slate-800">
-                        Contacts
-                      </h2>
-                      {contacts.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={openAddContactModal}
-                          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Contact
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Empty State - No Contacts */}
-                    {contacts.length === 0 && (
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center">
-                        <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                        <p className="text-slate-600 mb-4">
-                          No contacts have been added. Click to add a contact.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={openAddContactModal}
-                          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium mx-auto"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Contact
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Contact Cards */}
-                    {contacts.length > 0 && (
-                      <div className="space-y-3">
-                        {contacts.map((contact, index) => (
-                          <div
-                            key={contact.id || index}
-                            className="bg-slate-50 border border-slate-200 rounded-lg p-4"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <User className="w-4 h-4 text-slate-600" />
-                                  <h3 className="font-semibold text-slate-800">
-                                    {contact.first_name} {contact.last_name}
-                                  </h3>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                                  {contact.email && (
-                                    <div className="flex items-center gap-2">
-                                      <Mail className="w-4 h-4 text-slate-500" />
-                                      <span className="text-slate-700">
-                                        {contact.email}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {contact.phone && (
-                                    <div className="flex items-center gap-2">
-                                      <Phone className="w-4 h-4 text-slate-500" />
-                                      <span className="text-slate-700">
-                                        {contact.phone}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {contact.role && (
-                                    <div className="flex items-center gap-2">
-                                      <IdCardLanyard className="w-4 h-4 text-slate-500" />
-                                      <span className="text-slate-700">
-                                        {contact.role}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {contact.preferred_contact_method && (
-                                    <div className="flex items-center gap-2">
-                                      <PhoneCall className="w-4 h-4 text-slate-500" />
-                                      <span className="text-slate-700 capitalize">
-                                        {contact.preferred_contact_method}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                {contact.notes && (
-                                  <div className="mt-2 flex items-start gap-2">
-                                    <NotebookText className="w-4 h-4 text-slate-500 mt-0.5" />
-                                    <p className="text-sm text-slate-700">
-                                      {contact.notes}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleEditContact(index)}
-                                  className="cursor-pointer p-2 rounded-lg hover:bg-slate-200 transition-colors"
-                                  title="Edit contact"
-                                >
-                                  <Edit className="w-4 h-4 text-blue-600" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveContact(index)}
-                                  className="cursor-pointer p-2 rounded-lg hover:bg-slate-200 transition-colors"
-                                  title="Remove contact"
-                                >
-                                  <Trash2 className="w-4 h-4 text-red-600" />
-                                </button>
-                              </div>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleEditContact(index)}
+                              className="cursor-pointer p-2 rounded-lg hover:bg-slate-200 transition-colors"
+                              title="Edit contact"
+                            >
+                              <Edit className="w-4 h-4 text-blue-600" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveContact(index)}
+                              className="cursor-pointer p-2 rounded-lg hover:bg-slate-200 transition-colors"
+                              title="Remove contact"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </button>
                           </div>
-                        ))}
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
-
-                  {/* Submit Button */}
-                  <div className="flex justify-end pt-6">
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-                        isLoading
-                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                          : "bg-primary/80 hover:bg-primary text-white"
-                      }`}
-                    >
-                      {isLoading ? "Creating Client..." : "Create Client"}
-                    </button>
-                  </div>
-                </form>
+                )}
               </div>
-            </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end pt-6">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
+                    isLoading
+                      ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                      : "bg-primary/80 hover:bg-primary text-white"
+                  }`}
+                >
+                  {isLoading ? "Creating Client..." : "Create Client"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Contact Modal */}
       {isContactModalOpen && (
@@ -971,7 +963,7 @@ export default function page() {
               <button
                 onClick={handleSaveContact}
                 disabled={isSavingContact}
-                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSavingContact
                   ? editingContactIndex !== null
@@ -985,6 +977,6 @@ export default function page() {
           </div>
         </div>
       )}
-    </AdminRoute>
+    </AdminShell>
   );
 }

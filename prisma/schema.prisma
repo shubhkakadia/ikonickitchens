@@ -95,13 +95,16 @@ model push_tokens {
   session_id             String?
   expo_push_token        String                      @unique
   platform               String
+  build_profile          String?
   enabled                Boolean                     @default(true)
   revocation_handle_hash String?
   consented_at           DateTime?
   disabled_at            DateTime?
+  disabled_reason        String?
   last_registered_at     DateTime                    @default(now())
   last_error_code        String?
   last_error             String?                     @db.LongText
+  last_error_at          DateTime?
   createdAt              DateTime                    @default(now())
   updatedAt              DateTime                    @updatedAt
   user                   users                       @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -111,6 +114,7 @@ model push_tokens {
   @@index([user_id])
   @@index([session_id])
   @@index([enabled])
+  @@index([enabled, build_profile])
 }
 
 model push_notification_tickets {

@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import Sidebar from "@/components/sidebar";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import {
   ChevronLeft,
   Save,
@@ -491,711 +490,703 @@ export default function page() {
 
   return (
     <div>
-      <AdminRoute>
-        <div className="flex h-screen bg-tertiary">
-          <Sidebar />
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="h-full w-full overflow-y-auto">
-              <div className="px-4 py-2">
-                {/* Header */}
-                <div className="flex items-center gap-2 mb-4">
-                  <TabsController back={true}>
-                    <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
-                      <ChevronLeft className="w-8 h-8 text-slate-600" />
+      <AdminShell>
+        <main className="h-full w-full overflow-y-auto">
+          <div className="px-4 py-2">
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-4">
+              <TabsController back={true}>
+                <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
+                  <ChevronLeft className="w-8 h-8 text-slate-600" />
+                </div>
+              </TabsController>
+              <h1 className="text-2xl font-bold text-slate-600">
+                Add New Employee
+              </h1>
+            </div>
+
+            {/* Form */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Employee Image Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <User className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-bold text-slate-800">
+                      Employee Photo
+                    </h2>
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <div className="relative group">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                        id="image-upload"
+                      />
+
+                      {imagePreview ? (
+                        <div className="relative">
+                          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary shadow-lg">
+                            <Image
+                              loading="lazy"
+                              src={imagePreview}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                              width={128}
+                              height={128}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="absolute top-1 right-1 bg-secondary text-white rounded-full p-2 shadow-lg hover:bg-secondary transition-all duration-200 transform hover:scale-110 cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white rounded-full px-4 py-1 text-xs shadow-lg hover:scale-110 transition-all duration-200 cursor-pointer"
+                          >
+                            Change
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="image-upload"
+                          className="w-32 h-32 rounded-full border-4 border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-blue-50 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group-hover:shadow-lg"
+                        >
+                          <Upload className="w-8 h-8 text-slate-400 group-hover:text-primary transition-colors mb-2" />
+                          <span className="text-xs text-slate-500 group-hover:text-primary font-medium">
+                            Upload Photo
+                          </span>
+                        </label>
+                      )}
                     </div>
-                  </TabsController>
-                  <h1 className="text-2xl font-bold text-slate-600">
-                    Add New Employee
-                  </h1>
+
+                    <p className="mt-4 text-sm text-slate-600">
+                      Employee Photo{" "}
+                      <span className="text-slate-400">(Optional)</span>
+                    </p>
+                  </div>
                 </div>
 
-                {/* Form */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Employee Image Section */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <User className="w-5 h-5 text-primary" />
-                        <h2 className="text-xl font-bold text-slate-800">
-                          Employee Photo
-                        </h2>
-                      </div>
+                {/* Personal Information Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <User className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-bold text-slate-800">
+                      Personal Information
+                    </h2>
+                  </div>
 
-                      <div className="flex flex-col items-center">
-                        <div className="relative group">
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageChange}
-                            className="hidden"
-                            id="image-upload"
-                          />
-
-                          {imagePreview ? (
-                            <div className="relative">
-                              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary shadow-lg">
-                                <Image
-                                  loading="lazy"
-                                  src={imagePreview}
-                                  alt="Preview"
-                                  className="w-full h-full object-cover"
-                                  width={128}
-                                  height={128}
-                                />
-                              </div>
-                              <button
-                                type="button"
-                                onClick={handleRemoveImage}
-                                className="absolute top-1 right-1 bg-secondary text-white rounded-full p-2 shadow-lg hover:bg-secondary transition-all duration-200 transform hover:scale-110 cursor-pointer"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white rounded-full px-4 py-1 text-xs shadow-lg hover:scale-110 transition-all duration-200 cursor-pointer"
-                              >
-                                Change
-                              </button>
-                            </div>
-                          ) : (
-                            <label
-                              htmlFor="image-upload"
-                              className="w-32 h-32 rounded-full border-4 border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-blue-50 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group-hover:shadow-lg"
-                            >
-                              <Upload className="w-8 h-8 text-slate-400 group-hover:text-primary transition-colors mb-2" />
-                              <span className="text-xs text-slate-500 group-hover:text-primary font-medium">
-                                Upload Photo
-                              </span>
-                            </label>
-                          )}
-                        </div>
-
-                        <p className="mt-4 text-sm text-slate-600">
-                          Employee Photo{" "}
-                          <span className="text-slate-400">(Optional)</span>
-                        </p>
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Employee ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="employee_id"
+                        value={formData.employee_id}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. EMP001"
+                        required
+                      />
                     </div>
 
-                    {/* Personal Information Section */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <User className="w-5 h-5 text-primary" />
-                        <h2 className="text-xl font-bold text-slate-800">
-                          Personal Information
-                        </h2>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        First Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="first_name"
+                        value={formData.first_name}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. John"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Last Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="last_name"
+                        value={formData.last_name}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. Doe"
+                        required
+                      />
+                    </div>
+
+                    <div className="relative" ref={roleDropdownRef}>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Role <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={roleSearchTerm || formData.role}
+                          onChange={handleRoleSearchChange}
+                          onFocus={() => setIsRoleDropdownOpen(true)}
+                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                          placeholder="Search or type a role..."
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsRoleDropdownOpen(!isRoleDropdownOpen)
+                          }
+                          className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          <ChevronDown
+                            className={`w-5 h-5 transition-transform ${
+                              isRoleDropdownOpen ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Employee ID <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="employee_id"
-                            value={formData.employee_id}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. EMP001"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            First Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="first_name"
-                            value={formData.first_name}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. John"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Last Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="last_name"
-                            value={formData.last_name}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. Doe"
-                            required
-                          />
-                        </div>
-
-                        <div className="relative" ref={roleDropdownRef}>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Role <span className="text-red-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={roleSearchTerm || formData.role}
-                              onChange={handleRoleSearchChange}
-                              onFocus={() => setIsRoleDropdownOpen(true)}
-                              className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                              placeholder="Search or type a role..."
-                              required
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setIsRoleDropdownOpen(!isRoleDropdownOpen)
-                              }
-                              className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                            >
-                              <ChevronDown
-                                className={`w-5 h-5 transition-transform ${
-                                  isRoleDropdownOpen ? "rotate-180" : ""
-                                }`}
-                              />
-                            </button>
-                          </div>
-
-                          {isRoleDropdownOpen && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                              {loadingRoles ? (
-                                <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                  Loading roles...
-                                </div>
-                              ) : filteredRoleOptions.length > 0 ? (
-                                <>
-                                  {filteredRoleOptions.map((role, index) => (
-                                    <button
-                                      key={index}
-                                      type="button"
-                                      onClick={() => handleRoleSelect(role)}
-                                      className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                    >
-                                      {role}
-                                    </button>
-                                  ))}
-                                  {roleSearchTerm &&
-                                    !filteredRoleOptions.some(
-                                      (r) =>
-                                        r.toLowerCase() ===
-                                        roleSearchTerm.toLowerCase(),
-                                    ) && (
-                                      <div className="border-t border-slate-200">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setNewRoleValue(roleSearchTerm);
-                                            setShowCreateRoleModal(true);
-                                          }}
-                                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                        >
-                                          <Plus className="w-4 h-4" />
-                                          Create "{roleSearchTerm}"
-                                        </button>
-                                      </div>
-                                    )}
-                                </>
-                              ) : (
-                                <div className="px-4 py-3">
-                                  <div className="text-sm text-slate-500 mb-2">
-                                    No matching roles found
-                                  </div>
-                                  {roleSearchTerm && (
+                      {isRoleDropdownOpen && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                          {loadingRoles ? (
+                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                              Loading roles...
+                            </div>
+                          ) : filteredRoleOptions.length > 0 ? (
+                            <>
+                              {filteredRoleOptions.map((role, index) => (
+                                <button
+                                  key={index}
+                                  type="button"
+                                  onClick={() => handleRoleSelect(role)}
+                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                >
+                                  {role}
+                                </button>
+                              ))}
+                              {roleSearchTerm &&
+                                !filteredRoleOptions.some(
+                                  (r) =>
+                                    r.toLowerCase() ===
+                                    roleSearchTerm.toLowerCase(),
+                                ) && (
+                                  <div className="border-t border-slate-200">
                                     <button
                                       type="button"
                                       onClick={() => {
                                         setNewRoleValue(roleSearchTerm);
                                         setShowCreateRoleModal(true);
                                       }}
-                                      className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                      className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
                                     >
                                       <Plus className="w-4 h-4" />
                                       Create "{roleSearchTerm}"
                                     </button>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
+                            </>
+                          ) : (
+                            <div className="px-4 py-3">
+                              <div className="text-sm text-slate-500 mb-2">
+                                No matching roles found
+                              </div>
+                              {roleSearchTerm && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setNewRoleValue(roleSearchTerm);
+                                    setShowCreateRoleModal(true);
+                                  }}
+                                  className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                  Create "{roleSearchTerm}"
+                                </button>
                               )}
                             </div>
                           )}
                         </div>
+                      )}
+                    </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            <div className="flex items-center gap-1">
-                              <Mail className="w-4 h-4 text-slate-600" />
-                              Email <span className="text-red-500">*</span>
-                            </div>
-                          </label>
-                          <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. john.doe@company.com"
-                            required
-                          />
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <div className="flex items-center gap-1">
+                          <Mail className="w-4 h-4 text-slate-600" />
+                          Email <span className="text-red-500">*</span>
                         </div>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. john.doe@company.com"
+                        required
+                      />
+                    </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            <div className="flex items-center gap-1">
-                              <Phone className="w-4 h-4 text-slate-600" />
-                              Phone <span className="text-red-500">*</span>
-                            </div>
-                          </label>
-                          <input
-                            type="tel"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={handleInputChange}
-                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
-                              (formData.phone &&
-                                !validatePhone(formData.phone)) ||
-                              (formData.phone &&
-                                formData.phone_secondary &&
-                                formatPhone(formData.phone) ===
-                                  formatPhone(formData.phone_secondary))
-                                ? "border-red-500"
-                                : "border-slate-300"
-                            }`}
-                            placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                            required
-                          />
-                          {formData.phone && !validatePhone(formData.phone) && (
-                            <p className="mt-1 text-xs text-red-500">
-                              Please enter a valid Australian phone number
-                            </p>
-                          )}
-                          {formData.phone &&
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <div className="flex items-center gap-1">
+                          <Phone className="w-4 h-4 text-slate-600" />
+                          Phone <span className="text-red-500">*</span>
+                        </div>
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                          (formData.phone && !validatePhone(formData.phone)) ||
+                          (formData.phone &&
                             formData.phone_secondary &&
-                            validatePhone(formData.phone) &&
-                            validatePhone(formData.phone_secondary) &&
                             formatPhone(formData.phone) ===
-                              formatPhone(formData.phone_secondary) && (
-                              <p className="mt-1 text-xs text-red-500">
-                                Primary and secondary phone cannot be the same
-                              </p>
-                            )}
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            <div className="flex items-center gap-1">
-                              <Phone className="w-4 h-4 text-slate-600" />
-                              Secondary Phone
-                            </div>
-                          </label>
-                          <input
-                            type="tel"
-                            name="phone_secondary"
-                            value={formData.phone_secondary}
-                            onChange={handleInputChange}
-                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
-                              (formData.phone_secondary &&
-                                !validatePhone(formData.phone_secondary)) ||
-                              (formData.phone &&
-                                formData.phone_secondary &&
-                                formatPhone(formData.phone) ===
-                                  formatPhone(formData.phone_secondary))
-                                ? "border-red-500"
-                                : "border-slate-300"
-                            }`}
-                            placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                          />
-                          {formData.phone_secondary &&
-                            !validatePhone(formData.phone_secondary) && (
-                              <p className="mt-1 text-xs text-red-500">
-                                Please enter a valid Australian phone number
-                              </p>
-                            )}
-                          {formData.phone &&
-                            formData.phone_secondary &&
-                            validatePhone(formData.phone) &&
-                            validatePhone(formData.phone_secondary) &&
-                            formatPhone(formData.phone) ===
-                              formatPhone(formData.phone_secondary) && (
-                              <p className="mt-1 text-xs text-red-500">
-                                Primary and secondary phone cannot be the same
-                              </p>
-                            )}
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4 text-slate-600" />
-                              Date of Birth
-                            </div>
-                          </label>
-                          <input
-                            type="date"
-                            name="dob"
-                            value={formData.dob}
-                            onChange={handleInputChange}
-                            max={new Date().toISOString().split("T")[0]}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4 text-slate-600" />
-                              Join Date
-                            </div>
-                          </label>
-                          <input
-                            type="date"
-                            name="join_date"
-                            value={formData.join_date}
-                            onChange={handleInputChange}
-                            max={new Date().toISOString().split("T")[0]}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                          />
-                        </div>
-
-                        <div className="md:col-span-2 lg:col-span-3">
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4 text-slate-600" />
-                              Address
-                            </div>
-                          </label>
-                          <textarea
-                            name="address"
-                            value={formData.address}
-                            onChange={handleInputChange}
-                            rows={3}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. 123 Main Street, City, State, ZIP"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Emergency Contact Section */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Phone className="w-5 h-5 text-primary" />
-                        <h2 className="text-xl font-bold text-slate-800">
-                          Emergency Contact
-                        </h2>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Emergency Contact Name
-                          </label>
-                          <input
-                            type="text"
-                            name="emergency_contact_name"
-                            value={formData.emergency_contact_name}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. Jane Doe"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Emergency Contact Phone
-                          </label>
-                          <input
-                            type="tel"
-                            name="emergency_contact_phone"
-                            value={formData.emergency_contact_phone}
-                            onChange={handleInputChange}
-                            className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
-                              formData.emergency_contact_phone &&
-                              !validatePhone(formData.emergency_contact_phone)
-                                ? "border-red-500"
-                                : "border-slate-300"
-                            }`}
-                            placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                          />
-                          {formData.emergency_contact_phone &&
-                            !validatePhone(
-                              formData.emergency_contact_phone,
-                            ) && (
-                              <p className="mt-1 text-xs text-red-500">
-                                Please enter a valid Australian phone number
-                              </p>
-                            )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Banking Information Section */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <CreditCard className="w-5 h-5 text-primary" />
-                        <h2 className="text-xl font-bold text-slate-800">
-                          Banking Information
-                        </h2>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Bank Account Holder Name
-                          </label>
-                          <input
-                            type="text"
-                            name="bank_account_name"
-                            value={formData.bank_account_name}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. John Doe"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Bank Account Number
-                          </label>
-                          <input
-                            type="text"
-                            name="bank_account_number"
-                            value={formData.bank_account_number}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. 1234 5678"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Bank Account BSB
-                          </label>
-                          <input
-                            type="text"
-                            name="bank_account_bsb"
-                            value={formData.bank_account_bsb}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. 123-456"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Super Account Name
-                          </label>
-                          <input
-                            type="text"
-                            name="supper_account_name"
-                            value={formData.supper_account_name}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. John Doe Super"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Super Account Member ID
-                          </label>
-                          <input
-                            type="text"
-                            name="supper_account_number"
-                            value={formData.supper_account_number}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. 1234567890"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            TFN Number
-                          </label>
-                          <input
-                            type="text"
-                            name="tfn_number"
-                            value={formData.tfn_number}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. 123456789"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            ABN Number
-                          </label>
-                          <input
-                            type="text"
-                            name="abn_number"
-                            value={formData.abn_number}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. 12345678901"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Additional Information Section */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <GraduationCap className="w-5 h-5 text-primary" />
-                        <h2 className="text-xl font-bold text-slate-800">
-                          Additional Information
-                        </h2>
-                      </div>
-
-                      <div className="space-y-6">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Education
-                          </label>
-                          <textarea
-                            name="education"
-                            value={formData.education}
-                            onChange={handleInputChange}
-                            rows={3}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. Bachelor of Engineering, University of Technology"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-4">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4 text-slate-600" />
-                              Weekly Availability
-                            </div>
-                          </label>
-                          <div className="space-y-4">
-                            {daysOfWeek.map((day) => {
-                              const times = availability[day];
-                              return (
-                                <div
-                                  key={day}
-                                  className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg"
-                                >
-                                  <div className="w-24">
-                                    <span className="text-sm font-medium text-slate-700 capitalize">
-                                      {day}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <label className="text-sm text-slate-600">
-                                      Start:
-                                    </label>
-                                    <input
-                                      type="time"
-                                      value={times.start}
-                                      onChange={(e) =>
-                                        handleAvailabilityChange(
-                                          day,
-                                          "start",
-                                          e.target.value,
-                                        )
-                                      }
-                                      className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                                    />
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <label className="text-sm text-slate-600">
-                                      End:
-                                    </label>
-                                    <input
-                                      type="time"
-                                      value={times.end}
-                                      onChange={(e) =>
-                                        handleAvailabilityChange(
-                                          day,
-                                          "end",
-                                          e.target.value,
-                                        )
-                                      }
-                                      className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            <div className="flex items-center gap-1">
-                              <User className="w-4 h-4 text-slate-600" />
-                              Personal Notes
-                            </div>
-                          </label>
-                          <textarea
-                            name="notes"
-                            value={formData.notes}
-                            onChange={handleInputChange}
-                            rows={4}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                            placeholder="Eg. Add any personal notes or additional information about this employee..."
-                          />
-                          <p className="text-xs text-slate-500 mt-1">
-                            These notes are for admin reference only and will
-                            not be visible to the employee.
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              name="is_active"
-                              checked={formData.is_active}
-                              onChange={(e) =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  is_active: e.target.checked,
-                                }))
-                              }
-                              className="w-4 h-4 text-primary focus:ring-primary border-slate-300 rounded"
-                            />
-                            <span className="text-sm font-medium text-slate-700">
-                              Active Employee
-                            </span>
-                          </label>
-                          <p className="text-xs text-slate-500 mt-1 ml-6">
-                            Uncheck to mark this employee as inactive
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Submit Button */}
-                    <div className="flex justify-end pt-6 border-t border-slate-200">
-                      <button
-                        type="submit"
-                        disabled={!isFormValid || isSubmitting}
-                        className={`cursor-pointer flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
-                          isFormValid && !isSubmitting
-                            ? "bg-primary/80 hover:bg-primary text-white"
-                            : "bg-slate-300 text-slate-500 cursor-not-allowed"
+                              formatPhone(formData.phone_secondary))
+                            ? "border-red-500"
+                            : "border-slate-300"
                         }`}
-                      >
-                        <Save className="w-5 h-5" />
-                        {isSubmitting ? "Adding Employee..." : "Add Employee"}
-                      </button>
+                        placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                        required
+                      />
+                      {formData.phone && !validatePhone(formData.phone) && (
+                        <p className="mt-1 text-xs text-red-500">
+                          Please enter a valid Australian phone number
+                        </p>
+                      )}
+                      {formData.phone &&
+                        formData.phone_secondary &&
+                        validatePhone(formData.phone) &&
+                        validatePhone(formData.phone_secondary) &&
+                        formatPhone(formData.phone) ===
+                          formatPhone(formData.phone_secondary) && (
+                          <p className="mt-1 text-xs text-red-500">
+                            Primary and secondary phone cannot be the same
+                          </p>
+                        )}
                     </div>
-                  </form>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <div className="flex items-center gap-1">
+                          <Phone className="w-4 h-4 text-slate-600" />
+                          Secondary Phone
+                        </div>
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone_secondary"
+                        value={formData.phone_secondary}
+                        onChange={handleInputChange}
+                        className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                          (formData.phone_secondary &&
+                            !validatePhone(formData.phone_secondary)) ||
+                          (formData.phone &&
+                            formData.phone_secondary &&
+                            formatPhone(formData.phone) ===
+                              formatPhone(formData.phone_secondary))
+                            ? "border-red-500"
+                            : "border-slate-300"
+                        }`}
+                        placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                      />
+                      {formData.phone_secondary &&
+                        !validatePhone(formData.phone_secondary) && (
+                          <p className="mt-1 text-xs text-red-500">
+                            Please enter a valid Australian phone number
+                          </p>
+                        )}
+                      {formData.phone &&
+                        formData.phone_secondary &&
+                        validatePhone(formData.phone) &&
+                        validatePhone(formData.phone_secondary) &&
+                        formatPhone(formData.phone) ===
+                          formatPhone(formData.phone_secondary) && (
+                          <p className="mt-1 text-xs text-red-500">
+                            Primary and secondary phone cannot be the same
+                          </p>
+                        )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4 text-slate-600" />
+                          Date of Birth
+                        </div>
+                      </label>
+                      <input
+                        type="date"
+                        name="dob"
+                        value={formData.dob}
+                        onChange={handleInputChange}
+                        max={new Date().toISOString().split("T")[0]}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4 text-slate-600" />
+                          Join Date
+                        </div>
+                      </label>
+                      <input
+                        type="date"
+                        name="join_date"
+                        value={formData.join_date}
+                        onChange={handleInputChange}
+                        max={new Date().toISOString().split("T")[0]}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 lg:col-span-3">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4 text-slate-600" />
+                          Address
+                        </div>
+                      </label>
+                      <textarea
+                        name="address"
+                        value={formData.address}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. 123 Main Street, City, State, ZIP"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+
+                {/* Emergency Contact Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Phone className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-bold text-slate-800">
+                      Emergency Contact
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Emergency Contact Name
+                      </label>
+                      <input
+                        type="text"
+                        name="emergency_contact_name"
+                        value={formData.emergency_contact_name}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. Jane Doe"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Emergency Contact Phone
+                      </label>
+                      <input
+                        type="tel"
+                        name="emergency_contact_phone"
+                        value={formData.emergency_contact_phone}
+                        onChange={handleInputChange}
+                        className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                          formData.emergency_contact_phone &&
+                          !validatePhone(formData.emergency_contact_phone)
+                            ? "border-red-500"
+                            : "border-slate-300"
+                        }`}
+                        placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                      />
+                      {formData.emergency_contact_phone &&
+                        !validatePhone(formData.emergency_contact_phone) && (
+                          <p className="mt-1 text-xs text-red-500">
+                            Please enter a valid Australian phone number
+                          </p>
+                        )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Banking Information Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-bold text-slate-800">
+                      Banking Information
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Bank Account Holder Name
+                      </label>
+                      <input
+                        type="text"
+                        name="bank_account_name"
+                        value={formData.bank_account_name}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. John Doe"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Bank Account Number
+                      </label>
+                      <input
+                        type="text"
+                        name="bank_account_number"
+                        value={formData.bank_account_number}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. 1234 5678"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Bank Account BSB
+                      </label>
+                      <input
+                        type="text"
+                        name="bank_account_bsb"
+                        value={formData.bank_account_bsb}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. 123-456"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Super Account Name
+                      </label>
+                      <input
+                        type="text"
+                        name="supper_account_name"
+                        value={formData.supper_account_name}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. John Doe Super"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Super Account Member ID
+                      </label>
+                      <input
+                        type="text"
+                        name="supper_account_number"
+                        value={formData.supper_account_number}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. 1234567890"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        TFN Number
+                      </label>
+                      <input
+                        type="text"
+                        name="tfn_number"
+                        value={formData.tfn_number}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. 123456789"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        ABN Number
+                      </label>
+                      <input
+                        type="text"
+                        name="abn_number"
+                        value={formData.abn_number}
+                        onChange={handleInputChange}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. 12345678901"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Information Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <GraduationCap className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-bold text-slate-800">
+                      Additional Information
+                    </h2>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Education
+                      </label>
+                      <textarea
+                        name="education"
+                        value={formData.education}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. Bachelor of Engineering, University of Technology"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-4">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4 text-slate-600" />
+                          Weekly Availability
+                        </div>
+                      </label>
+                      <div className="space-y-4">
+                        {daysOfWeek.map((day) => {
+                          const times = availability[day];
+                          return (
+                            <div
+                              key={day}
+                              className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg"
+                            >
+                              <div className="w-24">
+                                <span className="text-sm font-medium text-slate-700 capitalize">
+                                  {day}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className="text-sm text-slate-600">
+                                  Start:
+                                </label>
+                                <input
+                                  type="time"
+                                  value={times.start}
+                                  onChange={(e) =>
+                                    handleAvailabilityChange(
+                                      day,
+                                      "start",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className="text-sm text-slate-600">
+                                  End:
+                                </label>
+                                <input
+                                  type="time"
+                                  value={times.end}
+                                  onChange={(e) =>
+                                    handleAvailabilityChange(
+                                      day,
+                                      "end",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <div className="flex items-center gap-1">
+                          <User className="w-4 h-4 text-slate-600" />
+                          Personal Notes
+                        </div>
+                      </label>
+                      <textarea
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                        rows={4}
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        placeholder="Eg. Add any personal notes or additional information about this employee..."
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        These notes are for admin reference only and will not be
+                        visible to the employee.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="is_active"
+                          checked={formData.is_active}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              is_active: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-primary focus:ring-primary border-slate-300 rounded"
+                        />
+                        <span className="text-sm font-medium text-slate-700">
+                          Active Employee
+                        </span>
+                      </label>
+                      <p className="text-xs text-slate-500 mt-1 ml-6">
+                        Uncheck to mark this employee as inactive
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex justify-end pt-6 border-t border-slate-200">
+                  <button
+                    type="submit"
+                    disabled={!isFormValid || isSubmitting}
+                    className={`cursor-pointer flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
+                      isFormValid && !isSubmitting
+                        ? "bg-primary/80 hover:bg-primary text-white"
+                        : "bg-slate-300 text-slate-500 cursor-not-allowed"
+                    }`}
+                  >
+                    <Save className="w-5 h-5" />
+                    {isSubmitting ? "Adding Employee..." : "Add Employee"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      </AdminRoute>
+        </main>
+      </AdminShell>
 
       {/* Create Role Modal */}
       {showCreateRoleModal && (

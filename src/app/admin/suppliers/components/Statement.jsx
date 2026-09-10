@@ -582,7 +582,7 @@ export default function Statement({ supplierId }) {
         </h3>
         <button
           onClick={() => setShowUploadStatementModal(true)}
-          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
+          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
         >
           <Plus className="w-4 h-4" />
           Upload Statement

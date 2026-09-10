@@ -1,7 +1,6 @@
 "use client";
 import { Fragment, useEffect, useMemo, useState, useRef } from "react";
-import Sidebar from "@/components/sidebar";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import PaginationFooter from "@/components/PaginationFooter";
 import {
   Edit,
@@ -1155,1297 +1154,1252 @@ export default function StatementsPage() {
   ];
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-sm text-slate-600 font-medium">
-                    Loading statements details...
-                  </p>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-sm text-red-600 mb-4 font-medium">
-                    {error}
-                  </p>
+    <AdminShell>
+      <main className="flex h-full min-h-0 flex-col overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+              <p className="text-sm text-slate-600 font-medium">
+                Loading statements details...
+              </p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="px-4 py-2 shrink-0">
+              <div className="flex justify-between items-center">
+                <h1 className="text-xl font-bold text-slate-700">
+                  Supplier Statements
+                </h1>
+                <div className="flex items-center gap-2">
+                  <SearchBar />
                   <button
-                    onClick={() => window.location.reload()}
-                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                    onClick={() => setShowUploadStatementModal(true)}
+                    className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium shadow-sm"
                   >
-                    Try Again
+                    <Receipt className="w-4 h-4" />
+                    Upload Statement
                   </button>
                 </div>
               </div>
-            ) : (
-              <>
-                <div className="px-4 py-2 shrink-0">
-                  <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-slate-700">
-                      Supplier Statements
-                    </h1>
+            </div>
+
+            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                {/* Fixed Header Section */}
+                <div className="p-4 shrink-0 border-b border-slate-200">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Search */}
+                    <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
+                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by supplier name, email, or month/year"
+                        className="w-full text-slate-800 p-2 pl-9 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
+                        value={search}
+                        onChange={(e) => {
+                          setSearch(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </div>
+
+                    {/* Reset, Year, Month Filters, Sort, Items Per Page */}
                     <div className="flex items-center gap-2">
-                      <SearchBar />
-                      <button
-                        onClick={() => setShowUploadStatementModal(true)}
-                        className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium shadow-sm"
+                      {/* Reset Button */}
+                      {(search !== "" ||
+                        sortField !== "month_year" ||
+                        sortOrder !== "desc" ||
+                        yearFilter !== "all" ||
+                        monthFilter !== "all" ||
+                        selectedSuppliers.length !==
+                          distinctSuppliers.length) && (
+                        <button
+                          onClick={handleReset}
+                          className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+
+                      {/* Supplier Filter */}
+                      <div className="relative" ref={supplierFilterDropdownRef}>
+                        <button
+                          onClick={() =>
+                            setShowSupplierFilterDropdown(
+                              !showSupplierFilterDropdown,
+                            )
+                          }
+                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          <Funnel className="h-4 w-4" />
+                          <span>Filter by Supplier</span>
+                          {distinctSuppliers.length - selectedSuppliers.length >
+                            0 && (
+                            <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                              {distinctSuppliers.length -
+                                selectedSuppliers.length}
+                            </span>
+                          )}
+                        </button>
+                        {showSupplierFilterDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                            <div className="py-1">
+                              <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                <span className="font-semibold">
+                                  Select All
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    selectedSuppliers.length ===
+                                    distinctSuppliers.length
+                                  }
+                                  onChange={() =>
+                                    handleSupplierToggle("Select All")
+                                  }
+                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                />
+                              </label>
+                              {distinctSuppliers.map((supplier) => (
+                                <label
+                                  key={supplier}
+                                  className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                >
+                                  <span>{supplier}</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedSuppliers.includes(
+                                      supplier,
+                                    )}
+                                    onChange={() =>
+                                      handleSupplierToggle(supplier)
+                                    }
+                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Year Filter Dropdown */}
+                      <div className="relative" ref={yearDropdownRef}>
+                        <button
+                          onClick={() => setYearDropdownOpen(!yearDropdownOpen)}
+                          className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          {yearFilter === "all" ? "All Years" : yearFilter}
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        {yearDropdownOpen && (
+                          <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <button
+                              onClick={() => {
+                                setYearFilter("all");
+                                setYearDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
+                                yearFilter === "all"
+                                  ? "text-primary font-medium"
+                                  : "text-slate-600"
+                              }`}
+                            >
+                              All Years
+                            </button>
+                            {getAvailableYears.map((year) => (
+                              <button
+                                key={year}
+                                onClick={() => {
+                                  setYearFilter(year);
+                                  setYearDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
+                                  yearFilter === year
+                                    ? "text-primary font-medium"
+                                    : "text-slate-600"
+                                }`}
+                              >
+                                {year}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Month Filter Dropdown */}
+                      <div className="relative" ref={monthDropdownRef}>
+                        <button
+                          onClick={() => {
+                            if (yearFilter !== "all") {
+                              setMonthDropdownOpen(!monthDropdownOpen);
+                            }
+                          }}
+                          disabled={yearFilter === "all"}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            yearFilter === "all"
+                              ? "text-slate-400 bg-slate-100 border border-slate-300 cursor-not-allowed"
+                              : "text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 cursor-pointer"
+                          }`}
+                        >
+                          {monthFilter === "all"
+                            ? "All Months"
+                            : formatMonthName(monthFilter)}
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        {monthDropdownOpen && yearFilter !== "all" && (
+                          <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <button
+                              onClick={() => {
+                                setMonthFilter("all");
+                                setMonthDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
+                                monthFilter === "all"
+                                  ? "text-primary font-medium"
+                                  : "text-slate-600"
+                              }`}
+                            >
+                              All Months
+                            </button>
+                            {getAvailableMonthsForYear.map((month) => (
+                              <button
+                                key={month}
+                                onClick={() => {
+                                  setMonthFilter(month.toString());
+                                  setMonthDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
+                                  monthFilter === month.toString()
+                                    ? "text-primary font-medium"
+                                    : "text-slate-600"
+                                }`}
+                              >
+                                {formatMonthName(month)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative" ref={sortDropdownRef}>
+                        <button
+                          onClick={() => setShowSortDropdown(!showSortDropdown)}
+                          className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          <ArrowUpDown className="h-4 w-4" />
+                          <span>Sort by</span>
+                        </button>
+                        {showSortDropdown && (
+                          <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                            <div className="py-1">
+                              {sortOptions.map((option) => (
+                                <button
+                                  key={option.value}
+                                  onClick={() => {
+                                    if (sortField === option.value) {
+                                      setSortOrder(
+                                        sortOrder === "asc" ? "desc" : "asc",
+                                      );
+                                    } else {
+                                      setSortField(option.value);
+                                      setSortOrder("asc");
+                                    }
+                                    setShowSortDropdown(false);
+                                  }}
+                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                >
+                                  {option.label} {getSortIcon(option.value)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div
+                        className="relative flex items-center"
+                        ref={columnDropdownRef}
                       >
-                        <Receipt className="w-4 h-4" />
-                        Upload Statement
-                      </button>
+                        <button
+                          onClick={handleExportToExcel}
+                          disabled={
+                            isExporting ||
+                            filteredAndSortedStatements.length === 0 ||
+                            selectedColumns.length === 0
+                          }
+                          className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                            isExporting ||
+                            filteredAndSortedStatements.length === 0 ||
+                            selectedColumns.length === 0
+                              ? "opacity-50 cursor-not-allowed"
+                              : "cursor-pointer hover:bg-slate-100"
+                          }`}
+                        >
+                          <Sheet className="h-4 w-4" />
+                          <span>
+                            {isExporting ? "Exporting..." : "Export to Excel"}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() =>
+                            setShowColumnDropdown(!showColumnDropdown)
+                          }
+                          disabled={
+                            isExporting ||
+                            filteredAndSortedStatements.length === 0
+                          }
+                          className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${
+                            isExporting ||
+                            filteredAndSortedStatements.length === 0
+                              ? "opacity-50 cursor-not-allowed"
+                              : "cursor-pointer hover:bg-slate-100"
+                          }`}
+                        >
+                          <ChevronDown className="h-5 w-5" />
+                        </button>
+                        {showColumnDropdown && (
+                          <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                            <div className="py-1">
+                              <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                                <span className="font-semibold">
+                                  Select All
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    selectedColumns.length ===
+                                    availableColumns.length
+                                  }
+                                  onChange={() =>
+                                    handleColumnToggle("Select All")
+                                  }
+                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                />
+                              </label>
+                              {availableColumns.map((column) => (
+                                <label
+                                  key={column}
+                                  className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                >
+                                  <span>{column}</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedColumns.includes(column)}
+                                    onChange={() => handleColumnToggle(column)}
+                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                    {/* Fixed Header Section */}
-                    <div className="p-4 shrink-0 border-b border-slate-200">
-                      <div className="flex items-center justify-between gap-3">
-                        {/* Search */}
-                        <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                          <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                          <input
-                            type="text"
-                            placeholder="Search by supplier name, email, or month/year"
-                            className="w-full text-slate-800 p-2 pl-9 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
-                            value={search}
-                            onChange={(e) => {
-                              setSearch(e.target.value);
-                              setCurrentPage(1);
-                            }}
-                          />
-                        </div>
+                {/* Tabs Section */}
+                <div className="px-4 shrink-0 border-b border-slate-200">
+                  <nav className="flex space-x-6">
+                    <button
+                      onClick={() => setActiveTab("pending")}
+                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === "pending"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      Pending
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("paid")}
+                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === "paid"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      Paid
+                    </button>
+                  </nav>
+                </div>
 
-                        {/* Reset, Year, Month Filters, Sort, Items Per Page */}
-                        <div className="flex items-center gap-2">
-                          {/* Reset Button */}
-                          {(search !== "" ||
-                            sortField !== "month_year" ||
-                            sortOrder !== "desc" ||
-                            yearFilter !== "all" ||
-                            monthFilter !== "all" ||
-                            selectedSuppliers.length !==
-                              distinctSuppliers.length) && (
-                            <button
-                              onClick={handleReset}
-                              className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                              <span>Reset</span>
-                            </button>
-                          )}
-
-                          {/* Supplier Filter */}
-                          <div
-                            className="relative"
-                            ref={supplierFilterDropdownRef}
+                {/* Scrollable Table Section */}
+                <div className="flex-1 overflow-auto">
+                  <div className="min-w-full">
+                    <table className="min-w-full divide-y divide-slate-200">
+                      <thead className="bg-slate-50 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider w-10"></th>
+                          <th
+                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            onClick={() => handleSort("supplier")}
                           >
-                            <button
-                              onClick={() =>
-                                setShowSupplierFilterDropdown(
-                                  !showSupplierFilterDropdown,
-                                )
-                              }
-                              className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                            <div className="flex items-center gap-2">
+                              Supplier
+                              {getSortIcon("supplier")}
+                            </div>
+                          </th>
+                          <th
+                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            onClick={() => handleSort("month_year")}
+                          >
+                            <div className="flex items-center gap-2">
+                              Month/Year
+                              {getSortIcon("month_year")}
+                            </div>
+                          </th>
+                          <th
+                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            onClick={() => handleSort("due_date")}
+                          >
+                            <div className="flex items-center gap-2">
+                              Due Date
+                              {getSortIcon("due_date")}
+                            </div>
+                          </th>
+                          <th
+                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            onClick={() => handleSort("amount")}
+                          >
+                            <div className="flex items-center gap-2">
+                              Amount
+                              {getSortIcon("amount")}
+                            </div>
+                          </th>
+                          <th
+                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            onClick={() => handleSort("payment_status")}
+                          >
+                            <div className="flex items-center gap-2">
+                              Status
+                              {getSortIcon("payment_status")}
+                            </div>
+                          </th>
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                            File
+                          </th>
+                          <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-slate-200">
+                        {paginatedStatements.length === 0 ? (
+                          <tr>
+                            <td
+                              className="px-4 py-4 text-sm text-slate-500 text-center"
+                              colSpan={8}
                             >
-                              <Funnel className="h-4 w-4" />
-                              <span>Filter by Supplier</span>
-                              {distinctSuppliers.length -
-                                selectedSuppliers.length >
-                                0 && (
-                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                                  {distinctSuppliers.length -
-                                    selectedSuppliers.length}
-                                </span>
-                              )}
-                            </button>
-                            {showSupplierFilterDropdown && (
-                              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                                <div className="py-1">
-                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">
-                                      Select All
-                                    </span>
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        selectedSuppliers.length ===
-                                        distinctSuppliers.length
-                                      }
-                                      onChange={() =>
-                                        handleSupplierToggle("Select All")
-                                      }
-                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                    />
-                                  </label>
-                                  {distinctSuppliers.map((supplier) => (
-                                    <label
-                                      key={supplier}
-                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                    >
-                                      <span>{supplier}</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedSuppliers.includes(
-                                          supplier,
-                                        )}
-                                        onChange={() =>
-                                          handleSupplierToggle(supplier)
-                                        }
-                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                      />
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Year Filter Dropdown */}
-                          <div className="relative" ref={yearDropdownRef}>
-                            <button
-                              onClick={() =>
-                                setYearDropdownOpen(!yearDropdownOpen)
-                              }
-                              className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              {yearFilter === "all" ? "All Years" : yearFilter}
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </button>
-                            {yearDropdownOpen && (
-                              <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                                <button
-                                  onClick={() => {
-                                    setYearFilter("all");
-                                    setYearDropdownOpen(false);
-                                  }}
-                                  className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
-                                    yearFilter === "all"
-                                      ? "text-primary font-medium"
-                                      : "text-slate-600"
-                                  }`}
-                                >
-                                  All Years
-                                </button>
-                                {getAvailableYears.map((year) => (
-                                  <button
-                                    key={year}
-                                    onClick={() => {
-                                      setYearFilter(year);
-                                      setYearDropdownOpen(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
-                                      yearFilter === year
-                                        ? "text-primary font-medium"
-                                        : "text-slate-600"
-                                    }`}
-                                  >
-                                    {year}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Month Filter Dropdown */}
-                          <div className="relative" ref={monthDropdownRef}>
-                            <button
-                              onClick={() => {
-                                if (yearFilter !== "all") {
-                                  setMonthDropdownOpen(!monthDropdownOpen);
+                              {search
+                                ? "No statements found matching your search"
+                                : "No statements found"}
+                            </td>
+                          </tr>
+                        ) : (
+                          paginatedStatements.map((statement) => (
+                            <Fragment key={statement.id}>
+                              <tr
+                                className={`cursor-pointer hover:bg-slate-50 transition-colors duration-200 ${
+                                  statement.notes ? "" : ""
+                                }`}
+                                onClick={() =>
+                                  statement.notes && toggleNotes(statement.id)
                                 }
-                              }}
-                              disabled={yearFilter === "all"}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                yearFilter === "all"
-                                  ? "text-slate-400 bg-slate-100 border border-slate-300 cursor-not-allowed"
-                                  : "text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 cursor-pointer"
-                              }`}
-                            >
-                              {monthFilter === "all"
-                                ? "All Months"
-                                : formatMonthName(monthFilter)}
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </button>
-                            {monthDropdownOpen && yearFilter !== "all" && (
-                              <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                                <button
-                                  onClick={() => {
-                                    setMonthFilter("all");
-                                    setMonthDropdownOpen(false);
-                                  }}
-                                  className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
-                                    monthFilter === "all"
-                                      ? "text-primary font-medium"
-                                      : "text-slate-600"
-                                  }`}
-                                >
-                                  All Months
-                                </button>
-                                {getAvailableMonthsForYear.map((month) => (
-                                  <button
-                                    key={month}
-                                    onClick={() => {
-                                      setMonthFilter(month.toString());
-                                      setMonthDropdownOpen(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-slate-100 transition-colors cursor-pointer ${
-                                      monthFilter === month.toString()
-                                        ? "text-primary font-medium"
-                                        : "text-slate-600"
-                                    }`}
-                                  >
-                                    {formatMonthName(month)}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="relative" ref={sortDropdownRef}>
-                            <button
-                              onClick={() =>
-                                setShowSortDropdown(!showSortDropdown)
-                              }
-                              className="cursor-pointer flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                            >
-                              <ArrowUpDown className="h-4 w-4" />
-                              <span>Sort by</span>
-                            </button>
-                            {showSortDropdown && (
-                              <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                                <div className="py-1">
-                                  {sortOptions.map((option) => (
-                                    <button
-                                      key={option.value}
-                                      onClick={() => {
-                                        if (sortField === option.value) {
-                                          setSortOrder(
-                                            sortOrder === "asc"
-                                              ? "desc"
-                                              : "asc",
-                                          );
-                                        } else {
-                                          setSortField(option.value);
-                                          setSortOrder("asc");
-                                        }
-                                        setShowSortDropdown(false);
-                                      }}
-                                      className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                    >
-                                      {option.label} {getSortIcon(option.value)}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          <div
-                            className="relative flex items-center"
-                            ref={columnDropdownRef}
-                          >
-                            <button
-                              onClick={handleExportToExcel}
-                              disabled={
-                                isExporting ||
-                                filteredAndSortedStatements.length === 0 ||
-                                selectedColumns.length === 0
-                              }
-                              className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                                isExporting ||
-                                filteredAndSortedStatements.length === 0 ||
-                                selectedColumns.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
-                            >
-                              <Sheet className="h-4 w-4" />
-                              <span>
-                                {isExporting
-                                  ? "Exporting..."
-                                  : "Export to Excel"}
-                              </span>
-                            </button>
-                            <button
-                              onClick={() =>
-                                setShowColumnDropdown(!showColumnDropdown)
-                              }
-                              disabled={
-                                isExporting ||
-                                filteredAndSortedStatements.length === 0
-                              }
-                              className={`flex items-center transition-all duration-200 text-slate-600 border border-slate-300 px-2 py-2 rounded-r-lg text-xs font-medium ${
-                                isExporting ||
-                                filteredAndSortedStatements.length === 0
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "cursor-pointer hover:bg-slate-100"
-                              }`}
-                            >
-                              <ChevronDown className="h-5 w-5" />
-                            </button>
-                            {showColumnDropdown && (
-                              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                                <div className="py-1">
-                                  <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                    <span className="font-semibold">
-                                      Select All
+                              >
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {statement.notes && (
+                                    <div className="flex items-center">
+                                      {expandedNotes.has(statement.id) ? (
+                                        <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                                      ) : (
+                                        <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-slate-700 truncate">
+                                      {statement.supplier?.name || "-"}
                                     </span>
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        selectedColumns.length ===
-                                        availableColumns.length
-                                      }
-                                      onChange={() =>
-                                        handleColumnToggle("Select All")
-                                      }
-                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                    />
-                                  </label>
-                                  {availableColumns.map((column) => (
-                                    <label
-                                      key={column}
-                                      className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                    >
-                                      <span>{column}</span>
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedColumns.includes(
-                                          column,
-                                        )}
-                                        onChange={() =>
-                                          handleColumnToggle(column)
+                                    {statement.supplier?.email && (
+                                      <span className="text-sm text-slate-600 truncate">
+                                        {statement.supplier.email}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  {statement.month_year}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  {new Date(
+                                    statement.due_date,
+                                  ).toLocaleDateString()}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                  {formatCurrency(statement.amount)}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div
+                                    ref={(el) => {
+                                      statusDropdownRefs.current[statement.id] =
+                                        el;
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="relative inline-flex items-center gap-2"
+                                  >
+                                    <div className="relative">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setOpenStatusDropdownId(
+                                            openStatusDropdownId ===
+                                              statement.id
+                                              ? null
+                                              : statement.id,
+                                          )
                                         }
-                                        className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                      />
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                                        disabled={
+                                          updatingStatusId === statement.id
+                                        }
+                                        className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-all ${
+                                          statement.payment_status === "PAID"
+                                            ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                            : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                                        } ${
+                                          updatingStatusId === statement.id
+                                            ? "opacity-50 cursor-not-allowed"
+                                            : "cursor-pointer"
+                                        }`}
+                                      >
+                                        <span>{statement.payment_status}</span>
+                                        <ChevronDown
+                                          className={`h-3 w-3 transition-transform duration-200 ${
+                                            openStatusDropdownId ===
+                                            statement.id
+                                              ? "rotate-180"
+                                              : ""
+                                          }`}
+                                        />
+                                      </button>
+                                      {openStatusDropdownId ===
+                                        statement.id && (
+                                        <div className="absolute left-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                                          <div className="py-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                if (
+                                                  statement.payment_status !==
+                                                  "PENDING"
+                                                ) {
+                                                  handleUpdateStatement(
+                                                    statement,
+                                                    "PENDING",
+                                                  );
+                                                }
+                                                setOpenStatusDropdownId(null);
+                                              }}
+                                              className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center gap-2"
+                                            >
+                                              <span
+                                                className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                                  statement.payment_status ===
+                                                  "PENDING"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : ""
+                                                }`}
+                                              >
+                                                Pending
+                                              </span>
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                if (
+                                                  statement.payment_status !==
+                                                  "PAID"
+                                                ) {
+                                                  handleUpdateStatement(
+                                                    statement,
+                                                    "PAID",
+                                                  );
+                                                }
+                                                setOpenStatusDropdownId(null);
+                                              }}
+                                              className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center gap-2"
+                                            >
+                                              <span
+                                                className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                                  statement.payment_status ===
+                                                  "PAID"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : ""
+                                                }`}
+                                              >
+                                                Paid
+                                              </span>
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                    {updatingStatusId === statement.id && (
+                                      <div className="animate-spin h-3 w-3 border-2 border-slate-400 border-t-transparent rounded-full"></div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                                  {statement.supplier_file?.filename || "-"}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div
+                                    className="flex items-center justify-end gap-2"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {statement.supplier_file && (
+                                      <button
+                                        onClick={() =>
+                                          handleViewStatement(statement)
+                                        }
+                                        className="cursor-pointer p-1.5 rounded hover:bg-slate-100"
+                                        title="View"
+                                      >
+                                        <Eye className="w-3.5 h-3.5 text-slate-600" />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() =>
+                                        handleEditStatement(statement)
+                                      }
+                                      className="cursor-pointer p-1.5 rounded hover:bg-slate-100"
+                                      title="Edit"
+                                    >
+                                      <Edit className="w-3.5 h-3.5 text-slate-600" />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleDeleteStatement(statement)
+                                      }
+                                      className="cursor-pointer p-1.5 rounded hover:bg-slate-100"
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                              {statement.notes &&
+                                expandedNotes.has(statement.id) && (
+                                  <tr>
+                                    <td
+                                      colSpan={8}
+                                      className="px-4 pb-3 border-t border-slate-200 bg-slate-50"
+                                    >
+                                      <div className="mt-2 text-sm text-slate-700">
+                                        <span className="font-medium text-slate-800 mb-2 block">
+                                          Notes:
+                                        </span>
+                                        <div className="text-slate-600 whitespace-pre-wrap pl-4 border-l-2 border-slate-300">
+                                          {statement.notes}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                            </Fragment>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Fixed Pagination Footer */}
+                {paginatedStatements.length > 0 && (
+                  <PaginationFooter
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    currentPage={currentPage}
+                    onPageChange={handlePageChange}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                    itemsPerPageOptions={[50, 100, 250, 0]}
+                    showItemsPerPage={true}
+                  />
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* View File Modal */}
+        {viewFileModal && selectedFile && (
+          <ViewMedia
+            selectedFile={selectedFile}
+            setSelectedFile={setSelectedFile}
+            setViewFileModal={setViewFileModal}
+            setPageNumber={setPageNumber}
+          />
+        )}
+
+        {/* Delete Statement Confirmation Modal */}
+        <DeleteConfirmation
+          isOpen={showDeleteStatementModal}
+          onClose={() => {
+            setShowDeleteStatementModal(false);
+            setStatementToDelete(null);
+          }}
+          onConfirm={handleDeleteStatementConfirm}
+          deleteWithInput={true}
+          heading="Statement"
+          message={`This will permanently delete the statement for ${
+            statementToDelete?.month_year || ""
+          } from ${
+            statementToDelete?.supplier?.name || ""
+          }. This action cannot be undone.`}
+          comparingName={statementToDelete?.month_year || ""}
+          isDeleting={isDeletingStatement}
+          entityType="supplier_statement"
+        />
+
+        {/* Upload Statement Modal */}
+        {showUploadStatementModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
+            <div
+              className="absolute inset-0 bg-slate-900/40"
+              onClick={resetForm}
+            />
+            <div className="relative bg-white w-full max-w-2xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 border-b border-slate-100">
+                <h2 className="text-xl font-semibold text-slate-800">
+                  {isEditingStatement ? "Edit Statement" : "Upload Statement"}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-600" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Top Section: Supplier & Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {!isEditingStatement && (
+                    <div className="relative" ref={supplierDropdownRef}>
+                      <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                        Select Supplier <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={supplierSearchTerm}
+                          onChange={handleSupplierSearchChange}
+                          onFocus={() => setIsSupplierDropdownOpen(true)}
+                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                          placeholder="Search or select supplier..."
+                          disabled={loadingSuppliers}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setIsSupplierDropdownOpen(!isSupplierDropdownOpen)
+                          }
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          {loadingSuppliers ? (
+                            <div className="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"></div>
+                          ) : (
+                            <ChevronDown
+                              className={`w-5 h-5 transition-transform duration-200 ${
+                                isSupplierDropdownOpen ? "rotate-180" : ""
+                              }`}
+                            />
+                          )}
+                        </button>
                       </div>
+
+                      {isSupplierDropdownOpen && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                          {loadingSuppliers ? (
+                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                              Loading suppliers...
+                            </div>
+                          ) : filteredSuppliers.length > 0 ? (
+                            filteredSuppliers.map((supplier) => (
+                              <button
+                                key={supplier.supplier_id}
+                                type="button"
+                                onClick={() =>
+                                  handleSupplierSelect(
+                                    supplier.supplier_id,
+                                    supplier.name,
+                                  )
+                                }
+                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                              >
+                                <div>
+                                  <div className="font-medium">
+                                    {supplier.name}
+                                  </div>
+                                  {supplier.email && (
+                                    <div className="text-xs text-slate-500">
+                                      {supplier.email}
+                                    </div>
+                                  )}
+                                </div>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                              No matching suppliers found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                      Month/Year <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="month"
+                      value={statementForm.month_year}
+                      onChange={(e) =>
+                        setStatementForm({
+                          ...statementForm,
+                          month_year: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+
+                  <div className="relative" ref={dueInDropdownRef}>
+                    <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                      Due In
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIsDueInDropdownOpen(!isDueInDropdownOpen)
+                        }
+                        className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none text-left"
+                      >
+                        {dueIn === "1 week" && "1 Week"}
+                        {dueIn === "2 weeks" && "2 Weeks"}
+                        {dueIn === "3 weeks" && "3 Weeks"}
+                        {dueIn === "4 weeks" && "4 Weeks"}
+                        {dueIn === "custom" && "Custom"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIsDueInDropdownOpen(!isDueInDropdownOpen)
+                        }
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <ChevronDown
+                          className={`w-5 h-5 transition-transform duration-200 ${
+                            isDueInDropdownOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
                     </div>
 
-                    {/* Tabs Section */}
-                    <div className="px-4 shrink-0 border-b border-slate-200">
-                      <nav className="flex space-x-6">
+                    {isDueInDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
                         <button
-                          onClick={() => setActiveTab("pending")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "pending"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                          type="button"
+                          onClick={() => {
+                            handleDueInChange("1 week");
+                            setIsDueInDropdownOpen(false);
+                          }}
+                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                        >
+                          1 Week
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleDueInChange("2 weeks");
+                            setIsDueInDropdownOpen(false);
+                          }}
+                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors"
+                        >
+                          2 Weeks
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleDueInChange("3 weeks");
+                            setIsDueInDropdownOpen(false);
+                          }}
+                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors"
+                        >
+                          3 Weeks
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleDueInChange("4 weeks");
+                            setIsDueInDropdownOpen(false);
+                          }}
+                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors"
+                        >
+                          4 Weeks
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleDueInChange("custom");
+                            setIsDueInDropdownOpen(false);
+                          }}
+                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors last:rounded-b-lg"
+                        >
+                          Custom
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                      Due Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={statementForm.due_date}
+                      onChange={handleDueDateChange}
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                      Amount
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-slate-500">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        value={statementForm.amount}
+                        onChange={(e) => {
+                          // Remove all non-numeric characters except decimal point
+                          let rawValue = e.target.value.replace(/[^0-9.]/g, "");
+
+                          // Allow only one decimal point
+                          const parts = rawValue.split(".");
+                          if (parts.length > 2) {
+                            rawValue = parts[0] + "." + parts.slice(1).join("");
+                          }
+
+                          // Limit to 2 decimal places
+                          if (parts.length === 2 && parts[1].length > 2) {
+                            rawValue =
+                              parts[0] + "." + parts[1].substring(0, 2);
+                          }
+
+                          // Format with commas for display
+                          let formattedValue = rawValue;
+                          if (rawValue) {
+                            const numValue = parseFloat(rawValue);
+                            if (!isNaN(numValue)) {
+                              // Only format the integer part with commas
+                              const [integerPart, decimalPart] =
+                                rawValue.split(".");
+                              const formattedInteger = parseInt(
+                                integerPart || "0",
+                              ).toLocaleString("en-US");
+                              formattedValue =
+                                decimalPart !== undefined
+                                  ? `${formattedInteger}.${decimalPart}`
+                                  : formattedInteger;
+                            }
+                          }
+
+                          setStatementForm({
+                            ...statementForm,
+                            amount: formattedValue,
+                          });
+                        }}
+                        placeholder="0.00"
+                        className="w-full px-4 py-3 pl-7 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="relative" ref={paymentStatusDropdownRef}>
+                    <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                      Payment Status <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIsPaymentStatusDropdownOpen(
+                            !isPaymentStatusDropdownOpen,
+                          )
+                        }
+                        className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none text-left"
+                      >
+                        {statementForm.payment_status === "PENDING"
+                          ? "Pending"
+                          : "Paid"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIsPaymentStatusDropdownOpen(
+                            !isPaymentStatusDropdownOpen,
+                          )
+                        }
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <ChevronDown
+                          className={`w-5 h-5 transition-transform duration-200 ${
+                            isPaymentStatusDropdownOpen ? "rotate-180" : ""
                           }`}
+                        />
+                      </button>
+                    </div>
+
+                    {isPaymentStatusDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStatementForm({
+                              ...statementForm,
+                              payment_status: "PENDING",
+                            });
+                            setIsPaymentStatusDropdownOpen(false);
+                          }}
+                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                         >
                           Pending
                         </button>
                         <button
-                          onClick={() => setActiveTab("paid")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            activeTab === "paid"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                          }`}
+                          type="button"
+                          onClick={() => {
+                            setStatementForm({
+                              ...statementForm,
+                              payment_status: "PAID",
+                            });
+                            setIsPaymentStatusDropdownOpen(false);
+                          }}
+                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors last:rounded-b-lg"
                         >
                           Paid
                         </button>
-                      </nav>
-                    </div>
-
-                    {/* Scrollable Table Section */}
-                    <div className="flex-1 overflow-auto">
-                      <div className="min-w-full">
-                        <table className="min-w-full divide-y divide-slate-200">
-                          <thead className="bg-slate-50 sticky top-0 z-10">
-                            <tr>
-                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider w-10"></th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("supplier")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Supplier
-                                  {getSortIcon("supplier")}
-                                </div>
-                              </th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("month_year")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Month/Year
-                                  {getSortIcon("month_year")}
-                                </div>
-                              </th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("due_date")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Due Date
-                                  {getSortIcon("due_date")}
-                                </div>
-                              </th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("amount")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Amount
-                                  {getSortIcon("amount")}
-                                </div>
-                              </th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("payment_status")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Status
-                                  {getSortIcon("payment_status")}
-                                </div>
-                              </th>
-                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                File
-                              </th>
-                              <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-slate-200">
-                            {paginatedStatements.length === 0 ? (
-                              <tr>
-                                <td
-                                  className="px-4 py-4 text-sm text-slate-500 text-center"
-                                  colSpan={8}
-                                >
-                                  {search
-                                    ? "No statements found matching your search"
-                                    : "No statements found"}
-                                </td>
-                              </tr>
-                            ) : (
-                              paginatedStatements.map((statement) => (
-                                <Fragment key={statement.id}>
-                                  <tr
-                                    className={`cursor-pointer hover:bg-slate-50 transition-colors duration-200 ${
-                                      statement.notes ? "" : ""
-                                    }`}
-                                    onClick={() =>
-                                      statement.notes &&
-                                      toggleNotes(statement.id)
-                                    }
-                                  >
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                      {statement.notes && (
-                                        <div className="flex items-center">
-                                          {expandedNotes.has(statement.id) ? (
-                                            <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
-                                          ) : (
-                                            <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-                                          )}
-                                        </div>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-slate-700 truncate">
-                                          {statement.supplier?.name || "-"}
-                                        </span>
-                                        {statement.supplier?.email && (
-                                          <span className="text-sm text-slate-600 truncate">
-                                            {statement.supplier.email}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                      {statement.month_year}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                      {new Date(
-                                        statement.due_date,
-                                      ).toLocaleDateString()}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                      {formatCurrency(statement.amount)}
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                      <div
-                                        ref={(el) => {
-                                          statusDropdownRefs.current[
-                                            statement.id
-                                          ] = el;
-                                        }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="relative inline-flex items-center gap-2"
-                                      >
-                                        <div className="relative">
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setOpenStatusDropdownId(
-                                                openStatusDropdownId ===
-                                                  statement.id
-                                                  ? null
-                                                  : statement.id,
-                                              )
-                                            }
-                                            disabled={
-                                              updatingStatusId === statement.id
-                                            }
-                                            className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded transition-all ${
-                                              statement.payment_status ===
-                                              "PAID"
-                                                ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                                : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                                            } ${
-                                              updatingStatusId === statement.id
-                                                ? "opacity-50 cursor-not-allowed"
-                                                : "cursor-pointer"
-                                            }`}
-                                          >
-                                            <span>
-                                              {statement.payment_status}
-                                            </span>
-                                            <ChevronDown
-                                              className={`h-3 w-3 transition-transform duration-200 ${
-                                                openStatusDropdownId ===
-                                                statement.id
-                                                  ? "rotate-180"
-                                                  : ""
-                                              }`}
-                                            />
-                                          </button>
-                                          {openStatusDropdownId ===
-                                            statement.id && (
-                                            <div className="absolute left-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                                              <div className="py-1">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    if (
-                                                      statement.payment_status !==
-                                                      "PENDING"
-                                                    ) {
-                                                      handleUpdateStatement(
-                                                        statement,
-                                                        "PENDING",
-                                                      );
-                                                    }
-                                                    setOpenStatusDropdownId(
-                                                      null,
-                                                    );
-                                                  }}
-                                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center gap-2"
-                                                >
-                                                  <span
-                                                    className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                                                      statement.payment_status ===
-                                                      "PENDING"
-                                                        ? "bg-yellow-100 text-yellow-800"
-                                                        : ""
-                                                    }`}
-                                                  >
-                                                    Pending
-                                                  </span>
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    if (
-                                                      statement.payment_status !==
-                                                      "PAID"
-                                                    ) {
-                                                      handleUpdateStatement(
-                                                        statement,
-                                                        "PAID",
-                                                      );
-                                                    }
-                                                    setOpenStatusDropdownId(
-                                                      null,
-                                                    );
-                                                  }}
-                                                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 flex items-center gap-2"
-                                                >
-                                                  <span
-                                                    className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                                                      statement.payment_status ===
-                                                      "PAID"
-                                                        ? "bg-green-100 text-green-800"
-                                                        : ""
-                                                    }`}
-                                                  >
-                                                    Paid
-                                                  </span>
-                                                </button>
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                        {updatingStatusId === statement.id && (
-                                          <div className="animate-spin h-3 w-3 border-2 border-slate-400 border-t-transparent rounded-full"></div>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
-                                      {statement.supplier_file?.filename || "-"}
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                      <div
-                                        className="flex items-center justify-end gap-2"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {statement.supplier_file && (
-                                          <button
-                                            onClick={() =>
-                                              handleViewStatement(statement)
-                                            }
-                                            className="cursor-pointer p-1.5 rounded hover:bg-slate-100"
-                                            title="View"
-                                          >
-                                            <Eye className="w-3.5 h-3.5 text-slate-600" />
-                                          </button>
-                                        )}
-                                        <button
-                                          onClick={() =>
-                                            handleEditStatement(statement)
-                                          }
-                                          className="cursor-pointer p-1.5 rounded hover:bg-slate-100"
-                                          title="Edit"
-                                        >
-                                          <Edit className="w-3.5 h-3.5 text-slate-600" />
-                                        </button>
-                                        <button
-                                          onClick={() =>
-                                            handleDeleteStatement(statement)
-                                          }
-                                          className="cursor-pointer p-1.5 rounded hover:bg-slate-100"
-                                          title="Delete"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                  {statement.notes &&
-                                    expandedNotes.has(statement.id) && (
-                                      <tr>
-                                        <td
-                                          colSpan={8}
-                                          className="px-4 pb-3 border-t border-slate-200 bg-slate-50"
-                                        >
-                                          <div className="mt-2 text-sm text-slate-700">
-                                            <span className="font-medium text-slate-800 mb-2 block">
-                                              Notes:
-                                            </span>
-                                            <div className="text-slate-600 whitespace-pre-wrap pl-4 border-l-2 border-slate-300">
-                                              {statement.notes}
-                                            </div>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    )}
-                                </Fragment>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
                       </div>
-                    </div>
-
-                    {/* Fixed Pagination Footer */}
-                    {paginatedStatements.length > 0 && (
-                      <PaginationFooter
-                        totalItems={totalItems}
-                        itemsPerPage={itemsPerPage}
-                        currentPage={currentPage}
-                        onPageChange={handlePageChange}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                        itemsPerPageOptions={[50, 100, 250, 0]}
-                        showItemsPerPage={true}
-                      />
                     )}
                   </div>
                 </div>
-              </>
-            )}
 
-            {/* View File Modal */}
-            {viewFileModal && selectedFile && (
+                <hr className="border-slate-100" />
+
+                {/* File Upload & Notes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* File Upload */}
+                  <div>
+                    <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                      Statement File{" "}
+                      {!isEditingStatement && (
+                        <span className="text-red-500">*</span>
+                      )}
+                    </label>
+                    {!statementForm.file ? (
+                      <div
+                        className={`border-2 border-dashed rounded-lg py-8 transition-all ${
+                          isDragging
+                            ? "border-primary bg-blue-50"
+                            : "border-slate-300 hover:border-primary hover:bg-slate-50"
+                        }`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                      >
+                        <input
+                          type="file"
+                          id="statement-file-upload"
+                          accept="application/pdf,image/jpeg,image/jpg,image/png"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="statement-file-upload"
+                          className="cursor-pointer flex flex-col items-center text-center w-full h-full"
+                        >
+                          <FileText
+                            className={`w-8 h-8 mb-2 ${
+                              isDragging ? "text-primary" : "text-slate-400"
+                            }`}
+                          />
+                          <p
+                            className={`text-sm font-medium ${
+                              isDragging ? "text-primary" : "text-slate-700"
+                            }`}
+                          >
+                            {isDragging
+                              ? "Drop file here"
+                              : "Click to upload or drag and drop"}
+                          </p>
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="border border-slate-200 rounded-lg p-3 flex items-center justify-between bg-slate-50">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          {filePreview ? (
+                            <img
+                              src={filePreview}
+                              alt="Preview"
+                              className="w-10 h-10 rounded object-cover border border-slate-200"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-white rounded border border-slate-200 flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-slate-400" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-800 truncate">
+                              {statementForm.file.name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {(statementForm.file.size / 1024 / 1024).toFixed(
+                                2,
+                              )}{" "}
+                              MB
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setShowFilePreview(true)}
+                            className="cursor-pointer p-1.5 hover:bg-white rounded border border-transparent hover:border-slate-200 transition-colors"
+                          >
+                            <Eye className="w-4 h-4 text-slate-600" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setStatementForm((prev) => ({
+                                ...prev,
+                                file: null,
+                              }));
+                              setFilePreview(null);
+                            }}
+                            className="cursor-pointer p-1.5 hover:bg-red-50 rounded border border-transparent hover:border-red-100 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {isEditingStatement && editingStatement?.supplier_file && (
+                      <p className="mt-2 text-xs text-slate-500">
+                        Current file: {editingStatement.supplier_file.filename}{" "}
+                        (Leave empty to keep current file)
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
+                      Notes
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={statementForm.notes}
+                      onChange={(e) =>
+                        setStatementForm({
+                          ...statementForm,
+                          notes: e.target.value,
+                        })
+                      }
+                      className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none"
+                      placeholder="Add any additional notes..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
+                <button
+                  onClick={resetForm}
+                  disabled={isUploadingStatement || isUpdatingStatement}
+                  className="cursor-pointer px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-colors text-sm font-medium disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={
+                    isEditingStatement
+                      ? handleUpdateStatement
+                      : handleUploadStatement
+                  }
+                  disabled={isUploadingStatement || isUpdatingStatement}
+                  className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isUploadingStatement || isUpdatingStatement ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      {isEditingStatement ? "Updating..." : "Uploading..."}
+                    </>
+                  ) : isEditingStatement ? (
+                    "Update Statement"
+                  ) : (
+                    "Upload Statement"
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* File Preview Modal */}
+            {showFilePreview && statementForm.file && (
               <ViewMedia
-                selectedFile={selectedFile}
-                setSelectedFile={setSelectedFile}
-                setViewFileModal={setViewFileModal}
+                selectedFile={{
+                  name: statementForm.file.name,
+                  url: URL.createObjectURL(statementForm.file),
+                  type: statementForm.file.type,
+                  size: statementForm.file.size,
+                  isExisting: false,
+                }}
+                setSelectedFile={() => {}}
+                setViewFileModal={setShowFilePreview}
                 setPageNumber={setPageNumber}
               />
             )}
-
-            {/* Delete Statement Confirmation Modal */}
-            <DeleteConfirmation
-              isOpen={showDeleteStatementModal}
-              onClose={() => {
-                setShowDeleteStatementModal(false);
-                setStatementToDelete(null);
-              }}
-              onConfirm={handleDeleteStatementConfirm}
-              deleteWithInput={true}
-              heading="Statement"
-              message={`This will permanently delete the statement for ${
-                statementToDelete?.month_year || ""
-              } from ${
-                statementToDelete?.supplier?.name || ""
-              }. This action cannot be undone.`}
-              comparingName={statementToDelete?.month_year || ""}
-              isDeleting={isDeletingStatement}
-              entityType="supplier_statement"
-            />
-
-            {/* Upload Statement Modal */}
-            {showUploadStatementModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
-                <div
-                  className="absolute inset-0 bg-slate-900/40"
-                  onClick={resetForm}
-                />
-                <div className="relative bg-white w-full max-w-2xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
-                  {/* Header */}
-                  <div className="flex items-center justify-between p-5 border-b border-slate-100">
-                    <h2 className="text-xl font-semibold text-slate-800">
-                      {isEditingStatement
-                        ? "Edit Statement"
-                        : "Upload Statement"}
-                    </h2>
-                    <button
-                      onClick={resetForm}
-                      className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                    >
-                      <X className="w-5 h-5 text-slate-600" />
-                    </button>
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {/* Top Section: Supplier & Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {!isEditingStatement && (
-                        <div className="relative" ref={supplierDropdownRef}>
-                          <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                            Select Supplier{" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={supplierSearchTerm}
-                              onChange={handleSupplierSearchChange}
-                              onFocus={() => setIsSupplierDropdownOpen(true)}
-                              className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                              placeholder="Search or select supplier..."
-                              disabled={loadingSuppliers}
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setIsSupplierDropdownOpen(
-                                  !isSupplierDropdownOpen,
-                                )
-                              }
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                            >
-                              {loadingSuppliers ? (
-                                <div className="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"></div>
-                              ) : (
-                                <ChevronDown
-                                  className={`w-5 h-5 transition-transform duration-200 ${
-                                    isSupplierDropdownOpen ? "rotate-180" : ""
-                                  }`}
-                                />
-                              )}
-                            </button>
-                          </div>
-
-                          {isSupplierDropdownOpen && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                              {loadingSuppliers ? (
-                                <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                  Loading suppliers...
-                                </div>
-                              ) : filteredSuppliers.length > 0 ? (
-                                filteredSuppliers.map((supplier) => (
-                                  <button
-                                    key={supplier.supplier_id}
-                                    type="button"
-                                    onClick={() =>
-                                      handleSupplierSelect(
-                                        supplier.supplier_id,
-                                        supplier.name,
-                                      )
-                                    }
-                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                  >
-                                    <div>
-                                      <div className="font-medium">
-                                        {supplier.name}
-                                      </div>
-                                      {supplier.email && (
-                                        <div className="text-xs text-slate-500">
-                                          {supplier.email}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </button>
-                                ))
-                              ) : (
-                                <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                  No matching suppliers found
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                          Month/Year <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="month"
-                          value={statementForm.month_year}
-                          onChange={(e) =>
-                            setStatementForm({
-                              ...statementForm,
-                              month_year: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                        />
-                      </div>
-
-                      <div className="relative" ref={dueInDropdownRef}>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                          Due In
-                        </label>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsDueInDropdownOpen(!isDueInDropdownOpen)
-                            }
-                            className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none text-left"
-                          >
-                            {dueIn === "1 week" && "1 Week"}
-                            {dueIn === "2 weeks" && "2 Weeks"}
-                            {dueIn === "3 weeks" && "3 Weeks"}
-                            {dueIn === "4 weeks" && "4 Weeks"}
-                            {dueIn === "custom" && "Custom"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsDueInDropdownOpen(!isDueInDropdownOpen)
-                            }
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                          >
-                            <ChevronDown
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                isDueInDropdownOpen ? "rotate-180" : ""
-                              }`}
-                            />
-                          </button>
-                        </div>
-
-                        {isDueInDropdownOpen && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleDueInChange("1 week");
-                                setIsDueInDropdownOpen(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                            >
-                              1 Week
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleDueInChange("2 weeks");
-                                setIsDueInDropdownOpen(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors"
-                            >
-                              2 Weeks
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleDueInChange("3 weeks");
-                                setIsDueInDropdownOpen(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors"
-                            >
-                              3 Weeks
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleDueInChange("4 weeks");
-                                setIsDueInDropdownOpen(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors"
-                            >
-                              4 Weeks
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleDueInChange("custom");
-                                setIsDueInDropdownOpen(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors last:rounded-b-lg"
-                            >
-                              Custom
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                          Due Date <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          value={statementForm.due_date}
-                          onChange={handleDueDateChange}
-                          className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                          Amount
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-slate-500">
-                            $
-                          </span>
-                          <input
-                            type="text"
-                            value={statementForm.amount}
-                            onChange={(e) => {
-                              // Remove all non-numeric characters except decimal point
-                              let rawValue = e.target.value.replace(
-                                /[^0-9.]/g,
-                                "",
-                              );
-
-                              // Allow only one decimal point
-                              const parts = rawValue.split(".");
-                              if (parts.length > 2) {
-                                rawValue =
-                                  parts[0] + "." + parts.slice(1).join("");
-                              }
-
-                              // Limit to 2 decimal places
-                              if (parts.length === 2 && parts[1].length > 2) {
-                                rawValue =
-                                  parts[0] + "." + parts[1].substring(0, 2);
-                              }
-
-                              // Format with commas for display
-                              let formattedValue = rawValue;
-                              if (rawValue) {
-                                const numValue = parseFloat(rawValue);
-                                if (!isNaN(numValue)) {
-                                  // Only format the integer part with commas
-                                  const [integerPart, decimalPart] =
-                                    rawValue.split(".");
-                                  const formattedInteger = parseInt(
-                                    integerPart || "0",
-                                  ).toLocaleString("en-US");
-                                  formattedValue =
-                                    decimalPart !== undefined
-                                      ? `${formattedInteger}.${decimalPart}`
-                                      : formattedInteger;
-                                }
-                              }
-
-                              setStatementForm({
-                                ...statementForm,
-                                amount: formattedValue,
-                              });
-                            }}
-                            placeholder="0.00"
-                            className="w-full px-4 py-3 pl-7 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="relative" ref={paymentStatusDropdownRef}>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                          Payment Status <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsPaymentStatusDropdownOpen(
-                                !isPaymentStatusDropdownOpen,
-                              )
-                            }
-                            className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none text-left"
-                          >
-                            {statementForm.payment_status === "PENDING"
-                              ? "Pending"
-                              : "Paid"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setIsPaymentStatusDropdownOpen(
-                                !isPaymentStatusDropdownOpen,
-                              )
-                            }
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                          >
-                            <ChevronDown
-                              className={`w-5 h-5 transition-transform duration-200 ${
-                                isPaymentStatusDropdownOpen ? "rotate-180" : ""
-                              }`}
-                            />
-                          </button>
-                        </div>
-
-                        {isPaymentStatusDropdownOpen && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setStatementForm({
-                                  ...statementForm,
-                                  payment_status: "PENDING",
-                                });
-                                setIsPaymentStatusDropdownOpen(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                            >
-                              Pending
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setStatementForm({
-                                  ...statementForm,
-                                  payment_status: "PAID",
-                                });
-                                setIsPaymentStatusDropdownOpen(false);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors last:rounded-b-lg"
-                            >
-                              Paid
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <hr className="border-slate-100" />
-
-                    {/* File Upload & Notes */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* File Upload */}
-                      <div>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                          Statement File{" "}
-                          {!isEditingStatement && (
-                            <span className="text-red-500">*</span>
-                          )}
-                        </label>
-                        {!statementForm.file ? (
-                          <div
-                            className={`border-2 border-dashed rounded-lg py-8 transition-all ${
-                              isDragging
-                                ? "border-primary bg-blue-50"
-                                : "border-slate-300 hover:border-primary hover:bg-slate-50"
-                            }`}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                          >
-                            <input
-                              type="file"
-                              id="statement-file-upload"
-                              accept="application/pdf,image/jpeg,image/jpg,image/png"
-                              onChange={handleFileChange}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor="statement-file-upload"
-                              className="cursor-pointer flex flex-col items-center text-center w-full h-full"
-                            >
-                              <FileText
-                                className={`w-8 h-8 mb-2 ${
-                                  isDragging ? "text-primary" : "text-slate-400"
-                                }`}
-                              />
-                              <p
-                                className={`text-sm font-medium ${
-                                  isDragging ? "text-primary" : "text-slate-700"
-                                }`}
-                              >
-                                {isDragging
-                                  ? "Drop file here"
-                                  : "Click to upload or drag and drop"}
-                              </p>
-                            </label>
-                          </div>
-                        ) : (
-                          <div className="border border-slate-200 rounded-lg p-3 flex items-center justify-between bg-slate-50">
-                            <div className="flex items-center gap-3 overflow-hidden">
-                              {filePreview ? (
-                                <img
-                                  src={filePreview}
-                                  alt="Preview"
-                                  className="w-10 h-10 rounded object-cover border border-slate-200"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 bg-white rounded border border-slate-200 flex items-center justify-center">
-                                  <FileText className="w-5 h-5 text-slate-400" />
-                                </div>
-                              )}
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-slate-800 truncate">
-                                  {statementForm.file.name}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  {(
-                                    statementForm.file.size /
-                                    1024 /
-                                    1024
-                                  ).toFixed(2)}{" "}
-                                  MB
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => setShowFilePreview(true)}
-                                className="cursor-pointer p-1.5 hover:bg-white rounded border border-transparent hover:border-slate-200 transition-colors"
-                              >
-                                <Eye className="w-4 h-4 text-slate-600" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setStatementForm((prev) => ({
-                                    ...prev,
-                                    file: null,
-                                  }));
-                                  setFilePreview(null);
-                                }}
-                                className="cursor-pointer p-1.5 hover:bg-red-50 rounded border border-transparent hover:border-red-100 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4 text-red-500" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        {isEditingStatement &&
-                          editingStatement?.supplier_file && (
-                            <p className="mt-2 text-xs text-slate-500">
-                              Current file:{" "}
-                              {editingStatement.supplier_file.filename} (Leave
-                              empty to keep current file)
-                            </p>
-                          )}
-                      </div>
-
-                      {/* Notes */}
-                      <div>
-                        <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                          Notes
-                        </label>
-                        <textarea
-                          rows={5}
-                          value={statementForm.notes}
-                          onChange={(e) =>
-                            setStatementForm({
-                              ...statementForm,
-                              notes: e.target.value,
-                            })
-                          }
-                          className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none"
-                          placeholder="Add any additional notes..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
-                    <button
-                      onClick={resetForm}
-                      disabled={isUploadingStatement || isUpdatingStatement}
-                      className="cursor-pointer px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-colors text-sm font-medium disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={
-                        isEditingStatement
-                          ? handleUpdateStatement
-                          : handleUploadStatement
-                      }
-                      disabled={isUploadingStatement || isUpdatingStatement}
-                      className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {isUploadingStatement || isUpdatingStatement ? (
-                        <>
-                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                          {isEditingStatement ? "Updating..." : "Uploading..."}
-                        </>
-                      ) : isEditingStatement ? (
-                        "Update Statement"
-                      ) : (
-                        "Upload Statement"
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* File Preview Modal */}
-                {showFilePreview && statementForm.file && (
-                  <ViewMedia
-                    selectedFile={{
-                      name: statementForm.file.name,
-                      url: URL.createObjectURL(statementForm.file),
-                      type: statementForm.file.type,
-                      size: statementForm.file.size,
-                      isExisting: false,
-                    }}
-                    setSelectedFile={() => {}}
-                    setViewFileModal={setShowFilePreview}
-                    setPageNumber={setPageNumber}
-                  />
-                )}
-              </div>
-            )}
           </div>
-        </div>
-      </div>
-    </AdminRoute>
+        )}
+      </main>
+    </AdminShell>
   );
 }

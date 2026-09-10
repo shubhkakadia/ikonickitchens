@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
-import Sidebar from "@/components/sidebar.jsx";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import PaginationFooter from "@/components/PaginationFooter";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -280,172 +279,165 @@ export default function ConfigPage() {
   };
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-4 py-2 shrink-0">
-              <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold text-slate-700">
-                  Configuration Management
-                </h1>
-                <SearchBar />
-              </div>
-            </div>
-
-            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                {/* Tabs Section */}
-                <div className="px-4 shrink-0 border-b border-slate-200">
-                  <nav className="-mb-px flex space-x-8 overflow-x-auto">
-                    {tabs.map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                          activeTab === tab.id
-                            ? "border-secondary text-secondary"
-                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </nav>
-                </div>
-
-                {/* Search Section */}
-                <div className="p-4 shrink-0 border-b border-slate-200">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder={`Search ${activeTab} items by value`}
-                        className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      onClick={() => {
-                        setFormData({ value: "" });
-                        setShowCreateModal(true);
-                      }}
-                      className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm shrink-0"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add {activeTabLabel}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Table Section */}
-                <div className="flex-1 overflow-auto">
-                  <div className="min-w-full">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                            Value
-                          </th>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                            Created At
-                          </th>
-                          <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {loading ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-slate-500 text-center"
-                              colSpan={3}
-                            >
-                              <div className="flex items-center justify-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Loading {activeTab} items...
-                              </div>
-                            </td>
-                          </tr>
-                        ) : error ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-red-600 text-center"
-                              colSpan={3}
-                            >
-                              {error}
-                            </td>
-                          </tr>
-                        ) : paginatedData.length === 0 ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-slate-500 text-center"
-                              colSpan={3}
-                            >
-                              {search
-                                ? `No ${activeTab} items found matching your search`
-                                : `No ${activeTab} items found`}
-                            </td>
-                          </tr>
-                        ) : (
-                          paginatedData.map((item) => (
-                            <tr
-                              key={item.id}
-                              className="hover:bg-slate-50 transition-colors duration-200"
-                            >
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-700">
-                                {item.value || "N/A"}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                                {item.createdAt
-                                  ? new Date(
-                                      item.createdAt,
-                                    ).toLocaleDateString()
-                                  : "N/A"}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openDeleteModal(item);
-                                    }}
-                                    className="cursor-pointer p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Delete"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Pagination Footer */}
-                {!loading && !error && paginatedData.length > 0 && (
-                  <PaginationFooter
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                    onItemsPerPageChange={setItemsPerPage}
-                    itemsPerPageOptions={[25, 50, 100, 0]}
-                    showItemsPerPage={true}
-                  />
-                )}
-              </div>
-            </div>
+    <AdminShell>
+      <main className="flex h-full min-h-0 flex-col overflow-hidden">
+        <div className="px-4 py-2 shrink-0">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold text-slate-700">
+              Configuration Management
+            </h1>
+            <SearchBar />
           </div>
         </div>
-      </div>
+
+        <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+            {/* Tabs Section */}
+            <div className="px-4 shrink-0 border-b border-slate-200">
+              <nav className="-mb-px flex space-x-8 overflow-x-auto">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === tab.id
+                        ? "border-primary text-primary"
+                        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            {/* Search Section */}
+            <div className="p-4 shrink-0 border-b border-slate-200">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
+                  <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder={`Search ${activeTab} items by value`}
+                    className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    setFormData({ value: "" });
+                    setShowCreateModal(true);
+                  }}
+                  className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add {activeTabLabel}
+                </button>
+              </div>
+            </div>
+
+            {/* Table Section */}
+            <div className="flex-1 overflow-auto">
+              <div className="min-w-full">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                        Value
+                      </th>
+                      <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                        Created At
+                      </th>
+                      <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {loading ? (
+                      <tr>
+                        <td
+                          className="px-4 py-4 text-sm text-slate-500 text-center"
+                          colSpan={3}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Loading {activeTab} items...
+                          </div>
+                        </td>
+                      </tr>
+                    ) : error ? (
+                      <tr>
+                        <td
+                          className="px-4 py-4 text-sm text-red-600 text-center"
+                          colSpan={3}
+                        >
+                          {error}
+                        </td>
+                      </tr>
+                    ) : paginatedData.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-4 py-4 text-sm text-slate-500 text-center"
+                          colSpan={3}
+                        >
+                          {search
+                            ? `No ${activeTab} items found matching your search`
+                            : `No ${activeTab} items found`}
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedData.map((item) => (
+                        <tr
+                          key={item.id}
+                          className="hover:bg-slate-50 transition-colors duration-200"
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-700">
+                            {item.value || "N/A"}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
+                            {item.createdAt
+                              ? new Date(item.createdAt).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openDeleteModal(item);
+                                }}
+                                className="cursor-pointer p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Pagination Footer */}
+            {!loading && !error && paginatedData.length > 0 && (
+              <PaginationFooter
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemsPerPageOptions={[25, 50, 100, 0]}
+                showItemsPerPage={true}
+              />
+            )}
+          </div>
+        </div>
+      </main>
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -514,6 +506,6 @@ export default function ConfigPage() {
         message={`Are you sure you want to delete "${selectedItem?.value}"? This action cannot be undone.`}
         isDeleting={isDeleting}
       />
-    </AdminRoute>
+    </AdminShell>
   );
 }

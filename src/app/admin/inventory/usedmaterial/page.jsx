@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import Sidebar from "@/components/sidebar";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import PaginationFooter from "@/components/PaginationFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -1096,850 +1095,886 @@ export default function page() {
   };
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-sm text-slate-600 font-medium">
-                    Loading used material details...
-                  </p>
-                </div>
+    <AdminShell>
+      <main className="flex h-full min-h-0 flex-col overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+              <p className="text-sm text-slate-600 font-medium">
+                Loading used material details...
+              </p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="px-4 py-2 shrink-0 flex items-center justify-between">
+              <h1 className="text-xl font-bold text-slate-700">
+                Used Material
+              </h1>
+              <div className="flex items-center gap-2">
+                <SearchBar />
+                <button
+                  onClick={() => setShowManualAddModal(true)}
+                  className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 font-medium text-sm shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Manually Add Material Used
+                </button>
               </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-sm text-red-600 mb-4 font-medium">
-                    {error}
-                  </p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="px-4 py-2 shrink-0 flex items-center justify-between">
-                  <h1 className="text-xl font-bold text-slate-700">
-                    Used Material
-                  </h1>
-                  <div className="flex items-center gap-2">
-                    <SearchBar />
-                    <button
-                      onClick={() => setShowManualAddModal(true)}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Manually Add Material Used
-                    </button>
+            </div>
+
+            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+                {loading ? (
+                  <div className="flex justify-center items-center h-full">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                      <p className="text-sm text-slate-600 font-medium">
+                        Loading MTOs...
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Tabs Section */}
+                    <div className="px-4 shrink-0 border-b border-slate-200">
+                      <nav className="flex space-x-6">
+                        <button
+                          onClick={() => setMtoTab("recent")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            mtoTab === "recent"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          Recently Used ({recentUsage.length})
+                        </button>
+                        <button
+                          onClick={() => setMtoTab("active")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            mtoTab === "active"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          Active ({activeMtos.length})
+                        </button>
+                        <button
+                          onClick={() => setMtoTab("upcoming")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            mtoTab === "upcoming"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          Upcoming ({upcomingMtos.length})
+                        </button>
+                        <button
+                          onClick={() => setMtoTab("completed")}
+                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
+                            mtoTab === "completed"
+                              ? "border-primary text-primary"
+                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          Completed ({completedMtos.length})
+                        </button>
+                      </nav>
+                    </div>
 
-                <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                    {loading ? (
-                      <div className="flex justify-center items-center h-full">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                          <p className="text-sm text-slate-600 font-medium">
-                            Loading MTOs...
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Tabs Section */}
-                        <div className="px-4 shrink-0 border-b border-slate-200">
-                          <nav className="flex space-x-6">
-                            <button
-                              onClick={() => setMtoTab("recent")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                mtoTab === "recent"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                              }`}
-                            >
-                              Recently Used ({recentUsage.length})
-                            </button>
-                            <button
-                              onClick={() => setMtoTab("active")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                mtoTab === "active"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                              }`}
-                            >
-                              Active ({activeMtos.length})
-                            </button>
-                            <button
-                              onClick={() => setMtoTab("upcoming")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                mtoTab === "upcoming"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                              }`}
-                            >
-                              Upcoming ({upcomingMtos.length})
-                            </button>
-                            <button
-                              onClick={() => setMtoTab("completed")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                mtoTab === "completed"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                              }`}
-                            >
-                              Completed ({completedMtos.length})
-                            </button>
-                          </nav>
-                        </div>
-
-                        {/* Scrollable Content */}
-                        <div className="flex-1 overflow-auto px-4 py-3">
-                          {mtoTab === "recent" ? (
-                            loadingRecentUsage ? (
-                              <div className="flex justify-center items-center py-10">
-                                <div className="text-center">
-                                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-secondary mx-auto mb-3" />
-                                  <p className="text-sm text-slate-500 font-medium">
-                                    Loading usage logs...
-                                  </p>
-                                </div>
-                              </div>
-                            ) : recentUsage.length === 0 ? (
-                              <div className="flex justify-center items-center py-10">
-                                <div className="text-center">
-                                  <History className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                                  <p className="text-sm text-slate-500 font-medium">
-                                    No recently used materials
-                                  </p>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col h-full overflow-hidden">
-                                <div className="p-3 shrink-0 border-b border-slate-200">
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <div className="relative flex-1 min-w-[220px] max-w-2xl">
-                                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                      <input
-                                        type="search"
-                                        value={recentSearch}
-                                        onChange={(event) =>
-                                          setRecentSearch(event.target.value)
-                                        }
-                                        placeholder="Search material, project, or lot..."
-                                        className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                                      />
-                                    </div>
-                                    <div className="ml-auto flex items-center gap-2 shrink-0">
-                                      {(recentSearch ||
-                                        recentCategoryFilter ||
-                                        recentProjectFilter ||
-                                        recentLotFilter) && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setRecentSearch("");
-                                            setRecentCategoryFilter("");
-                                            setRecentProjectFilter("");
-                                            setRecentLotFilter("");
-                                          }}
-                                          className="rounded-lg px-3 py-2 text-sm font-medium text-primary hover:bg-red-50"
-                                        >
-                                          Clear filters
-                                        </button>
-                                      )}
-                                      {renderRecentFilterDropdown({
-                                        id: "category",
-                                        label: "All categories",
-                                        value: recentCategoryFilter,
-                                        options: [
-                                          {
-                                            value: "",
-                                            label: "All categories",
-                                          },
-                                          ...recentCategoryOptions.map(
-                                            (category) => ({
-                                              value: category,
-                                              label:
-                                                formatCategoryName(category),
-                                            }),
-                                          ),
-                                        ],
-                                        onChange: setRecentCategoryFilter,
-                                      })}
-                                      {renderRecentFilterDropdown({
-                                        id: "project",
-                                        label: "All projects",
-                                        value: recentProjectFilter,
-                                        options: [
-                                          { value: "", label: "All projects" },
-                                          ...recentProjectOptions.map(
-                                            (project) => ({
-                                              value: project.projectId,
-                                              label: `${project.project} (${project.projectId})`,
-                                            }),
-                                          ),
-                                        ],
-                                        onChange: setRecentProjectFilter,
-                                      })}
-                                      {renderRecentFilterDropdown({
-                                        id: "lot",
-                                        label: "All lots",
-                                        value: recentLotFilter,
-                                        options: [
-                                          { value: "", label: "All lots" },
-                                          ...recentLotOptions.map((lot) => ({
-                                            value: lot.lot_id,
-                                            label: `${lot.name || lot.lot_id} (${lot.lot_id})`,
-                                          })),
-                                        ],
-                                        onChange: setRecentLotFilter,
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="flex-1 overflow-auto">
-                                  {filteredRecentUsage.length === 0 ? (
-                                    <div className="rounded-lg border border-slate-200 bg-white py-10 text-center text-sm text-slate-500 m-3">
-                                      No materials match the selected filters.
-                                    </div>
-                                  ) : (
-                                    <div className="overflow-x-auto">
-                                      <table className="min-w-full divide-y divide-slate-200">
-                                        <thead className="bg-slate-50 sticky top-0 z-10">
-                                          <tr>
-                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                              Image
-                                            </th>
-                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                              Material
-                                            </th>
-                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                              Category
-                                            </th>
-                                            <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                              Quantity
-                                            </th>
-                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                              Used At
-                                            </th>
-                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                              Project
-                                            </th>
-                                            <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                              Lot
-                                            </th>
-                                          </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-slate-200">
-                                          {paginatedRecentUsage.map(
-                                            (transaction) => {
-                                              const itemDetails =
-                                                getItemDetails(
-                                                  transaction.item,
-                                                );
-                                              const location =
-                                                getUsageLocation(transaction);
-                                              return (
-                                                <tr
-                                                  key={transaction.id}
-                                                  className="hover:bg-slate-50"
-                                                >
-                                                  <td className="px-4 py-3">
-                                                    {getImageUrl(
-                                                      transaction.item?.image,
-                                                    ) ? (
-                                                      <Image
-                                                        src={getImageUrl(
-                                                          transaction.item
-                                                            .image,
-                                                        )}
-                                                        alt={
-                                                          itemDetails?.name ||
-                                                          "Material"
-                                                        }
-                                                        width={40}
-                                                        height={40}
-                                                        className="h-10 w-10 rounded object-cover border border-slate-200"
-                                                      />
-                                                    ) : (
-                                                      <div className="h-10 w-10 rounded border border-slate-200 bg-slate-50 flex items-center justify-center">
-                                                        <Package className="h-5 w-5 text-slate-300" />
-                                                      </div>
-                                                    )}
-                                                  </td>
-                                                  <td className="px-4 py-3">
-                                                    <div className="text-sm font-medium text-slate-700">
-                                                      {itemDetails?.name}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500">
-                                                      {[
-                                                        itemDetails?.brand,
-                                                        itemDetails?.color,
-                                                        itemDetails?.finish,
-                                                        itemDetails?.type,
-                                                        itemDetails?.dimensions,
-                                                      ]
-                                                        .filter(Boolean)
-                                                        .join(" · ") ||
-                                                        transaction.item
-                                                          ?.description ||
-                                                        "No additional details"}
-                                                    </div>
-                                                  </td>
-                                                  <td className="px-4 py-3 text-sm text-slate-600">
-                                                    <span className="inline-flex items-center gap-1.5">
-                                                      {getCategoryIcon(
-                                                        transaction.item
-                                                          ?.category,
-                                                      )}
-                                                      {formatCategoryName(
-                                                        transaction.item
-                                                          ?.category ||
-                                                          "UNCATEGORIZED",
-                                                      )}
-                                                    </span>
-                                                  </td>
-                                                  <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">
-                                                    {transaction.quantity}
-                                                    {transaction.item
-                                                      ?.measurement_unit
-                                                      ? ` ${transaction.item.measurement_unit}`
-                                                      : ""}
-                                                  </td>
-                                                  <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
-                                                    {new Date(
-                                                      transaction.createdAt,
-                                                    ).toLocaleString("en-AU", {
-                                                      dateStyle: "medium",
-                                                      timeStyle: "short",
-                                                    })}
-                                                  </td>
-                                                  <td className="px-4 py-3 text-sm text-slate-700">
-                                                    {location.projectId ? (
-                                                      <Link
-                                                        href={`/admin/projects/${location.projectId}`}
-                                                        className="font-medium text-primary hover:underline"
-                                                      >
-                                                        {location.project}
-                                                      </Link>
-                                                    ) : (
-                                                      <span>
-                                                        {location.project}
-                                                      </span>
-                                                    )}
-                                                    {location.projectId && (
-                                                      <div className="text-xs text-slate-500">
-                                                        ID: {location.projectId}
-                                                      </div>
-                                                    )}
-                                                  </td>
-                                                  <td className="px-4 py-3 text-sm text-slate-700">
-                                                    {location.lots.length >
-                                                    0 ? (
-                                                      <div className="space-y-1">
-                                                        {location.lots.map(
-                                                          (lot) => (
-                                                            <div
-                                                              key={lot.lot_id}
-                                                            >
-                                                              <div>
-                                                                {lot.name ||
-                                                                  lot.lot_id}
-                                                              </div>
-                                                              <div className="text-xs text-slate-500">
-                                                                ID: {lot.lot_id}
-                                                              </div>
-                                                            </div>
-                                                          ),
-                                                        )}
-                                                      </div>
-                                                    ) : (
-                                                      "Not linked"
-                                                    )}
-                                                  </td>
-                                                </tr>
-                                              );
-                                            },
-                                          )}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <PaginationFooter
-                                  totalItems={filteredRecentUsage.length}
-                                  itemsPerPage={recentItemsPerPage}
-                                  currentPage={recentPage}
-                                  onPageChange={setRecentPage}
-                                  onItemsPerPageChange={setRecentItemsPerPage}
-                                />
-                              </div>
-                            )
-                          ) : mtos.length === 0 ? (
-                            <div className="flex justify-center items-center py-10">
-                              <div className="text-center">
-                                <div className="h-12 w-12 text-slate-400 mx-auto mb-4">
-                                  📦
-                                </div>
-                                <p className="text-sm text-slate-500 font-medium">
-                                  No Jobs found
-                                </p>
-                              </div>
-                            </div>
-                          ) : displayedMtos.length === 0 ? (
-                            <div className="flex justify-center items-center py-10">
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-auto p-4">
+                      {mtoTab === "recent" ? (
+                        loadingRecentUsage ? (
+                          <div className="flex justify-center items-center py-10">
+                            <div className="text-center">
+                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4" />
                               <p className="text-sm text-slate-500 font-medium">
-                                {mtoTab === "active"
-                                  ? "No Active MTOs"
-                                  : mtoTab === "upcoming"
-                                    ? "No Upcoming MTOs"
-                                    : "No Completed MTOs"}
+                                Loading usage logs...
                               </p>
                             </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {displayedMtos.map((mto) => {
-                                const isExpanded = expandedMto === mto.id;
-                                const groupedItems = groupItemsByCategory(
-                                  mto.items || [],
-                                );
-                                const lotIds =
-                                  mto.lots && mto.lots.length > 0
-                                    ? mto.lots
-                                        .map((lot) => lot.lot_id)
-                                        .join(", ")
-                                    : "N/A";
+                          </div>
+                        ) : recentUsage.length === 0 ? (
+                          <div className="flex justify-center items-center py-10">
+                            <div className="text-center">
+                              <History className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                              <p className="text-sm text-slate-500 font-medium">
+                                No recently used materials
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col h-full overflow-hidden">
+                            <div className="p-3 shrink-0 border-b border-slate-200">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="relative flex-1 min-w-[220px] max-w-2xl">
+                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                  <input
+                                    type="text"
+                                    value={recentSearch}
+                                    onChange={(event) =>
+                                      setRecentSearch(event.target.value)
+                                    }
+                                    placeholder="Search material, project, or lot..."
+                                    className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                                  />
+                                </div>
+                                <div className="ml-auto flex items-center gap-2 shrink-0">
+                                  {(recentSearch ||
+                                    recentCategoryFilter ||
+                                    recentProjectFilter ||
+                                    recentLotFilter) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setRecentSearch("");
+                                        setRecentCategoryFilter("");
+                                        setRecentProjectFilter("");
+                                        setRecentLotFilter("");
+                                      }}
+                                      className="rounded-lg px-3 py-2 text-sm font-medium text-primary hover:bg-red-50"
+                                    >
+                                      Clear filters
+                                    </button>
+                                  )}
+                                  {renderRecentFilterDropdown({
+                                    id: "category",
+                                    label: "All categories",
+                                    value: recentCategoryFilter,
+                                    options: [
+                                      {
+                                        value: "",
+                                        label: "All categories",
+                                      },
+                                      ...recentCategoryOptions.map(
+                                        (category) => ({
+                                          value: category,
+                                          label: formatCategoryName(category),
+                                        }),
+                                      ),
+                                    ],
+                                    onChange: setRecentCategoryFilter,
+                                  })}
+                                  {renderRecentFilterDropdown({
+                                    id: "project",
+                                    label: "All projects",
+                                    value: recentProjectFilter,
+                                    options: [
+                                      { value: "", label: "All projects" },
+                                      ...recentProjectOptions.map(
+                                        (project) => ({
+                                          value: project.projectId,
+                                          label: `${project.project} (${project.projectId})`,
+                                        }),
+                                      ),
+                                    ],
+                                    onChange: setRecentProjectFilter,
+                                  })}
+                                  {renderRecentFilterDropdown({
+                                    id: "lot",
+                                    label: "All lots",
+                                    value: recentLotFilter,
+                                    options: [
+                                      { value: "", label: "All lots" },
+                                      ...recentLotOptions.map((lot) => ({
+                                        value: lot.lot_id,
+                                        label: `${lot.name || lot.lot_id} (${lot.lot_id})`,
+                                      })),
+                                    ],
+                                    onChange: setRecentLotFilter,
+                                  })}
+                                </div>
+                              </div>
+                            </div>
 
-                                return (
-                                  <div
-                                    key={mto.id}
-                                    className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden"
+                            <div className="flex-1 overflow-auto">
+                              {filteredRecentUsage.length === 0 ? (
+                                <div className="rounded-lg border border-slate-200 bg-white py-10 text-center text-sm text-slate-500 m-3">
+                                  No materials match the selected filters.
+                                </div>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full divide-y divide-slate-200">
+                                    <thead className="bg-slate-50 sticky top-0 z-10">
+                                      <tr>
+                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                          Image
+                                        </th>
+                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                          Material
+                                        </th>
+                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                          Category
+                                        </th>
+                                        <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                          Quantity
+                                        </th>
+                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                          Used At
+                                        </th>
+                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                          Project
+                                        </th>
+                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                                          Lot
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-slate-200">
+                                      {paginatedRecentUsage.map(
+                                        (transaction) => {
+                                          const itemDetails = getItemDetails(
+                                            transaction.item,
+                                          );
+                                          const location =
+                                            getUsageLocation(transaction);
+                                          return (
+                                            <tr
+                                              key={transaction.id}
+                                              className="hover:bg-slate-50"
+                                            >
+                                              <td className="px-4 py-3">
+                                                {getImageUrl(
+                                                  transaction.item?.image,
+                                                ) ? (
+                                                  <Image
+                                                    src={getImageUrl(
+                                                      transaction.item.image,
+                                                    )}
+                                                    alt={
+                                                      itemDetails?.name ||
+                                                      "Material"
+                                                    }
+                                                    width={40}
+                                                    height={40}
+                                                    className="h-10 w-10 rounded object-cover border border-slate-200"
+                                                  />
+                                                ) : (
+                                                  <div className="h-10 w-10 rounded border border-slate-200 bg-slate-50 flex items-center justify-center">
+                                                    <Package className="h-5 w-5 text-slate-300" />
+                                                  </div>
+                                                )}
+                                              </td>
+                                              <td className="px-4 py-3">
+                                                <div className="text-sm font-medium text-slate-700">
+                                                  {itemDetails?.name}
+                                                </div>
+                                                <div className="text-xs text-slate-500">
+                                                  {[
+                                                    itemDetails?.brand,
+                                                    itemDetails?.color,
+                                                    itemDetails?.finish,
+                                                    itemDetails?.type,
+                                                    itemDetails?.dimensions,
+                                                  ]
+                                                    .filter(Boolean)
+                                                    .join(" · ") ||
+                                                    transaction.item
+                                                      ?.description ||
+                                                    "No additional details"}
+                                                </div>
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-slate-600">
+                                                <span className="inline-flex items-center gap-1.5">
+                                                  {getCategoryIcon(
+                                                    transaction.item?.category,
+                                                  )}
+                                                  {formatCategoryName(
+                                                    transaction.item
+                                                      ?.category ||
+                                                      "UNCATEGORIZED",
+                                                  )}
+                                                </span>
+                                              </td>
+                                              <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">
+                                                {transaction.quantity}
+                                                {transaction.item
+                                                  ?.measurement_unit
+                                                  ? ` ${transaction.item.measurement_unit}`
+                                                  : ""}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                                                {new Date(
+                                                  transaction.createdAt,
+                                                ).toLocaleString("en-AU", {
+                                                  dateStyle: "medium",
+                                                  timeStyle: "short",
+                                                })}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-slate-700">
+                                                {location.projectId ? (
+                                                  <Link
+                                                    href={`/admin/projects/${location.projectId}`}
+                                                    className="font-medium text-primary hover:underline"
+                                                  >
+                                                    {location.project}
+                                                  </Link>
+                                                ) : (
+                                                  <span>
+                                                    {location.project}
+                                                  </span>
+                                                )}
+                                                {location.projectId && (
+                                                  <div className="text-xs text-slate-500">
+                                                    ID: {location.projectId}
+                                                  </div>
+                                                )}
+                                              </td>
+                                              <td className="px-4 py-3 text-sm text-slate-700">
+                                                {location.lots.length > 0 ? (
+                                                  <div className="space-y-1">
+                                                    {location.lots.map(
+                                                      (lot) => (
+                                                        <div key={lot.lot_id}>
+                                                          <div>
+                                                            {lot.name ||
+                                                              lot.lot_id}
+                                                          </div>
+                                                          <div className="text-xs text-slate-500">
+                                                            ID: {lot.lot_id}
+                                                          </div>
+                                                        </div>
+                                                      ),
+                                                    )}
+                                                  </div>
+                                                ) : (
+                                                  "Not linked"
+                                                )}
+                                              </td>
+                                            </tr>
+                                          );
+                                        },
+                                      )}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+
+                            <PaginationFooter
+                              totalItems={filteredRecentUsage.length}
+                              itemsPerPage={recentItemsPerPage}
+                              currentPage={recentPage}
+                              onPageChange={setRecentPage}
+                              onItemsPerPageChange={setRecentItemsPerPage}
+                            />
+                          </div>
+                        )
+                      ) : mtos.length === 0 ? (
+                        <div className="flex justify-center items-center py-10">
+                          <div className="text-center">
+                            <div className="h-12 w-12 text-slate-400 mx-auto mb-4">
+                              📦
+                            </div>
+                            <p className="text-sm text-slate-500 font-medium">
+                              No Jobs found
+                            </p>
+                          </div>
+                        </div>
+                      ) : displayedMtos.length === 0 ? (
+                        <div className="flex justify-center items-center py-10">
+                          <p className="text-sm text-slate-500 font-medium">
+                            {mtoTab === "active"
+                              ? "No Active MTOs"
+                              : mtoTab === "upcoming"
+                                ? "No Upcoming MTOs"
+                                : "No Completed MTOs"}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {displayedMtos.map((mto) => {
+                            const isExpanded = expandedMto === mto.id;
+                            const groupedItems = groupItemsByCategory(
+                              mto.items || [],
+                            );
+                            const lotIds =
+                              mto.lots && mto.lots.length > 0
+                                ? mto.lots.map((lot) => lot.lot_id).join(", ")
+                                : "N/A";
+
+                            return (
+                              <div
+                                key={mto.id}
+                                className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden"
+                              >
+                                {/* Accordion Header */}
+                                <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleAccordion(mto.id)}
+                                    className="flex items-center gap-3 flex-1 text-left"
                                   >
-                                    {/* Accordion Header */}
-                                    <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                    <div className="shrink-0">
+                                      {isExpanded ? (
+                                        <ChevronUp className="w-4 h-4 text-slate-500" />
+                                      ) : (
+                                        <ChevronDown className="w-4 h-4 text-slate-500" />
+                                      )}
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="text-sm font-semibold text-slate-700">
+                                        {mto.project?.name || "Manually Added"}
+                                      </div>
+                                      <div className="text-sm text-slate-500 mt-0.5">
+                                        Lot ID: {lotIds}
+                                      </div>
+                                    </div>
+                                  </button>
+
+                                  {/* Used Material Status (one-way: Active -> Completed) */}
+                                  {mtoTab === "upcoming" ? (
+                                    <div className="shrink-0 ml-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-orange-50 text-sm font-semibold text-orange-700">
+                                      <span className="h-2 w-2 rounded-full bg-orange-500" />
+                                      Upcoming
+                                    </div>
+                                  ) : !Boolean(mto.used_material_completed) ? (
+                                    <div
+                                      className="relative shrink-0 ml-4"
+                                      data-mto-status-dropdown
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
                                       <button
                                         type="button"
-                                        onClick={() => toggleAccordion(mto.id)}
-                                        className="flex items-center gap-3 flex-1 text-left"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMtoStatusDropdownId((prev) =>
+                                            prev === mto.id ? null : mto.id,
+                                          );
+                                        }}
+                                        disabled={
+                                          updatingMtoStatusId === mto.id
+                                        }
+                                        className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                                        title="Mark this MTO as completed"
                                       >
-                                        <div className="shrink-0">
-                                          {isExpanded ? (
-                                            <ChevronUp className="w-4 h-4 text-slate-500" />
-                                          ) : (
-                                            <ChevronDown className="w-4 h-4 text-slate-500" />
-                                          )}
-                                        </div>
-                                        <div className="flex-1">
-                                          <div className="text-sm font-semibold text-slate-700">
-                                            {mto.project?.name ||
-                                              "Manually Added"}
-                                          </div>
-                                          <div className="text-sm text-slate-500 mt-0.5">
-                                            Lot ID: {lotIds}
-                                          </div>
-                                        </div>
+                                        <span className="inline-flex items-center gap-2">
+                                          <span className="h-2 w-2 rounded-full bg-blue-500" />
+                                          Active
+                                        </span>
+                                        <ChevronDown className="w-4 h-4 text-slate-500" />
                                       </button>
 
-                                      {/* Used Material Status (one-way: Active -> Completed) */}
-                                      {mtoTab === "upcoming" ? (
-                                        <div className="shrink-0 ml-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-orange-50 text-sm font-semibold text-orange-700">
-                                          <span className="h-2 w-2 rounded-full bg-orange-500" />
-                                          Upcoming
-                                        </div>
-                                      ) : !Boolean(
-                                          mto.used_material_completed,
-                                        ) ? (
-                                        <div
-                                          className="relative shrink-0 ml-4"
-                                          data-mto-status-dropdown
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
+                                      {openMtoStatusDropdownId === mto.id && (
+                                        <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-30 overflow-hidden">
                                           <button
                                             type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setOpenMtoStatusDropdownId(
-                                                (prev) =>
-                                                  prev === mto.id
-                                                    ? null
-                                                    : mto.id,
+                                              handleUpdateMtoUsedMaterialStatus(
+                                                mto.id,
+                                                true,
                                               );
                                             }}
-                                            disabled={
-                                              updatingMtoStatusId === mto.id
-                                            }
-                                            className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                                            title="Mark this MTO as completed"
+                                            className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center justify-between"
                                           >
-                                            <span className="inline-flex items-center gap-2">
-                                              <span className="h-2 w-2 rounded-full bg-blue-500" />
-                                              Active
+                                            <span className="font-medium text-slate-700">
+                                              Mark Completed
                                             </span>
-                                            <ChevronDown className="w-4 h-4 text-slate-500" />
+                                            <Check className="w-4 h-4 text-green-600" />
                                           </button>
-
-                                          {openMtoStatusDropdownId ===
-                                            mto.id && (
-                                            <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-30 overflow-hidden">
-                                              <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleUpdateMtoUsedMaterialStatus(
-                                                    mto.id,
-                                                    true,
-                                                  );
-                                                }}
-                                                className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center justify-between"
-                                              >
-                                                <span className="font-medium text-slate-700">
-                                                  Mark Completed
-                                                </span>
-                                                <Check className="w-4 h-4 text-green-600" />
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <div className="shrink-0 ml-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700">
-                                          <span className="h-2 w-2 rounded-full bg-green-500" />
-                                          Completed
                                         </div>
                                       )}
                                     </div>
+                                  ) : (
+                                    <div className="shrink-0 ml-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700">
+                                      <span className="h-2 w-2 rounded-full bg-green-500" />
+                                      Completed
+                                    </div>
+                                  )}
+                                </div>
 
-                                    {/* Accordion Content */}
-                                    {isExpanded && (
-                                      <div className="border-t border-slate-200 px-4 py-3 bg-slate-50">
-                                        {Object.keys(groupedItems).length ===
-                                        0 ? (
-                                          <div className="text-sm text-slate-500 text-center py-4 font-medium">
-                                            No items in this MTO
-                                          </div>
-                                        ) : (
-                                          <div className="space-y-3">
-                                            {Object.entries(groupedItems).map(
-                                              ([category, items]) => (
-                                                <div
-                                                  key={category}
-                                                  className="bg-white rounded-lg p-3 border border-slate-200"
-                                                >
-                                                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
-                                                    {getCategoryIcon(category)}
-                                                    <h3 className="text-sm font-semibold text-slate-700">
-                                                      {formatCategoryName(
-                                                        category,
-                                                      )}
-                                                    </h3>
-                                                    <span className="text-sm text-slate-500 ml-auto font-medium">
-                                                      {items.length} item(s)
-                                                    </span>
-                                                  </div>
-                                                  <div className="space-y-3">
-                                                    {items.map((mtoItem) => {
-                                                      const itemDetails =
-                                                        getItemDetails(
-                                                          mtoItem.item,
-                                                        );
-                                                      // Compare string input with original number value
-                                                      const inputString =
-                                                        quantityInputs[
-                                                          mtoItem.id
-                                                        ];
-                                                      const originalValue =
-                                                        String(
-                                                          mtoItem.quantity_used ||
-                                                            0,
-                                                        );
-                                                      const hasChanges =
-                                                        inputString !==
-                                                          undefined &&
-                                                        inputString !==
-                                                          originalValue;
-                                                      return (
-                                                        <div
-                                                          key={mtoItem.id}
-                                                          className="bg-slate-50 rounded-lg p-3 border border-slate-200 hover:bg-slate-100 transition-colors"
-                                                        >
-                                                          {/* Single Row: Item Details + Quantity Columns */}
-                                                          <div className="flex gap-4 items-center">
-                                                            {/* Item Image */}
-                                                            <div className="shrink-0">
-                                                              {itemDetails?.image ? (
-                                                                <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-300 bg-white flex items-center justify-center relative">
-                                                                  <Image
-                                                                    loading="lazy"
-                                                                    src={
-                                                                      itemDetails.image
-                                                                    }
-                                                                    alt={
-                                                                      itemDetails.name ||
-                                                                      "Item"
-                                                                    }
-                                                                    className="object-cover w-full h-full"
-                                                                    width={64}
-                                                                    height={64}
-                                                                    onError={(
-                                                                      e,
-                                                                    ) => {
-                                                                      e.target.style.display =
-                                                                        "none";
-                                                                      const fallback =
-                                                                        e.target.parentElement?.querySelector(
-                                                                          ".image-fallback",
-                                                                        );
-                                                                      if (
-                                                                        fallback
-                                                                      ) {
-                                                                        fallback.style.display =
-                                                                          "flex";
-                                                                      }
-                                                                    }}
-                                                                  />
-                                                                  <div className="hidden image-fallback absolute inset-0 w-16 h-16 rounded-lg border border-slate-300 bg-slate-200 items-center justify-center">
-                                                                    <ImageIcon className="w-6 h-6 text-slate-400" />
-                                                                  </div>
-                                                                </div>
-                                                              ) : (
-                                                                <div className="w-16 h-16 rounded-lg border border-slate-300 bg-slate-200 flex items-center justify-center">
-                                                                  <ImageIcon className="w-6 h-6 text-slate-400" />
-                                                                </div>
-                                                              )}
-                                                            </div>
-
-                                                            {/* Item Details */}
-                                                            <div className="flex-1 min-w-0">
-                                                              <div className="text-sm font-semibold text-slate-800 mb-1.5">
-                                                                {itemDetails?.name ||
-                                                                  "Unknown Item"}
-                                                              </div>
-
-                                                              <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
-                                                                {itemDetails?.brand && (
-                                                                  <div>
-                                                                    <span className="text-slate-500 font-bold">
-                                                                      Brand:
-                                                                    </span>{" "}
-                                                                    <span className="text-slate-700">
-                                                                      {
-                                                                        itemDetails.brand
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
-                                                                {itemDetails?.color && (
-                                                                  <div>
-                                                                    <span className="text-slate-500 font-bold">
-                                                                      Color:
-                                                                    </span>{" "}
-                                                                    <span className="text-slate-700">
-                                                                      {
-                                                                        itemDetails.color
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
-                                                                {itemDetails?.finish && (
-                                                                  <div>
-                                                                    <span className="text-slate-500 font-bold">
-                                                                      Finish:
-                                                                    </span>{" "}
-                                                                    <span className="text-slate-700">
-                                                                      {
-                                                                        itemDetails.finish
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
-                                                                {itemDetails?.material && (
-                                                                  <div>
-                                                                    <span className="text-slate-500 font-bold">
-                                                                      Material:
-                                                                    </span>{" "}
-                                                                    <span className="text-slate-700">
-                                                                      {
-                                                                        itemDetails.material
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
-                                                                {itemDetails?.type && (
-                                                                  <div>
-                                                                    <span className="text-slate-500 font-bold">
-                                                                      Type:
-                                                                    </span>{" "}
-                                                                    <span className="text-slate-700">
-                                                                      {
-                                                                        itemDetails.type
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
-                                                                {itemDetails?.sub_category && (
-                                                                  <div>
-                                                                    <span className="text-slate-500 font-bold">
-                                                                      Sub
-                                                                      Category:
-                                                                    </span>{" "}
-                                                                    <span className="text-slate-700">
-                                                                      {
-                                                                        itemDetails.sub_category
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
-                                                                {itemDetails?.face && (
-                                                                  <div>
-                                                                    <span className="text-slate-500 font-bold">
-                                                                      Face:
-                                                                    </span>{" "}
-                                                                    <span className="text-slate-700">
-                                                                      {
-                                                                        itemDetails.face
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
-                                                                {itemDetails?.dimensions && (
-                                                                  <div>
-                                                                    <span className="text-slate-500 font-bold">
-                                                                      Dimensions:
-                                                                    </span>{" "}
-                                                                    <span className="text-slate-700">
-                                                                      {
-                                                                        itemDetails.dimensions
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
-                                                                {mtoItem.item
-                                                                  ?.supplier && (
-                                                                  <div>
-                                                                    <span className="text-slate-500 font-bold">
-                                                                      Supplier:
-                                                                    </span>{" "}
-                                                                    <span className="text-slate-700">
-                                                                      {
-                                                                        mtoItem
-                                                                          .item
-                                                                          .supplier
-                                                                          .name
-                                                                      }
-                                                                    </span>
-                                                                  </div>
-                                                                )}
+                                {/* Accordion Content */}
+                                {isExpanded && (
+                                  <div className="border-t border-slate-200 px-4 py-3 bg-slate-50">
+                                    {Object.keys(groupedItems).length === 0 ? (
+                                      <div className="text-sm text-slate-500 text-center py-4 font-medium">
+                                        No items in this MTO
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-3">
+                                        {Object.entries(groupedItems).map(
+                                          ([category, items]) => (
+                                            <div
+                                              key={category}
+                                              className="bg-white rounded-lg p-3 border border-slate-200"
+                                            >
+                                              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
+                                                {getCategoryIcon(category)}
+                                                <h3 className="text-sm font-semibold text-slate-700">
+                                                  {formatCategoryName(category)}
+                                                </h3>
+                                                <span className="text-sm text-slate-500 ml-auto font-medium">
+                                                  {items.length} item(s)
+                                                </span>
+                                              </div>
+                                              <div className="space-y-3">
+                                                {items.map((mtoItem) => {
+                                                  const itemDetails =
+                                                    getItemDetails(
+                                                      mtoItem.item,
+                                                    );
+                                                  // Compare string input with original number value
+                                                  const inputString =
+                                                    quantityInputs[mtoItem.id];
+                                                  const originalValue = String(
+                                                    mtoItem.quantity_used || 0,
+                                                  );
+                                                  const hasChanges =
+                                                    inputString !== undefined &&
+                                                    inputString !==
+                                                      originalValue;
+                                                  return (
+                                                    <div
+                                                      key={mtoItem.id}
+                                                      className="bg-slate-50 rounded-lg p-3 border border-slate-200 hover:bg-slate-100 transition-colors"
+                                                    >
+                                                      {/* Single Row: Item Details + Quantity Columns */}
+                                                      <div className="flex gap-4 items-center">
+                                                        {/* Item Image */}
+                                                        <div className="shrink-0">
+                                                          {itemDetails?.image ? (
+                                                            <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-300 bg-white flex items-center justify-center relative">
+                                                              <Image
+                                                                loading="lazy"
+                                                                src={
+                                                                  itemDetails.image
+                                                                }
+                                                                alt={
+                                                                  itemDetails.name ||
+                                                                  "Item"
+                                                                }
+                                                                className="object-cover w-full h-full"
+                                                                width={64}
+                                                                height={64}
+                                                                onError={(
+                                                                  e,
+                                                                ) => {
+                                                                  e.target.style.display =
+                                                                    "none";
+                                                                  const fallback =
+                                                                    e.target.parentElement?.querySelector(
+                                                                      ".image-fallback",
+                                                                    );
+                                                                  if (
+                                                                    fallback
+                                                                  ) {
+                                                                    fallback.style.display =
+                                                                      "flex";
+                                                                  }
+                                                                }}
+                                                              />
+                                                              <div className="hidden image-fallback absolute inset-0 w-16 h-16 rounded-lg border border-slate-300 bg-slate-200 items-center justify-center">
+                                                                <ImageIcon className="w-6 h-6 text-slate-400" />
                                                               </div>
                                                             </div>
+                                                          ) : (
+                                                            <div className="w-16 h-16 rounded-lg border border-slate-300 bg-slate-200 flex items-center justify-center">
+                                                              <ImageIcon className="w-6 h-6 text-slate-400" />
+                                                            </div>
+                                                          )}
+                                                        </div>
 
-                                                            {/* Total Quantity Column */}
-                                                            <div className="text-center min-w-[90px]">
-                                                              <div className="text-sm text-slate-500 mb-1.5 font-medium">
-                                                                Total
+                                                        {/* Item Details */}
+                                                        <div className="flex-1 min-w-0">
+                                                          <div className="text-sm font-semibold text-slate-800 mb-1.5">
+                                                            {itemDetails?.name ||
+                                                              "Unknown Item"}
+                                                          </div>
+
+                                                          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
+                                                            {itemDetails?.brand && (
+                                                              <div>
+                                                                <span className="text-slate-500 font-bold">
+                                                                  Brand:
+                                                                </span>{" "}
+                                                                <span className="text-slate-700">
+                                                                  {
+                                                                    itemDetails.brand
+                                                                  }
+                                                                </span>
                                                               </div>
-                                                              <div className="text-base font-bold text-slate-700">
+                                                            )}
+                                                            {itemDetails?.color && (
+                                                              <div>
+                                                                <span className="text-slate-500 font-bold">
+                                                                  Color:
+                                                                </span>{" "}
+                                                                <span className="text-slate-700">
+                                                                  {
+                                                                    itemDetails.color
+                                                                  }
+                                                                </span>
+                                                              </div>
+                                                            )}
+                                                            {itemDetails?.finish && (
+                                                              <div>
+                                                                <span className="text-slate-500 font-bold">
+                                                                  Finish:
+                                                                </span>{" "}
+                                                                <span className="text-slate-700">
+                                                                  {
+                                                                    itemDetails.finish
+                                                                  }
+                                                                </span>
+                                                              </div>
+                                                            )}
+                                                            {itemDetails?.material && (
+                                                              <div>
+                                                                <span className="text-slate-500 font-bold">
+                                                                  Material:
+                                                                </span>{" "}
+                                                                <span className="text-slate-700">
+                                                                  {
+                                                                    itemDetails.material
+                                                                  }
+                                                                </span>
+                                                              </div>
+                                                            )}
+                                                            {itemDetails?.type && (
+                                                              <div>
+                                                                <span className="text-slate-500 font-bold">
+                                                                  Type:
+                                                                </span>{" "}
+                                                                <span className="text-slate-700">
+                                                                  {
+                                                                    itemDetails.type
+                                                                  }
+                                                                </span>
+                                                              </div>
+                                                            )}
+                                                            {itemDetails?.sub_category && (
+                                                              <div>
+                                                                <span className="text-slate-500 font-bold">
+                                                                  Sub Category:
+                                                                </span>{" "}
+                                                                <span className="text-slate-700">
+                                                                  {
+                                                                    itemDetails.sub_category
+                                                                  }
+                                                                </span>
+                                                              </div>
+                                                            )}
+                                                            {itemDetails?.face && (
+                                                              <div>
+                                                                <span className="text-slate-500 font-bold">
+                                                                  Face:
+                                                                </span>{" "}
+                                                                <span className="text-slate-700">
+                                                                  {
+                                                                    itemDetails.face
+                                                                  }
+                                                                </span>
+                                                              </div>
+                                                            )}
+                                                            {itemDetails?.dimensions && (
+                                                              <div>
+                                                                <span className="text-slate-500 font-bold">
+                                                                  Dimensions:
+                                                                </span>{" "}
+                                                                <span className="text-slate-700">
+                                                                  {
+                                                                    itemDetails.dimensions
+                                                                  }
+                                                                </span>
+                                                              </div>
+                                                            )}
+                                                            {mtoItem.item
+                                                              ?.supplier && (
+                                                              <div>
+                                                                <span className="text-slate-500 font-bold">
+                                                                  Supplier:
+                                                                </span>{" "}
+                                                                <span className="text-slate-700">
+                                                                  {
+                                                                    mtoItem.item
+                                                                      .supplier
+                                                                      .name
+                                                                  }
+                                                                </span>
+                                                              </div>
+                                                            )}
+                                                          </div>
+                                                        </div>
+
+                                                        {/* Total Quantity Column */}
+                                                        <div className="text-center min-w-[90px]">
+                                                          <div className="text-sm text-slate-500 mb-1.5 font-medium">
+                                                            Total
+                                                          </div>
+                                                          <div className="text-base font-bold text-slate-700">
+                                                            {mtoItem.quantity}
+                                                          </div>
+                                                          {mtoItem.item
+                                                            ?.measurement_unit && (
+                                                            <div className="text-xs text-slate-500 mt-1">
+                                                              {
+                                                                mtoItem.item
+                                                                  .measurement_unit
+                                                              }
+                                                            </div>
+                                                          )}
+                                                        </div>
+
+                                                        {/* Used Count Column */}
+                                                        <div className="text-center min-w-20">
+                                                          <div className="text-sm text-slate-500 mb-1.5 font-medium">
+                                                            Used
+                                                          </div>
+                                                          <div className="text-base font-bold text-slate-700">
+                                                            {mtoItem.quantity_used ||
+                                                              0}
+                                                          </div>
+                                                          {mtoItem.item
+                                                            ?.measurement_unit && (
+                                                            <div className="text-xs text-slate-500 mt-1">
+                                                              {
+                                                                mtoItem.item
+                                                                  .measurement_unit
+                                                              }
+                                                            </div>
+                                                          )}
+                                                        </div>
+
+                                                        {/* Input Field Column */}
+                                                        <div className="text-center min-w-[100px]">
+                                                          <div className="text-sm text-slate-500 mb-1.5 font-medium">
+                                                            New Used
+                                                          </div>
+                                                          <div className="space-y-1">
+                                                            <input
+                                                              type="number"
+                                                              min="0"
+                                                              max={
+                                                                mtoItem.quantity
+                                                              }
+                                                              value={
+                                                                quantityInputs[
+                                                                  mtoItem.id
+                                                                ] !== undefined
+                                                                  ? quantityInputs[
+                                                                      mtoItem.id
+                                                                    ]
+                                                                  : String(
+                                                                      mtoItem.quantity_used ||
+                                                                        0,
+                                                                    )
+                                                              }
+                                                              onChange={(e) => {
+                                                                // Store raw string value to allow empty input
+                                                                const value =
+                                                                  e.target
+                                                                    .value;
+                                                                handleQuantityInputChange(
+                                                                  mtoItem.id,
+                                                                  value,
+                                                                );
+                                                              }}
+                                                              className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-center font-medium"
+                                                              disabled={
+                                                                saving ||
+                                                                mtoTab ===
+                                                                  "upcoming"
+                                                              }
+                                                            />
+                                                            {mtoItem.item
+                                                              ?.measurement_unit && (
+                                                              <div className="text-xs text-slate-500 mt-1">
                                                                 {
-                                                                  mtoItem.quantity
+                                                                  mtoItem.item
+                                                                    .measurement_unit
                                                                 }
                                                               </div>
-                                                              {mtoItem.item
-                                                                ?.measurement_unit && (
-                                                                <div className="text-xs text-slate-500 mt-1">
-                                                                  {
-                                                                    mtoItem.item
-                                                                      .measurement_unit
-                                                                  }
-                                                                </div>
-                                                              )}
-                                                            </div>
-
-                                                            {/* Used Count Column */}
-                                                            <div className="text-center min-w-20">
-                                                              <div className="text-sm text-slate-500 mb-1.5 font-medium">
-                                                                Used
-                                                              </div>
-                                                              <div className="text-base font-bold text-slate-700">
-                                                                {mtoItem.quantity_used ||
-                                                                  0}
-                                                              </div>
-                                                              {mtoItem.item
-                                                                ?.measurement_unit && (
-                                                                <div className="text-xs text-slate-500 mt-1">
-                                                                  {
-                                                                    mtoItem.item
-                                                                      .measurement_unit
-                                                                  }
-                                                                </div>
-                                                              )}
-                                                            </div>
-
-                                                            {/* Input Field Column */}
-                                                            <div className="text-center min-w-[100px]">
-                                                              <div className="text-sm text-slate-500 mb-1.5 font-medium">
-                                                                New Used
-                                                              </div>
-                                                              <div className="space-y-1">
-                                                                <input
-                                                                  type="number"
-                                                                  min="0"
-                                                                  max={
-                                                                    mtoItem.quantity
-                                                                  }
-                                                                  value={
-                                                                    quantityInputs[
-                                                                      mtoItem.id
-                                                                    ] !==
-                                                                    undefined
-                                                                      ? quantityInputs[
-                                                                          mtoItem
-                                                                            .id
-                                                                        ]
-                                                                      : String(
-                                                                          mtoItem.quantity_used ||
-                                                                            0,
-                                                                        )
-                                                                  }
-                                                                  onChange={(
-                                                                    e,
-                                                                  ) => {
-                                                                    // Store raw string value to allow empty input
-                                                                    const value =
-                                                                      e.target
-                                                                        .value;
-                                                                    handleQuantityInputChange(
-                                                                      mtoItem.id,
-                                                                      value,
+                                                            )}
+                                                            {(() => {
+                                                              const inputString =
+                                                                quantityInputs[
+                                                                  mtoItem.id
+                                                                ];
+                                                              if (
+                                                                inputString ===
+                                                                undefined
+                                                              )
+                                                                return null;
+                                                              const inputValue =
+                                                                inputString ===
+                                                                ""
+                                                                  ? 0
+                                                                  : parseFloat(
+                                                                      inputString,
                                                                     );
-                                                                  }}
-                                                                  className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-center font-medium"
-                                                                  disabled={
+                                                              if (
+                                                                !isNaN(
+                                                                  inputValue,
+                                                                ) &&
+                                                                inputValue >
+                                                                  mtoItem.quantity
+                                                              ) {
+                                                                return (
+                                                                  <div className="text-xs text-red-600 font-medium">
+                                                                    Max:{" "}
+                                                                    {
+                                                                      mtoItem.quantity
+                                                                    }
+                                                                  </div>
+                                                                );
+                                                              }
+                                                              return null;
+                                                            })()}
+                                                          </div>
+                                                        </div>
+
+                                                        {/* Actions Column */}
+                                                        <div className="text-center min-w-20">
+                                                          <div className="text-sm text-slate-500 mb-1.5 font-medium">
+                                                            Actions
+                                                          </div>
+                                                          {hasChanges ? (
+                                                            <div className="flex gap-1.5 justify-center">
+                                                              <button
+                                                                onClick={() =>
+                                                                  handleCancelEdit(
+                                                                    mtoItem.id,
+                                                                  )
+                                                                }
+                                                                disabled={
+                                                                  saving ||
+                                                                  mtoTab ===
+                                                                    "upcoming"
+                                                                }
+                                                                className="cursor-pointer p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
+                                                                title="Cancel"
+                                                              >
+                                                                <X className="w-4 h-4" />
+                                                              </button>
+                                                              <button
+                                                                onClick={() =>
+                                                                  handleSaveUsage(
+                                                                    mto.id,
+                                                                    mtoItem,
+                                                                  )
+                                                                }
+                                                                disabled={(() => {
+                                                                  if (
                                                                     saving ||
                                                                     mtoTab ===
                                                                       "upcoming"
-                                                                  }
-                                                                />
-                                                                {mtoItem.item
-                                                                  ?.measurement_unit && (
-                                                                  <div className="text-xs text-slate-500 mt-1">
-                                                                    {
-                                                                      mtoItem
-                                                                        .item
-                                                                        .measurement_unit
-                                                                    }
-                                                                  </div>
-                                                                )}
-                                                                {(() => {
+                                                                  )
+                                                                    return true;
                                                                   const inputString =
                                                                     quantityInputs[
                                                                       mtoItem.id
@@ -1948,7 +1983,7 @@ export default function page() {
                                                                     inputString ===
                                                                     undefined
                                                                   )
-                                                                    return null;
+                                                                    return false;
                                                                   const inputValue =
                                                                     inputString ===
                                                                     ""
@@ -1956,128 +1991,51 @@ export default function page() {
                                                                       : parseFloat(
                                                                           inputString,
                                                                         );
-                                                                  if (
+                                                                  return (
                                                                     !isNaN(
                                                                       inputValue,
                                                                     ) &&
                                                                     inputValue >
                                                                       mtoItem.quantity
-                                                                  ) {
-                                                                    return (
-                                                                      <div className="text-xs text-red-600 font-medium">
-                                                                        Max:{" "}
-                                                                        {
-                                                                          mtoItem.quantity
-                                                                        }
-                                                                      </div>
-                                                                    );
-                                                                  }
-                                                                  return null;
+                                                                  );
                                                                 })()}
-                                                              </div>
+                                                                className="cursor-pointer p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                title="Save"
+                                                              >
+                                                                <Check className="w-4 h-4" />
+                                                              </button>
                                                             </div>
-
-                                                            {/* Actions Column */}
-                                                            <div className="text-center min-w-20">
-                                                              <div className="text-sm text-slate-500 mb-1.5 font-medium">
-                                                                Actions
-                                                              </div>
-                                                              {hasChanges ? (
-                                                                <div className="flex gap-1.5 justify-center">
-                                                                  <button
-                                                                    onClick={() =>
-                                                                      handleCancelEdit(
-                                                                        mtoItem.id,
-                                                                      )
-                                                                    }
-                                                                    disabled={
-                                                                      saving ||
-                                                                      mtoTab ===
-                                                                        "upcoming"
-                                                                    }
-                                                                    className="cursor-pointer p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
-                                                                    title="Cancel"
-                                                                  >
-                                                                    <X className="w-4 h-4" />
-                                                                  </button>
-                                                                  <button
-                                                                    onClick={() =>
-                                                                      handleSaveUsage(
-                                                                        mto.id,
-                                                                        mtoItem,
-                                                                      )
-                                                                    }
-                                                                    disabled={(() => {
-                                                                      if (
-                                                                        saving ||
-                                                                        mtoTab ===
-                                                                          "upcoming"
-                                                                      )
-                                                                        return true;
-                                                                      const inputString =
-                                                                        quantityInputs[
-                                                                          mtoItem
-                                                                            .id
-                                                                        ];
-                                                                      if (
-                                                                        inputString ===
-                                                                        undefined
-                                                                      )
-                                                                        return false;
-                                                                      const inputValue =
-                                                                        inputString ===
-                                                                        ""
-                                                                          ? 0
-                                                                          : parseFloat(
-                                                                              inputString,
-                                                                            );
-                                                                      return (
-                                                                        !isNaN(
-                                                                          inputValue,
-                                                                        ) &&
-                                                                        inputValue >
-                                                                          mtoItem.quantity
-                                                                      );
-                                                                    })()}
-                                                                    className="cursor-pointer p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                    title="Save"
-                                                                  >
-                                                                    <Check className="w-4 h-4" />
-                                                                  </button>
-                                                                </div>
-                                                              ) : (
-                                                                <div className="text-sm text-slate-400">
-                                                                  -
-                                                                </div>
-                                                              )}
+                                                          ) : (
+                                                            <div className="text-sm text-slate-400">
+                                                              -
                                                             </div>
-                                                          </div>
+                                                          )}
                                                         </div>
-                                                      );
-                                                    })}
-                                                  </div>
-                                                </div>
-                                              ),
-                                            )}
-                                          </div>
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          ),
                                         )}
                                       </div>
                                     )}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </main>
 
       {/* Manual Add Material Modal */}
       {showManualAddModal && (
@@ -2398,7 +2356,7 @@ export default function page() {
                       {selectedItems.length === 0 ? (
                         <tr>
                           <td
-                            colSpan="6"
+                            colSpan={6}
                             className="px-4 py-8 text-center text-slate-500 text-sm"
                           >
                             No items selected. Search and add items above.
@@ -2646,6 +2604,6 @@ export default function page() {
           </div>
         </div>
       )}
-    </AdminRoute>
+    </AdminShell>
   );
 }

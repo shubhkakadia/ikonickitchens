@@ -1,12 +1,13 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Sidebar from "@/components/sidebar";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
+import SearchBar from "@/components/SearchBar";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
+  AlertTriangle,
   MapPin,
   User,
   Clock,
@@ -592,11 +593,11 @@ export default function SiteMeasurementsPage() {
                 e.stopPropagation();
                 handleOpenEmployeeDropdown(lot);
               }}
-              className={`cursor-pointer text-xs hover:text-primary-600 hover:underline text-left truncate ${
+              className={`cursor-pointer text-xs hover:text-primary hover:underline text-left truncate ${
                 lot.stages?.find(
                   (s) => s.name.toLowerCase() === "site measurements",
                 )?.assigned_to?.length > 0
-                  ? "text-primary-600 font-medium"
+                  ? "text-primary font-medium"
                   : "text-slate-600"
               }`}
             >
@@ -607,7 +608,7 @@ export default function SiteMeasurementsPage() {
 
         {/* Hover indicator - bottom right corner */}
         <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <ArrowRight className="w-3.5 h-3.5 text-primary-600" />
+          <ArrowRight className="w-3.5 h-3.5 text-primary" />
         </div>
       </div>
     );
@@ -615,103 +616,111 @@ export default function SiteMeasurementsPage() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <AdminRoute>
-        <div className="flex h-screen bg-tertiary">
-          <Sidebar />
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="px-4 py-2 border-b border-slate-200 bg-white shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary-50 rounded-lg">
-                    <MapPin className="w-6 h-6 text-primary-600" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-slate-700">
-                      Site Measurements
-                    </h1>
-                    <p className="text-sm text-slate-500">
-                      Manage site measurement status across all projects
-                    </p>
-                  </div>
+      <AdminShell>
+        <main className="flex h-full min-h-0 flex-col overflow-hidden">
+          <div className="px-4 py-2 shrink-0">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <MapPin className="w-6 h-6 text-primary" />
                 </div>
+                <h1 className="text-xl font-bold text-slate-700">
+                  Site Measurements
+                </h1>
               </div>
-
-              <div className="px-4 pb-4 flex-1 min-h-0">
-                {loading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                  </div>
-                ) : error ? (
-                  <div className="p-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
-                    {error}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-                    {/* Pending Column */}
-                    <div className="flex flex-col h-full min-h-0">
-                      <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
-                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
-                          <Clock className="w-5 h-5 text-orange-500" />
-                          Pending Measurements
-                          <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
-                            {pendingLots.length}
-                          </span>
-                        </h2>
-                      </div>
-
-                      <DropZone
-                        targetColumn="pending"
-                        isEmpty={pendingLots.length === 0}
-                      >
-                        {pendingLots.length === 0 ? (
-                          <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
-                            <p className="text-slate-500">
-                              No pending measurements
-                            </p>
-                          </div>
-                        ) : (
-                          pendingLots.map((lot) => (
-                            <LotCard key={lot.lot_id} lot={lot} />
-                          ))
-                        )}
-                      </DropZone>
-                    </div>
-
-                    {/* Done Column */}
-                    <div className="flex flex-col h-full min-h-0">
-                      <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
-                        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                          Completed Measurements
-                          <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
-                            {doneLots.length}
-                          </span>
-                        </h2>
-                      </div>
-
-                      <DropZone
-                        targetColumn="done"
-                        isEmpty={doneLots.length === 0}
-                      >
-                        {doneLots.length === 0 ? (
-                          <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
-                            <p className="text-slate-500">
-                              No completed measurements
-                            </p>
-                          </div>
-                        ) : (
-                          doneLots.map((lot) => (
-                            <LotCard key={lot.lot_id} lot={lot} />
-                          ))
-                        )}
-                      </DropZone>
-                    </div>
-                  </div>
-                )}
+              <div className="flex items-center gap-2">
+                <SearchBar />
               </div>
             </div>
           </div>
-        </div>
+
+          <div className="px-4 pb-4 flex-1 min-h-0">
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                  <p className="text-sm text-slate-600 font-medium">
+                    Loading site measurements...
+                  </p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-sm text-red-600 mb-4 font-medium">
+                    {error}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                {/* Pending Column */}
+                <div className="flex flex-col h-full min-h-0">
+                  <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
+                    <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
+                      <Clock className="w-5 h-5 text-orange-500" />
+                      Pending Measurements
+                      <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
+                        {pendingLots.length}
+                      </span>
+                    </h2>
+                  </div>
+
+                  <DropZone
+                    targetColumn="pending"
+                    isEmpty={pendingLots.length === 0}
+                  >
+                    {pendingLots.length === 0 ? (
+                      <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
+                        <p className="text-slate-500">
+                          No pending measurements
+                        </p>
+                      </div>
+                    ) : (
+                      pendingLots.map((lot) => (
+                        <LotCard key={lot.lot_id} lot={lot} />
+                      ))
+                    )}
+                  </DropZone>
+                </div>
+
+                {/* Done Column */}
+                <div className="flex flex-col h-full min-h-0">
+                  <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
+                    <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      Completed Measurements
+                      <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
+                        {doneLots.length}
+                      </span>
+                    </h2>
+                  </div>
+
+                  <DropZone targetColumn="done" isEmpty={doneLots.length === 0}>
+                    {doneLots.length === 0 ? (
+                      <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
+                        <p className="text-slate-500">
+                          No completed measurements
+                        </p>
+                      </div>
+                    ) : (
+                      doneLots.map((lot) => (
+                        <LotCard key={lot.lot_id} lot={lot} />
+                      ))
+                    )}
+                  </DropZone>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
 
         {/* Employee Assignment Dropdown Modal */}
         {showEmployeeDropdown && (
@@ -737,7 +746,7 @@ export default function SiteMeasurementsPage() {
                   value={employeeSearchTerm}
                   onChange={(e) => setEmployeeSearchTerm(e.target.value)}
                   placeholder="Search employees..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
 
@@ -760,8 +769,8 @@ export default function SiteMeasurementsPage() {
                           }
                           className={`cursor-pointer w-full text-left p-3 border rounded-lg transition-colors ${
                             isAssigned
-                              ? "border-primary-600 bg-primary-50 hover:bg-primary-100"
-                              : "border-slate-200 hover:bg-slate-50 hover:border-primary-600"
+                              ? "border-primary bg-primary/10 hover:bg-primary/20"
+                              : "border-slate-200 hover:bg-slate-50 hover:border-primary"
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -771,7 +780,7 @@ export default function SiteMeasurementsPage() {
                                   {employee.first_name} {employee.last_name}
                                 </div>
                                 {isAssigned && (
-                                  <Check className="w-4 h-4 text-primary-600" />
+                                  <Check className="w-4 h-4 text-primary" />
                                 )}
                               </div>
                               <div className="text-sm text-slate-600">
@@ -802,7 +811,7 @@ export default function SiteMeasurementsPage() {
                     setShowEmployeeDropdown(false);
                     setEmployeeSearchTerm("");
                   }}
-                  className="cursor-pointer w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="cursor-pointer w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   Done
                 </button>
@@ -810,7 +819,7 @@ export default function SiteMeasurementsPage() {
             </div>
           </div>
         )}
-      </AdminRoute>
+      </AdminShell>
     </DndProvider>
   );
 }

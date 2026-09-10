@@ -891,11 +891,11 @@ export default function StageTable({
       case "IN_PROGRESS":
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "NOT_STARTED":
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-slate-100 text-slate-800 border-slate-200";
       case "NA":
         return "bg-slate-100 text-slate-600 border-slate-200";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-slate-100 text-slate-800 border-slate-200";
     }
   };
 
@@ -1106,7 +1106,7 @@ export default function StageTable({
                       assigned_to: [],
                     });
                   }}
-                  className="cursor-pointer px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                  className="cursor-pointer px-3 py-2 bg-slate-500 text-white rounded-lg hover:bg-slate-600 transition-colors text-sm"
                 >
                   Cancel
                 </button>

@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import "react-toastify/dist/ReactToastify.css";
@@ -36,7 +36,6 @@ import {
   BarElement,
 } from "chart.js";
 import { Doughnut, Bar } from "react-chartjs-2";
-import Sidebar from "../../../components/sidebar";
 import SearchBar from "@/components/SearchBar";
 import ClockPunchCard from "./components/ClockPunchCard";
 
@@ -731,316 +730,309 @@ export default function page() {
   };
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-slate-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 w-full overflow-auto">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-sm text-slate-600 font-medium">
-                    Loading dashboard...
+    <AdminShell>
+      <main className="h-full w-full overflow-auto bg-slate-50">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+              <p className="text-sm text-slate-600 font-medium">
+                Loading dashboard...
+              </p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
+              <button
+                onClick={() => {
+                  fetchDashboard();
+                  fetchLogs();
+                }}
+                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 space-y-4">
+            {/* Header with Greeting */}
+            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6 xl:mb-8 rounded-2xl border border-primary/10 bg-white p-5">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div>
+                    <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-primary">
+                      {getGreeting()}
+                    </h1>
+                    <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-primary">
+                      {employeeData && (
+                        <span className="text-secondary">
+                          {employeeData.first_name}
+                          {employeeData.last_name &&
+                            ` ${employeeData.last_name}`}
+                        </span>
+                      )}
+                    </h1>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  {/* <Calendar className="w-5 h-5" /> */}
+                  <p className="text-sm md:text-base font-medium">
+                    {formatDateTime()}
                   </p>
                 </div>
               </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-sm text-red-600 mb-4 font-medium">
-                    {error}
-                  </p>
+              <div className="flex flex-wrap items-center gap-2 xl:gap-3 xl:justify-end">
+                <div className="w-full md:w-auto">
+                  <SearchBar />
+                </div>
+                {/* Storage Usage - Compact Display */}
+                {storageLoading ? (
+                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 bg-white border border-slate-200 rounded-lg">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-secondary"></div>
+                    <span>Loading storage...</span>
+                  </div>
+                ) : storageUsage ? (
+                  <div className="relative dashboard-storage-dropdown-container">
+                    <button
+                      onClick={() =>
+                        setStorageDropdownOpen(!storageDropdownOpen)
+                      }
+                      className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                      title={`Last updated: ${formatTimestampAdelaide(storageUsage.timestamp)} (Adelaide time)`}
+                    >
+                      <Database className="w-4 h-4 text-primary" />
+                      <span>Storage</span>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    {storageDropdownOpen && (
+                      <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg z-10  p-2">
+                        <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50">
+                          <span className="text-xs font-medium text-slate-600">
+                            DB
+                          </span>
+                          <span className="text-xs font-semibold text-slate-700">
+                            {formatStorageSize(
+                              storageUsage.database?.size_mb || 0,
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50">
+                          <span className="text-xs font-medium text-slate-600">
+                            Files
+                          </span>
+                          <span className="text-xs font-semibold text-slate-700">
+                            {formatStorageSize(
+                              storageUsage.uploads?.size_mb || 0,
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between px-2 py-1.5 rounded-md bg-slate-50 mt-1">
+                          <span className="text-xs font-semibold text-slate-700">
+                            Total
+                          </span>
+                          <span className="text-xs font-bold text-slate-800">
+                            {formatStorageSize(
+                              (storageUsage.database?.size_mb || 0) +
+                                (storageUsage.uploads?.size_mb || 0),
+                            )}
+                          </span>
+                        </div>
+                        <div className="px-2 pt-2 text-[10px] text-slate-400">
+                          Updated{" "}
+                          {formatTimestampAdelaide(storageUsage.timestamp)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+                {/* Reset Filters Button - Only show when filters are applied */}
+                {(dashboardYearFilter !== "all" ||
+                  dashboardMonthFilter !== "all") && (
                   <button
                     onClick={() => {
-                      fetchDashboard();
-                      fetchLogs();
+                      setDashboardYearFilter("all");
+                      setDashboardMonthFilter("all");
+                      setDashboardYearDropdownOpen(false);
+                      setDashboardMonthDropdownOpen(false);
                     }}
-                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                    title="Reset filters to default"
                   >
-                    Try Again
+                    <RotateCcw className="w-4 h-4" />
+                    Reset
                   </button>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 space-y-4">
-                {/* Header with Greeting */}
-                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6 xl:mb-8 rounded-2xl border border-primary/10 bg-white p-5">
-                  <div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div>
-                        <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-primary">
-                          {getGreeting()}
-                        </h1>
-                        <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold text-primary">
-                          {employeeData && (
-                            <span className="text-secondary">
-                              {employeeData.first_name}
-                              {employeeData.last_name &&
-                                ` ${employeeData.last_name}`}
-                            </span>
-                          )}
-                        </h1>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      {/* <Calendar className="w-5 h-5" /> */}
-                      <p className="text-sm md:text-base font-medium">
-                        {formatDateTime()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 xl:gap-3 xl:justify-end">
-                    <div className="w-full md:w-auto">
-                      <SearchBar />
-                    </div>
-                    {/* Storage Usage - Compact Display */}
-                    {storageLoading ? (
-                      <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500 bg-white border border-slate-200 rounded-lg">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-secondary"></div>
-                        <span>Loading storage...</span>
-                      </div>
-                    ) : storageUsage ? (
-                      <div className="relative dashboard-storage-dropdown-container">
-                        <button
-                          onClick={() =>
-                            setStorageDropdownOpen(!storageDropdownOpen)
-                          }
-                          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                          title={`Last updated: ${formatTimestampAdelaide(storageUsage.timestamp)} (Adelaide time)`}
-                        >
-                          <Database className="w-4 h-4 text-primary" />
-                          <span>Storage</span>
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                        {storageDropdownOpen && (
-                          <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-200 rounded-lg z-10  p-2">
-                            <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50">
-                              <span className="text-xs font-medium text-slate-600">
-                                DB
-                              </span>
-                              <span className="text-xs font-semibold text-slate-700">
-                                {formatStorageSize(
-                                  storageUsage.database?.size_mb || 0,
-                                )}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50">
-                              <span className="text-xs font-medium text-slate-600">
-                                Files
-                              </span>
-                              <span className="text-xs font-semibold text-slate-700">
-                                {formatStorageSize(
-                                  storageUsage.uploads?.size_mb || 0,
-                                )}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between px-2 py-1.5 rounded-md bg-slate-50 mt-1">
-                              <span className="text-xs font-semibold text-slate-700">
-                                Total
-                              </span>
-                              <span className="text-xs font-bold text-slate-800">
-                                {formatStorageSize(
-                                  (storageUsage.database?.size_mb || 0) +
-                                    (storageUsage.uploads?.size_mb || 0),
-                                )}
-                              </span>
-                            </div>
-                            <div className="px-2 pt-2 text-[10px] text-slate-400">
-                              Updated{" "}
-                              {formatTimestampAdelaide(storageUsage.timestamp)}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
-                    {/* Reset Filters Button - Only show when filters are applied */}
-                    {(dashboardYearFilter !== "all" ||
-                      dashboardMonthFilter !== "all") && (
+                )}
+                {/* Year Filter Dropdown */}
+                <div className="relative dashboard-year-dropdown-container">
+                  <button
+                    onClick={() =>
+                      setDashboardYearDropdownOpen(!dashboardYearDropdownOpen)
+                    }
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    {dashboardYearFilter === "all"
+                      ? "All Years"
+                      : dashboardYearFilter}
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  {dashboardYearDropdownOpen && (
+                    <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg z-10">
                       <button
                         onClick={() => {
                           setDashboardYearFilter("all");
-                          setDashboardMonthFilter("all");
                           setDashboardYearDropdownOpen(false);
-                          setDashboardMonthDropdownOpen(false);
                         }}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                        title="Reset filters to default"
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
+                          dashboardYearFilter === "all"
+                            ? "text-secondary font-medium"
+                            : "text-slate-600"
+                        }`}
                       >
-                        <RotateCcw className="w-4 h-4" />
-                        Reset
+                        All Years
                       </button>
-                    )}
-                    {/* Year Filter Dropdown */}
-                    <div className="relative dashboard-year-dropdown-container">
-                      <button
-                        onClick={() =>
-                          setDashboardYearDropdownOpen(
-                            !dashboardYearDropdownOpen,
-                          )
-                        }
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                      >
-                        {dashboardYearFilter === "all"
-                          ? "All Years"
-                          : dashboardYearFilter}
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
-                      {dashboardYearDropdownOpen && (
-                        <div className="absolute right-0 mt-1 w-32 bg-white border border-slate-200 rounded-lg z-10">
+                      {getAllDashboardYears().map((year) => (
+                        <button
+                          key={year}
+                          onClick={() => {
+                            setDashboardYearFilter(year);
+                            setDashboardYearDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
+                            dashboardYearFilter === year
+                              ? "text-secondary font-medium"
+                              : "text-slate-600"
+                          }`}
+                        >
+                          {year}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Month Filter Dropdown */}
+                <div className="relative dashboard-month-dropdown-container">
+                  <button
+                    onClick={() => {
+                      if (dashboardYearFilter !== "all") {
+                        setDashboardMonthDropdownOpen(
+                          !dashboardMonthDropdownOpen,
+                        );
+                      }
+                    }}
+                    disabled={dashboardYearFilter === "all"}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      dashboardYearFilter === "all"
+                        ? "text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed"
+                        : "text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                    }`}
+                  >
+                    {dashboardMonthFilter === "all"
+                      ? "All Months"
+                      : formatMonthName(dashboardMonthFilter)}
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  {dashboardMonthDropdownOpen &&
+                    dashboardYearFilter !== "all" && (
+                      <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg z-10">
+                        <button
+                          onClick={() => {
+                            setDashboardMonthFilter("all");
+                            setDashboardMonthDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
+                            dashboardMonthFilter === "all"
+                              ? "text-secondary font-medium"
+                              : "text-slate-600"
+                          }`}
+                        >
+                          All Months
+                        </button>
+                        {getAvailableMonthsForYear().map((month) => (
                           <button
+                            key={month}
                             onClick={() => {
-                              setDashboardYearFilter("all");
-                              setDashboardYearDropdownOpen(false);
+                              setDashboardMonthFilter(month.toString());
+                              setDashboardMonthDropdownOpen(false);
                             }}
                             className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
-                              dashboardYearFilter === "all"
+                              dashboardMonthFilter === month.toString()
                                 ? "text-secondary font-medium"
                                 : "text-slate-600"
                             }`}
                           >
-                            All Years
+                            {formatMonthName(month)}
                           </button>
-                          {getAllDashboardYears().map((year) => (
-                            <button
-                              key={year}
-                              onClick={() => {
-                                setDashboardYearFilter(year);
-                                setDashboardYearDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
-                                dashboardYearFilter === year
-                                  ? "text-secondary font-medium"
-                                  : "text-slate-600"
-                              }`}
-                            >
-                              {year}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {/* Month Filter Dropdown */}
-                    <div className="relative dashboard-month-dropdown-container">
-                      <button
-                        onClick={() => {
-                          if (dashboardYearFilter !== "all") {
-                            setDashboardMonthDropdownOpen(
-                              !dashboardMonthDropdownOpen,
-                            );
-                          }
-                        }}
-                        disabled={dashboardYearFilter === "all"}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                          dashboardYearFilter === "all"
-                            ? "text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed"
-                            : "text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer"
-                        }`}
-                      >
-                        {dashboardMonthFilter === "all"
-                          ? "All Months"
-                          : formatMonthName(dashboardMonthFilter)}
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
-                      {dashboardMonthDropdownOpen &&
-                        dashboardYearFilter !== "all" && (
-                          <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg z-10">
-                            <button
-                              onClick={() => {
-                                setDashboardMonthFilter("all");
-                                setDashboardMonthDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
-                                dashboardMonthFilter === "all"
-                                  ? "text-secondary font-medium"
-                                  : "text-slate-600"
-                              }`}
-                            >
-                              All Months
-                            </button>
-                            {getAvailableMonthsForYear().map((month) => (
-                              <button
-                                key={month}
-                                onClick={() => {
-                                  setDashboardMonthFilter(month.toString());
-                                  setDashboardMonthDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors cursor-pointer ${
-                                  dashboardMonthFilter === month.toString()
-                                    ? "text-secondary font-medium"
-                                    : "text-slate-600"
-                                }`}
-                              >
-                                {formatMonthName(month)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                    </div>
-                    <button
-                      onClick={() => {
-                        fetchDashboard();
-                        fetchLogs();
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                    >
-                      <RefreshCcw className="w-4 h-4" />
-                      Refresh
-                    </button>
-                  </div>
+                        ))}
+                      </div>
+                    )}
                 </div>
+                <button
+                  onClick={() => {
+                    fetchDashboard();
+                    fetchLogs();
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  Refresh
+                </button>
+              </div>
+            </div>
 
-                {/* Time clock — only rendered for users linked to an employee */}
-                <ClockPunchCard />
+            {/* Time clock — only rendered for users linked to an employee */}
+            <ClockPunchCard />
 
-                <div className="flex flex-col xl:flex-row gap-4">
-                  <div className="xl:flex-3 min-w-0 space-y-4">
-                    {/* KPI Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 xl:gap-3">
-                      <KPICard
-                        title="Active Projects"
-                        value={dashboardData?.activeProjects || 0}
-                        icon={FolderKanban}
-                        color="bg-linear-to-br from-primary to-primary/75"
-                        subtitle="Currently in progress"
-                        onClick={() => router.push("/admin/projects")}
-                      />
-                      <KPICard
-                        title="Active Lots"
-                        value={dashboardData?.activeLots || 0}
-                        icon={Layers}
-                        color="bg-linear-to-br from-primary/80 to-slate-700"
-                        subtitle="Across all projects"
-                      />
-                      <KPICard
-                        title="Active MTOs"
-                        value={dashboardData?.activeMTOs || 0}
-                        icon={ClipboardList}
-                        color="bg-linear-to-br from-secondary to-secondary/80"
-                        subtitle="Materials to order"
-                        onClick={() =>
-                          router.push("/admin/suppliers/materialstoorder")
-                        }
-                      />
-                      <KPICard
-                        title="Purchase Orders"
-                        value={dashboardData?.activePurchaseOrders || 0}
-                        icon={ShoppingCart}
-                        color="bg-linear-to-br from-slate-700 to-slate-800"
-                        subtitle="Active orders"
-                        onClick={() =>
-                          router.push("/admin/suppliers/purchaseorder")
-                        }
-                      />
-                      <KPICard
-                        title="Projects Completed"
-                        value={dashboardData?.projectsCompletedThisMonth || 0}
-                        icon={Target}
-                        color="bg-linear-to-br from-emerald-600 to-emerald-700"
-                        subtitle="This month"
-                      />
-                      {/* <KPICard
+            <div className="flex flex-col xl:flex-row gap-4">
+              <div className="xl:flex-3 min-w-0 space-y-4">
+                {/* KPI Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 xl:gap-3">
+                  <KPICard
+                    title="Active Projects"
+                    value={dashboardData?.activeProjects || 0}
+                    icon={FolderKanban}
+                    color="bg-linear-to-br from-primary to-primary/75"
+                    subtitle="Currently in progress"
+                    onClick={() => router.push("/admin/projects")}
+                  />
+                  <KPICard
+                    title="Active Lots"
+                    value={dashboardData?.activeLots || 0}
+                    icon={Layers}
+                    color="bg-linear-to-br from-primary/80 to-slate-700"
+                    subtitle="Across all projects"
+                  />
+                  <KPICard
+                    title="Active MTOs"
+                    value={dashboardData?.activeMTOs || 0}
+                    icon={ClipboardList}
+                    color="bg-linear-to-br from-secondary to-secondary/80"
+                    subtitle="Materials to order"
+                    onClick={() =>
+                      router.push("/admin/suppliers/materialstoorder")
+                    }
+                  />
+                  <KPICard
+                    title="Purchase Orders"
+                    value={dashboardData?.activePurchaseOrders || 0}
+                    icon={ShoppingCart}
+                    color="bg-linear-to-br from-slate-700 to-slate-800"
+                    subtitle="Active orders"
+                    onClick={() =>
+                      router.push("/admin/suppliers/purchaseorder")
+                    }
+                  />
+                  <KPICard
+                    title="Projects Completed"
+                    value={dashboardData?.projectsCompletedThisMonth || 0}
+                    icon={Target}
+                    color="bg-linear-to-br from-emerald-600 to-emerald-700"
+                    subtitle="This month"
+                  />
+                  {/* <KPICard
                         title="Avg Project Duration"
                         value={
                           dashboardData?.averageProjectDuration > 0
@@ -1055,446 +1047,440 @@ export default function page() {
                             : "No completed projects"
                         }
                       /> */}
-                    </div>
-
-                    {/* Stages Due */}
-                    <ChartCard title="Upcoming Stage Deadlines">
-                      {sortedStagesDue.length > 0 ? (
-                        <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-                          <table className="w-full">
-                            <thead className="sticky top-0 bg-slate-50">
-                              <tr className="border-b border-primary/10">
-                                <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                  Stage
-                                </th>
-                                <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                  Project / Lot
-                                </th>
-                                <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                  Status
-                                </th>
-                                <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                  Due Date
-                                </th>
-                                <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                  Time Left
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {sortedStagesDue.map((stage) => {
-                                const daysLeft = getDaysLeft(stage.endDate);
-                                const badge = getDaysLeftBadge(daysLeft);
-                                return (
-                                  <tr
-                                    key={stage.stage_id}
-                                    className="border-b border-slate-100 hover:bg-primary/3 transition-colors"
-                                  >
-                                    <td className="py-3 px-3">
-                                      <span className="inline-flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-slate-400" />
-                                        <span className="text-sm font-medium text-slate-700 capitalize">
-                                          {stage.name}
-                                        </span>
-                                      </span>
-                                    </td>
-                                    <td className="py-3 px-3 text-sm text-slate-600">
-                                      {stage.lot?.project?.name ? (
-                                        <span>
-                                          <span className="font-medium">
-                                            {stage.lot.project.name}
-                                          </span>
-                                          <span className="text-slate-400 mx-1">
-                                            /
-                                          </span>
-                                          <span>{stage.lot_id}</span>
-                                        </span>
-                                      ) : (
-                                        stage.lot_id
-                                      )}
-                                    </td>
-                                    <td className="py-3 px-3">
-                                      <span
-                                        className={`text-[10px] font-semibold px-2 py-1 rounded-full uppercase ${getStatusColor(
-                                          stage.status,
-                                        )}`}
-                                      >
-                                        {stage.status?.replace(/_/g, " ")}
-                                      </span>
-                                    </td>
-                                    <td className="py-3 px-3 text-sm text-slate-600">
-                                      {stage.endDate &&
-                                      new Date(stage.endDate).getFullYear() >
-                                        2000
-                                        ? new Date(
-                                            stage.endDate,
-                                          ).toLocaleDateString("en-US", {
-                                            month: "short",
-                                            day: "numeric",
-                                            year: "numeric",
-                                          })
-                                        : "-"}
-                                    </td>
-                                    <td className="py-3 px-3 text-right">
-                                      <span
-                                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${badge.color}`}
-                                      >
-                                        <Clock className="w-3 h-3" />
-                                        {badge.text}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div className="py-12 text-center text-slate-400 text-sm">
-                          No upcoming stage deadlines
-                        </div>
-                      )}
-                    </ChartCard>
-                  </div>
-                  <div className="xl:flex-1 min-w-0">
-                    {/* Upcoming Meetings */}
-                    <div className="bg-white rounded-xl border border-slate-200  overflow-hidden flex flex-col h-full">
-                      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="h-5 w-1 rounded-full bg-secondary" />
-                          <h3 className="text-sm font-semibold text-primary">
-                            Upcoming Meetings
-                          </h3>
-                        </div>
-                        <Calendar className="w-4 h-4 text-primary/60" />
-                      </div>
-                      <div className="divide-y divide-slate-100 flex-1 overflow-y-auto">
-                        {dashboardData?.upcomingMeetings &&
-                        dashboardData.upcomingMeetings.length > 0 ? (
-                          dashboardData.upcomingMeetings.map((meeting) => (
-                            <div
-                              key={meeting.id}
-                              className="p-4 hover:bg-slate-50 transition-colors"
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className="shrink-0 w-10 text-center bg-slate-100 rounded-lg p-1">
-                                  <span className="block text-[10px] font-bold text-slate-500 uppercase">
-                                    {new Date(
-                                      meeting.date_time,
-                                    ).toLocaleDateString("en-US", {
-                                      month: "short",
-                                    })}
-                                  </span>
-                                  <span className="block text-sm font-bold text-slate-800">
-                                    {new Date(meeting.date_time).getDate()}
-                                  </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="text-xs font-semibold text-slate-800 line-clamp-1">
-                                    {meeting.title}
-                                  </h4>
-                                  <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
-                                    <Clock className="w-3 h-3" />
-                                    {new Date(
-                                      meeting.date_time,
-                                    ).toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
-                                  </div>
-                                  {meeting.lots && meeting.lots.length > 0 && (
-                                    <div className="flex items-center gap-1 mt-1.5 overflow-hidden">
-                                      {meeting.lots.slice(0, 2).map((l) => (
-                                        <span
-                                          key={l.lot_id}
-                                          className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-medium bg-primary/10 text-primary truncate max-w-20"
-                                        >
-                                          {l.lot_id}
-                                        </span>
-                                      ))}
-                                      {meeting.lots.length > 2 && (
-                                        <span className="text-[9px] text-slate-400">
-                                          +{meeting.lots.length - 2}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                  {meeting.participants &&
-                                    meeting.participants.length > 0 && (
-                                      <div className="flex items-center gap-1 mt-2">
-                                        <div className="flex -space-x-2">
-                                          {meeting.participants
-                                            .slice(0, 3)
-                                            .map((participant) => (
-                                              <div
-                                                key={participant.id}
-                                                className="relative group"
-                                                title={`${participant.employee?.first_name || ""} ${participant.employee?.last_name || participant.username}`}
-                                              >
-                                                {participant.employee?.image ? (
-                                                  <img
-                                                    src={
-                                                      participant.employee.image
-                                                    }
-                                                    alt={`${participant.employee.first_name} ${participant.employee.last_name}`}
-                                                    className="w-6 h-6 rounded-full border-2 border-white object-cover"
-                                                  />
-                                                ) : (
-                                                  <div className="w-6 h-6 rounded-full border-2 border-white bg-linear-to-br from-primary to-primary/75 flex items-center justify-center">
-                                                    <span className="text-[10px] font-bold text-white">
-                                                      {participant.employee
-                                                        ?.first_name?.[0] ||
-                                                        participant
-                                                          .username?.[0] ||
-                                                        "?"}
-                                                    </span>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            ))}
-                                        </div>
-                                        {meeting.participants.length > 3 && (
-                                          <span className="text-[9px] text-slate-400 ml-1">
-                                            +{meeting.participants.length - 3}
-                                          </span>
-                                        )}
-                                        <span className="text-[9px] text-slate-500 ml-1">
-                                          {meeting.participants
-                                            .slice(0, 2)
-                                            .map((p, idx) => (
-                                              <span key={p.id}>
-                                                {idx > 0 && ", "}
-                                                {p.employee?.first_name ||
-                                                  p.username}
-                                              </span>
-                                            ))}
-                                          {meeting.participants.length > 2 &&
-                                            "..."}
-                                        </span>
-                                      </div>
-                                    )}
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-8 text-center">
-                            <p className="text-xs text-slate-500">
-                              No upcoming meetings
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3 border-t border-slate-100 bg-slate-50">
-                        <button
-                          onClick={() => router.push("/admin/calendar")}
-                          className="cursor-pointer w-full py-2 text-xs font-medium text-primary hover:bg-primary/5 rounded-lg border border-primary/15 transition-all text-center"
-                        >
-                          View All Meetings
-                        </button>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Upcoming Meetings & Status Charts */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {/* Lots by Stage */}
-                  <ChartCard title="Lots by Stage">
-                    {lotsByStageChartData ? (
-                      <div style={{ height: "250px" }}>
-                        <Bar
-                          data={lotsByStageChartData}
-                          options={barChartOptions}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
-                        No lot data available
-                      </div>
-                    )}
-                  </ChartCard>
-
-                  {/* MTOs by Status */}
-                  <ChartCard title="Material to Order by Status">
-                    {mtosByStatusChartData ? (
-                      <div style={{ height: "250px" }}>
-                        <Doughnut
-                          data={mtosByStatusChartData}
-                          options={doughnutChartOptions}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
-                        No MTO data available
-                      </div>
-                    )}
-                  </ChartCard>
-
-                  {/* Purchase Orders by Status */}
-                  <ChartCard title="Purchase Orders by Status">
-                    {posByStatusChartData ? (
-                      <div style={{ height: "250px" }}>
-                        <Doughnut
-                          data={posByStatusChartData}
-                          options={doughnutChartOptions}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
-                        No purchase order data available
-                      </div>
-                    )}
-                  </ChartCard>
-                </div>
-
-                {/* Top Items and Logs - Side by Side */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  {/* Top 10 Items */}
-                  <ChartCard title="Top 10 Items">
-                    {dashboardData?.top10items?.length > 0 ? (
-                      <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                        <table className="w-full">
-                          <thead className="sticky top-0 bg-slate-50">
-                            <tr className="border-b border-primary/10">
-                              <th className="text-center py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-10">
-                                #
-                              </th>
-                              <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                Category
-                              </th>
-                              <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                Details
-                              </th>
-                              <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                Qty
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {dashboardData.top10items.map((item, index) => (
+                {/* Stages Due */}
+                <ChartCard title="Upcoming Stage Deadlines">
+                  {sortedStagesDue.length > 0 ? (
+                    <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                      <table className="w-full">
+                        <thead className="sticky top-0 bg-slate-50">
+                          <tr className="border-b border-primary/10">
+                            <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Stage
+                            </th>
+                            <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Project / Lot
+                            </th>
+                            <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Status
+                            </th>
+                            <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Due Date
+                            </th>
+                            <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              Time Left
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedStagesDue.map((stage) => {
+                            const daysLeft = getDaysLeft(stage.endDate);
+                            const badge = getDaysLeftBadge(daysLeft);
+                            return (
                               <tr
-                                key={item.item_id}
+                                key={stage.stage_id}
                                 className="border-b border-slate-100 hover:bg-primary/3 transition-colors"
                               >
-                                <td className="py-3 px-2 text-center">
-                                  <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-linear-to-br from-primary to-primary/75 rounded-full">
-                                    {index + 1}
-                                  </span>
-                                </td>
                                 <td className="py-3 px-3">
                                   <span className="inline-flex items-center gap-2">
-                                    <Package className="w-4 h-4 text-slate-400" />
-                                    <span className="text-xs font-medium text-slate-700">
-                                      {item.category}
+                                    <Calendar className="w-4 h-4 text-slate-400" />
+                                    <span className="text-sm font-medium text-slate-700 capitalize">
+                                      {stage.name}
                                     </span>
                                   </span>
                                 </td>
-                                <td className="py-3 px-3 text-xs text-slate-600">
-                                  {item.sheet && (
-                                    <span className="bg-slate-100 px-2 py-1 rounded-full">
-                                      {item.sheet.brand} - {item.sheet.color}
+                                <td className="py-3 px-3 text-sm text-slate-600">
+                                  {stage.lot?.project?.name ? (
+                                    <span>
+                                      <span className="font-medium">
+                                        {stage.lot.project.name}
+                                      </span>
+                                      <span className="text-slate-400 mx-1">
+                                        /
+                                      </span>
+                                      <span>{stage.lot_id}</span>
                                     </span>
+                                  ) : (
+                                    stage.lot_id
                                   )}
-                                  {item.handle && (
-                                    <span className="bg-slate-100 px-2 py-1 rounded-full">
-                                      {item.handle.brand} - {item.handle.color}
-                                    </span>
-                                  )}
-                                  {item.hardware && (
-                                    <span className="bg-slate-100 px-2 py-1 rounded-full">
-                                      {item.hardware.brand} -{" "}
-                                      {item.hardware.name}
-                                    </span>
-                                  )}
-                                  {item.accessory && (
-                                    <span className="bg-slate-100 px-2 py-1 rounded-full">
-                                      {item.accessory.name}
-                                    </span>
-                                  )}
-                                  {item.edging_tape && (
-                                    <span className="bg-slate-100 px-2 py-1 rounded-full">
-                                      {item.edging_tape.brand} -{" "}
-                                      {item.edging_tape.color}
-                                    </span>
-                                  )}
-                                  {!item.sheet &&
-                                    !item.handle &&
-                                    !item.hardware &&
-                                    !item.accessory &&
-                                    !item.edging_tape &&
-                                    (item.description || "-")}
                                 </td>
-                                <td className="py-3 px-3 text-xs text-slate-700 text-right font-medium">
-                                  {item.quantity}
+                                <td className="py-3 px-3">
+                                  <span
+                                    className={`text-[10px] font-semibold px-2 py-1 rounded-full uppercase ${getStatusColor(
+                                      stage.status,
+                                    )}`}
+                                  >
+                                    {stage.status?.replace(/_/g, " ")}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-3 text-sm text-slate-600">
+                                  {stage.endDate &&
+                                  new Date(stage.endDate).getFullYear() > 2000
+                                    ? new Date(
+                                        stage.endDate,
+                                      ).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      })
+                                    : "-"}
+                                </td>
+                                <td className="py-3 px-3 text-right">
+                                  <span
+                                    className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${badge.color}`}
+                                  >
+                                    <Clock className="w-3 h-3" />
+                                    {badge.text}
+                                  </span>
                                 </td>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="py-12 text-center text-slate-400 text-sm">
-                        No items data available
-                      </div>
-                    )}
-                  </ChartCard>
-
-                  {/* Recent Logs */}
-                  <ChartCard title="Recent Activity">
-                    {logsLoading ? (
-                      <div className="h-[400px] flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
-                      </div>
-                    ) : logsData.length > 0 ? (
-                      <div className="max-h-[400px] overflow-y-auto space-y-3">
-                        {logsData.map((log) => (
-                          <div
-                            key={log.id}
-                            className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors border border-slate-100"
-                          >
-                            <div className="p-2 bg-slate-100 rounded-full">
-                              <History className="w-4 h-4 text-slate-500" />
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center text-slate-400 text-sm">
+                      No upcoming stage deadlines
+                    </div>
+                  )}
+                </ChartCard>
+              </div>
+              <div className="xl:flex-1 min-w-0">
+                {/* Upcoming Meetings */}
+                <div className="bg-white rounded-xl border border-slate-200  overflow-hidden flex flex-col h-full">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="h-5 w-1 rounded-full bg-secondary" />
+                      <h3 className="text-sm font-semibold text-primary">
+                        Upcoming Meetings
+                      </h3>
+                    </div>
+                    <Calendar className="w-4 h-4 text-primary/60" />
+                  </div>
+                  <div className="divide-y divide-slate-100 flex-1 overflow-y-auto">
+                    {dashboardData?.upcomingMeetings &&
+                    dashboardData.upcomingMeetings.length > 0 ? (
+                      dashboardData.upcomingMeetings.map((meeting) => (
+                        <div
+                          key={meeting.id}
+                          className="p-4 hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="shrink-0 w-10 text-center bg-slate-100 rounded-lg p-1">
+                              <span className="block text-[10px] font-bold text-slate-500 uppercase">
+                                {new Date(meeting.date_time).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                  },
+                                )}
+                              </span>
+                              <span className="block text-sm font-bold text-slate-800">
+                                {new Date(meeting.date_time).getDate()}
+                              </span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span
-                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase ${getActionColor(
-                                    log.action,
-                                  )}`}
-                                >
-                                  {log.action}
-                                </span>
-                                <span className="text-[10px] text-slate-400">
-                                  {formatTimeAgo(log.createdAt)}
-                                </span>
+                              <h4 className="text-xs font-semibold text-slate-800 line-clamp-1">
+                                {meeting.title}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
+                                <Clock className="w-3 h-3" />
+                                {new Date(meeting.date_time).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  },
+                                )}
                               </div>
-                              <p className="text-xs text-slate-600 truncate">
-                                {log.description ||
-                                  `${log.action} on ${log.entity_type}`}
-                              </p>
-                              <div className="flex items-center gap-1 mt-1">
-                                <User className="w-3 h-3 text-slate-400" />
-                                <span className="text-[10px] text-slate-400">
-                                  {log.user?.username || "System"}
-                                </span>
-                              </div>
+                              {meeting.lots && meeting.lots.length > 0 && (
+                                <div className="flex items-center gap-1 mt-1.5 overflow-hidden">
+                                  {meeting.lots.slice(0, 2).map((l) => (
+                                    <span
+                                      key={l.lot_id}
+                                      className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-medium bg-primary/10 text-primary truncate max-w-20"
+                                    >
+                                      {l.lot_id}
+                                    </span>
+                                  ))}
+                                  {meeting.lots.length > 2 && (
+                                    <span className="text-[9px] text-slate-400">
+                                      +{meeting.lots.length - 2}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {meeting.participants &&
+                                meeting.participants.length > 0 && (
+                                  <div className="flex items-center gap-1 mt-2">
+                                    <div className="flex -space-x-2">
+                                      {meeting.participants
+                                        .slice(0, 3)
+                                        .map((participant) => (
+                                          <div
+                                            key={participant.id}
+                                            className="relative group"
+                                            title={`${participant.employee?.first_name || ""} ${participant.employee?.last_name || participant.username}`}
+                                          >
+                                            {participant.employee?.image ? (
+                                              <img
+                                                src={participant.employee.image}
+                                                alt={`${participant.employee.first_name} ${participant.employee.last_name}`}
+                                                className="w-6 h-6 rounded-full border-2 border-white object-cover"
+                                              />
+                                            ) : (
+                                              <div className="w-6 h-6 rounded-full border-2 border-white bg-linear-to-br from-primary to-primary/75 flex items-center justify-center">
+                                                <span className="text-[10px] font-bold text-white">
+                                                  {participant.employee
+                                                    ?.first_name?.[0] ||
+                                                    participant.username?.[0] ||
+                                                    "?"}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                    </div>
+                                    {meeting.participants.length > 3 && (
+                                      <span className="text-[9px] text-slate-400 ml-1">
+                                        +{meeting.participants.length - 3}
+                                      </span>
+                                    )}
+                                    <span className="text-[9px] text-slate-500 ml-1">
+                                      {meeting.participants
+                                        .slice(0, 2)
+                                        .map((p, idx) => (
+                                          <span key={p.id}>
+                                            {idx > 0 && ", "}
+                                            {p.employee?.first_name ||
+                                              p.username}
+                                          </span>
+                                        ))}
+                                      {meeting.participants.length > 2 && "..."}
+                                    </span>
+                                  </div>
+                                )}
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))
                     ) : (
-                      <div className="h-[400px] flex items-center justify-center text-slate-400 text-sm">
-                        No recent activity
+                      <div className="p-8 text-center">
+                        <p className="text-xs text-slate-500">
+                          No upcoming meetings
+                        </p>
                       </div>
                     )}
-                  </ChartCard>
+                  </div>
+                  <div className="p-3 border-t border-slate-100 bg-slate-50">
+                    <button
+                      onClick={() => router.push("/admin/calendar")}
+                      className="cursor-pointer w-full py-2 text-xs font-medium text-primary hover:bg-primary/5 rounded-lg border border-primary/15 transition-all text-center"
+                    >
+                      View All Meetings
+                    </button>
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* Upcoming Meetings & Status Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {/* Lots by Stage */}
+              <ChartCard title="Lots by Stage">
+                {lotsByStageChartData ? (
+                  <div style={{ height: "250px" }}>
+                    <Bar
+                      data={lotsByStageChartData}
+                      options={barChartOptions}
+                    />
+                  </div>
+                ) : (
+                  <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
+                    No lot data available
+                  </div>
+                )}
+              </ChartCard>
+
+              {/* MTOs by Status */}
+              <ChartCard title="Material to Order by Status">
+                {mtosByStatusChartData ? (
+                  <div style={{ height: "250px" }}>
+                    <Doughnut
+                      data={mtosByStatusChartData}
+                      options={doughnutChartOptions}
+                    />
+                  </div>
+                ) : (
+                  <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
+                    No MTO data available
+                  </div>
+                )}
+              </ChartCard>
+
+              {/* Purchase Orders by Status */}
+              <ChartCard title="Purchase Orders by Status">
+                {posByStatusChartData ? (
+                  <div style={{ height: "250px" }}>
+                    <Doughnut
+                      data={posByStatusChartData}
+                      options={doughnutChartOptions}
+                    />
+                  </div>
+                ) : (
+                  <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm">
+                    No purchase order data available
+                  </div>
+                )}
+              </ChartCard>
+            </div>
+
+            {/* Top Items and Logs - Side by Side */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {/* Top 10 Items */}
+              <ChartCard title="Top 10 Items">
+                {dashboardData?.top10items?.length > 0 ? (
+                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-slate-50">
+                        <tr className="border-b border-primary/10">
+                          <th className="text-center py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wide w-10">
+                            #
+                          </th>
+                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Category
+                          </th>
+                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Details
+                          </th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Qty
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashboardData.top10items.map((item, index) => (
+                          <tr
+                            key={item.item_id}
+                            className="border-b border-slate-100 hover:bg-primary/3 transition-colors"
+                          >
+                            <td className="py-3 px-2 text-center">
+                              <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-linear-to-br from-primary to-primary/75 rounded-full">
+                                {index + 1}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="inline-flex items-center gap-2">
+                                <Package className="w-4 h-4 text-slate-400" />
+                                <span className="text-xs font-medium text-slate-700">
+                                  {item.category}
+                                </span>
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-xs text-slate-600">
+                              {item.sheet && (
+                                <span className="bg-slate-100 px-2 py-1 rounded-full">
+                                  {item.sheet.brand} - {item.sheet.color}
+                                </span>
+                              )}
+                              {item.handle && (
+                                <span className="bg-slate-100 px-2 py-1 rounded-full">
+                                  {item.handle.brand} - {item.handle.color}
+                                </span>
+                              )}
+                              {item.hardware && (
+                                <span className="bg-slate-100 px-2 py-1 rounded-full">
+                                  {item.hardware.brand} - {item.hardware.name}
+                                </span>
+                              )}
+                              {item.accessory && (
+                                <span className="bg-slate-100 px-2 py-1 rounded-full">
+                                  {item.accessory.name}
+                                </span>
+                              )}
+                              {item.edging_tape && (
+                                <span className="bg-slate-100 px-2 py-1 rounded-full">
+                                  {item.edging_tape.brand} -{" "}
+                                  {item.edging_tape.color}
+                                </span>
+                              )}
+                              {!item.sheet &&
+                                !item.handle &&
+                                !item.hardware &&
+                                !item.accessory &&
+                                !item.edging_tape &&
+                                (item.description || "-")}
+                            </td>
+                            <td className="py-3 px-3 text-xs text-slate-700 text-right font-medium">
+                              {item.quantity}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-slate-400 text-sm">
+                    No items data available
+                  </div>
+                )}
+              </ChartCard>
+
+              {/* Recent Logs */}
+              <ChartCard title="Recent Activity">
+                {logsLoading ? (
+                  <div className="h-[400px] flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+                  </div>
+                ) : logsData.length > 0 ? (
+                  <div className="max-h-[400px] overflow-y-auto space-y-3">
+                    {logsData.map((log) => (
+                      <div
+                        key={log.id}
+                        className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors border border-slate-100"
+                      >
+                        <div className="p-2 bg-slate-100 rounded-full">
+                          <History className="w-4 h-4 text-slate-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase ${getActionColor(
+                                log.action,
+                              )}`}
+                            >
+                              {log.action}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {formatTimeAgo(log.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 truncate">
+                            {log.description ||
+                              `${log.action} on ${log.entity_type}`}
+                          </p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <User className="w-3 h-3 text-slate-400" />
+                            <span className="text-[10px] text-slate-400">
+                              {log.user?.username || "System"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-[400px] flex items-center justify-center text-slate-400 text-sm">
+                    No recent activity
+                  </div>
+                )}
+              </ChartCard>
+            </div>
           </div>
-        </div>
-      </div>
-    </AdminRoute>
+        )}
+      </main>
+    </AdminShell>
   );
 }

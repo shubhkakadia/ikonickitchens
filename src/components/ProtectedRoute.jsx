@@ -77,7 +77,7 @@ export default function ProtectedRoute({
   if (isLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -91,7 +91,7 @@ function AccessDenied({ pathname }) {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -101,21 +101,21 @@ function AccessDenied({ pathname }) {
           </div>
 
           {/* Heading */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">
+          <h1 className="text-2xl font-bold text-slate-900 mb-3">
             Access Denied
           </h1>
 
           {/* Description */}
-          <p className="text-gray-600 mb-2">
+          <p className="text-slate-600 mb-2">
             You don't have permission to access this page.
           </p>
-          <p className="text-sm text-gray-500 mb-8">
+          <p className="text-sm text-slate-500 mb-8">
             If you believe this is an error, please contact your administrator.
           </p>
 
           {/* Current Page Info */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-8">
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+          <div className="bg-slate-50 rounded-lg p-4 mb-8">
+            <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
               <Lock className="w-4 h-4" />
               <span className="font-mono text-xs">{pathname}</span>
             </div>
@@ -133,7 +133,7 @@ function AccessDenied({ pathname }) {
               </button>
               <button
                 onClick={() => (window.location.href = "/admin/dashboard")}
-                className="cursor-pointer w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
+                className="cursor-pointer w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
               >
                 Return to Dashboard
               </button>
@@ -149,8 +149,8 @@ function AccessDenied({ pathname }) {
           </div>
 
           {/* Contact Support */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-600 mb-3">Need access?</p>
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <p className="text-sm text-slate-600 mb-3">Need access?</p>
 
             <a
               href="mailto:info@ikonickitchens.com.au"
@@ -163,7 +163,7 @@ function AccessDenied({ pathname }) {
         </div>
 
         {/* Footer Info */}
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-slate-500 mt-6">
           Error Code: 403 - Forbidden
         </p>
       </div>
@@ -174,10 +174,10 @@ function AccessDenied({ pathname }) {
 // Loading Component
 function LoadingAccess() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
-        <p className="text-gray-600 font-medium">Checking permissions...</p>
+        <p className="text-slate-600 font-medium">Checking permissions...</p>
       </div>
     </div>
   );

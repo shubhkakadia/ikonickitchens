@@ -29,21 +29,9 @@ import {
   getAllowedNextActions,
   summarizeClockPunchDay,
 } from "@/lib/clockPunchSequence";
+import { BADGE, actionStyles, reviewStyles } from "../lib/punchStyles";
 
 const CLOCK_PUNCH_TIME_ZONE = "Australia/Adelaide";
-
-const actionStyles = {
-  CLOCK_IN: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  BREAK_IN: "border-amber-200 bg-amber-50 text-amber-700",
-  BREAK_OUT: "border-blue-200 bg-blue-50 text-blue-700",
-  CLOCK_OUT: "border-slate-200 bg-slate-100 text-slate-700",
-};
-
-const reviewStyles = {
-  PENDING: "border-amber-200 bg-amber-50 text-amber-700",
-  APPROVED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  REJECTED: "border-red-200 bg-red-50 text-red-700",
-};
 
 const dayFormatter = new Intl.DateTimeFormat("en-AU", {
   timeZone: CLOCK_PUNCH_TIME_ZONE,
@@ -124,7 +112,7 @@ function createDraft(action = "", time = "") {
   };
 }
 
-export default function page() {
+export default function AddClockPunchPage() {
   const router = useRouter();
   const { userData, isAdmin } = useAuth();
   const token = userData?.token || null;
@@ -410,11 +398,11 @@ export default function page() {
 
   const saveButtonClasses = (primary) => {
     if (!isFormValid || isSubmitting) {
-      return "bg-slate-300 text-slate-500 cursor-not-allowed";
+      return "bg-slate-200 text-slate-500 cursor-not-allowed";
     }
 
     return primary
-      ? "bg-primary/80 hover:bg-primary text-white cursor-pointer"
+      ? "bg-primary hover:bg-primary/90 text-white cursor-pointer"
       : "border border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer";
   };
 
@@ -425,17 +413,23 @@ export default function page() {
           {/* Header */}
           <div className="flex items-center gap-2 mb-4">
             <TabsController back={true}>
-              <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
-                <ChevronLeft className="w-8 h-8 text-slate-600" />
+              <div
+                className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                aria-label="Back"
+              >
+                <ChevronLeft
+                  aria-hidden="true"
+                  className="w-5 h-5 text-slate-600"
+                />
               </div>
             </TabsController>
-            <h1 className="text-2xl font-bold text-slate-600">
+            <h1 className="text-xl font-semibold text-slate-800">
               Add Clock Punch
             </h1>
           </div>
 
           {/* Form */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-6">
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -446,15 +440,18 @@ export default function page() {
               {/* Punch Details Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <CalendarDays className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl font-bold text-slate-800">
+                  <CalendarDays
+                    aria-hidden="true"
+                    className="w-5 h-5 text-primary"
+                  />
+                  <h2 className="text-lg font-semibold text-slate-800">
                     Punch Details
                   </h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
                       Date <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -462,7 +459,7 @@ export default function page() {
                       value={date}
                       max={getTodayInTimeZone()}
                       onChange={(event) => setDate(event.target.value)}
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
                       required
                     />
                     <p className="text-xs text-slate-500 mt-1">
@@ -471,7 +468,7 @@ export default function page() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
                       Employee <span className="text-red-500">*</span>
                     </label>
                     <CustomDropdown
@@ -504,8 +501,11 @@ export default function page() {
               {/* Day Status Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <ListChecks className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl font-bold text-slate-800">
+                  <ListChecks
+                    aria-hidden="true"
+                    className="w-5 h-5 text-primary"
+                  />
+                  <h2 className="text-lg font-semibold text-slate-800">
                     Day Status
                   </h2>
                 </div>
@@ -520,7 +520,7 @@ export default function page() {
                 ) : dayError ? (
                   <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-                    <p className="text-sm text-red-700">{dayError}</p>
+                    <p className="text-sm text-red-800">{dayError}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -545,9 +545,9 @@ export default function page() {
                         </ul>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-                        <CircleCheck className="h-4 w-4 text-emerald-600" />
-                        <p className="text-sm font-semibold text-emerald-800">
+                      <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4">
+                        <CircleCheck className="h-4 w-4 text-green-600" />
+                        <p className="text-sm font-semibold text-green-800">
                           The shift is complete for this day
                         </p>
                       </div>
@@ -579,7 +579,7 @@ export default function page() {
                               type="button"
                               onClick={() => addDraft(action)}
                               disabled={drafts.length > 0}
-                              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                              className={`${BADGE} transition-colors ${
                                 actionStyles[action]
                               } ${
                                 drafts.length > 0
@@ -587,7 +587,7 @@ export default function page() {
                                   : "cursor-pointer hover:opacity-80"
                               }`}
                             >
-                              <Plus className="h-3.5 w-3.5" />
+                              <Plus className="w-4 h-4" />
                               {formatClockPunchAction(action)}
                             </button>
                           ))}
@@ -600,16 +600,16 @@ export default function page() {
                         <table className="min-w-full divide-y divide-slate-200">
                           <thead className="bg-slate-50">
                             <tr>
-                              <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                              <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                                 Time
                               </th>
-                              <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                              <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                                 Action
                               </th>
-                              <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                              <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                                 Source
                               </th>
-                              <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                              <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                                 Review Status
                               </th>
                             </tr>
@@ -636,12 +636,12 @@ export default function page() {
                                     key={punch.id}
                                     className="hover:bg-slate-50"
                                   >
-                                    <td className="whitespace-nowrap px-4 py-2.5 text-sm font-medium text-slate-700">
+                                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-700">
                                       {toDisplayTime(punch.punched_at)}
                                     </td>
-                                    <td className="whitespace-nowrap px-4 py-2.5">
+                                    <td className="whitespace-nowrap px-4 py-3">
                                       <span
-                                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                        className={`${BADGE} ${
                                           actionStyles[punch.action] ||
                                           actionStyles.CLOCK_OUT
                                         }`}
@@ -649,16 +649,16 @@ export default function page() {
                                         {formatClockPunchAction(punch.action)}
                                       </span>
                                     </td>
-                                    <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-600">
+                                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
                                       {punch.punch_type === "MANUAL"
                                         ? "Manual"
                                         : punch.punch_type === "NFC"
                                           ? "NFC"
                                           : "Employee"}
                                     </td>
-                                    <td className="whitespace-nowrap px-4 py-2.5">
+                                    <td className="whitespace-nowrap px-4 py-3">
                                       <span
-                                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                        className={`${BADGE} ${
                                           reviewStyles[punch.review_status] ||
                                           reviewStyles.PENDING
                                         }`}
@@ -681,8 +681,11 @@ export default function page() {
               <div className="space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <Clock
+                      aria-hidden="true"
+                      className="w-5 h-5 text-primary"
+                    />
+                    <h2 className="text-lg font-semibold text-slate-800">
                       New Punches
                     </h2>
                   </div>
@@ -690,7 +693,7 @@ export default function page() {
                     type="button"
                     onClick={() => addDraft()}
                     disabled={!hasSelection || dayLoading || Boolean(dayError)}
-                    className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Plus className="w-4 h-4" />
                     Add Punch
@@ -739,7 +742,7 @@ export default function page() {
                             </div>
 
                             <div className="flex-1 min-w-56">
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                                 Action <span className="text-red-500">*</span>
                               </label>
                               <CustomDropdown
@@ -754,7 +757,7 @@ export default function page() {
                             </div>
 
                             <div className="flex-1 min-w-48">
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                                 Time <span className="text-red-500">*</span>
                               </label>
                               <input
@@ -765,7 +768,7 @@ export default function page() {
                                     time: event.target.value,
                                   })
                                 }
-                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
                                 required
                               />
                             </div>
@@ -801,9 +804,9 @@ export default function page() {
                             key={action}
                             type="button"
                             onClick={() => addDraft(action)}
-                            className={`cursor-pointer inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-80 ${actionStyles[action]}`}
+                            className={`cursor-pointer ${BADGE} transition-opacity hover:opacity-80 ${actionStyles[action]}`}
                           >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus className="w-4 h-4" />
                             {formatClockPunchAction(action)}
                           </button>
                         ))}
@@ -842,11 +845,11 @@ export default function page() {
                 <button
                   type="submit"
                   disabled={!isFormValid || isSubmitting}
-                  className={`flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${saveButtonClasses(
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-200 ${saveButtonClasses(
                     !canApprove,
                   )}`}
                 >
-                  <Save className="w-5 h-5" />
+                  <Save aria-hidden="true" className="w-4 h-4" />
                   {isSubmitting ? "Saving..." : "Save"}
                 </button>
 
@@ -855,11 +858,11 @@ export default function page() {
                     type="button"
                     onClick={() => handleSave(true)}
                     disabled={!isFormValid || isSubmitting}
-                    className={`flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${saveButtonClasses(
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-200 ${saveButtonClasses(
                       true,
                     )}`}
                   >
-                    <CheckCircle2 className="w-5 h-5" />
+                    <CheckCircle2 aria-hidden="true" className="w-4 h-4" />
                     {isSubmitting ? "Saving..." : "Save & Approve"}
                   </button>
                 )}

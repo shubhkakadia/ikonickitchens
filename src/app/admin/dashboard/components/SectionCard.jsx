@@ -1,28 +1,29 @@
 "use client";
 
 // Standard panel chrome for every dashboard section.
+// Card shell follows DESIGN.md 9.3 and 6: rounded-lg, 1px border, no shadow.
 export default function SectionCard({
   title,
   subtitle,
   icon: Icon,
   action,
   children,
-  bodyClassName = "p-5",
+  bodyClassName = "p-4",
   className = "",
 }) {
   return (
     <div
-      className={`bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col ${className}`}
+      className={`bg-white rounded-lg border border-slate-200 overflow-hidden flex flex-col ${className}`}
     >
-      <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2 shrink-0">
+      <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-2 shrink-0">
         <span className="h-5 w-1 rounded-full bg-secondary shrink-0" />
-        {Icon && <Icon className="w-4 h-4 text-primary shrink-0" />}
+        {Icon && <Icon className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />}
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-primary truncate">
+          <h3 className="text-sm font-semibold text-slate-800 truncate">
             {title}
           </h3>
           {subtitle && (
-            <p className="text-[11px] text-slate-400 truncate">{subtitle}</p>
+            <p className="text-xs text-slate-500 truncate">{subtitle}</p>
           )}
         </div>
         {action}
@@ -32,11 +33,12 @@ export default function SectionCard({
   );
 }
 
-export function EmptyState({ message, className = "" }) {
+export function EmptyState({ message, icon: Icon, className = "" }) {
   return (
     <div
-      className={`flex items-center justify-center text-sm text-slate-400 py-8 text-center ${className}`}
+      className={`flex flex-col items-center justify-center gap-2 text-sm text-slate-600 py-8 px-4 text-center ${className}`}
     >
+      {Icon && <Icon className="w-8 h-8 text-slate-300" aria-hidden="true" />}
       {message}
     </div>
   );
@@ -45,13 +47,13 @@ export function EmptyState({ message, className = "" }) {
 export function SkeletonCard({ className = "h-40" }) {
   return (
     <div
-      className={`bg-white rounded-xl border border-slate-200 animate-pulse ${className}`}
+      className={`bg-white rounded-lg border border-slate-200 animate-pulse ${className}`}
     >
-      <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+      <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-slate-200" />
         <span className="h-3 w-32 rounded bg-slate-200" />
       </div>
-      <div className="p-5 space-y-3">
+      <div className="p-4 space-y-3">
         <div className="h-3 w-full rounded bg-slate-100" />
         <div className="h-3 w-4/5 rounded bg-slate-100" />
         <div className="h-3 w-2/3 rounded bg-slate-100" />

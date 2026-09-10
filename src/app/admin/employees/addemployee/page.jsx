@@ -496,23 +496,23 @@ export default function page() {
             {/* Header */}
             <div className="flex items-center gap-2 mb-4">
               <TabsController back={true}>
-                <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
-                  <ChevronLeft className="w-8 h-8 text-slate-600" />
+                <div className="cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200">
+                  <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                 </div>
               </TabsController>
-              <h1 className="text-2xl font-bold text-slate-600">
+              <h1 className="text-xl font-semibold text-slate-800">
                 Add New Employee
               </h1>
             </div>
 
             {/* Form */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Employee Image Section */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 mb-4">
                     <User className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <h2 className="text-lg font-semibold text-slate-800">
                       Employee Photo
                     </h2>
                   </div>
@@ -530,7 +530,7 @@ export default function page() {
 
                       {imagePreview ? (
                         <div className="relative">
-                          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary shadow-lg">
+                          <div className="w-32 h-32 rounded-full overflow-hidden border border-primary">
                             <Image
                               loading="lazy"
                               src={imagePreview}
@@ -543,14 +543,15 @@ export default function page() {
                           <button
                             type="button"
                             onClick={handleRemoveImage}
-                            className="absolute top-1 right-1 bg-secondary text-white rounded-full p-2 shadow-lg hover:bg-secondary transition-all duration-200 transform hover:scale-110 cursor-pointer"
+                            className="cursor-pointer absolute top-1 right-1 bg-secondary hover:bg-secondary/90 text-white rounded-full p-1.5 transition-colors duration-200"
+                            aria-label="Remove photo"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-4 h-4" aria-hidden="true" />
                           </button>
                           <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white rounded-full px-4 py-1 text-xs shadow-lg hover:scale-110 transition-all duration-200 cursor-pointer"
+                            className="cursor-pointer absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary hover:bg-primary/90 text-white rounded-full px-2.5 py-1 text-xs font-medium transition-colors duration-200"
                           >
                             Change
                           </button>
@@ -558,7 +559,7 @@ export default function page() {
                       ) : (
                         <label
                           htmlFor="image-upload"
-                          className="w-32 h-32 rounded-full border-4 border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-blue-50 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group-hover:shadow-lg"
+                          className="w-32 h-32 rounded-full border border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center cursor-pointer transition-colors duration-200"
                         >
                           <Upload className="w-8 h-8 text-slate-400 group-hover:text-primary transition-colors mb-2" />
                           <span className="text-xs text-slate-500 group-hover:text-primary font-medium">
@@ -579,68 +580,84 @@ export default function page() {
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 mb-4">
                     <User className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <h2 className="text-lg font-semibold text-slate-800">
                       Personal Information
                     </h2>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Employee ID <span className="text-red-500">*</span>
+                      <label
+                        htmlFor="employee_id"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        Employee ID <span className="text-red-600">*</span>
                       </label>
                       <input
+                        id="employee_id"
                         type="text"
                         name="employee_id"
                         value={formData.employee_id}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. EMP001"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        First Name <span className="text-red-500">*</span>
+                      <label
+                        htmlFor="first_name"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        First Name <span className="text-red-600">*</span>
                       </label>
                       <input
+                        id="first_name"
                         type="text"
                         name="first_name"
                         value={formData.first_name}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. John"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Last Name <span className="text-red-500">*</span>
+                      <label
+                        htmlFor="last_name"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        Last Name <span className="text-red-600">*</span>
                       </label>
                       <input
+                        id="last_name"
                         type="text"
                         name="last_name"
                         value={formData.last_name}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. Doe"
                         required
                       />
                     </div>
 
                     <div className="relative" ref={roleDropdownRef}>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Role <span className="text-red-500">*</span>
+                      <label
+                        htmlFor="role"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        Role <span className="text-red-600">*</span>
                       </label>
                       <div className="relative">
                         <input
+                          id="role"
                           type="text"
                           value={roleSearchTerm || formData.role}
                           onChange={handleRoleSearchChange}
                           onFocus={() => setIsRoleDropdownOpen(true)}
-                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           placeholder="Search or type a role..."
                           required
                         />
@@ -649,10 +666,11 @@ export default function page() {
                           onClick={() =>
                             setIsRoleDropdownOpen(!isRoleDropdownOpen)
                           }
-                          className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200"
+                          aria-label="Toggle role list"
                         >
                           <ChevronDown
-                            className={`w-5 h-5 transition-transform ${
+                            className={`w-4 h-4 transition-transform duration-200 ${
                               isRoleDropdownOpen ? "rotate-180" : ""
                             }`}
                           />
@@ -660,7 +678,7 @@ export default function page() {
                       </div>
 
                       {isRoleDropdownOpen && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        <div className="absolute z-40 w-full mt-1 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
                           {loadingRoles ? (
                             <div className="px-4 py-3 text-sm text-slate-500 text-center">
                               Loading roles...
@@ -672,7 +690,7 @@ export default function page() {
                                   key={index}
                                   type="button"
                                   onClick={() => handleRoleSelect(role)}
-                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                  className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                 >
                                   {role}
                                 </button>
@@ -690,7 +708,7 @@ export default function page() {
                                         setNewRoleValue(roleSearchTerm);
                                         setShowCreateRoleModal(true);
                                       }}
-                                      className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                      className="cursor-pointer w-full text-left px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors flex items-center gap-2"
                                     >
                                       <Plus className="w-4 h-4" />
                                       Create "{roleSearchTerm}"
@@ -723,49 +741,57 @@ export default function page() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="email"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         <div className="flex items-center gap-1">
                           <Mail className="w-4 h-4 text-slate-600" />
-                          Email <span className="text-red-500">*</span>
+                          Email <span className="text-red-600">*</span>
                         </div>
                       </label>
                       <input
+                        id="email"
                         type="email"
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. john.doe@company.com"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="phone"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         <div className="flex items-center gap-1">
                           <Phone className="w-4 h-4 text-slate-600" />
-                          Phone <span className="text-red-500">*</span>
+                          Phone <span className="text-red-600">*</span>
                         </div>
                       </label>
                       <input
+                        id="phone"
                         type="tel"
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                        className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
                           (formData.phone && !validatePhone(formData.phone)) ||
                           (formData.phone &&
                             formData.phone_secondary &&
                             formatPhone(formData.phone) ===
                               formatPhone(formData.phone_secondary))
-                            ? "border-red-500"
-                            : "border-slate-300"
+                            ? "border-red-500 focus:ring-red-500"
+                            : "border-slate-300 focus:ring-primary"
                         }`}
                         placeholder="Eg. 0400 123 456 or +61 400 123 456"
                         required
                       />
                       {formData.phone && !validatePhone(formData.phone) && (
-                        <p className="mt-1 text-xs text-red-500">
+                        <p className="text-xs text-red-600 mt-1">
                           Please enter a valid Australian phone number
                         </p>
                       )}
@@ -775,39 +801,43 @@ export default function page() {
                         validatePhone(formData.phone_secondary) &&
                         formatPhone(formData.phone) ===
                           formatPhone(formData.phone_secondary) && (
-                          <p className="mt-1 text-xs text-red-500">
+                          <p className="text-xs text-red-600 mt-1">
                             Primary and secondary phone cannot be the same
                           </p>
                         )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="phone_secondary"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         <div className="flex items-center gap-1">
                           <Phone className="w-4 h-4 text-slate-600" />
                           Secondary Phone
                         </div>
                       </label>
                       <input
+                        id="phone_secondary"
                         type="tel"
                         name="phone_secondary"
                         value={formData.phone_secondary}
                         onChange={handleInputChange}
-                        className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                        className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
                           (formData.phone_secondary &&
                             !validatePhone(formData.phone_secondary)) ||
                           (formData.phone &&
                             formData.phone_secondary &&
                             formatPhone(formData.phone) ===
                               formatPhone(formData.phone_secondary))
-                            ? "border-red-500"
-                            : "border-slate-300"
+                            ? "border-red-500 focus:ring-red-500"
+                            : "border-slate-300 focus:ring-primary"
                         }`}
                         placeholder="Eg. 0400 123 456 or +61 400 123 456"
                       />
                       {formData.phone_secondary &&
                         !validatePhone(formData.phone_secondary) && (
-                          <p className="mt-1 text-xs text-red-500">
+                          <p className="text-xs text-red-600 mt-1">
                             Please enter a valid Australian phone number
                           </p>
                         )}
@@ -817,59 +847,71 @@ export default function page() {
                         validatePhone(formData.phone_secondary) &&
                         formatPhone(formData.phone) ===
                           formatPhone(formData.phone_secondary) && (
-                          <p className="mt-1 text-xs text-red-500">
+                          <p className="text-xs text-red-600 mt-1">
                             Primary and secondary phone cannot be the same
                           </p>
                         )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="dob"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4 text-slate-600" />
                           Date of Birth
                         </div>
                       </label>
                       <input
+                        id="dob"
                         type="date"
                         name="dob"
                         value={formData.dob}
                         onChange={handleInputChange}
                         max={new Date().toISOString().split("T")[0]}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="join_date"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4 text-slate-600" />
                           Join Date
                         </div>
                       </label>
                       <input
+                        id="join_date"
                         type="date"
                         name="join_date"
                         value={formData.join_date}
                         onChange={handleInputChange}
                         max={new Date().toISOString().split("T")[0]}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                       />
                     </div>
 
                     <div className="md:col-span-2 lg:col-span-3">
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="address"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         <div className="flex items-center gap-1">
                           <MapPin className="w-4 h-4 text-slate-600" />
                           Address
                         </div>
                       </label>
                       <textarea
+                        id="address"
                         name="address"
                         value={formData.address}
                         onChange={handleInputChange}
                         rows={3}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. 123 Main Street, City, State, ZIP"
                       />
                     </div>
@@ -880,46 +922,54 @@ export default function page() {
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 mb-4">
                     <Phone className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <h2 className="text-lg font-semibold text-slate-800">
                       Emergency Contact
                     </h2>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="emergency_contact_name"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         Emergency Contact Name
                       </label>
                       <input
+                        id="emergency_contact_name"
                         type="text"
                         name="emergency_contact_name"
                         value={formData.emergency_contact_name}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. Jane Doe"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="emergency_contact_phone"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         Emergency Contact Phone
                       </label>
                       <input
+                        id="emergency_contact_phone"
                         type="tel"
                         name="emergency_contact_phone"
                         value={formData.emergency_contact_phone}
                         onChange={handleInputChange}
-                        className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 ${
+                        className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
                           formData.emergency_contact_phone &&
                           !validatePhone(formData.emergency_contact_phone)
-                            ? "border-red-500"
-                            : "border-slate-300"
+                            ? "border-red-500 focus:ring-red-500"
+                            : "border-slate-300 focus:ring-primary"
                         }`}
                         placeholder="Eg. 0400 123 456 or +61 400 123 456"
                       />
                       {formData.emergency_contact_phone &&
                         !validatePhone(formData.emergency_contact_phone) && (
-                          <p className="mt-1 text-xs text-red-500">
+                          <p className="text-xs text-red-600 mt-1">
                             Please enter a valid Australian phone number
                           </p>
                         )}
@@ -931,106 +981,134 @@ export default function page() {
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 mb-4">
                     <CreditCard className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <h2 className="text-lg font-semibold text-slate-800">
                       Banking Information
                     </h2>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="bank_account_name"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         Bank Account Holder Name
                       </label>
                       <input
+                        id="bank_account_name"
                         type="text"
                         name="bank_account_name"
                         value={formData.bank_account_name}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. John Doe"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="bank_account_number"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         Bank Account Number
                       </label>
                       <input
+                        id="bank_account_number"
                         type="text"
                         name="bank_account_number"
                         value={formData.bank_account_number}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. 1234 5678"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="bank_account_bsb"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         Bank Account BSB
                       </label>
                       <input
+                        id="bank_account_bsb"
                         type="text"
                         name="bank_account_bsb"
                         value={formData.bank_account_bsb}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. 123-456"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="supper_account_name"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         Super Account Name
                       </label>
                       <input
+                        id="supper_account_name"
                         type="text"
                         name="supper_account_name"
                         value={formData.supper_account_name}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. John Doe Super"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="supper_account_number"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         Super Account Member ID
                       </label>
                       <input
+                        id="supper_account_number"
                         type="text"
                         name="supper_account_number"
                         value={formData.supper_account_number}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. 1234567890"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="tfn_number"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         TFN Number
                       </label>
                       <input
+                        id="tfn_number"
                         type="text"
                         name="tfn_number"
                         value={formData.tfn_number}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. 123456789"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="abn_number"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         ABN Number
                       </label>
                       <input
+                        id="abn_number"
                         type="text"
                         name="abn_number"
                         value={formData.abn_number}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. 12345678901"
                       />
                     </div>
@@ -1041,22 +1119,26 @@ export default function page() {
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 mb-4">
                     <GraduationCap className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <h2 className="text-lg font-semibold text-slate-800">
                       Additional Information
                     </h2>
                   </div>
 
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="education"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         Education
                       </label>
                       <textarea
+                        id="education"
                         name="education"
                         value={formData.education}
                         onChange={handleInputChange}
                         rows={3}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. Bachelor of Engineering, University of Technology"
                       />
                     </div>
@@ -1074,7 +1156,7 @@ export default function page() {
                           return (
                             <div
                               key={day}
-                              className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg"
+                              className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg"
                             >
                               <div className="w-24">
                                 <span className="text-sm font-medium text-slate-700 capitalize">
@@ -1082,10 +1164,14 @@ export default function page() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <label className="text-sm text-slate-600">
+                                <label
+                                  htmlFor={`availability-${day}-start`}
+                                  className="text-sm text-slate-600"
+                                >
                                   Start:
                                 </label>
                                 <input
+                                  id={`availability-${day}-start`}
                                   type="time"
                                   value={times.start}
                                   onChange={(e) =>
@@ -1095,14 +1181,18 @@ export default function page() {
                                       e.target.value,
                                     )
                                   }
-                                  className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                                  className="px-3 py-2 text-sm text-slate-800 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                                 />
                               </div>
                               <div className="flex items-center gap-2">
-                                <label className="text-sm text-slate-600">
+                                <label
+                                  htmlFor={`availability-${day}-end`}
+                                  className="text-sm text-slate-600"
+                                >
                                   End:
                                 </label>
                                 <input
+                                  id={`availability-${day}-end`}
                                   type="time"
                                   value={times.end}
                                   onChange={(e) =>
@@ -1112,7 +1202,7 @@ export default function page() {
                                       e.target.value,
                                     )
                                   }
-                                  className="px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                                  className="px-3 py-2 text-sm text-slate-800 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                                 />
                               </div>
                             </div>
@@ -1122,18 +1212,22 @@ export default function page() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label
+                        htmlFor="notes"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
                         <div className="flex items-center gap-1">
                           <User className="w-4 h-4 text-slate-600" />
                           Personal Notes
                         </div>
                       </label>
                       <textarea
+                        id="notes"
                         name="notes"
                         value={formData.notes}
                         onChange={handleInputChange}
                         rows={4}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         placeholder="Eg. Add any personal notes or additional information about this employee..."
                       />
                       <p className="text-xs text-slate-500 mt-1">
@@ -1172,13 +1266,9 @@ export default function page() {
                   <button
                     type="submit"
                     disabled={!isFormValid || isSubmitting}
-                    className={`cursor-pointer flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
-                      isFormValid && !isSubmitting
-                        ? "bg-primary/80 hover:bg-primary text-white"
-                        : "bg-slate-300 text-slate-500 cursor-not-allowed"
-                    }`}
+                    className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Save className="w-5 h-5" />
+                    <Save className="w-4 h-4" aria-hidden="true" />
                     {isSubmitting ? "Adding Employee..." : "Add Employee"}
                   </button>
                 </div>
@@ -1191,15 +1281,15 @@ export default function page() {
       {/* Create Role Modal */}
       {showCreateRoleModal && (
         <div
-          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
           onClick={() => setShowCreateRoleModal(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            className="bg-white rounded-xl border border-slate-200 w-full max-w-md max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-800">
                 Create New Role
               </h2>
               <button
@@ -1207,22 +1297,27 @@ export default function page() {
                   setShowCreateRoleModal(false);
                   setNewRoleValue("");
                 }}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                aria-label="Close"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Role Name <span className="text-red-500">*</span>
+                <label
+                  htmlFor="new-role-name"
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                >
+                  Role Name <span className="text-red-600">*</span>
                 </label>
                 <input
+                  id="new-role-name"
                   type="text"
                   value={newRoleValue}
                   onChange={(e) => setNewRoleValue(e.target.value)}
                   placeholder="Enter role name"
-                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                   autoFocus
                 />
               </div>
@@ -1232,14 +1327,14 @@ export default function page() {
                     setShowCreateRoleModal(false);
                     setNewRoleValue("");
                   }}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateNewRole}
                   disabled={isCreatingRole || !newRoleValue?.trim()}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isCreatingRole ? "Creating..." : "Create Role"}
                 </button>

@@ -31,35 +31,18 @@ import {
   formatClockPunchAction,
   summarizeClockPunchDay,
 } from "@/lib/clockPunchSequence";
+import {
+  BADGE,
+  actionStyles,
+  breakStyles,
+  formatLabel,
+  reviewStyles,
+  workingStyles,
+} from "../lib/punchStyles";
 
 const CLOCK_PUNCH_TIME_ZONE = "Australia/Adelaide";
 const MAX_REVIEW_NOTES_LENGTH = 5000;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-const actionStyles = {
-  CLOCK_IN: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  BREAK_IN: "border-amber-200 bg-amber-50 text-amber-700",
-  BREAK_OUT: "border-blue-200 bg-blue-50 text-blue-700",
-  CLOCK_OUT: "border-slate-200 bg-slate-100 text-slate-700",
-};
-
-const reviewStyles = {
-  PENDING: "border-amber-200 bg-amber-50 text-amber-700",
-  APPROVED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  REJECTED: "border-red-200 bg-red-50 text-red-700",
-  MIXED: "border-blue-200 bg-blue-50 text-blue-700",
-};
-
-const breakStyles = {
-  ON_BREAK: "border-amber-200 bg-amber-50 text-amber-700",
-  BREAK_COMPLETED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  NO_BREAK: "border-slate-200 bg-slate-50 text-slate-600",
-};
-
-const workingStyles = {
-  WORKING: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  NOT_WORKING: "border-slate-200 bg-slate-50 text-slate-600",
-};
 
 const timeFormatter = new Intl.DateTimeFormat("en-AU", {
   timeZone: CLOCK_PUNCH_TIME_ZONE,
@@ -85,14 +68,6 @@ const stampFormatter = new Intl.DateTimeFormat("en-AU", {
   minute: "2-digit",
   hour12: true,
 });
-
-function formatLabel(value) {
-  return String(value || "")
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 function toDisplayTime(value) {
   const date = new Date(value);
@@ -132,7 +107,7 @@ function employeeName(group) {
   return name || "Unknown employee";
 }
 
-export default function page() {
+export default function ClockPunchDetailPage() {
   const { id } = useParams();
   const { userData, isAdmin, isMasterAdmin } = useAuth();
   const token = userData?.token || null;
@@ -488,6 +463,27 @@ export default function page() {
     setTimeNotesDraft("");
   };
 
+  // DESIGN.md 9.4: modals close on Escape. Only the topmost open one responds,
+  // and a save in flight is left alone so Escape can't strand a half-written
+  // punch edit.
+  useEffect(() => {
+    const openModal = notesPunch
+      ? { close: () => setNotesPunch(null), busy: isSavingNotes }
+      : timePunch
+        ? { close: closeTimeEditor, busy: isSavingTime }
+        : isAddingMissing
+          ? { close: closeMissingEditor, busy: isSavingMissing }
+          : null;
+
+    if (!openModal || openModal.busy) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") openModal.close();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  });
+
   const handleSaveTime = async () => {
     if (!timePunch) return;
 
@@ -556,20 +552,26 @@ export default function page() {
           {/* Header */}
           <div className="flex items-center gap-2 mb-4">
             <TabsController back={true}>
-              <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
-                <ChevronLeft className="w-8 h-8 text-slate-600" />
+              <div
+                className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                aria-label="Back"
+              >
+                <ChevronLeft
+                  aria-hidden="true"
+                  className="w-5 h-5 text-slate-600"
+                />
               </div>
             </TabsController>
-            <h1 className="text-2xl font-bold text-slate-600">
+            <h1 className="text-xl font-semibold text-slate-800">
               Clock Punch Details
             </h1>
           </div>
 
           {loading ? (
-            <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
               <div className="flex items-center justify-center py-16">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                  <div className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mx-auto mb-4" />
                   <p className="text-sm text-slate-600 font-medium">
                     Loading clock punch...
                   </p>
@@ -577,32 +579,38 @@ export default function page() {
               </div>
             </div>
           ) : error ? (
-            <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
               <div className="flex flex-col items-center justify-center py-16">
-                <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+                <AlertTriangle
+                  aria-hidden="true"
+                  className="w-8 h-8 text-red-500 mb-4"
+                />
                 <p className="text-sm text-red-600 font-medium mb-4">{error}</p>
                 <button
                   type="button"
                   onClick={() => fetchGroup()}
-                  className="cursor-pointer bg-primary/80 hover:bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                  className="cursor-pointer bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
                 >
                   Try Again
                 </button>
               </div>
             </div>
           ) : !employeeGroup ? (
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <p className="text-sm text-slate-500 text-center py-16">
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <p className="text-sm text-slate-600 text-center py-16">
                 This clock punch could not be found.
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-lg p-6 space-y-8">
+            <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-8">
               {/* Summary Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <UserRound className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl font-bold text-slate-800">
+                  <UserRound
+                    aria-hidden="true"
+                    className="w-5 h-5 text-primary"
+                  />
+                  <h2 className="text-lg font-semibold text-slate-800">
                     Shift Summary
                   </h2>
                 </div>
@@ -651,7 +659,7 @@ export default function page() {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                        className={`${BADGE} ${
                           reviewStyles[employeeGroup.review_status] ||
                           reviewStyles.PENDING
                         }`}
@@ -659,7 +667,7 @@ export default function page() {
                         {formatLabel(employeeGroup.review_status)}
                       </span>
                       <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                        className={`${BADGE} ${
                           breakStyles[employeeGroup.break_status] ||
                           breakStyles.NO_BREAK
                         }`}
@@ -667,7 +675,7 @@ export default function page() {
                         {formatLabel(employeeGroup.break_status)}
                       </span>
                       <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                        className={`${BADGE} ${
                           workingStyles[employeeGroup.working_status] ||
                           workingStyles.NOT_WORKING
                         }`}
@@ -683,8 +691,11 @@ export default function page() {
               <div className="space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                   <div className="flex items-center gap-2">
-                    <ListChecks className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <ListChecks
+                      aria-hidden="true"
+                      className="w-5 h-5 text-primary"
+                    />
+                    <h2 className="text-lg font-semibold text-slate-800">
                       Day Status
                     </h2>
                   </div>
@@ -693,7 +704,7 @@ export default function page() {
                     <button
                       type="button"
                       onClick={openMissingEditor}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/80 hover:bg-primary text-white text-sm font-medium transition-all duration-200"
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors duration-200"
                     >
                       <Plus className="w-4 h-4" />
                       {`Add Missing Punch${
@@ -720,9 +731,9 @@ export default function page() {
                     </ul>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-                    <CircleCheck className="h-4 w-4 text-emerald-600" />
-                    <p className="text-sm font-semibold text-emerald-800">
+                  <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4">
+                    <CircleCheck className="h-4 w-4 text-green-600" />
+                    <p className="text-sm font-semibold text-green-800">
                       The shift is complete for this day
                     </p>
                   </div>
@@ -743,8 +754,11 @@ export default function page() {
               <div className="space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <Clock
+                      aria-hidden="true"
+                      className="w-5 h-5 text-primary"
+                    />
+                    <h2 className="text-lg font-semibold text-slate-800">
                       Punch Timeline
                     </h2>
                   </div>
@@ -754,7 +768,7 @@ export default function page() {
                       type="button"
                       onClick={handleApproveAll}
                       disabled={isBulkApproving}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/80 hover:bg-primary text-white text-sm font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       {isBulkApproving
@@ -769,26 +783,26 @@ export default function page() {
                     <table className="min-w-full divide-y divide-slate-200">
                       <thead className="bg-slate-50">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                             Time
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                             Action
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                             Source
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                             Review Status
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                             Reviewed
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                             Notes
                           </th>
                           {canReview && (
-                            <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-slate-600">
+                            <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
                               Actions
                             </th>
                           )}
@@ -810,12 +824,12 @@ export default function page() {
 
                             return (
                               <tr key={punch.id} className="hover:bg-slate-50">
-                                <td className="whitespace-nowrap px-4 py-2.5 text-sm font-medium text-slate-700">
+                                <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-700">
                                   {toDisplayTime(punch.punched_at)}
                                 </td>
-                                <td className="whitespace-nowrap px-4 py-2.5">
+                                <td className="whitespace-nowrap px-4 py-3">
                                   <span
-                                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                    className={`${BADGE} ${
                                       actionStyles[punch.action] ||
                                       actionStyles.CLOCK_OUT
                                     }`}
@@ -823,21 +837,21 @@ export default function page() {
                                     {formatClockPunchAction(punch.action)}
                                   </span>
                                 </td>
-                                <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-600">
+                                <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
                                   {punch.punch_type === "MANUAL"
                                     ? "Manual"
                                     : punch.punch_type === "NFC"
                                       ? "NFC"
                                       : "Employee"}
                                   {punch.user?.username && (
-                                    <span className="block text-xs text-slate-400">
+                                    <span className="block text-xs text-slate-500">
                                       by {punch.user.username}
                                     </span>
                                   )}
                                 </td>
-                                <td className="whitespace-nowrap px-4 py-2.5">
+                                <td className="whitespace-nowrap px-4 py-3">
                                   <span
-                                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                    className={`${BADGE} ${
                                       reviewStyles[punch.review_status] ||
                                       reviewStyles.PENDING
                                     }`}
@@ -845,34 +859,35 @@ export default function page() {
                                     {formatLabel(punch.review_status)}
                                   </span>
                                 </td>
-                                <td className="whitespace-nowrap px-4 py-2.5 text-sm text-slate-600">
+                                <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
                                   {punch.reviewed_by?.username ? (
                                     <>
                                       {punch.reviewed_by.username}
-                                      <span className="block text-xs text-slate-400">
+                                      <span className="block text-xs text-slate-500">
                                         {toDisplayStamp(punch.reviewed_at)}
                                       </span>
                                     </>
                                   ) : (
-                                    <span className="text-slate-400">—</span>
+                                    <span className="text-slate-500">—</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-2.5 text-sm text-slate-600 max-w-xs">
+                                <td className="px-4 py-3 text-sm text-slate-600 max-w-xs">
                                   {punch.review_notes ? (
                                     <span className="line-clamp-2">
                                       {punch.review_notes}
                                     </span>
                                   ) : (
-                                    <span className="text-slate-400">—</span>
+                                    <span className="text-slate-500">—</span>
                                   )}
                                 </td>
                                 {canReview && (
-                                  <td className="whitespace-nowrap px-4 py-2.5">
+                                  <td className="whitespace-nowrap px-4 py-3">
                                     <div className="flex items-center justify-end gap-1.5">
                                       {canEditTime && (
                                         <button
                                           type="button"
                                           title="Edit punch time"
+                                          aria-label="Edit punch time"
                                           onClick={() => openTimeEditor(punch)}
                                           disabled={isBusy}
                                           className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${actionButtonClasses(
@@ -887,6 +902,7 @@ export default function page() {
                                       <button
                                         type="button"
                                         title="Approve"
+                                        aria-label="Approve punch"
                                         onClick={() =>
                                           handleReviewStatusChange(
                                             punch.id,
@@ -900,7 +916,7 @@ export default function page() {
                                         className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${actionButtonClasses(
                                           isBusy ||
                                             punch.review_status === "APPROVED",
-                                          "border-emerald-200 text-emerald-600 hover:bg-emerald-50",
+                                          "border-green-200 text-green-600 hover:bg-green-50",
                                         )}`}
                                       >
                                         <CheckCircle2 className="h-4 w-4" />
@@ -909,6 +925,7 @@ export default function page() {
                                       <button
                                         type="button"
                                         title="Reject"
+                                        aria-label="Reject punch"
                                         onClick={() => setPunchToReject(punch)}
                                         disabled={
                                           isBusy ||
@@ -926,6 +943,7 @@ export default function page() {
                                       <button
                                         type="button"
                                         title="Reset to pending"
+                                        aria-label="Reset punch to pending"
                                         onClick={() =>
                                           handleReviewStatusChange(
                                             punch.id,
@@ -948,6 +966,7 @@ export default function page() {
                                       <button
                                         type="button"
                                         title="Review notes"
+                                        aria-label="Review notes"
                                         onClick={() => openNotes(punch)}
                                         disabled={isBusy}
                                         className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${actionButtonClasses(
@@ -1004,22 +1023,23 @@ export default function page() {
       />
 
       {isAddingMissing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-bold text-slate-800">
+              <h3 className="text-lg font-semibold text-slate-800">
                 Add Missing Punch{missingDrafts.length === 1 ? "" : "es"}
               </h3>
               <button
                 type="button"
                 onClick={closeMissingEditor}
-                className="cursor-pointer rounded-lg p-1 text-slate-500 transition-colors hover:bg-slate-100"
+                aria-label="Close"
+                className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-100"
               >
-                <X className="h-5 w-5" />
+                <X aria-hidden="true" className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 px-6 py-4">
+            <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
               <p className="text-sm text-slate-600">
                 {formatLongDate(groupDate)} &bull; {employeeName(employeeGroup)}
               </p>
@@ -1051,14 +1071,14 @@ export default function page() {
                   >
                     <div>
                       <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                        className={`${BADGE} ${
                           actionStyles[draft.action] || actionStyles.CLOCK_OUT
                         }`}
                       >
                         {formatClockPunchAction(draft.action)}
                       </span>
                       {index > 0 && (
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-1 text-xs text-slate-500">
                           Optional &mdash; leave blank to skip
                         </p>
                       )}
@@ -1070,19 +1090,19 @@ export default function page() {
                       onChange={(event) =>
                         updateMissingDraft(draft.action, event.target.value)
                       }
-                      className="w-40 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-800 transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-primary"
+                      className="w-40 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-800 transition-colors duration-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 ))}
               </div>
 
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Times are Adelaide time on {groupDate}. Added punches are
                 recorded as manual entries against your account.
               </p>
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="shrink-0 flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
               <button
                 type="button"
                 onClick={closeMissingEditor}
@@ -1102,7 +1122,7 @@ export default function page() {
                 type="button"
                 onClick={() => handleSaveMissing(true)}
                 disabled={isSavingMissing}
-                className="cursor-pointer flex items-center gap-2 rounded-lg bg-primary/80 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className="cursor-pointer flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 {isSavingMissing ? "Adding..." : "Add & Approve"}
@@ -1113,22 +1133,23 @@ export default function page() {
       )}
 
       {timePunch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-bold text-slate-800">
+              <h3 className="text-lg font-semibold text-slate-800">
                 Edit Punch Time
               </h3>
               <button
                 type="button"
                 onClick={closeTimeEditor}
-                className="cursor-pointer rounded-lg p-1 text-slate-500 transition-colors hover:bg-slate-100"
+                aria-label="Close"
+                className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-100"
               >
-                <X className="h-5 w-5" />
+                <X aria-hidden="true" className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 px-6 py-4">
+            <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                 <p className="text-sm text-amber-800">
@@ -1163,9 +1184,9 @@ export default function page() {
                     type="time"
                     value={timeDraft}
                     onChange={(event) => setTimeDraft(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-800 transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-primary"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-800 transition-colors duration-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-primary"
                   />
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-slate-500">
                     Adelaide time, on the same day as the original punch
                   </p>
                 </div>
@@ -1185,12 +1206,12 @@ export default function page() {
                   maxLength={MAX_REVIEW_NOTES_LENGTH}
                   rows={3}
                   placeholder="Explain why this time was overwritten..."
-                  className="w-full resize-y rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-800 transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-primary"
+                  className="w-full resize-y rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-800 transition-colors duration-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="shrink-0 flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
               <button
                 type="button"
                 onClick={closeTimeEditor}
@@ -1202,7 +1223,7 @@ export default function page() {
                 type="button"
                 onClick={handleSaveTime}
                 disabled={isSavingTime || !timeDraft}
-                className="cursor-pointer rounded-lg bg-primary/80 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className="cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSavingTime ? "Saving..." : "Save Time"}
               </button>
@@ -1212,20 +1233,23 @@ export default function page() {
       )}
 
       {notesPunch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-bold text-slate-800">Review Notes</h3>
+              <h3 className="text-lg font-semibold text-slate-800">
+                Review Notes
+              </h3>
               <button
                 type="button"
                 onClick={() => setNotesPunch(null)}
-                className="cursor-pointer rounded-lg p-1 text-slate-500 transition-colors hover:bg-slate-100"
+                aria-label="Close"
+                className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors duration-200 hover:bg-slate-100"
               >
-                <X className="h-5 w-5" />
+                <X aria-hidden="true" className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="px-6 py-4">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
               <p className="mb-3 text-sm text-slate-600">
                 {formatClockPunchAction(notesPunch.action)} at{" "}
                 {toDisplayTime(notesPunch.punched_at)}
@@ -1236,14 +1260,14 @@ export default function page() {
                 maxLength={MAX_REVIEW_NOTES_LENGTH}
                 rows={5}
                 placeholder="Add a note explaining this review decision..."
-                className="w-full resize-y rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-800 transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-primary"
+                className="w-full resize-y rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-800 transition-colors duration-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-primary"
               />
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-slate-500">
                 {notesDraft.length}/{MAX_REVIEW_NOTES_LENGTH}
               </p>
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="shrink-0 flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
               <button
                 type="button"
                 onClick={() => setNotesPunch(null)}
@@ -1255,7 +1279,7 @@ export default function page() {
                 type="button"
                 onClick={handleSaveNotes}
                 disabled={isSavingNotes}
-                className="cursor-pointer rounded-lg bg-primary/80 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className="cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSavingNotes ? "Saving..." : "Save Notes"}
               </button>

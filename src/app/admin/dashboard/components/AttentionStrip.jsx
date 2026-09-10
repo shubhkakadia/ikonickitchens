@@ -107,15 +107,15 @@ export default function AttentionStrip({ attention }) {
 
   if (active.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-emerald-200 px-5 py-4 flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-emerald-50">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+      <div className="bg-white rounded-lg border border-green-200 px-4 py-4 flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-green-50">
+          <CheckCircle2 className="w-5 h-5 text-green-600" aria-hidden="true" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-emerald-700">
+          <p className="text-sm font-semibold text-green-800">
             All clear — nothing overdue
           </p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-xs text-slate-600">
             No late installs, deliveries, payables or stock shortfalls across
             the areas you can see.
           </p>
@@ -125,7 +125,7 @@ export default function AttentionStrip({ attention }) {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
       {active.map(({ config, tile }) => {
         const tone = TONES[config.tone];
         const detail = config.detail ? config.detail(tile) : null;
@@ -135,22 +135,22 @@ export default function AttentionStrip({ attention }) {
             type="button"
             onClick={() => router.push(tile.href)}
             title={resolve(config.hint, tile)}
-            className={`text-left bg-white rounded-xl border border-slate-200 p-3 transition-all duration-200 hover:shadow-md ${tone.ring} focus:outline-none focus:ring-2 focus:ring-primary/30`}
+            className={`cursor-pointer text-left bg-white rounded-lg border border-slate-200 p-3 transition-colors duration-200 hover:bg-slate-50 ${tone.ring} focus:outline-none focus:ring-2 focus:ring-primary`}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className={`text-2xl font-bold leading-none ${tone.value}`}>
+                <p className={`text-2xl font-semibold leading-none ${tone.value}`}>
                   {tile.count.toLocaleString()}
                 </p>
-                <p className="text-[11px] font-semibold text-slate-600 mt-1.5 leading-tight">
+                <p className="text-xs font-semibold text-slate-600 mt-1.5 leading-tight">
                   {resolve(config.label, tile)}
                 </p>
                 {detail && (
-                  <p className="text-[11px] text-slate-400 mt-0.5">{detail}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{detail}</p>
                 )}
               </div>
               <span className={`p-1.5 rounded-lg shrink-0 ${tone.chip}`}>
-                <config.icon className="w-3.5 h-3.5" />
+                <config.icon className="w-4 h-4" aria-hidden="true" />
               </span>
             </div>
           </button>

@@ -21,11 +21,11 @@ import {
   Trash2,
   Upload,
   Plus,
+  MoreVertical,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { CiMenuKebab } from "react-icons/ci";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -1111,18 +1111,20 @@ export default function EmployeeDetailPage() {
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-              <p className="text-slate-600">Loading employee details...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-sm text-slate-600">
+                Loading employee details...
+              </p>
             </div>
           </div>
         ) : error ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-red-600 mb-4">{error}</p>
+              <p className="text-sm text-red-600 mb-4">{error}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
               >
                 Try Again
               </button>
@@ -1131,8 +1133,11 @@ export default function EmployeeDetailPage() {
         ) : !employee ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <User className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600">Employee not found</p>
+              <User
+                className="h-12 w-12 text-slate-300 mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-slate-600">Employee not found</p>
             </div>
           </div>
         ) : (
@@ -1140,12 +1145,12 @@ export default function EmployeeDetailPage() {
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
               <TabsController back={true}>
-                <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                  <ChevronLeft className="w-6 h-6 text-slate-600" />
+                <div className="cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200">
+                  <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                 </div>
               </TabsController>
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-slate-600">
+                <h1 className="text-xl font-semibold text-slate-800">
                   {employee.first_name} {employee.last_name}
                 </h1>
               </div>
@@ -1154,21 +1159,21 @@ export default function EmployeeDetailPage() {
                   <div className="relative dropdown-container">
                     <button
                       onClick={() => setShowDropdown(!showDropdown)}
-                      className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                     >
-                      <CiMenuKebab className="w-4 h-4 text-slate-600" />
-                      <span className="text-slate-600">More Actions</span>
+                      <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                      <span>More Actions</span>
                     </button>
 
                     {showDropdown && (
-                      <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                      <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-300 rounded-lg z-40">
                         <div className="py-1">
                           <button
                             onClick={() => {
                               handleEdit();
                               setShowDropdown(false);
                             }}
-                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                            className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
                           >
                             <Edit className="w-4 h-4" />
                             Edit Employee Details
@@ -1181,7 +1186,7 @@ export default function EmployeeDetailPage() {
                                     handleViewUser();
                                     setShowDropdown(false);
                                   }}
-                                  className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                                  className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
                                 >
                                   <Eye className="w-4 h-4" />
                                   View User Details
@@ -1192,7 +1197,7 @@ export default function EmployeeDetailPage() {
                                     handleCreateUser();
                                     setShowDropdown(false);
                                   }}
-                                  className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                                  className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
                                 >
                                   <User className="w-4 h-4" />
                                   Create User
@@ -1205,7 +1210,7 @@ export default function EmployeeDetailPage() {
                               setShowDeleteEmployeeModal(true);
                               setShowDropdown(false);
                             }}
-                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
+                            className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 transition-colors flex items-center gap-2"
                           >
                             <Trash2 className="w-4 h-4" />
                             Delete Employee
@@ -1219,14 +1224,14 @@ export default function EmployeeDetailPage() {
                     <button
                       onClick={handleSave}
                       disabled={isUpdating}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Edit className="w-4 h-4" />
                       {isUpdating ? "Saving..." : "Save"}
                     </button>
                     <button
                       onClick={handleCancel}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                     >
                       Cancel
                     </button>
@@ -1236,7 +1241,7 @@ export default function EmployeeDetailPage() {
             </div>
 
             {/* Main Tab Navigation */}
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 mb-4">
+            <div className="bg-white rounded-lg border border-slate-200 mb-4">
               <nav className="flex space-x-8 px-4">
                 <button
                   onClick={() => setActiveTab("overview")}
@@ -1272,7 +1277,7 @@ export default function EmployeeDetailPage() {
                 {/* Left Column - Main Info */}
                 <div className="col-span-2 space-y-4">
                   {/* Profile Card */}
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
                     <div className="flex items-start gap-4">
                       {isEditing ? (
                         <div className="flex flex-col items-center gap-2">
@@ -1288,7 +1293,7 @@ export default function EmployeeDetailPage() {
 
                             {imagePreview ? (
                               <div className="relative">
-                                <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-primary shadow-lg">
+                                <div className="w-16 h-16 rounded-full overflow-hidden border border-primary">
                                   <Image
                                     loading="lazy"
                                     src={imagePreview}
@@ -1301,14 +1306,15 @@ export default function EmployeeDetailPage() {
                                 <button
                                   type="button"
                                   onClick={handleRemoveImage}
-                                  className="absolute top-1 right-1 bg-secondary text-white rounded-full p-1.5 shadow-lg hover:bg-secondary transition-all duration-200 transform hover:scale-110 cursor-pointer"
+                                  className="cursor-pointer absolute top-1 right-1 bg-secondary hover:bg-secondary/90 text-white rounded-full p-1.5 transition-colors duration-200"
+                                  aria-label="Remove photo"
                                 >
-                                  <X className="w-3 h-3" />
+                                  <X className="w-3 h-3" aria-hidden="true" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => fileInputRef.current?.click()}
-                                  className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white rounded-full px-3 py-1 text-xs shadow-lg hover:scale-110 transition-all duration-200 cursor-pointer"
+                                  className="cursor-pointer absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary hover:bg-primary/90 text-white rounded-full px-2.5 py-1 text-xs font-medium transition-colors duration-200"
                                 >
                                   Change
                                 </button>
@@ -1316,7 +1322,7 @@ export default function EmployeeDetailPage() {
                             ) : (
                               <label
                                 htmlFor="image-upload-edit"
-                                className="w-16 h-16 rounded-full border-4 border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-blue-50 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group-hover:shadow-lg"
+                                className="w-16 h-16 rounded-full border border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center cursor-pointer transition-colors duration-200"
                               >
                                 <Upload className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors mb-1" />
                                 <span className="text-xs text-slate-500 group-hover:text-primary font-medium">
@@ -1351,7 +1357,7 @@ export default function EmployeeDetailPage() {
                             loading="lazy"
                             src={`/${employee.image.url}`}
                             alt={employee.first_name + " " + employee.last_name}
-                            className="w-16 h-16 rounded-full object-cover transition-transform duration-200 group-hover:scale-105 group-hover:shadow-lg"
+                            className="w-16 h-16 rounded-full object-cover"
                             width={64}
                             height={64}
                           />
@@ -1360,7 +1366,7 @@ export default function EmployeeDetailPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="w-16 h-16 bg-linear-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
+                        <div className="w-16 h-16 bg-linear-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-semibold">
                           {employee?.first_name?.[0] || ""}
                           {employee?.last_name?.[0] || ""}
                         </div>
@@ -1379,7 +1385,7 @@ export default function EmployeeDetailPage() {
                                   )
                                 }
                                 placeholder={employee.first_name}
-                                className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                className="text-lg font-semibold text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                               />
                               <input
                                 type="text"
@@ -1388,7 +1394,7 @@ export default function EmployeeDetailPage() {
                                   handleInputChange("last_name", e.target.value)
                                 }
                                 placeholder={employee.last_name}
-                                className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                className="text-lg font-semibold text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                               />
                               <div className="relative" ref={roleDropdownRef}>
                                 <div className="relative">
@@ -1399,7 +1405,7 @@ export default function EmployeeDetailPage() {
                                     }
                                     onChange={handleRoleSearchChange}
                                     onFocus={() => setIsRoleDropdownOpen(true)}
-                                    className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full pr-8"
+                                    className="w-full px-3 py-2 pr-8 text-sm text-slate-800 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                                     placeholder="Search or type a role..."
                                   />
                                   <button
@@ -1407,10 +1413,11 @@ export default function EmployeeDetailPage() {
                                     onClick={() =>
                                       setIsRoleDropdownOpen(!isRoleDropdownOpen)
                                     }
-                                    className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    className="cursor-pointer absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200"
+                                    aria-label="Toggle role list"
                                   >
                                     <ChevronDown
-                                      className={`w-4 h-4 transition-transform ${
+                                      className={`w-4 h-4 transition-transform duration-200 ${
                                         isRoleDropdownOpen ? "rotate-180" : ""
                                       }`}
                                     />
@@ -1418,7 +1425,7 @@ export default function EmployeeDetailPage() {
                                 </div>
 
                                 {isRoleDropdownOpen && (
-                                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                  <div className="absolute z-40 w-full mt-1 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
                                     {loadingRoles ? (
                                       <div className="px-4 py-3 text-sm text-slate-500 text-center">
                                         Loading roles...
@@ -1433,7 +1440,7 @@ export default function EmployeeDetailPage() {
                                               onClick={() =>
                                                 handleRoleSelect(role)
                                               }
-                                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                              className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors first:rounded-t-lg"
                                             >
                                               {role}
                                             </button>
@@ -1454,7 +1461,7 @@ export default function EmployeeDetailPage() {
                                                   );
                                                   setShowCreateRoleModal(true);
                                                 }}
-                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                                                className="cursor-pointer w-full text-left px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors flex items-center gap-2"
                                               >
                                                 <Plus className="w-4 h-4" />
                                                 Create "{roleSearchTerm}"
@@ -1474,7 +1481,7 @@ export default function EmployeeDetailPage() {
                                               setNewRoleValue(roleSearchTerm);
                                               setShowCreateRoleModal(true);
                                             }}
-                                            className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                            className="cursor-pointer w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
                                           >
                                             <Plus className="w-4 h-4" />
                                             Create "{roleSearchTerm}"
@@ -1500,7 +1507,7 @@ export default function EmployeeDetailPage() {
                                     handleInputChange("email", e.target.value)
                                   }
                                   placeholder={employee.email || "Email"}
-                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  className="flex-1 text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                                 />
                               </div>
                               <div className="flex items-center gap-2">
@@ -1513,7 +1520,7 @@ export default function EmployeeDetailPage() {
                                       handleInputChange("phone", e.target.value)
                                     }
                                     placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                                    className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
+                                    className={`w-full text-sm text-slate-800 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
                                       (editData.phone &&
                                         !validatePhone(editData.phone)) ||
                                       (editData.phone &&
@@ -1524,13 +1531,13 @@ export default function EmployeeDetailPage() {
                                           formatPhoneToNational(
                                             editData.phone_secondary,
                                           ))
-                                        ? "border-red-500"
-                                        : "border-slate-300"
+                                        ? "border-red-500 focus:ring-red-500"
+                                        : "border-slate-300 focus:ring-primary"
                                     }`}
                                   />
                                   {editData.phone &&
                                     !validatePhone(editData.phone) && (
-                                      <p className="mt-1 text-xs text-red-500">
+                                      <p className="text-xs text-red-600 mt-1">
                                         Please enter a valid Australian phone
                                         number
                                       </p>
@@ -1543,7 +1550,7 @@ export default function EmployeeDetailPage() {
                                       formatPhoneToNational(
                                         editData.phone_secondary,
                                       ) && (
-                                      <p className="mt-1 text-xs text-red-500">
+                                      <p className="text-xs text-red-600 mt-1">
                                         Primary and secondary phone cannot be
                                         the same
                                       </p>
@@ -1563,7 +1570,7 @@ export default function EmployeeDetailPage() {
                                       )
                                     }
                                     placeholder="Secondary Phone (optional)"
-                                    className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
+                                    className={`w-full text-sm text-slate-800 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
                                       (editData.phone_secondary &&
                                         !validatePhone(
                                           editData.phone_secondary,
@@ -1576,15 +1583,15 @@ export default function EmployeeDetailPage() {
                                           formatPhoneToNational(
                                             editData.phone_secondary,
                                           ))
-                                        ? "border-red-500"
-                                        : "border-slate-300"
+                                        ? "border-red-500 focus:ring-red-500"
+                                        : "border-slate-300 focus:ring-primary"
                                     }`}
                                   />
                                   {editData.phone_secondary &&
                                     !validatePhone(
                                       editData.phone_secondary,
                                     ) && (
-                                      <p className="mt-1 text-xs text-red-500">
+                                      <p className="text-xs text-red-600 mt-1">
                                         Please enter a valid Australian phone
                                         number
                                       </p>
@@ -1597,7 +1604,7 @@ export default function EmployeeDetailPage() {
                                       formatPhoneToNational(
                                         editData.phone_secondary,
                                       ) && (
-                                      <p className="mt-1 text-xs text-red-500">
+                                      <p className="text-xs text-red-600 mt-1">
                                         Primary and secondary phone cannot be
                                         the same
                                       </p>
@@ -1613,7 +1620,7 @@ export default function EmployeeDetailPage() {
                                     handleInputChange("address", e.target.value)
                                   }
                                   placeholder={employee.address || "Address"}
-                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  className="flex-1 text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                                 />
                               </div>
                             </div>
@@ -1621,11 +1628,11 @@ export default function EmployeeDetailPage() {
                         ) : (
                           <>
                             <div className="flex items-center gap-2 mb-2">
-                              <h2 className="text-lg font-bold text-slate-800">
+                              <h2 className="text-lg font-semibold text-slate-800">
                                 {employee.first_name} {employee.last_name}
                               </h2>
                               {user && Object.keys(user).length > 0 && (
-                                <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200 capitalize">
                                   {user.user_type}
                                 </span>
                               )}
@@ -1672,25 +1679,29 @@ export default function EmployeeDetailPage() {
                   </div>
 
                   {/* Personal Information */}
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                       <User className="w-4 h-4" />
                       Personal Information
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="dob"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Date of Birth
                         </label>
                         {isEditing ? (
                           <input
+                            id="dob"
                             type="date"
                             value={editData.dob || ""}
                             onChange={(e) =>
                               handleInputChange("dob", e.target.value)
                             }
                             placeholder={formatDate(employee.dob)}
-                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700">
@@ -1699,11 +1710,15 @@ export default function EmployeeDetailPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="join_date"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Join Date
                         </label>
                         {isEditing ? (
                           <input
+                            id="join_date"
                             type="date"
                             value={editData.join_date || ""}
                             onChange={(e) =>
@@ -1711,7 +1726,7 @@ export default function EmployeeDetailPage() {
                             }
                             placeholder={formatDate(employee.join_date)}
                             max={new Date().toISOString().split("T")[0]}
-                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700">
@@ -1720,18 +1735,22 @@ export default function EmployeeDetailPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="tfn_number"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           TFN Number
                         </label>
                         {isEditing ? (
                           <input
+                            id="tfn_number"
                             type="text"
                             value={editData.tfn_number || ""}
                             onChange={(e) =>
                               handleInputChange("tfn_number", e.target.value)
                             }
                             placeholder={formatValue(employee.tfn_number)}
-                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700 font-mono">
@@ -1740,18 +1759,22 @@ export default function EmployeeDetailPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="abn_number"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           ABN Number
                         </label>
                         {isEditing ? (
                           <input
+                            id="abn_number"
                             type="text"
                             value={editData.abn_number || ""}
                             onChange={(e) =>
                               handleInputChange("abn_number", e.target.value)
                             }
                             placeholder={formatValue(employee.abn_number)}
-                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700 font-mono">
@@ -1760,21 +1783,25 @@ export default function EmployeeDetailPage() {
                         )}
                       </div>
                       <div className="col-span-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="education"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Education
                         </label>
                         {isEditing ? (
                           <textarea
+                            id="education"
                             value={editData.education || ""}
                             onChange={(e) =>
                               handleInputChange("education", e.target.value)
                             }
                             placeholder={formatValue(employee.education)}
                             rows={3}
-                            className="w-full text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
-                          <div className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
+                          <div className="text-sm text-slate-700 bg-slate-50 border border-slate-200 p-3 rounded-lg">
                             {formatValue(employee.education)}
                           </div>
                         )}
@@ -1783,18 +1810,22 @@ export default function EmployeeDetailPage() {
                   </div>
 
                   {/* Emergency Contact */}
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4" />
                       Emergency Contact
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="emergency_contact_name"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Contact Name
                         </label>
                         {isEditing ? (
                           <input
+                            id="emergency_contact_name"
                             type="text"
                             value={editData.emergency_contact_name || ""}
                             onChange={(e) =>
@@ -1806,7 +1837,7 @@ export default function EmployeeDetailPage() {
                             placeholder={formatValue(
                               employee.emergency_contact_name,
                             )}
-                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700">
@@ -1815,12 +1846,16 @@ export default function EmployeeDetailPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="emergency_contact_phone"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Contact Phone
                         </label>
                         {isEditing ? (
                           <div>
                             <input
+                              id="emergency_contact_phone"
                               type="tel"
                               value={editData.emergency_contact_phone || ""}
                               onChange={(e) =>
@@ -1830,18 +1865,18 @@ export default function EmployeeDetailPage() {
                                 )
                               }
                               placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                              className={`w-full text-sm text-slate-800 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${
+                              className={`w-full text-sm text-slate-800 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
                                 editData.emergency_contact_phone &&
                                 !validatePhone(editData.emergency_contact_phone)
-                                  ? "border-red-500"
-                                  : "border-slate-300"
+                                  ? "border-red-500 focus:ring-red-500"
+                                  : "border-slate-300 focus:ring-primary"
                               }`}
                             />
                             {editData.emergency_contact_phone &&
                               !validatePhone(
                                 editData.emergency_contact_phone,
                               ) && (
-                                <p className="mt-1 text-xs text-red-500">
+                                <p className="text-xs text-red-600 mt-1">
                                   Please enter a valid Australian phone number
                                 </p>
                               )}
@@ -1856,8 +1891,8 @@ export default function EmployeeDetailPage() {
                   </div>
 
                   {/* Availability Schedule */}
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                       <Clock className="w-4 h-4" />
                       Work Schedule
                     </h3>
@@ -1893,7 +1928,7 @@ export default function EmployeeDetailPage() {
                                     e.target.value,
                                   )
                                 }
-                                className="text-xs text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                className="text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                               />
                               <span className="text-xs text-slate-400">-</span>
                               <input
@@ -1906,7 +1941,7 @@ export default function EmployeeDetailPage() {
                                     e.target.value,
                                   )
                                 }
-                                className="text-xs text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                className="text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                               />
                             </div>
                           </div>
@@ -1958,18 +1993,22 @@ export default function EmployeeDetailPage() {
                 {/* Right Column - Financial Info */}
                 <div className="space-y-4">
                   {/* Banking Information */}
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                       <CreditCard className="w-4 h-4" />
                       Banking Details
                     </h3>
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="bank_account_name"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Bank Account Holder Name
                         </label>
                         {isEditing ? (
                           <input
+                            id="bank_account_name"
                             type="text"
                             value={editData.bank_account_name || ""}
                             onChange={(e) =>
@@ -1981,7 +2020,7 @@ export default function EmployeeDetailPage() {
                             placeholder={formatValue(
                               employee.bank_account_name,
                             )}
-                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700">
@@ -1990,11 +2029,15 @@ export default function EmployeeDetailPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="bank_account_number"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Bank Account Number
                         </label>
                         {isEditing ? (
                           <input
+                            id="bank_account_number"
                             type="text"
                             value={editData.bank_account_number || ""}
                             onChange={(e) =>
@@ -2006,7 +2049,7 @@ export default function EmployeeDetailPage() {
                             placeholder={formatValue(
                               employee.bank_account_number,
                             )}
-                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700 font-mono">
@@ -2015,11 +2058,15 @@ export default function EmployeeDetailPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="bank_account_bsb"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Bank Account BSB
                         </label>
                         {isEditing ? (
                           <input
+                            id="bank_account_bsb"
                             type="text"
                             value={editData.bank_account_bsb || ""}
                             onChange={(e) =>
@@ -2029,7 +2076,7 @@ export default function EmployeeDetailPage() {
                               )
                             }
                             placeholder={formatValue(employee.bank_account_bsb)}
-                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700 font-mono">
@@ -2041,18 +2088,22 @@ export default function EmployeeDetailPage() {
                   </div>
 
                   {/* Superannuation */}
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                       <Shield className="w-4 h-4" />
                       Superannuation
                     </h3>
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="supper_account_name"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Fund Name
                         </label>
                         {isEditing ? (
                           <input
+                            id="supper_account_name"
                             type="text"
                             value={editData.supper_account_name || ""}
                             onChange={(e) =>
@@ -2064,7 +2115,7 @@ export default function EmployeeDetailPage() {
                             placeholder={formatValue(
                               employee.supper_account_name,
                             )}
-                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700">
@@ -2073,11 +2124,15 @@ export default function EmployeeDetailPage() {
                         )}
                       </div>
                       <div>
-                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                        <label
+                          htmlFor="supper_account_number"
+                          className="text-xs uppercase tracking-wide text-slate-500 mb-1 block"
+                        >
                           Member ID
                         </label>
                         {isEditing ? (
                           <input
+                            id="supper_account_number"
                             type="text"
                             value={editData.supper_account_number || ""}
                             onChange={(e) =>
@@ -2089,7 +2144,7 @@ export default function EmployeeDetailPage() {
                             placeholder={formatValue(
                               employee.supper_account_number,
                             )}
-                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                            className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
                           <p className="text-sm text-slate-700 font-mono">
@@ -2101,8 +2156,8 @@ export default function EmployeeDetailPage() {
                   </div>
 
                   {/* Notes */}
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3">
                       Notes
                     </h3>
                     {isEditing ? (
@@ -2113,18 +2168,18 @@ export default function EmployeeDetailPage() {
                         }
                         placeholder={formatValue(employee.notes)}
                         rows={3}
-                        className="w-full text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                       />
                     ) : (
-                      <div className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
+                      <div className="text-sm text-slate-700 bg-slate-50 border border-slate-200 p-3 rounded-lg">
                         {formatValue(employee.notes)}
                       </div>
                     )}
                   </div>
 
                   {/* Active Status */}
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3">
                       Status
                     </h3>
                     {isEditing ? (
@@ -2148,10 +2203,10 @@ export default function EmployeeDetailPage() {
                     ) : (
                       <div className="flex items-center gap-2">
                         <span
-                          className={`px-3 py-1 text-xs font-medium rounded-full ${
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
                             employee.is_active !== false
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-red-100 text-red-800"
+                              ? "bg-green-100 text-green-800 border-green-200"
+                              : "bg-red-100 text-red-800 border-red-200"
                           }`}
                         >
                           {employee.is_active !== false
@@ -2166,7 +2221,7 @@ export default function EmployeeDetailPage() {
             )}
 
             {activeTab === "working-hours" && (
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+              <div className="bg-white rounded-lg border border-slate-200 p-4">
                 <WorkingHours employeeId={employee.employee_id} />
               </div>
             )}
@@ -2176,17 +2231,17 @@ export default function EmployeeDetailPage() {
 
       {/* User Details Modal */}
       {showUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4">
           <div
-            className="absolute inset-0 bg-slate-900/40"
+            className="absolute inset-0"
             onClick={() => {
               setShowUserModal(false);
               setShowPassword(false);
             }}
           />
-          <div className="relative bg-white w-full max-w-lg mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-700">
+          <div className="relative bg-white w-full max-w-lg rounded-xl border border-slate-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-800">
                 {isCreatingUser ? "Create User Account" : "User Details"}
               </h2>
               <button
@@ -2194,13 +2249,14 @@ export default function EmployeeDetailPage() {
                   setShowUserModal(false);
                   setShowPassword(false);
                 }}
-                className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
+                className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                aria-label="Close"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {/* User Information */}
               {!isCreatingUser && user && Object.keys(user).length > 0 && (
                 <div className="grid grid-cols-2 gap-3">
@@ -2233,7 +2289,7 @@ export default function EmployeeDetailPage() {
                       type="text"
                       value={userEditData.employee_id || ""}
                       disabled
-                      className="w-full text-sm text-slate-500 px-3 py-2 border border-slate-300 rounded bg-slate-100"
+                      className="w-full text-sm text-slate-600 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 cursor-not-allowed"
                     />
                   </div>
                 )}
@@ -2243,7 +2299,7 @@ export default function EmployeeDetailPage() {
                   {isCreatingUser && (
                     <div>
                       <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                        Username <span className="text-red-500">*</span>
+                        Username <span className="text-red-600">*</span>
                       </div>
                       <input
                         type="email"
@@ -2252,14 +2308,14 @@ export default function EmployeeDetailPage() {
                           handleUserInputChange("username", e.target.value)
                         }
                         placeholder="Enter username (email)"
-                        className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                        className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                       />
                     </div>
                   )}
 
                   <div>
                     <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                      User Type <span className="text-red-500">*</span>
+                      User Type <span className="text-red-600">*</span>
                     </div>
                     {isEditingUser || isCreatingUser ? (
                       <select
@@ -2267,7 +2323,7 @@ export default function EmployeeDetailPage() {
                         onChange={(e) =>
                           handleUserInputChange("user_type", e.target.value)
                         }
-                        className="cursor-pointer w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        className="cursor-pointer w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                       >
                         <option value="">Select User Type</option>
                         {isMasterAdmin() && (
@@ -2287,7 +2343,7 @@ export default function EmployeeDetailPage() {
                 <div className="flex items-start gap-3">
                   <div className="w-full">
                     <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                      Password <span className="text-red-500">*</span>
+                      Password <span className="text-red-600">*</span>
                     </div>
                     {isEditingUser || isCreatingUser ? (
                       <div className="relative">
@@ -2302,17 +2358,20 @@ export default function EmployeeDetailPage() {
                               ? "Enter password"
                               : "Enter new password"
                           }
-                          className="w-full text-sm text-slate-800 px-3 py-2 pr-10 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          className="w-full text-sm text-slate-800 px-3 py-2 pr-10 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="cursor-pointer absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                          className="cursor-pointer absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors duration-200"
+                          aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                          }
                         >
                           {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
+                            <EyeOff className="w-4 h-4" aria-hidden="true" />
                           ) : (
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-4 h-4" aria-hidden="true" />
                           )}
                         </button>
                       </div>
@@ -2377,12 +2436,23 @@ export default function EmployeeDetailPage() {
                                     disabled={
                                       !(isEditingUser || isCreatingUser)
                                     }
-                                    className="cursor-pointer p-1 hover:bg-slate-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    aria-label={
+                                      expandedModules[module.key]
+                                        ? "Collapse module"
+                                        : "Expand module"
+                                    }
                                   >
                                     {expandedModules[module.key] ? (
-                                      <ChevronDown className="w-4 h-4 text-slate-600" />
+                                      <ChevronDown
+                                        className="w-4 h-4"
+                                        aria-hidden="true"
+                                      />
                                     ) : (
-                                      <ChevronRight className="w-4 h-4 text-slate-600" />
+                                      <ChevronRight
+                                        className="w-4 h-4"
+                                        aria-hidden="true"
+                                      />
                                     )}
                                   </button>
                                   <label
@@ -2493,11 +2563,11 @@ export default function EmployeeDetailPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
               {!isCreatingUser && !isEditingUser && (
                 <button
                   onClick={() => setShowDeleteModal(true)}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md transition-colors flex items-center gap-2"
+                  className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-800 bg-red-100 hover:bg-red-200 border border-red-200 rounded-lg transition-colors duration-200"
                 >
                   <Trash2 className="w-4 h-4" />
                   Remove User Access
@@ -2507,14 +2577,14 @@ export default function EmployeeDetailPage() {
                 <>
                   <button
                     onClick={handleCreateUserCancel}
-                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleCreateUserSave}
                     disabled={isUpdating}
-                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Save className="w-4 h-4" />
                     {isUpdating ? "Creating..." : "Create User"}
@@ -2524,7 +2594,7 @@ export default function EmployeeDetailPage() {
                 <>
                   <button
                     onClick={() => setIsEditingUser(true)}
-                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                   >
                     Edit
                   </button>
@@ -2533,7 +2603,7 @@ export default function EmployeeDetailPage() {
                       setShowUserModal(false);
                       setShowPassword(false);
                     }}
-                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                   >
                     Close
                   </button>
@@ -2543,14 +2613,14 @@ export default function EmployeeDetailPage() {
                   <button
                     onClick={handleUserCancel}
                     disabled={isUpdating}
-                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleUserSave}
                     disabled={isUpdating}
-                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isUpdating ? "Saving..." : "Save"}
                   </button>
@@ -2604,15 +2674,15 @@ export default function EmployeeDetailPage() {
       {/* Create Role Modal */}
       {showCreateRoleModal && (
         <div
-          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
           onClick={() => setShowCreateRoleModal(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            className="bg-white rounded-xl border border-slate-200 w-full max-w-md max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-800">
                 Create New Role
               </h2>
               <button
@@ -2620,22 +2690,27 @@ export default function EmployeeDetailPage() {
                   setShowCreateRoleModal(false);
                   setNewRoleValue("");
                 }}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                aria-label="Close"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Role Name <span className="text-red-500">*</span>
+                <label
+                  htmlFor="new-role-name"
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                >
+                  Role Name <span className="text-red-600">*</span>
                 </label>
                 <input
+                  id="new-role-name"
                   type="text"
                   value={newRoleValue}
                   onChange={(e) => setNewRoleValue(e.target.value)}
                   placeholder="Enter role name"
-                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                   autoFocus
                 />
               </div>
@@ -2645,14 +2720,14 @@ export default function EmployeeDetailPage() {
                     setShowCreateRoleModal(false);
                     setNewRoleValue("");
                   }}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreateNewRole}
                   disabled={isCreatingRole || !newRoleValue?.trim()}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isCreatingRole ? "Creating..." : "Create Role"}
                 </button>

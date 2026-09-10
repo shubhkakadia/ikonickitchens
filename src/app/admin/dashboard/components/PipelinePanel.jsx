@@ -18,20 +18,20 @@ export default function PipelinePanel({ pipeline }) {
       icon={GitBranch}
     >
       {stages.length === 0 ? (
-        <EmptyState message="No stages in progress." />
+        <EmptyState message="No stages in progress." icon={GitBranch} />
       ) : (
         <div className="space-y-1.5">
           {stages.map((stage) => (
             <div key={stage.name} className="flex items-center gap-3">
               <span
-                className="text-[11px] text-slate-600 w-44 shrink-0 truncate"
+                className="text-xs text-slate-600 w-44 shrink-0 truncate"
                 title={titleCase(stage.name)}
               >
                 {titleCase(stage.name)}
               </span>
-              <div className="flex-1 h-4 bg-slate-50 rounded-r overflow-hidden min-w-0">
+              <div className="flex-1 h-4 bg-slate-100 rounded-r overflow-hidden min-w-0">
                 <div
-                  className="h-full rounded-r-[4px] bg-[#3D4FB5]"
+                  className="h-full rounded-r bg-series-1"
                   style={{ width: `${Math.max(2, (stage.count / max) * 100)}%` }}
                 />
               </div>
@@ -44,14 +44,14 @@ export default function PipelinePanel({ pipeline }) {
       )}
 
       {totalLots > 0 && (
-        <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
+        <div className="mt-4 pt-3 border-t border-slate-200 flex flex-wrap gap-2">
           {Object.entries(lotStatus).map(([status, count]) => (
             <span
               key={status}
-              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium ${STATUS_COLORS[status] ?? "bg-slate-100 text-slate-600"}`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[status] ?? "bg-slate-100 text-slate-800"}`}
             >
               {titleCase(status)}
-              <span className="font-bold tabular-nums">{count}</span>
+              <span className="font-semibold tabular-nums">{count}</span>
             </span>
           ))}
         </div>

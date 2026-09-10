@@ -90,6 +90,10 @@ html {
   --color-primary: #000080;
   --color-secondary: #b82f34;
   --color-tertiary: #f4f5f6;
+  /* Data-viz series colours — see DESIGN.md 5.6. Not brand colours: these are
+     tuned for fills, where `primary` (#000080) is too dark to read. */
+  --color-series-1: #3d4fb5;
+  --color-series-2: #b82f34;
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary-foreground: var(--secondary-foreground);
   --font-montserrat: "Montserrat", sans-serif;

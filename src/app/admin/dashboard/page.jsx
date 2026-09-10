@@ -37,7 +37,7 @@ function HeaderClock() {
   }, []);
 
   return (
-    <span className="text-[11px] text-slate-400">
+    <span className="text-xs text-slate-500">
       {now.toLocaleDateString("en-AU", {
         weekday: "long",
         day: "numeric",
@@ -52,11 +52,11 @@ function HeaderClock() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="h-[86px] bg-white rounded-xl border border-slate-200 animate-pulse"
+            className="h-[86px] bg-white rounded-lg border border-slate-200 animate-pulse"
           />
         ))}
       </div>
@@ -160,9 +160,9 @@ export default function page() {
     <AdminShell>
       <main className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 px-4 pt-4 pb-3">
-          <div className="bg-white rounded-xl border border-slate-200 px-5 py-3 flex flex-col lg:flex-row lg:items-center gap-3">
+          <div className="bg-white rounded-lg border border-slate-200 px-4 py-3 flex flex-col lg:flex-row lg:items-center gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-base font-bold text-primary truncate">
+              <h1 className="text-lg font-semibold text-slate-800 truncate">
                 {greeting()}
                 {data?.viewer?.name ? `, ${data.viewer.name}` : ""}
               </h1>
@@ -171,7 +171,7 @@ export default function page() {
             <div className="flex items-center gap-2 shrink-0">
               <SearchBar />
               {data?.generatedAt && (
-                <span className="hidden md:inline text-[11px] text-slate-400 whitespace-nowrap">
+                <span className="hidden md:inline text-xs text-slate-500 whitespace-nowrap">
                   as of {formatTime(data.generatedAt)}
                 </span>
               )}
@@ -186,9 +186,11 @@ export default function page() {
                 onClick={fetchDashboard}
                 disabled={refreshing}
                 title="Refresh dashboard"
-                className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:border-primary/30 hover:text-primary transition-colors duration-200 disabled:opacity-50"
+                aria-label="Refresh dashboard"
+                className="cursor-pointer p-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RefreshCcw
+                  aria-hidden="true"
                   className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
                 />
               </button>
@@ -200,14 +202,17 @@ export default function page() {
           {error && !hasData.current ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <p className="text-sm text-slate-600 font-medium mb-4">
+                <AlertTriangle
+                  aria-hidden="true"
+                  className="w-8 h-8 text-red-500 mx-auto mb-4"
+                />
+                <p className="text-sm font-medium text-slate-600 mb-4">
                   {error}
                 </p>
                 <button
                   type="button"
                   onClick={fetchDashboard}
-                  className="btn-primary"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
                 >
                   Try Again
                 </button>
@@ -220,7 +225,7 @@ export default function page() {
               className={`space-y-4 transition-opacity duration-200 ${refreshing ? "opacity-60" : "opacity-100"}`}
             >
               {error && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-[12px] text-amber-800">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
                   Showing the last successful load — {error}
                 </div>
               )}
@@ -238,7 +243,7 @@ export default function page() {
                   ) : permissions?.logs ? (
                     <ActivityFeed activity={data.activity} />
                   ) : (
-                    <div className="bg-white rounded-xl border border-slate-200 h-full flex items-center justify-center p-8 text-center text-sm text-slate-400">
+                    <div className="bg-white rounded-lg border border-slate-200 h-full flex items-center justify-center p-8 text-center text-sm text-slate-600">
                       Your access is limited to your own day. Ask an
                       administrator if you need project or procurement
                       visibility.

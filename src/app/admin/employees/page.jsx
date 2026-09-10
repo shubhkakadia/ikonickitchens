@@ -13,6 +13,7 @@ import {
   ChevronDown,
   RotateCcw,
   AlertTriangle,
+  Users,
 } from "lucide-react";
 import Image from "next/image";
 import TabsController from "@/components/tabscontroller";
@@ -394,7 +395,7 @@ export default function page() {
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-sm text-slate-600 font-medium">
                 Loading employees details...
               </p>
@@ -407,7 +408,7 @@ export default function page() {
               <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
               >
                 Try Again
               </button>
@@ -417,11 +418,13 @@ export default function page() {
           <>
             <div className="px-4 py-2 shrink-0">
               <div className="flex justify-between items-center">
-                <h1 className="text-xl font-bold text-slate-700">Employees</h1>
+                <h1 className="text-xl font-semibold text-slate-800">
+                  Employees
+                </h1>
                 <div className="flex items-center gap-2">
                   <SearchBar />
                   <TabsController href="/admin/employees/addemployee">
-                    <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
+                    <div className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200">
                       <Plus className="h-4 w-4" />
                       Add Employee
                     </div>
@@ -431,7 +434,7 @@ export default function page() {
             </div>
 
             <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+              <div className="bg-white rounded-lg border border-slate-200 flex flex-col h-full overflow-hidden">
                 {/* Fixed Header Section */}
                 <div className="p-4 shrink-0 border-b border-slate-200">
                   <div className="flex items-center justify-between gap-3">
@@ -441,7 +444,7 @@ export default function page() {
                       <input
                         type="text"
                         placeholder="Search Employee with name, email, phone, role, employee id"
-                        className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                        className="w-full text-sm text-slate-800 py-2 pr-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                       />
@@ -451,7 +454,7 @@ export default function page() {
                       {isAnyFilterActive() && (
                         <button
                           onClick={handleReset}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                          className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                         >
                           <RotateCcw className="h-4 w-4" />
                           <span>Reset</span>
@@ -463,7 +466,7 @@ export default function page() {
                           onClick={() =>
                             setShowRoleFilterDropdown(!showRoleFilterDropdown)
                           }
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                          className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                         >
                           <Funnel className="h-4 w-4" />
                           <span>Filter by Role</span>
@@ -474,9 +477,9 @@ export default function page() {
                           )}
                         </button>
                         {showRoleFilterDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
                             <div className="py-1">
-                              <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                              <label className="cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors sticky top-0 bg-white border-b border-slate-200">
                                 <span className="font-semibold">
                                   Select All
                                 </span>
@@ -495,7 +498,7 @@ export default function page() {
                               {distinctRoles.map((role) => (
                                 <label
                                   key={role}
-                                  className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                  className="cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
                                 >
                                   <span>{role}</span>
                                   <input
@@ -514,35 +517,35 @@ export default function page() {
                       <div className="relative dropdown-container">
                         <button
                           onClick={() => setShowSortDropdown(!showSortDropdown)}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                          className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                         >
                           <ArrowUpDown className="h-4 w-4" />
                           <span>Sort by</span>
                         </button>
                         {showSortDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                          <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-300 rounded-lg z-40">
                             <div className="py-1">
                               <button
                                 onClick={() => handleSort("employee_id")}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
                               >
                                 Employee ID {getSortIcon("employee_id")}
                               </button>
                               <button
                                 onClick={() => handleSort("first_name")}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
                               >
                                 First Name {getSortIcon("first_name")}
                               </button>
                               <button
                                 onClick={() => handleSort("last_name")}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
                               >
                                 Last Name {getSortIcon("last_name")}
                               </button>
                               <button
                                 onClick={() => handleSort("role")}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                                className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
                               >
                                 Role {getSortIcon("role")}
                               </button>
@@ -558,7 +561,7 @@ export default function page() {
                             filteredAndSortedEmployees.length === 0 ||
                             selectedColumns.length === 0
                           }
-                          className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                          className={`flex items-center gap-2 transition-colors duration-200 text-slate-700 bg-white border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
                             isExporting ||
                             filteredAndSortedEmployees.length === 0 ||
                             selectedColumns.length === 0
@@ -579,19 +582,19 @@ export default function page() {
                             isExporting ||
                             filteredAndSortedEmployees.length === 0
                           }
-                          className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                          className={`flex items-center transition-colors duration-200 text-slate-700 bg-white border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
                             isExporting ||
                             filteredAndSortedEmployees.length === 0
                               ? "opacity-50 cursor-not-allowed"
                               : "cursor-pointer hover:bg-slate-100"
                           }`}
                         >
-                          <ChevronDown className="h-5 w-5" />
+                          <ChevronDown className="h-4 w-4" />
                         </button>
                         {showColumnDropdown && (
-                          <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                          <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
                             <div className="py-1">
-                              <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
+                              <label className="cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors sticky top-0 bg-white border-b border-slate-200">
                                 <span className="font-semibold">
                                   Select All
                                 </span>
@@ -610,7 +613,7 @@ export default function page() {
                               {availableColumns.map((column) => (
                                 <label
                                   key={column}
-                                  className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                  className="cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
                                 >
                                   <span>{column}</span>
                                   <input
@@ -661,11 +664,11 @@ export default function page() {
                     <table className="min-w-full divide-y divide-slate-200">
                       <thead className="bg-slate-50 sticky top-0 z-10">
                         <tr>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                             Image
                           </th>
                           <th
-                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                             onClick={() => handleSort("employee_id")}
                           >
                             <div className="flex items-center gap-2">
@@ -674,7 +677,7 @@ export default function page() {
                             </div>
                           </th>
                           <th
-                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                             onClick={() => handleSort("first_name")}
                           >
                             <div className="flex items-center gap-2">
@@ -683,7 +686,7 @@ export default function page() {
                             </div>
                           </th>
                           <th
-                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                             onClick={() => handleSort("last_name")}
                           >
                             <div className="flex items-center gap-2">
@@ -691,14 +694,14 @@ export default function page() {
                               {getSortIcon("last_name")}
                             </div>
                           </th>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                             Email
                           </th>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                             Phone
                           </th>
                           <th
-                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                            className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                             onClick={() => handleSort("role")}
                           >
                             <div className="flex items-center gap-2">
@@ -729,17 +732,20 @@ export default function page() {
                           </tr>
                         ) : paginatedEmployees.length === 0 ? (
                           <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-slate-500 text-center"
-                              colSpan={7}
-                            >
-                              {search
-                                ? "No employees found matching your search"
-                                : selectedRoles.length === 0
-                                  ? "No employees found"
-                                  : activeTab === "active"
-                                    ? "No current employees found"
-                                    : "No former employees found"}
+                            <td className="px-4 py-12 text-center" colSpan={7}>
+                              <Users
+                                className="w-8 h-8 text-slate-300 mx-auto mb-2"
+                                aria-hidden="true"
+                              />
+                              <p className="text-sm text-slate-600">
+                                {search
+                                  ? "No employees found matching your search"
+                                  : selectedRoles.length === 0
+                                    ? "No employees found"
+                                    : activeTab === "active"
+                                      ? "No current employees found"
+                                      : "No former employees found"}
+                              </p>
                             </td>
                           </tr>
                         ) : (
@@ -761,10 +767,10 @@ export default function page() {
                                       alt={e.first_name + " " + e.last_name}
                                       width={40}
                                       height={40}
-                                      className="w-full h-full object-cover rounded"
+                                      className="w-full h-full object-cover rounded-lg"
                                     />
                                   ) : (
-                                    <div className="w-10 h-10 bg-linear-to-br from-secondary to-primary rounded text-white text-center flex items-center justify-center font-bold text-sm">
+                                    <div className="w-10 h-10 bg-linear-to-br from-secondary to-primary rounded-lg text-white text-center flex items-center justify-center font-semibold text-sm">
                                       {e.first_name?.[0] || ""}
                                       {e.last_name?.[0] || ""}
                                     </div>

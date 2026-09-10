@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export default function page() {
+export default function AddProjectPage() {
   const [formData, setFormData] = useState({
     name: "",
     project_id: "",
@@ -325,30 +325,39 @@ export default function page() {
         <div className="px-4 py-2">
           <div className="flex items-center gap-2 mb-4">
             <TabsController back={true}>
-              <div className="cursor-pointer p-1 hover:bg-slate-200 rounded-lg transition-colors">
-                <ChevronLeft className="w-8 h-8 text-slate-600" />
+              <div
+                className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                aria-label="Back"
+              >
+                <ChevronLeft
+                  aria-hidden="true"
+                  className="w-5 h-5 text-slate-600"
+                />
               </div>
             </TabsController>
-            <h1 className="text-2xl font-bold text-slate-600">
+            <h1 className="text-xl font-semibold text-slate-800">
               Add New Project
             </h1>
           </div>
 
           {/* form */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-6">
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Project Information Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <FolderOpen className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl font-bold text-slate-800">
+                  <FolderOpen
+                    aria-hidden="true"
+                    className="w-5 h-5 text-primary"
+                  />
+                  <h2 className="text-lg font-semibold text-slate-800">
                     Project Information
                   </h2>
                 </div>
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
                         Project Name <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -356,7 +365,7 @@ export default function page() {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 focus:outline-none"
                         placeholder="Eg. 5 Dundee Ave, Holden Hill SA 5088"
                         required
                       />
@@ -367,7 +376,7 @@ export default function page() {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
                         Project ID <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -393,9 +402,11 @@ export default function page() {
                   </div>
                   <div className="flex flex-wrap gap-4">
                     <div className="relative flex-1" ref={clientDropdownRef}>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
                         Client{" "}
-                        <span className="text-slate-400">(Optional)</span>
+                        <span className="font-normal text-slate-500">
+                          (Optional)
+                        </span>
                       </label>
                       <div className="relative">
                         <input
@@ -403,7 +414,7 @@ export default function page() {
                           value={clientSearchTerm}
                           onChange={handleClientSearchChange}
                           onFocus={() => setIsClientDropdownOpen(true)}
-                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 focus:outline-none"
                           placeholder="Search or select client..."
                         />
                         <button
@@ -411,7 +422,8 @@ export default function page() {
                           onClick={() =>
                             setIsClientDropdownOpen(!isClientDropdownOpen)
                           }
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          aria-label="Toggle client list"
+                          className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors duration-200"
                         >
                           <ChevronDown
                             className={`w-5 h-5 transition-transform duration-200 ${
@@ -427,7 +439,7 @@ export default function page() {
                       )}
 
                       {isClientDropdownOpen && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
                           {filteredClients.length > 0 ? (
                             filteredClients.map((client) => (
                               <button
@@ -460,7 +472,7 @@ export default function page() {
                       )}
                     </div>
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
                         Start Date
                       </label>
                       <input
@@ -468,11 +480,11 @@ export default function page() {
                         name="startDate"
                         value={formData.startDate}
                         onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 focus:outline-none"
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
                         Number of Lots
                       </label>
                       <input
@@ -481,7 +493,7 @@ export default function page() {
                         max="100"
                         value={numberOfLots}
                         onChange={handleNumberOfLotsChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 focus:outline-none"
                         placeholder="Enter number of lots"
                       />
                     </div>
@@ -491,10 +503,13 @@ export default function page() {
 
               {/* Lots Section */}
               {lots.length > 0 && (
-                <div className="space-y-6 border-t pt-6">
+                <div className="space-y-6 border-t border-slate-200 pt-6">
                   <div className="flex items-center gap-2 mb-4">
-                    <Layers className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <Layers
+                      aria-hidden="true"
+                      className="w-5 h-5 text-primary"
+                    />
+                    <h2 className="text-lg font-semibold text-slate-800">
                       Lot Information
                     </h2>
                   </div>
@@ -504,13 +519,13 @@ export default function page() {
                         key={index}
                         className="bg-slate-50 rounded-lg p-6 border border-slate-200"
                       >
-                        <h3 className="text-lg font-semibold text-slate-700 mb-4">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-4">
                           Lot {index + 1}
                         </h3>
                         <div className="space-y-4">
                           <div className="flex flex-wrap gap-4">
                             <div className="flex-1">
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                                 Lot ID <span className="text-red-500">*</span>
                               </label>
                               <input
@@ -523,7 +538,7 @@ export default function page() {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 focus:outline-none"
                                 placeholder="Eg. Lot 1"
                                 required
                               />
@@ -535,7 +550,7 @@ export default function page() {
                               </p>
                             </div>
                             <div className="flex-1">
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                                 Client Name{" "}
                                 <span className="text-red-500">*</span>
                               </label>
@@ -549,13 +564,13 @@ export default function page() {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 focus:outline-none"
                                 placeholder="Enter client name"
                                 required
                               />
                             </div>
                             <div className="flex-1">
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                                 Installation Due Date
                               </label>
                               <input
@@ -568,12 +583,12 @@ export default function page() {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 focus:outline-none"
                               />
                             </div>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
                               Notes
                             </label>
                             <textarea
@@ -582,7 +597,7 @@ export default function page() {
                                 handleLotChange(index, "notes", e.target.value)
                               }
                               rows={3}
-                              className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none resize-none"
+                              className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 focus:outline-none resize-none"
                               placeholder="Enter any additional notes..."
                             />
                           </div>
@@ -598,10 +613,10 @@ export default function page() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className={`cursor-pointer px-8 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
+                  className={`cursor-pointer px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm ${
                     isLoading
-                      ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                      : "bg-primary/80 hover:bg-primary text-white"
+                      ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                      : "bg-primary hover:bg-primary/90 text-white"
                   }`}
                 >
                   {isLoading ? "Creating Project..." : "Create Project"}

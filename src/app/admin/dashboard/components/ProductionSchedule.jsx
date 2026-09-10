@@ -35,16 +35,16 @@ export default function ProductionSchedule({ schedule }) {
       className="min-h-0"
     >
       {grouped.length === 0 ? (
-        <EmptyState message="No installations scheduled in this window." />
+        <EmptyState message="No installations scheduled in this window." icon={CalendarRange} />
       ) : (
         <div className="max-h-[420px] overflow-y-auto">
           {grouped.map((bucket) => (
             <div key={bucket.key}>
-              <div className="sticky top-0 z-10 bg-slate-50 px-5 py-1.5 border-y border-slate-100">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="sticky top-0 z-10 bg-slate-50 px-4 py-1.5 border-y border-slate-200">
+                <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
                   {bucket.label}
                 </span>
-                <span className="ml-2 text-[10px] text-slate-400">
+                <span className="ml-2 text-xs text-slate-500">
                   {bucket.rows.length}
                 </span>
               </div>
@@ -62,13 +62,13 @@ export default function ProductionSchedule({ schedule }) {
                       row.project_id &&
                       router.push(`/admin/projects/${row.project_id}`)
                     }
-                    className="w-full text-left px-5 py-2.5 border-b border-slate-50 hover:bg-slate-50 transition-colors duration-150 focus:outline-none focus:bg-slate-50"
+                    className="cursor-pointer w-full text-left px-4 py-2 border-b border-slate-200 hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
                   >
                     <div className="flex items-center gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-slate-800 truncate">
                           {row.project}
-                          <span className="text-slate-400 font-normal">
+                          <span className="text-slate-500 font-normal">
                             {" · "}
                             {row.name}
                           </span>
@@ -80,23 +80,23 @@ export default function ProductionSchedule({ schedule }) {
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <span className="text-[10px] text-slate-400 shrink-0">
+                          <span className="text-xs text-slate-500 shrink-0">
                             {row.stagesDone}/{row.stagesTotal} stages
                           </span>
                           {row.installer && (
-                            <span className="text-[10px] text-slate-400 flex items-center gap-1 min-w-0">
-                              <HardHat className="w-3 h-3 shrink-0" />
+                            <span className="text-xs text-slate-500 flex items-center gap-1 min-w-0">
+                              <HardHat className="w-3 h-3 shrink-0" aria-hidden="true" />
                               <span className="truncate">{row.installer}</span>
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-xs text-slate-500">
                           {formatDate(row.installationDueDate)}
                         </p>
                         <span
-                          className={`inline-flex mt-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${badge.className}`}
+                          className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${badge.className}`}
                         >
                           {badge.label}
                         </span>

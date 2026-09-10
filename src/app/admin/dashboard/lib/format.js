@@ -63,21 +63,20 @@ export const formatTimeAgo = (value) => {
 };
 
 // Days-left badge shared by the schedule and My Stages panels.
+// Severity ramp on the sanctioned semantic hues (DESIGN.md 5.3).
 export const daysLeftBadge = (days) => {
   if (days == null || Number.isNaN(days))
-    return { label: "No date", className: "bg-slate-100 text-slate-500" };
+    return { label: "No date", className: "bg-slate-100 text-slate-600" };
   if (days < 0)
     return {
       label: `${Math.abs(days)}d overdue`,
-      className: "bg-red-100 text-red-700",
+      className: "bg-red-100 text-red-800",
     };
   if (days === 0)
     return { label: "Due today", className: "bg-amber-100 text-amber-800" };
-  if (days <= 3)
-    return { label: `${days}d left`, className: "bg-amber-50 text-amber-700" };
   if (days <= 7)
-    return { label: `${days}d left`, className: "bg-yellow-50 text-yellow-700" };
-  return { label: `${days}d left`, className: "bg-emerald-50 text-emerald-700" };
+    return { label: `${days}d left`, className: "bg-amber-50 text-amber-800" };
+  return { label: `${days}d left`, className: "bg-green-100 text-green-800" };
 };
 
 export const daysUntil = (value) => {
@@ -87,32 +86,49 @@ export const daysUntil = (value) => {
   return Math.round((target - today) / 86400000);
 };
 
+// Log actions. CREATE/UPDATE/DELETE carry real meaning, so they take the
+// matching semantic hue; ASSIGN/UPLOAD are purely categorical and use the
+// extended hues (DESIGN.md 5.5). Formula is -100 background / -800 text.
 export const ACTION_COLORS = {
-  CREATE: "bg-emerald-100 text-emerald-700",
-  UPDATE: "bg-blue-100 text-blue-700",
-  DELETE: "bg-red-100 text-red-700",
-  STATUS_CHANGE: "bg-violet-100 text-violet-700",
-  ASSIGN: "bg-teal-100 text-teal-700",
-  UPLOAD: "bg-indigo-100 text-indigo-700",
-  OTHER: "bg-slate-100 text-slate-600",
+  CREATE: "bg-green-100 text-green-800",
+  UPDATE: "bg-blue-100 text-blue-800",
+  DELETE: "bg-red-100 text-red-800",
+  STATUS_CHANGE: "bg-amber-100 text-amber-800",
+  ASSIGN: "bg-violet-100 text-violet-800",
+  UPLOAD: "bg-indigo-100 text-indigo-800",
+  OTHER: "bg-slate-100 text-slate-800",
 };
 
+// Status -> colour mapping from DESIGN.md 5.4. Kept identical to the mapping
+// used by the project stage table so a status never changes colour between
+// the dashboard and the page it links to.
 export const STATUS_COLORS = {
-  DRAFT: "bg-slate-100 text-slate-700",
-  ORDERED: "bg-blue-100 text-blue-700",
-  PARTIALLY_ORDERED: "bg-amber-100 text-amber-800",
-  FULLY_ORDERED: "bg-emerald-100 text-emerald-700",
-  PARTIALLY_RECEIVED: "bg-amber-100 text-amber-800",
-  FULLY_RECEIVED: "bg-emerald-100 text-emerald-700",
-  CANCELLED: "bg-red-100 text-red-700",
-  CLOSED: "bg-slate-200 text-slate-700",
-  ACTIVE: "bg-emerald-100 text-emerald-700",
-  COMPLETED: "bg-blue-100 text-blue-700",
-  NOT_STARTED: "bg-slate-100 text-slate-600",
-  IN_PROGRESS: "bg-amber-100 text-amber-800",
-  DONE: "bg-emerald-100 text-emerald-700",
-  NA: "bg-slate-100 text-slate-400",
+  // Green - finished successfully
+  DONE: "bg-green-100 text-green-800",
+  COMPLETED: "bg-green-100 text-green-800",
+  FULLY_ORDERED: "bg-green-100 text-green-800",
+  FULLY_RECEIVED: "bg-green-100 text-green-800",
+  // Blue - in flight
+  IN_PROGRESS: "bg-blue-100 text-blue-800",
+  ACTIVE: "bg-blue-100 text-blue-800",
+  ORDERED: "bg-blue-100 text-blue-800",
+  PARTIALLY_ORDERED: "bg-blue-100 text-blue-800",
+  PARTIALLY_RECEIVED: "bg-blue-100 text-blue-800",
+  // Amber - not yet committed
+  DRAFT: "bg-amber-100 text-amber-800",
+  // Red - stopped
+  CANCELLED: "bg-red-100 text-red-800",
+  // Slate - inert
+  NOT_STARTED: "bg-slate-100 text-slate-800",
+  CLOSED: "bg-slate-100 text-slate-800",
+  NA: "bg-slate-100 text-slate-600",
 };
+
+// Data-viz series colours. Chart.js takes colour strings, not Tailwind
+// classes, so they live here as constants rather than inline hex in JSX
+// (DESIGN.md 5.6). These mirror --color-series-* in globals.css.
+export const SERIES_1 = "#3d4fb5";
+export const SERIES_2 = "#b82f34";
 
 export const titleCase = (value) =>
   (value || "")

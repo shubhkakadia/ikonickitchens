@@ -256,7 +256,7 @@ export default function ViewMedia({
     >
       {/* Modal Container */}
       <div
-        className="bg-slate-900 rounded-lg shadow-2xl w-full max-w-6xl h-[98vh] flex flex-col relative overflow-hidden"
+        className="bg-slate-900 rounded-lg w-full max-w-6xl h-[98vh] flex flex-col relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Media Viewer Area */}
@@ -267,7 +267,7 @@ export default function ViewMedia({
             onClick={(e) => e.stopPropagation()}
           >
             {selectedFile.type?.includes("image") ? (
-              <div className="transition-transform duration-300 ease-out">
+              <div className="transition-transform duration-200 ease-out">
                 <Image
                   width={1920}
                   height={1080}
@@ -300,7 +300,7 @@ export default function ViewMedia({
                     {Array.from(new Array(numPages), (el, index) => (
                       <div
                         key={`page_${index + 1}`}
-                        className="shadow-2xl bg-white"
+                        className="bg-white"
                         onMouseEnter={() => setCurrentPageInView(index + 1)}
                       >
                         <Page
@@ -341,7 +341,7 @@ export default function ViewMedia({
                   handlePrevious();
                 }}
                 disabled={!canNavigatePrevious}
-                className={`absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
+                className={`absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/60 transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 ${
                   showControls ? "opacity-100" : "opacity-0 pointer-events-none"
                 }`}
                 title="Previous (←)"
@@ -354,7 +354,7 @@ export default function ViewMedia({
                   handleNext();
                 }}
                 disabled={!canNavigateNext}
-                className={`absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
+                className={`absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/60 transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 ${
                   showControls ? "opacity-100" : "opacity-0 pointer-events-none"
                 }`}
                 title="Next (→)"
@@ -366,7 +366,7 @@ export default function ViewMedia({
 
           {/* Floating Top Navigation Bar */}
           <div
-            className={`absolute top-0 left-0 right-0 z-20 pointer-events-none transition-opacity duration-300 ${
+            className={`absolute top-0 left-0 right-0 z-20 pointer-events-none transition-opacity duration-200 ${
               showControls ? "opacity-100" : "opacity-0"
             }`}
             onClick={(e) => e.stopPropagation()}
@@ -374,11 +374,11 @@ export default function ViewMedia({
             <div className="p-3 sm:p-4 sm:px-6">
               <div className="flex items-center justify-between max-w-7xl mx-auto pointer-events-auto gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                  <div className="text-white font-medium truncate max-w-[200px] sm:max-w-md text-sm sm:text-base bg-black/40 rounded-lg px-2 sm:px-4 backdrop-blur-md shadow-lg border border-white/10 min-h-11 flex items-center">
+                  <div className="text-white font-medium truncate max-w-[200px] sm:max-w-md text-sm sm:text-base bg-black/50 rounded-lg px-2 sm:px-4 backdrop-blur-md border border-white/10 min-h-11 flex items-center">
                     {selectedFile.name}
                   </div>
                   {allFiles.length > 0 && (
-                    <div className="text-white font-medium truncate max-w-[200px] sm:max-w-md text-sm sm:text-base bg-black/40 rounded-lg px-2 sm:px-4 backdrop-blur-md shadow-lg border border-white/10 min-h-11 flex items-center">
+                    <div className="text-white font-medium truncate max-w-[200px] sm:max-w-md text-sm sm:text-base bg-black/50 rounded-lg px-2 sm:px-4 backdrop-blur-md border border-white/10 min-h-11 flex items-center">
                       {currentFileIndex + 1} / {allFiles.length}
                     </div>
                   )}
@@ -389,7 +389,7 @@ export default function ViewMedia({
                     resetControlsTimer();
                     handleClose();
                   }}
-                  className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 rounded-lg p-2 sm:p-2.5 transition-all backdrop-blur-md bg-black/40 shadow-lg border border-white/10 shrink-0 min-w-11 min-h-11 flex items-center justify-center"
+                  className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 rounded-lg p-2 sm:p-2.5 transition-colors backdrop-blur-md bg-black/50 border border-white/10 shrink-0 min-w-11 min-h-11 flex items-center justify-center"
                   aria-label="Close preview"
                 >
                   <X className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -400,7 +400,7 @@ export default function ViewMedia({
 
           {/* Floating Bottom Control Bar */}
           <div
-            className={`absolute bottom-0 left-0 right-0 z-20 pointer-events-none transition-opacity duration-300 ${
+            className={`absolute bottom-0 left-0 right-0 z-20 pointer-events-none transition-opacity duration-200 ${
               showControls ? "opacity-100" : "opacity-0"
             }`}
             onClick={(e) => e.stopPropagation()}
@@ -417,20 +417,20 @@ export default function ViewMedia({
                         handleReset();
                       }}
                       disabled={imageScale === 1 && imageRotation === 0}
-                      className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all border border-white/10 shadow-lg min-h-11 bg-black/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors border border-white/10 min-h-11 bg-black/50 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       Reset
                     </button>
 
                     {/* Zoom Controls */}
-                    <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
+                    <div className="flex items-center gap-1 bg-black/50 backdrop-blur-md rounded-lg border border-white/10">
                       <button
                         onClick={() => {
                           resetControlsTimer();
                           setImageScale((prev) => Math.max(prev - 0.25, 0.5));
                         }}
                         disabled={imageScale <= 0.5}
-                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
+                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-colors min-w-11 min-h-11 flex items-center justify-center"
                         aria-label="Zoom out"
                       >
                         <ZoomOut className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -446,7 +446,7 @@ export default function ViewMedia({
                           setImageScale((prev) => Math.min(prev + 0.25, 3));
                         }}
                         disabled={imageScale >= 3}
-                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
+                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-colors min-w-11 min-h-11 flex items-center justify-center"
                         aria-label="Zoom in"
                       >
                         <ZoomIn className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -459,7 +459,7 @@ export default function ViewMedia({
                         resetControlsTimer();
                         setImageRotation((prev) => (prev + 90) % 360);
                       }}
-                      className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg p-2 sm:p-2.5 transition-all border border-white/10 shadow-lg min-w-11 min-h-11 flex items-center justify-center bg-black/40"
+                      className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg p-2 sm:p-2.5 transition-colors border border-white/10 min-w-11 min-h-11 flex items-center justify-center bg-black/50"
                       aria-label="Rotate image"
                     >
                       <RotateCw className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -472,14 +472,14 @@ export default function ViewMedia({
                   selectedFile.name?.endsWith(".pdf")) && (
                   <>
                     {/* PDF Zoom Controls */}
-                    <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 shadow-lg">
+                    <div className="flex items-center gap-1 bg-black/50 backdrop-blur-md rounded-lg border border-white/10">
                       <button
                         onClick={() => {
                           resetControlsTimer();
                           setPdfScale((prev) => Math.max(prev - 0.25, 0.5));
                         }}
                         disabled={pdfScale <= 0.5}
-                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
+                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-colors min-w-11 min-h-11 flex items-center justify-center"
                         aria-label="Zoom out"
                       >
                         <ZoomOut className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -495,7 +495,7 @@ export default function ViewMedia({
                           setPdfScale((prev) => Math.min(prev + 0.25, 3));
                         }}
                         disabled={pdfScale >= 3}
-                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-all min-w-11 min-h-11 flex items-center justify-center"
+                        className="cursor-pointer text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg p-2 sm:p-2.5 transition-colors min-w-11 min-h-11 flex items-center justify-center"
                         aria-label="Zoom in"
                       >
                         <ZoomIn className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -504,7 +504,7 @@ export default function ViewMedia({
 
                     {/* PDF Page Info */}
                     {numPages && (
-                      <div className="text-white/90 text-xs sm:text-sm font-medium bg-black/40 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 border border-white/10 shadow-lg min-h-11 flex items-center">
+                      <div className="text-white/90 text-xs sm:text-sm font-medium bg-black/50 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 border border-white/10 min-h-11 flex items-center">
                         Page {currentPageInView} of {numPages}
                       </div>
                     )}
@@ -516,7 +516,7 @@ export default function ViewMedia({
                         handlePdfReset();
                       }}
                       disabled={pdfScale === 1}
-                      className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all border border-white/10 shadow-lg min-h-11 bg-black/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors border border-white/10 min-h-11 bg-black/50 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       Reset
                     </button>
@@ -529,7 +529,7 @@ export default function ViewMedia({
                     resetControlsTimer();
                     handleDownload();
                   }}
-                  className="flex items-center gap-2 cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all border border-white/10 shadow-lg min-h-11 bg-black/40"
+                  className="flex items-center gap-2 cursor-pointer text-white/90 hover:text-white hover:bg-black/60 backdrop-blur-md rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors border border-white/10 min-h-11 bg-black/50"
                   aria-label="Download file"
                 >
                   <Download className="w-4 h-4 sm:w-5 sm:h-5" />

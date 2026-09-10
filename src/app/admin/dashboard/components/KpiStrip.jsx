@@ -28,28 +28,28 @@ export default function KpiStrip({ kpis, permissions }) {
   if (visible.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
       {visible.map((card) => (
         <button
           key={card.key}
           type="button"
           onClick={() => router.push(card.href)}
-          className="text-left bg-white rounded-xl border border-slate-200 p-3 transition-all duration-200 hover:border-primary/25 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="cursor-pointer text-left bg-white rounded-lg border border-slate-200 p-3 transition-colors duration-200 hover:bg-slate-50 hover:border-primary/25 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-2xl font-bold text-primary leading-none tabular-nums">
+              <p className="text-2xl font-semibold text-primary leading-none tabular-nums">
                 {Number(kpis[card.key]).toLocaleString()}
               </p>
-              <p className="text-[11px] font-semibold text-slate-600 mt-1.5 leading-tight">
+              <p className="text-xs font-semibold text-slate-600 mt-1.5 leading-tight">
                 {card.label}
               </p>
               {card.sub && (
-                <p className="text-[10px] text-slate-400 mt-0.5">{card.sub}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{card.sub}</p>
               )}
             </div>
             <span className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0">
-              <card.icon className="w-3.5 h-3.5" />
+              <card.icon className="w-4 h-4" aria-hidden="true" />
             </span>
           </div>
         </button>

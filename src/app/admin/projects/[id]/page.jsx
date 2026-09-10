@@ -40,7 +40,7 @@ import ViewMedia from "../components/ViewMedia";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-export default function page() {
+export default function ProjectDetailPage() {
   const { id } = useParams();
   const { getToken } = useAuth();
   const router = useRouter();
@@ -1409,18 +1409,23 @@ export default function page() {
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-              <p className="text-slate-600">Loading project details...</p>
+              <div className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mx-auto mb-4" />
+              <p className="text-sm text-slate-600">
+                Loading project details...
+              </p>
             </div>
           </div>
         ) : error ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-red-600 mb-4">{error}</p>
+              <AlertTriangle
+                aria-hidden="true"
+                className="w-8 h-8 text-red-500 mx-auto mb-4"
+              />
+              <p className="text-sm font-medium text-red-600 mb-4">{error}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="btn-primary"
+                className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Try Again
               </button>
@@ -1429,16 +1434,25 @@ export default function page() {
         ) : !project ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <PanelsTopLeft className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600">Project not found</p>
+              <PanelsTopLeft
+                aria-hidden="true"
+                className="w-8 h-8 text-slate-300 mx-auto mb-4"
+              />
+              <p className="text-sm text-slate-600">Project not found</p>
             </div>
           </div>
         ) : (
           <div className="p-4">
             <div className="flex items-center gap-4 mb-4">
               <TabsController back={true}>
-                <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                  <ChevronLeft className="w-6 h-6 text-slate-600" />
+                <div
+                  className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                  aria-label="Back"
+                >
+                  <ChevronLeft
+                    aria-hidden="true"
+                    className="w-5 h-5 text-slate-600"
+                  />
                 </div>
               </TabsController>
               <div className="flex-1 flex items-center gap-2">
@@ -1452,11 +1466,11 @@ export default function page() {
                         name: e.target.value,
                       })
                     }
-                    className="text-2xl font-bold text-slate-600 border border-slate-300 rounded-lg p-2"
+                    className="text-xl font-semibold text-slate-800 border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="Enter project name"
                   />
                 ) : (
-                  <h1 className="text-2xl font-bold text-slate-600">
+                  <h1 className="text-xl font-semibold text-slate-800">
                     {project.name}
                   </h1>
                 )}
@@ -1465,7 +1479,7 @@ export default function page() {
                     <button
                       type="button"
                       onClick={() => setIsLotDropdownOpen(!isLotDropdownOpen)}
-                      className="flex justify-between items-center gap-4 w-full text-sm text-slate-600 px-2 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      className="flex justify-between items-center gap-4 w-full text-sm text-slate-600 px-2 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     >
                       <span>{selectedLot?.lot_id || "Select lot..."}</span>
                       <ChevronDown
@@ -1476,7 +1490,7 @@ export default function page() {
                     </button>
 
                     {isLotDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      <div className="absolute z-40 w-full mt-1 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
                         {project.lots && project.lots.length > 0 ? (
                           [...project.lots]
                             .sort((a, b) => {
@@ -1539,7 +1553,7 @@ export default function page() {
                     </button>
 
                     {showDropdown && (
-                      <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                      <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-300 rounded-lg z-40">
                         <div className="py-1">
                           <button
                             onClick={() => {
@@ -1605,14 +1619,14 @@ export default function page() {
                         isProjectEditing ? handleProjectSave : handleSave
                       }
                       disabled={isUpdating}
-                      className="cursor-pointer btn-primary flex items-center gap-2"
+                      className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       <Edit className="w-4 h-4" />
                       {isUpdating ? "Saving..." : "Save"}
                     </button>
                     <button
                       onClick={handleCancel}
-                      className="cursor-pointer btn-secondary flex items-center gap-2"
+                      className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       Cancel
                     </button>
@@ -1648,12 +1662,12 @@ export default function page() {
             )}
 
             {/* Tab Content */}
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
               {(activeTab === "overview" ||
                 !project.lots ||
                 project.lots.length === 0) && (
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                  <h2 className="text-lg font-semibold text-slate-800 mb-4">
                     Project Overview
                   </h2>
 
@@ -1663,7 +1677,7 @@ export default function page() {
                         {/* Overview - quick info cards with 30-30-40 ratio */}
                         <div className="flex flex-col lg:flex-row gap-4 mb-4">
                           {/* Lot Information - 30% */}
-                          <div className="bg-white rounded-xl border border-slate-200 p-4 lg:w-[30%]">
+                          <div className="bg-white rounded-lg border border-slate-200 p-4 lg:w-[30%]">
                             <div className="flex items-start justify-between gap-3 mb-3">
                               <div>
                                 <h3 className="text-base font-semibold text-slate-900">
@@ -1704,7 +1718,7 @@ export default function page() {
                                     />
                                   </button>
                                   {showStatusDropdown && (
-                                    <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[140px] overflow-hidden">
+                                    <div className="absolute right-0 mt-1 bg-white border border-slate-300 rounded-lg z-40 min-w-[140px] overflow-hidden">
                                       <button
                                         onClick={() =>
                                           handleStatusUpdate("ACTIVE")
@@ -1868,7 +1882,7 @@ export default function page() {
                           </div>
 
                           {/* Client Information (project-level) - 30% */}
-                          <div className="bg-white rounded-xl border border-slate-200 p-4 lg:w-[30%]">
+                          <div className="bg-white rounded-lg border border-slate-200 p-4 lg:w-[30%]">
                             <div className="flex items-center gap-2 mb-3">
                               <User className="w-4 h-4 text-slate-500" />
                               <h3 className="text-base font-semibold text-slate-900">
@@ -1951,7 +1965,7 @@ export default function page() {
                                     setShowClientDropdown(true);
                                     setClientSearchTerm("");
                                   }}
-                                  className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                                  className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors duration-200 text-sm font-medium"
                                 >
                                   <Plus className="w-4 h-4" />
                                   Assign Client
@@ -1961,7 +1975,7 @@ export default function page() {
                           </div>
 
                           {/* Installer Information (lot-level) - 40% */}
-                          <div className="bg-white rounded-xl border border-slate-200 p-4 lg:w-[40%]">
+                          <div className="bg-white rounded-lg border border-slate-200 p-4 lg:w-[40%]">
                             <div className="flex items-center gap-2 mb-3">
                               <User className="w-4 h-4 text-slate-500" />
                               <h3 className="text-base font-semibold text-slate-900">
@@ -2081,7 +2095,7 @@ export default function page() {
                                     setShowInstallerDropdown(true);
                                     setInstallerSearchTerm("");
                                   }}
-                                  className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                                  className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors duration-200 text-sm font-medium"
                                 >
                                   <Plus className="w-4 h-4" />
                                   Assign Installer
@@ -2092,7 +2106,7 @@ export default function page() {
                         </div>
 
                         {/* Notes */}
-                        <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+                        <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
                           <div className="flex items-center justify-between gap-3 mb-2">
                             <h3 className="text-base font-semibold text-slate-900">
                               Notes
@@ -2127,7 +2141,10 @@ export default function page() {
                     <div className="text-center py-12">
                       <div className="mb-6">
                         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Plus className="w-8 h-8 text-slate-400" />
+                          <Plus
+                            aria-hidden="true"
+                            className="w-8 h-8 text-slate-300"
+                          />
                         </div>
                         <h3 className="text-lg font-semibold text-slate-700 mb-2">
                           No Lots Added
@@ -2139,7 +2156,7 @@ export default function page() {
                       </div>
                       <button
                         onClick={() => setShowAddLotForm(true)}
-                        className="cursor-pointer flex items-center gap-2 px-6 py-3 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-base font-medium mx-auto"
+                        className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors duration-200 text-base font-medium mx-auto"
                       >
                         <Plus className="w-5 h-5" />
                         Add First Lot
@@ -2153,7 +2170,7 @@ export default function page() {
                 project.lots.length > 0 &&
                 activeTab === "architecture_drawings" && (
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4">
                       Architecture Drawings
                     </h2>
                     <FileUploadSection
@@ -2176,7 +2193,7 @@ export default function page() {
                 project.lots.length > 0 &&
                 activeTab === "appliances_specifications" && (
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4">
                       Appliances and Specifications
                     </h2>
                     <FileUploadSection
@@ -2199,7 +2216,7 @@ export default function page() {
                 project.lots.length > 0 &&
                 activeTab === "material_selection" && (
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4">
                       Material Selection
                     </h2>
                     <MaterialSelection
@@ -2213,7 +2230,7 @@ export default function page() {
                 project.lots.length > 0 &&
                 activeTab === "cabinetry_drawings" && (
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4">
                       Cabinetry Drawings
                     </h2>
                     <FileUploadSection
@@ -2236,7 +2253,7 @@ export default function page() {
                 project.lots.length > 0 &&
                 activeTab === "changes_to_do" && (
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4">
                       Changes to Do
                     </h2>
                     <FileUploadSection
@@ -2259,7 +2276,7 @@ export default function page() {
                 project.lots.length > 0 &&
                 activeTab === "site_measurements" && (
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4">
                       Site Measurements
                     </h2>
                     <SiteMeasurementsSection
@@ -2565,7 +2582,7 @@ export default function page() {
                 project.lots.length > 0 &&
                 activeTab === "finished_site_photos" && (
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-700 mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4">
                       Finished Site Photos
                     </h2>
                     <FileUploadSection
@@ -2595,7 +2612,7 @@ export default function page() {
       {/* Client Assignment Dropdown */}
       {showClientDropdown && (
         <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
-          <div className="client-dropdown bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+          <div className="client-dropdown bg-white rounded-xl border border-slate-200 p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">
                 Assign Client
@@ -2653,7 +2670,10 @@ export default function page() {
                 </div>
               ) : (
                 <div className="text-center py-8 text-slate-500">
-                  <User className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                  <User
+                    aria-hidden="true"
+                    className="w-8 h-8 mx-auto mb-2 text-slate-300"
+                  />
                   <p className="text-sm">No clients found</p>
                 </div>
               )}
@@ -2665,7 +2685,7 @@ export default function page() {
       {/* Installer Assignment Dropdown */}
       {showInstallerDropdown && (
         <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
-          <div className="installer-dropdown bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+          <div className="installer-dropdown bg-white rounded-xl border border-slate-200 p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">
                 Assign Installer
@@ -2715,7 +2735,10 @@ export default function page() {
                 if (filtered.length === 0) {
                   return (
                     <div className="text-center py-8 text-slate-500">
-                      <User className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                      <User
+                        aria-hidden="true"
+                        className="w-8 h-8 mx-auto mb-2 text-slate-300"
+                      />
                       <p className="text-sm">No installers found</p>
                     </div>
                   );
@@ -2764,7 +2787,7 @@ export default function page() {
       {/* Add Lot Form Modal */}
       {showAddLotForm && (
         <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
-          <div className="client-dropdown bg-white rounded-lg shadow-xl p-6 w-full max-w-lg mx-4">
+          <div className="client-dropdown bg-white rounded-xl border border-slate-200 p-6 w-full max-w-lg mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">
                 Add New Lot
@@ -2875,7 +2898,7 @@ export default function page() {
                 disabled={
                   isCreatingLot || !newLot.name.trim() || !newLot.lotId.trim()
                 }
-                className="cursor-pointer flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="cursor-pointer flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isCreatingLot ? (
                   <>
@@ -2900,7 +2923,7 @@ export default function page() {
                     notes: "",
                   });
                 }}
-                className="cursor-pointer btn-secondary flex items-center gap-2"
+                className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 Cancel
               </button>

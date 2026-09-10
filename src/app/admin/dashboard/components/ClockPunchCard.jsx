@@ -173,13 +173,13 @@ export default function ClockPunchCard() {
   // have none, so say so rather than rendering nothing.
   if (!employeeId) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 px-5 py-3 flex items-center gap-3">
-        <Timer className="w-4 h-4 text-slate-400 shrink-0" />
+      <div className="bg-white rounded-lg border border-slate-200 px-4 py-3 flex items-center gap-3">
+        <Timer className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-600">
             Time clock unavailable
           </p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-xs text-slate-600">
             This login isn&apos;t linked to an employee record, so it can&apos;t
             record punches. Link it on the employee profile to clock in here.
           </p>
@@ -204,10 +204,10 @@ export default function ClockPunchCard() {
   const statusStyles = summary.isEmpty
     ? "border-slate-200 bg-slate-50 text-slate-600"
     : isOnBreak
-      ? "border-amber-200 bg-amber-50 text-amber-700"
+      ? "border-amber-200 bg-amber-100 text-amber-800"
       : summary.isComplete
-        ? "border-slate-200 bg-slate-100 text-slate-700"
-        : "border-emerald-200 bg-emerald-50 text-emerald-700";
+        ? "border-slate-200 bg-slate-100 text-slate-800"
+        : "border-green-200 bg-green-100 text-green-800";
 
   const accent = summary.isEmpty
     ? "border-slate-200"
@@ -215,7 +215,7 @@ export default function ClockPunchCard() {
       ? "border-amber-300"
       : summary.isComplete
         ? "border-slate-200"
-        : "border-emerald-300";
+        : "border-green-300";
 
   return (
     <ClockPunchView

@@ -337,11 +337,11 @@ const FileItemWithNotes = ({
               openDeleteFileConfirmation(file);
             }}
             disabled={isDeletingFile === file.id}
-            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
             title="Delete file"
           >
             {isDeletingFile === file.id ? (
-              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+              <div className="animate-spin rounded-full w-4 h-4 border-b-2 border-white"></div>
             ) : (
               <Trash className="w-3.5 h-3.5" />
             )}
@@ -638,7 +638,7 @@ export default function FileUploadSection({
     if (imageFiles.length === 0) {
       return (
         <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-          <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+          <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-600">No photos uploaded yet</p>
         </div>
       );
@@ -671,7 +671,7 @@ export default function FileUploadSection({
             {imageFiles.length > 1 && (
               <button
                 onClick={goToPrevious}
-                className="cursor-pointer absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-slate-700 rounded-full p-2 shadow-lg transition-all hover:scale-110"
+                className="cursor-pointer absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-slate-700 rounded-full p-2 transition-colors "
                 aria-label="Previous image"
               >
                 <ChevronLeft className="w-6 h-6" />
@@ -696,7 +696,7 @@ export default function FileUploadSection({
             {imageFiles.length > 1 && (
               <button
                 onClick={goToNext}
-                className="cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-slate-700 rounded-full p-2 shadow-lg transition-all hover:scale-110"
+                className="cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-slate-700 rounded-full p-2 transition-colors "
                 aria-label="Next image"
               >
                 <ChevronRight className="w-6 h-6" />
@@ -732,9 +732,9 @@ export default function FileUploadSection({
               {imageFiles.map((file, index) => (
                 <div
                   key={file.id}
-                  className={`m-2 relative shrink-0 w-24 h-24 rounded-lg overflow-hidden cursor-pointer border-2 transition-all group ${
+                  className={`m-2 relative shrink-0 w-24 h-24 rounded-lg overflow-hidden cursor-pointer border-2 transition-colors group ${
                     index === currentImageIndex
-                      ? "border-secondary shadow-lg scale-105"
+                      ? "border-secondary"
                       : "border-slate-300 hover:border-slate-400"
                   }`}
                   onClick={() => goToImage(index)}
@@ -752,7 +752,7 @@ export default function FileUploadSection({
                       openDeleteFileConfirmation(file);
                     }}
                     disabled={isDeletingFile === file.id}
-                    className="cursor-pointer absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-all z-10 p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm disabled:opacity-50"
+                    className="cursor-pointer absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-colors z-10 p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                     title="Delete photo"
                   >
                     {isDeletingFile === file.id ? (
@@ -808,7 +808,7 @@ export default function FileUploadSection({
           </div>
         ) : (
           <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-            <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+            <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-600">No files uploaded yet</p>
           </div>
         )}
@@ -826,7 +826,7 @@ export default function FileUploadSection({
             Select Files {isSavingUpload && "(Uploading...)"}
           </label>
           <div
-            className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+            className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-colors duration-200 bg-slate-50 hover:bg-slate-100 ${
               isSavingUpload ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
@@ -841,7 +841,7 @@ export default function FileUploadSection({
             <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
               {isSavingUpload ? (
                 <>
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-3"></div>
+                  <div className="animate-spin rounded-full w-8 h-8 border-b-2 border-secondary mx-auto mb-3"></div>
                   <p className="text-sm font-medium text-slate-700 mb-1">
                     Uploading files...
                   </p>

@@ -32,6 +32,13 @@ import {
   usePersistedTableFilter,
   useTableFilterActions,
 } from "@/hooks/usePersistedTableFilter";
+import {
+  BADGE,
+  breakStyles,
+  formatLabel,
+  reviewStyles,
+  workingStyles,
+} from "./lib/punchStyles";
 
 const DEFAULT_DATES_PER_PAGE = 10;
 const TABLE_KEY = "clock_punches";
@@ -73,38 +80,12 @@ const EXPORT_COLUMN_WIDTHS = {
   "Working Status": 16,
 };
 
-const breakStyles = {
-  ON_BREAK: "border-amber-200 bg-amber-50 text-amber-700",
-  BREAK_COMPLETED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  NO_BREAK: "border-slate-200 bg-slate-50 text-slate-600",
-};
-
-const reviewStyles = {
-  PENDING: "border-amber-200 bg-amber-50 text-amber-700",
-  APPROVED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  REJECTED: "border-red-200 bg-red-50 text-red-700",
-  MIXED: "border-blue-200 bg-blue-50 text-blue-700",
-};
-
-const workingStyles = {
-  WORKING: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  NOT_WORKING: "border-slate-200 bg-slate-50 text-slate-600",
-};
-
 const punchTimeFormatter = new Intl.DateTimeFormat("en-AU", {
   timeZone: CLOCK_PUNCH_TIME_ZONE,
   hour: "2-digit",
   minute: "2-digit",
   hour12: true,
 });
-
-function formatLabel(value) {
-  return String(value || "")
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 function formatGroupDate(date) {
   const [year, month, day] = date.split("-").map(Number);
@@ -161,7 +142,7 @@ function StatusFilterDropdown({
       <button
         type="button"
         onClick={() => onOpenChange(!isOpen)}
-        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
       >
         <Funnel className="h-4 w-4" />
         <span>{label}</span>
@@ -172,7 +153,7 @@ function StatusFilterDropdown({
         )}
       </button>
       {isOpen && (
-        <div className="absolute top-full right-0 mt-1 w-60 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+        <div className="absolute top-full right-0 mt-1 w-60 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
           <div className="py-1">
             <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
               <span className="font-semibold">Select All</span>
@@ -221,12 +202,12 @@ function ReviewStatusDropdown({
           type="button"
           onClick={() => onOpenChange(!isOpen)}
           disabled={isUpdating}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-all ${
+          className={`${BADGE} transition-colors ${
             reviewStyles[group.review_status] || reviewStyles.PENDING
           } ${isUpdating ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:opacity-80"}`}
         >
           {group.review_status === "APPROVED" && (
-            <CheckCircle2 className="h-3.5 w-3.5" />
+            <CheckCircle2 className="w-4 h-4" />
           )}
           <span>{formatLabel(group.review_status)}</span>
           <ChevronDown
@@ -237,7 +218,7 @@ function ReviewStatusDropdown({
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 z-50 mt-1 w-40 rounded-lg border border-slate-200 bg-white shadow-lg">
+          <div className="absolute left-0 z-40 mt-1 w-40 rounded-lg border border-slate-300 bg-white">
             <div className="py-1">
               {REVIEW_STATUS_ACTIONS.map((status) => (
                 <button
@@ -250,7 +231,7 @@ function ReviewStatusDropdown({
                   className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100"
                 >
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       group.review_status === status
                         ? reviewStyles[status]
                         : "border border-transparent"
@@ -704,7 +685,7 @@ export default function ViewAllPunchesPage() {
           {isInitialLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mx-auto mb-4" />
                 <p className="text-sm text-slate-600 font-medium">
                   Loading clock punches...
                 </p>
@@ -713,12 +694,15 @@ export default function ViewAllPunchesPage() {
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <AlertTriangle
+                  aria-hidden="true"
+                  className="w-8 h-8 text-red-500 mx-auto mb-4"
+                />
                 <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
                 <button
                   type="button"
                   onClick={() => setRefreshKey((value) => value + 1)}
-                  className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
                 >
                   Try Again
                 </button>
@@ -735,11 +719,13 @@ export default function ViewAllPunchesPage() {
       <main className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="px-4 py-2 shrink-0">
           <div className="flex justify-between items-center">
-            <h1 className="text-xl font-bold text-slate-700">Clock Punches</h1>
+            <h1 className="text-xl font-semibold text-slate-800">
+              Clock Punches
+            </h1>
             <div className="flex items-center gap-2">
               <SearchBar />
               <TabsController href="/admin/employees/punches/add">
-                <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
+                <div className="cursor-pointer bg-primary hover:bg-primary/90 transition-colors duration-200 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium">
                   <Plus className="h-4 w-4" />
                   Add Punch
                 </div>
@@ -749,7 +735,7 @@ export default function ViewAllPunchesPage() {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-4">
-          <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-300 bg-white">
             <div className="p-4 shrink-0 border-b border-slate-200">
               <div className="flex items-center justify-between gap-3">
                 {/* search bar */}
@@ -758,7 +744,7 @@ export default function ViewAllPunchesPage() {
                   <input
                     type="text"
                     placeholder="Search punches with employee name, employee id, role, date"
-                    className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                    className="w-full text-sm text-slate-800 px-3 py-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
@@ -769,7 +755,7 @@ export default function ViewAllPunchesPage() {
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                     >
                       <RotateCcw className="h-4 w-4" />
                       <span>Reset</span>
@@ -784,7 +770,7 @@ export default function ViewAllPunchesPage() {
                           openDropdown === "dates" ? null : "dates",
                         )
                       }
-                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                     >
                       <Calendar className="h-4 w-4" />
                       <span>Filter by Dates</span>
@@ -795,7 +781,7 @@ export default function ViewAllPunchesPage() {
                       )}
                     </button>
                     {openDropdown === "dates" && (
-                      <div className="absolute top-full right-0 mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-4">
+                      <div className="absolute top-full right-0 mt-1 w-72 bg-white border border-slate-300 rounded-lg z-40 p-4">
                         <div className="space-y-4">
                           <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -808,7 +794,7 @@ export default function ViewAllPunchesPage() {
                                 setStartDate(event.target.value)
                               }
                               max={endDate || undefined}
-                              className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                              className="w-full text-sm text-slate-800 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
                             />
                           </div>
                           <div>
@@ -822,7 +808,7 @@ export default function ViewAllPunchesPage() {
                                 setEndDate(event.target.value)
                               }
                               min={startDate || undefined}
-                              className="w-full text-slate-800 p-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
+                              className="w-full text-sm text-slate-800 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
                             />
                           </div>
                           {(startDate || endDate) && (
@@ -890,13 +876,13 @@ export default function ViewAllPunchesPage() {
                       onClick={() =>
                         setOpenDropdown(openDropdown === "sort" ? null : "sort")
                       }
-                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
                     >
                       <ArrowUpDown className="h-4 w-4" />
                       <span>Sort by</span>
                     </button>
                     {openDropdown === "sort" && (
-                      <div className="absolute top-full right-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                      <div className="absolute top-full right-0 mt-1 w-52 bg-white border border-slate-300 rounded-lg z-40">
                         <div className="py-1">
                           {[
                             ["date", "Date"],
@@ -922,7 +908,7 @@ export default function ViewAllPunchesPage() {
                       type="button"
                       onClick={handleExportToExcel}
                       disabled={exportDisabled}
-                      className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
+                      className={`flex items-center gap-2 transition-colors duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
                         exportDisabled
                           ? "opacity-50 cursor-not-allowed"
                           : "cursor-pointer hover:bg-slate-100"
@@ -943,7 +929,7 @@ export default function ViewAllPunchesPage() {
                         )
                       }
                       disabled={isExporting || isPreparingExport}
-                      className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
+                      className={`flex items-center transition-colors duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
                         isExporting || isPreparingExport
                           ? "opacity-50 cursor-not-allowed"
                           : "cursor-pointer hover:bg-slate-100"
@@ -952,7 +938,7 @@ export default function ViewAllPunchesPage() {
                       <ChevronDown className="h-5 w-5" />
                     </button>
                     {openDropdown === "columns" && (
-                      <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                      <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
                         <div className="py-1">
                           <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
                             <span className="font-semibold">Select All</span>
@@ -993,7 +979,7 @@ export default function ViewAllPunchesPage() {
                   <thead className="sticky top-0 z-10 bg-slate-50">
                     <tr>
                       <th
-                        className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                        className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                         onClick={() => handleSort("date")}
                       >
                         <div className="flex items-center gap-2">
@@ -1002,7 +988,7 @@ export default function ViewAllPunchesPage() {
                         </div>
                       </th>
                       <th
-                        className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                        className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                         onClick={() => handleSort("employee")}
                       >
                         <div className="flex items-center gap-2">
@@ -1011,7 +997,7 @@ export default function ViewAllPunchesPage() {
                         </div>
                       </th>
                       <th
-                        className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
+                        className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
                         onClick={() => handleSort("hours")}
                       >
                         <div className="flex items-center gap-2">
@@ -1019,13 +1005,13 @@ export default function ViewAllPunchesPage() {
                           {getSortIcon("hours")}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                         Break Status
                       </th>
-                      <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                         Review Status
                       </th>
-                      <th className="px-4 py-2 text-left text-sm font-semibold uppercase tracking-wider text-slate-600">
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                         Working Status
                       </th>
                     </tr>
@@ -1043,11 +1029,14 @@ export default function ViewAllPunchesPage() {
                     ) : punchGroups.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-10 text-center">
-                          <Coffee className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                          <p className="font-semibold text-slate-700">
+                          <Coffee
+                            aria-hidden="true"
+                            className="mx-auto mb-3 w-8 h-8 text-slate-300"
+                          />
+                          <p className="text-sm font-semibold text-slate-800">
                             No clock punches found
                           </p>
-                          <p className="mt-1 text-sm text-slate-500">
+                          <p className="mt-1 text-sm text-slate-600">
                             {search
                               ? "No punches match your search on the loaded dates."
                               : isAnyFilterActive
@@ -1079,7 +1068,7 @@ export default function ViewAllPunchesPage() {
                             </p>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
+                            <div className="flex items-center gap-3">
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                                 <UserRound className="h-4 w-4" />
                               </div>
@@ -1098,7 +1087,7 @@ export default function ViewAllPunchesPage() {
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
                             <span
-                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                              className={`${BADGE} ${
                                 breakStyles[group.break_status] ||
                                 breakStyles.NO_BREAK
                               }`}
@@ -1131,13 +1120,13 @@ export default function ViewAllPunchesPage() {
                               />
                             ) : (
                               <span
-                                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                className={`${BADGE} ${
                                   reviewStyles[group.review_status] ||
                                   reviewStyles.PENDING
                                 }`}
                               >
                                 {group.review_status === "APPROVED" && (
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  <CheckCircle2 className="w-4 h-4" />
                                 )}
                                 {formatLabel(group.review_status)}
                               </span>
@@ -1145,7 +1134,7 @@ export default function ViewAllPunchesPage() {
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
                             <span
-                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                              className={`${BADGE} ${
                                 workingStyles[group.working_status] ||
                                 workingStyles.NOT_WORKING
                               }`}

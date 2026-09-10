@@ -2116,7 +2116,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
               <button
                 onClick={handleExportToPDF}
                 disabled={!selectedVersionId}
-                className="cursor-pointer hover:bg-red-600 flex items-center gap-2 px-6 py-2 bg-red-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
+                className="cursor-pointer hover:bg-red-600 flex items-center gap-2 px-6 py-2 bg-red-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 <FileText className="w-4 h-4" />
                 Export to PDF
@@ -2124,7 +2124,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
               <button
                 onClick={handleExportToExcel}
                 disabled={!selectedVersionId}
-                className="cursor-pointer hover:bg-green-600 flex items-center gap-2 px-6 py-2 bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
+                className="cursor-pointer hover:bg-green-600 flex items-center gap-2 px-6 py-2 bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 <Download className="w-4 h-4" />
                 Export to Excel
@@ -2140,11 +2140,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
                 !lot_id ||
                 (!isCurrentVersion && materialSelectionData)
               }
-              className="cursor-pointer hover:bg-primary/90 flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
+              className="cursor-pointer hover:bg-primary/90 flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {isCreating ? (
                 <>
-                  <div className=" animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   {materialSelectionData ? "Updating..." : "Creating..."}
                 </>
               ) : (
@@ -2431,7 +2431,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                           handleSelectBedOptionForTab(sectionKey, "WIR")
                         }
                         disabled={!isCurrentVersion && materialSelectionData}
-                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-lg hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           bedConfig?.option === "WIR"
                             ? "bg-secondary text-white border-secondary"
                             : "bg-white"
@@ -2444,7 +2444,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                           handleSelectBedOptionForTab(sectionKey, "BIR")
                         }
                         disabled={!isCurrentVersion && materialSelectionData}
-                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-lg hover:bg-slate-50 hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           bedConfig?.option === "BIR"
                             ? "bg-secondary text-white border-secondary"
                             : "bg-white"
@@ -2457,7 +2457,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                           handleSelectBedOptionForTab(sectionKey, "Both")
                         }
                         disabled={!isCurrentVersion && materialSelectionData}
-                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 hover:text-secondary hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`cursor-pointer px-4 py-2 text-sm font-medium border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-secondary hover:border-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           bedConfig?.option === "Both"
                             ? "bg-secondary text-white border-secondary"
                             : "bg-white"
@@ -3137,7 +3137,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                           key={file.id}
                           onClick={() => handleViewExistingFile(file)}
                           title="Click to view file"
-                          className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
+                          className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 transition-colors group ${
                             isSmall ? "w-32" : "w-40"
                           }`}
                         >
@@ -3192,11 +3192,11 @@ export default function MaterialSelection({ lot_id, project_id }) {
                                 handleDeleteMedia(file.id);
                               }}
                               disabled={deletingMediaId === file.id}
-                              className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                              className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                               title="Delete file"
                             >
                               {deletingMediaId === file.id ? (
-                                <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+                                <div className="animate-spin rounded-full w-4 h-4 border-b-2 border-white"></div>
                               ) : (
                                 <Trash className="w-3.5 h-3.5" />
                               )}
@@ -3252,7 +3252,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                   </div>
                 ) : (
                   <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-                    <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                    <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />
                     <p className="text-slate-600">No files uploaded yet</p>
                   </div>
                 )}
@@ -3272,7 +3272,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                 Select Files {uploadingMedia && "(Uploading...)"}
               </label>
               <div
-                className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+                className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-colors duration-200 bg-slate-50 hover:bg-slate-100 ${
                   uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
@@ -3288,7 +3288,7 @@ export default function MaterialSelection({ lot_id, project_id }) {
                 <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                   {uploadingMedia ? (
                     <>
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-3"></div>
+                      <div className="animate-spin rounded-full w-8 h-8 border-b-2 border-secondary mx-auto mb-3"></div>
                       <p className="text-sm font-medium text-slate-700 mb-1">
                         Uploading files...
                       </p>

@@ -927,9 +927,11 @@ export default function StageTable({
   return (
     <div>
       {/* Stages Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <div className="bg-white rounded-lg border border-slate-200 p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-slate-800">Project Stages</h3>
+          <h3 className="text-lg font-semibold text-slate-800">
+            Project Stages
+          </h3>
           <button
             onClick={() => {
               setNewStage({
@@ -1452,8 +1454,8 @@ export default function StageTable({
       </div>
       {/* Employee Assignment Dropdown */}
       {showEmployeeDropdown && (
-        <div className="fixed inset-0 backdrop-blur-xs border-2 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4 border border-slate-200">
+        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">
                 Assign Team Members
@@ -1527,7 +1529,7 @@ export default function StageTable({
                 </div>
               ) : (
                 <div className="text-center py-8 text-slate-500">
-                  <User className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                  <User className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                   <p className="text-sm">No employees found</p>
                 </div>
               )}

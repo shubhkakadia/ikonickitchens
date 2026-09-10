@@ -13,6 +13,8 @@ import { Bar } from "react-chartjs-2";
 import { Building2, Layers3, TrendingDown, Wallet } from "lucide-react";
 import SectionCard, { EmptyState } from "./SectionCard";
 import {
+  SERIES_1,
+  SERIES_2,
   formatCompactCurrency,
   formatCurrency,
   formatMonthLabel,
@@ -21,18 +23,20 @@ import {
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-// Two series, one shared unit (AUD) so they share one axis.
+// Two series, one shared unit (AUD) so they share one axis. Colours come from
+// the shared series constants (DESIGN.md 5.6) rather than inline hex.
 // Validated pair: lightness band, chroma, CVD separation and contrast all pass.
-const SERIES_PO = "#3D4FB5";
-const SERIES_STATEMENT = "#B92F34";
+const SERIES_PO = SERIES_1;
+const SERIES_STATEMENT = SERIES_2;
 
 // Ageing is an ordered severity scale, not a categorical palette. Every
-// segment is directly labelled, so colour only reinforces the order.
+// segment is directly labelled, so colour only reinforces the order. The steps
+// are stops on the semantic ramp in DESIGN.md 5.3.
 const AGEING = [
-  { key: "current", label: "Not yet due", color: "#64748B" },
-  { key: "d1_30", label: "1–30 days", color: "#F59E0B" },
-  { key: "d31_60", label: "31–60 days", color: "#EA580C" },
-  { key: "d60plus", label: "60+ days", color: "#B91C1C" },
+  { key: "current", label: "Not yet due", color: "#64748b" }, // slate-500
+  { key: "d1_30", label: "1–30 days", color: "#f59e0b" }, // amber-500
+  { key: "d31_60", label: "31–60 days", color: "#ea580c" }, // orange-600
+  { key: "d60plus", label: "60+ days", color: "#b91c1c" }, // red-700
 ];
 
 const chartOptions = {
@@ -90,12 +94,12 @@ function StatusBars({ rows, emptyMessage }) {
     <div className="space-y-1.5">
       {rows.map((row) => (
         <div key={row.status} className="flex items-center gap-3">
-          <span className="text-[11px] text-slate-600 w-36 shrink-0 truncate">
+          <span className="text-xs text-slate-600 w-36 shrink-0 truncate">
             {titleCase(row.status)}
           </span>
-          <div className="flex-1 h-4 bg-slate-50 rounded-r overflow-hidden min-w-0">
+          <div className="flex-1 h-4 bg-slate-100 rounded-r overflow-hidden min-w-0">
             <div
-              className="h-full rounded-r-[4px] bg-[#3D4FB5]"
+              className="h-full rounded-r bg-series-1"
               style={{ width: `${Math.max(2, (row.count / max) * 100)}%` }}
             />
           </div>
@@ -170,22 +174,22 @@ export default function ProcurementPanel({ procurement, permissions }) {
 
         <SectionCard title="Top suppliers" subtitle="By spend, last 12 months" icon={Building2}>
           {topSuppliers.length === 0 ? (
-            <EmptyState message="No supplier spend recorded." />
+            <EmptyState message="No supplier spend recorded." icon={Building2} />
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {topSuppliers.map((supplier) => (
                 <div key={supplier.supplier_id}>
                   <div className="flex items-baseline justify-between gap-2 mb-1">
-                    <span className="text-[12px] text-slate-700 truncate">
+                    <span className="text-xs text-slate-700 truncate">
                       {supplier.name}
                     </span>
-                    <span className="text-[11px] font-semibold text-slate-600 shrink-0 tabular-nums">
+                    <span className="text-xs font-semibold text-slate-600 shrink-0 tabular-nums">
                       {formatCurrency(supplier.total)}
                     </span>
                   </div>
-                  <div className="h-2 bg-slate-50 rounded-r overflow-hidden">
+                  <div className="h-2 bg-slate-100 rounded-r overflow-hidden">
                     <div
-                      className="h-full rounded-r-[4px] bg-[#3D4FB5]"
+                      className="h-full rounded-r bg-series-1"
                       style={{
                         width: `${Math.max(2, (Number(supplier.total) / supplierMax) * 100)}%`,
                       }}
@@ -209,7 +213,7 @@ export default function ProcurementPanel({ procurement, permissions }) {
               <EmptyState message="Nothing outstanding." className="py-6" />
             ) : (
               <>
-                <div className="flex h-3 rounded overflow-hidden gap-0.5 mb-3">
+                <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-3">
                   {AGEING.map((bucket) => {
                     const value = Number(ageing[bucket.key]) || 0;
                     if (value <= 0) return null;
@@ -229,7 +233,7 @@ export default function ProcurementPanel({ procurement, permissions }) {
                   {AGEING.map((bucket) => (
                     <div
                       key={bucket.key}
-                      className="flex items-center justify-between gap-2 text-[12px]"
+                      className="flex items-center justify-between gap-2 text-sm"
                     >
                       <span className="flex items-center gap-2 text-slate-600">
                         <span

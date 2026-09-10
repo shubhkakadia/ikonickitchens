@@ -24,10 +24,10 @@ function verdict(percentUsed, monthsRemaining) {
   if (percentUsed == null)
     return { label: "Capacity unknown", dot: "bg-slate-300", chip: "bg-slate-100 text-slate-600", bar: "bg-slate-300", advice: "No capacity limit could be determined." };
   if (percentUsed >= 90 || (monthsRemaining != null && monthsRemaining < 2))
-    return { label: "Upgrade now", dot: "bg-red-500", chip: "bg-red-100 text-red-700", bar: "bg-red-500", advice: "Capacity is nearly exhausted." };
+    return { label: "Upgrade now", dot: "bg-red-500", chip: "bg-red-100 text-red-800", bar: "bg-red-500", advice: "Capacity is nearly exhausted." };
   if (percentUsed >= 75 || (monthsRemaining != null && monthsRemaining < 6))
     return { label: "Plan an upgrade", dot: "bg-amber-500", chip: "bg-amber-100 text-amber-800", bar: "bg-amber-500", advice: "Headroom is shrinking. Budget for more space." };
-  return { label: "Healthy", dot: "bg-emerald-500", chip: "bg-emerald-100 text-emerald-700", bar: "bg-emerald-500", advice: "Plenty of headroom at the current rate." };
+  return { label: "Healthy", dot: "bg-green-500", chip: "bg-green-100 text-green-800", bar: "bg-green-500", advice: "Plenty of headroom at the current rate." };
 }
 
 export default function StorageIndicator({
@@ -86,9 +86,9 @@ export default function StorageIndicator({
             ? `Storage — ${v.label}${storage.percentUsed != null ? ` (${storage.percentUsed}% used)` : ""}`
             : "Storage usage"
         }
-        className="relative p-2 rounded-lg border border-slate-200 text-slate-600 hover:border-primary/30 hover:text-primary transition-colors duration-200"
+        className="cursor-pointer relative p-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors duration-200"
       >
-        <HardDrive className="w-4 h-4" />
+        <HardDrive className="w-4 h-4" aria-hidden="true" />
         {storage && (
           <span
             className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${v.dot}`}
@@ -100,29 +100,29 @@ export default function StorageIndicator({
         <div
           role="dialog"
           aria-label="Storage usage"
-          className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-slate-200 shadow-lg z-50 p-4"
+          className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-lg border border-slate-300 z-40 p-4"
         >
           <div className="flex items-center gap-2 mb-2">
-            <HardDrive className="w-4 h-4 text-primary shrink-0" />
-            <h3 className="text-sm font-semibold text-primary flex-1">Storage</h3>
+            <HardDrive className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+            <h3 className="text-sm font-semibold text-slate-800 flex-1">Storage</h3>
             <button
               type="button"
               onClick={() => onRefresh?.()}
-              className="text-[11px] font-semibold text-primary hover:underline"
+              className="cursor-pointer text-xs font-medium text-primary hover:underline"
             >
               Recheck
             </button>
           </div>
 
           {loading && !storage ? (
-            <p className="text-sm text-slate-400 py-3">Measuring storage…</p>
+            <p className="text-sm text-slate-600 py-3">Measuring storage…</p>
           ) : error || !storage ? (
-            <p className="text-sm text-slate-400 py-3">
+            <p className="text-sm text-slate-600 py-3">
               {error || "Storage usage unavailable."}
             </p>
           ) : (
             <>
-              <p className="text-[11px] text-slate-400 mb-2">
+              <p className="text-xs text-slate-500 mb-2">
                 {storage.limitSource === "plan"
                   ? "Against your configured plan limit"
                   : storage.limitSource === "disk"
@@ -131,10 +131,10 @@ export default function StorageIndicator({
               </p>
 
               <div className="flex items-center gap-2 mb-3">
-                <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${v.chip}`}>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${v.chip}`}>
                   {v.label}
                 </span>
-                <span className="text-[11px] text-slate-500 leading-tight">
+                <span className="text-xs text-slate-500 leading-tight">
                   {v.advice}
                 </span>
               </div>
@@ -142,10 +142,10 @@ export default function StorageIndicator({
               {storage.percentUsed != null && (
                 <>
                   <div className="flex items-baseline justify-between mb-1">
-                    <span className="text-xl font-bold text-slate-800 tabular-nums">
+                    <span className="text-xl font-semibold text-slate-800 tabular-nums">
                       {storage.percentUsed}%
                     </span>
-                    <span className="text-[10px] text-slate-500 tabular-nums">
+                    <span className="text-xs text-slate-500 tabular-nums">
                       {formatBytes(storage.usedAgainstLimit)} /{" "}
                       {formatBytes(storage.limitBytes)}
                     </span>
@@ -159,7 +159,7 @@ export default function StorageIndicator({
                     />
                   </div>
                   {storage.freeBytes != null && (
-                    <p className="text-[10px] text-slate-400 mb-3">
+                    <p className="text-xs text-slate-500 mb-3">
                       {formatBytes(storage.freeBytes)} free
                     </p>
                   )}
@@ -167,49 +167,49 @@ export default function StorageIndicator({
               )}
 
               <div className="space-y-1.5 mb-3">
-                <div className="flex items-center justify-between text-[12px]">
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-600 flex items-center gap-1.5">
-                    <Database className="w-3 h-3" /> Database
+                    <Database className="w-3 h-3" aria-hidden="true" /> Database
                   </span>
                   <span className="font-semibold text-slate-700 tabular-nums">
                     {formatBytes(storage.database?.bytes)}
-                    <span className="text-slate-400 font-normal">
+                    <span className="text-slate-500 font-normal">
                       {" "}
                       · {storage.database?.tableCount ?? 0} tables
                     </span>
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[12px]">
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-600">Uploads</span>
                   <span className="font-semibold text-slate-700 tabular-nums">
                     {formatBytes(storage.files?.bytes)}
-                    <span className="text-slate-400 font-normal">
+                    <span className="text-slate-500 font-normal">
                       {" "}
                       · {(storage.files?.count ?? 0).toLocaleString()} files
                     </span>
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[12px] pt-1.5 border-t border-slate-100">
+                <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200">
                   <span className="text-slate-600 font-medium">App total</span>
-                  <span className="font-bold text-primary tabular-nums">
+                  <span className="font-semibold text-primary tabular-nums">
                     {formatBytes(storage.totalBytes)}
                   </span>
                 </div>
               </div>
 
               {storage.limitSource === "disk" && (
-                <p className="text-[10px] text-slate-400 mb-3 leading-snug">
+                <p className="text-xs text-slate-600 mb-3 leading-snug">
                   The percentage is the whole server volume, not just this app —
                   other software on the same disk counts toward it.
                 </p>
               )}
 
-              <div className="pt-2 border-t border-slate-100">
+              <div className="pt-2 border-t border-slate-200">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" /> Upload growth
+                  <span className="text-xs font-medium uppercase tracking-wide text-slate-500 flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" aria-hidden="true" /> Upload growth
                   </span>
-                  <span className="text-[10px] text-slate-500 tabular-nums">
+                  <span className="text-xs text-slate-500 tabular-nums">
                     {storage.avgMonthlyBytes > 0
                       ? `${formatBytes(storage.avgMonthlyBytes)}/mo`
                       : "no growth"}
@@ -225,20 +225,20 @@ export default function StorageIndicator({
                         className="flex-1 flex flex-col items-center gap-0.5"
                       >
                         <div
-                          className="w-full rounded-t-[2px] bg-[#3D4FB5]"
+                          className="w-full rounded-t bg-series-1"
                           style={{
                             height: `${Math.max(2, (g.bytes / growthMax) * 26)}px`,
                           }}
                           title={`${monthLabel(g.month)}: ${formatBytes(g.bytes)}`}
                         />
-                        <span className="text-[8px] text-slate-400">
+                        <span className="text-xs text-slate-500">
                           {monthLabel(g.month)}
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-xs text-slate-600">
                     Not enough recorded file history to project growth yet.
                   </p>
                 )}

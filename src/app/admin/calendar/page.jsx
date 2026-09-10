@@ -21,42 +21,39 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Event type colors with gradients
+// Event type colours. Semantic hues per DESIGN.md 5.3; violet is a sanctioned
+// categorical hue (5.5) for a type that carries no success/progress meaning.
+// Every swatch uses the -100 background / -800 text / -200 border formula.
 const eventTypeStyles = {
   installation: {
-    bg: "bg-gradient-to-r from-blue-500 to-blue-600",
-    light: "bg-blue-50",
+    light: "bg-blue-100",
     border: "border-blue-200",
     dot: "bg-blue-500",
-    text: "text-blue-700",
+    text: "text-blue-800",
   },
   meeting: {
-    bg: "bg-gradient-to-r from-emerald-500 to-emerald-600",
-    light: "bg-emerald-50",
-    border: "border-emerald-200",
-    dot: "bg-emerald-500",
-    text: "text-emerald-700",
+    light: "bg-green-100",
+    border: "border-green-200",
+    dot: "bg-green-500",
+    text: "text-green-800",
   },
   inspection: {
-    bg: "bg-gradient-to-r from-purple-500 to-purple-600",
-    light: "bg-purple-50",
-    border: "border-purple-200",
-    dot: "bg-purple-500",
-    text: "text-purple-700",
+    light: "bg-violet-100",
+    border: "border-violet-200",
+    dot: "bg-violet-500",
+    text: "text-violet-800",
   },
   delivery: {
-    bg: "bg-gradient-to-r from-amber-500 to-amber-600",
-    light: "bg-amber-50",
+    light: "bg-amber-100",
     border: "border-amber-200",
     dot: "bg-amber-500",
-    text: "text-amber-700",
+    text: "text-amber-800",
   },
   default: {
-    bg: "bg-gradient-to-r from-slate-500 to-slate-600",
-    light: "bg-slate-50",
+    light: "bg-slate-100",
     border: "border-slate-200",
     dot: "bg-slate-500",
-    text: "text-slate-700",
+    text: "text-slate-800",
   },
 };
 
@@ -496,6 +493,18 @@ export default function CalendarPage() {
 
   const [quickViewEvent, setQuickViewEvent] = useState(null);
 
+  // Modals close on Escape (DESIGN.md 9.4).
+  useEffect(() => {
+    if (!quickViewEvent && !showNewEventModal) return;
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      if (quickViewEvent) setQuickViewEvent(null);
+      else handleCloseModal();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [quickViewEvent, showNewEventModal]);
+
   // Delete Confirmation states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventToDelete, setEventToDelete] = useState(null);
@@ -625,14 +634,14 @@ export default function CalendarPage() {
         {/* Header */}
         <div className="px-4 py-2 shrink-0">
           <div className="flex justify-between items-center">
-            <h1 className="text-xl font-bold text-slate-700">Calendar</h1>
+            <h1 className="text-xl font-semibold text-slate-800">Calendar</h1>
             <div className="flex items-center gap-2">
               <SearchBar />
               <button
                 onClick={handleOpenModal}
-                className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg font-medium text-sm transition-all duration-200 shadow-sm"
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="w-4 h-4" aria-hidden="true" />
                 New Event
               </button>
             </div>
@@ -644,29 +653,36 @@ export default function CalendarPage() {
           {/* Left Sidebar - Modern Design */}
           <div className="w-80 shrink-0 space-y-4 overflow-y-auto pr-1">
             {/* Mini Calendar - Modern Card */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200 p-5 transition-all duration-300">
+            <div className="bg-white rounded-lg border border-slate-200 p-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-linear-to-br from-primary to-primary/80 flex items-center justify-center">
-                    <CalendarIcon className="h-4 w-4 text-white" />
+                  <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                    <CalendarIcon
+                      className="w-4 h-4 text-white"
+                      aria-hidden="true"
+                    />
                   </div>
-                  <span className="text-sm font-bold text-slate-800">
+                  <span className="text-sm font-semibold text-slate-800">
                     {months[miniCalendarDate.getMonth()].slice(0, 3)}{" "}
                     {miniCalendarDate.getFullYear()}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
+                    type="button"
                     onClick={previousMiniMonth}
-                    className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg transition-all duration-200 hover:scale-105"
+                    className="cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                    aria-label="Previous month"
                   >
-                    <ChevronLeft className="h-4 w-4 text-slate-500" />
+                    <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                   </button>
                   <button
+                    type="button"
                     onClick={nextMiniMonth}
-                    className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg transition-all duration-200 hover:scale-105"
+                    className="cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                    aria-label="Next month"
                   >
-                    <ChevronRight className="h-4 w-4 text-slate-500" />
+                    <ChevronRight className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -676,7 +692,7 @@ export default function CalendarPage() {
                 {daysOfWeekShort.map((day, idx) => (
                   <div
                     key={idx}
-                    className="text-center text-[10px] font-bold text-slate-400 uppercase py-2"
+                    className="text-center text-xs font-medium text-slate-500 uppercase py-2"
                   >
                     {day}
                   </div>
@@ -686,32 +702,40 @@ export default function CalendarPage() {
                   const isSelectedDate = isSelected(dayObj.date);
                   const hasEventsOnDate = hasEvents(dayObj.date);
 
+                  const miniDayState = isTodayDate
+                    ? "bg-primary border-primary text-white font-semibold"
+                    : isSelectedDate
+                      ? "bg-blue-100 border-blue-200 text-blue-800 font-medium"
+                      : dayObj.isCurrentMonth
+                        ? "border-transparent text-slate-700 font-medium hover:bg-slate-100"
+                        : "border-transparent text-slate-400";
+
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={index}
                       onClick={() => {
                         setSelectedDate(dayObj.date);
                         setCurrentDate(dayObj.date);
                       }}
-                      className={`
-                            relative aspect-square flex flex-col items-center justify-center text-xs cursor-pointer rounded-lg transition-all duration-200
-                            ${dayObj.isCurrentMonth ? "text-slate-700 font-medium" : "text-slate-300"}
-                            ${isTodayDate ? "bg-linear-to-br from-primary to-primary/80 text-white font-bold" : ""}
-                            ${isSelectedDate && !isTodayDate ? "bg-linear-to-br from-blue-100 to-blue-50 text-blue-700 font-semibold ring ring-blue-200" : ""}
-                            ${!isTodayDate && !isSelectedDate && dayObj.isCurrentMonth ? "hover:bg-slate-100 hover:scale-105" : ""}
-                          `}
+                      aria-pressed={isSelectedDate}
+                      aria-label={dayObj.date.toLocaleDateString("en-US", {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                      className={`relative aspect-square flex flex-col items-center justify-center text-xs cursor-pointer rounded-lg border transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary ${miniDayState}`}
                     >
                       {dayObj.day}
                       {hasEventsOnDate && (
-                        <div
-                          className={`absolute bottom-0.5 flex gap-0.5 ${isTodayDate ? "opacity-80" : ""}`}
-                        >
+                        <span className="absolute bottom-0.5 flex gap-0.5">
                           <span
                             className={`w-1 h-1 rounded-full ${isTodayDate ? "bg-white" : "bg-primary"}`}
                           ></span>
-                        </div>
+                        </span>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -719,20 +743,19 @@ export default function CalendarPage() {
 
             {/* Selected Date Events - Modern Card */}
             {selectedDate && (
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200 overflow-hidden transition-all duration-300">
-                {/* Header with gradient */}
-                <div className="bg-linear-to-r from-slate-800 to-slate-700 px-5 py-4">
+              <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="text-3xl font-bold text-white">
+                    <div className="text-2xl font-semibold text-slate-800">
                       {selectedDate.getDate()}
                     </div>
                     <div>
-                      <p className="text-white/90 font-semibold text-sm">
+                      <p className="text-sm font-medium text-slate-700">
                         {selectedDate.toLocaleDateString("en-US", {
                           weekday: "long",
                         })}
                       </p>
-                      <p className="text-white/60 text-xs">
+                      <p className="text-xs text-slate-500">
                         {selectedDate.toLocaleDateString("en-US", {
                           month: "long",
                           year: "numeric",
@@ -742,20 +765,21 @@ export default function CalendarPage() {
                   </div>
                 </div>
 
-                <div className="p-4 space-y-3">
+                <div className="p-4 space-y-2">
                   {getEventsForDate(selectedDate).map((event) => {
                     const styles =
                       eventTypeStyles[event.type] || eventTypeStyles.default;
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={event.id}
                         onClick={() => setQuickViewEvent(event)}
-                        className={`relative p-4 rounded-xl ${styles.light} border ${styles.border} transition-all duration-200 cursor-pointer group hover:scale-[1.02]`}
+                        className={`relative w-full text-left p-3 rounded-lg ${styles.light} border ${styles.border} cursor-pointer transition-colors duration-200 hover:border-primary/25 focus:outline-none focus:ring-2 focus:ring-primary`}
                       >
                         {/* Type badge */}
                         <div className="flex items-center justify-between mb-2">
                           <span
-                            className={`text-[10px] font-bold uppercase tracking-wider ${styles.text}`}
+                            className={`text-xs font-medium uppercase tracking-wider ${styles.text}`}
                           >
                             {event.type}
                           </span>
@@ -764,39 +788,48 @@ export default function CalendarPage() {
                           </span>
                         </div>
 
-                        <h4 className="font-bold text-slate-800 text-sm mb-2 group-hover:text-slate-900">
+                        <h4 className="text-sm font-semibold text-slate-800 mb-2">
                           {event.title}
                         </h4>
 
-                        {/* Lot Info - Modern */}
+                        {/* Lot Info */}
                         {event.lot && (
-                          <div className="flex items-center gap-2 mb-2 p-2 bg-white/60 rounded-lg">
-                            <Home className="h-3.5 w-3.5 text-slate-500" />
+                          <div className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg">
+                            <Home
+                              className="w-4 h-4 text-slate-500 shrink-0"
+                              aria-hidden="true"
+                            />
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-slate-700 truncate">
+                              <p className="text-xs font-medium text-slate-700 truncate">
                                 {event.lot.name}
                               </p>
-                              <p className="text-[10px] text-slate-500">
+                              <p className="text-xs text-slate-500 truncate">
                                 {event.lot.project}
                               </p>
                             </div>
                           </div>
                         )}
-                      </div>
+                      </button>
                     );
                   })}
 
                   {getEventsForDate(selectedDate).length === 0 && (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-slate-100 flex items-center justify-center">
-                        <Sparkles className="h-8 w-8 text-slate-300" />
-                      </div>
-                      <p className="text-sm font-medium text-slate-400">
-                        No events
+                    <div className="flex flex-col items-center justify-center gap-2 py-8 px-4 text-center">
+                      <Sparkles
+                        className="w-8 h-8 text-slate-300"
+                        aria-hidden="true"
+                      />
+                      <p className="text-sm text-slate-600">
+                        No events on this day
                       </p>
-                      <p className="text-xs text-slate-300 mt-1">
-                        This day is free!
-                      </p>
+                      <button
+                        type="button"
+                        onClick={handleOpenModal}
+                        className="cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
+                      >
+                        <Plus className="w-4 h-4" aria-hidden="true" />
+                        New Event
+                      </button>
                     </div>
                   )}
                 </div>
@@ -805,16 +838,19 @@ export default function CalendarPage() {
 
             {/* Next Upcoming Event - Modern Card */}
             {getNextUpcomingEvent && (
-              <div className="bg-linear-to-br from-primary/5 to-primary/10 rounded-2xl border border-primary/20 overflow-hidden transition-all duration-300">
-                <div className="px-5 py-4 border-b border-primary/10">
+              <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-linear-to-br from-primary to-primary/80 flex items-center justify-center">
-                      <ArrowRight className="h-3 w-3 text-white" />
+                    <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                      <ArrowRight
+                        className="w-3 h-3 text-white"
+                        aria-hidden="true"
+                      />
                     </div>
-                    <span className="text-sm font-bold text-slate-800">
+                    <span className="text-sm font-semibold text-slate-800">
                       Coming Up
                     </span>
-                    <span className="ml-auto text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                    <span className="ml-auto inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-primary bg-primary/10 border border-primary/20">
                       {getNextUpcomingEvent.date.toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -823,36 +859,40 @@ export default function CalendarPage() {
                   </div>
                 </div>
 
-                <div className="p-4 space-y-3">
+                <div className="p-4 space-y-2">
                   {getNextUpcomingEvent.events.map((event) => {
                     const styles =
                       eventTypeStyles[event.type] || eventTypeStyles.default;
                     return (
                       <div
                         key={event.id}
-                        className="relative p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                        className="relative p-3 bg-slate-50 border border-slate-200 rounded-lg"
                       >
                         <div className="flex items-start gap-3">
-                          <div
-                            className={`w-1.5 h-12 rounded-full ${styles.dot}`}
-                          ></div>
+                          <span
+                            className={`w-1 h-12 rounded-full shrink-0 ${styles.dot}`}
+                            aria-hidden="true"
+                          ></span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span
-                                className={`text-[10px] font-bold uppercase ${styles.text}`}
+                                className={`text-xs font-medium uppercase tracking-wider ${styles.text}`}
                               >
                                 {event.type}
                               </span>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-xs text-slate-500">
                                 • {event.time}
                               </span>
                             </div>
-                            <h4 className="font-bold text-slate-800 text-sm mb-1">
+                            <h4 className="text-sm font-semibold text-slate-800 mb-1">
                               {event.title}
                             </h4>
                             {event.lot && (
-                              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                <Home className="h-3 w-3" />
+                              <div className="flex items-center gap-2 text-xs text-slate-500">
+                                <Home
+                                  className="w-3 h-3 shrink-0"
+                                  aria-hidden="true"
+                                />
                                 <span className="truncate">
                                   {event.lot.name}
                                 </span>
@@ -870,41 +910,46 @@ export default function CalendarPage() {
 
           {/* Right Side - Main Calendar */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
+            <div className="bg-white rounded-lg border border-slate-200 flex flex-col h-full overflow-hidden">
               {/* Calendar Controls */}
               <div className="p-4 border-b border-slate-200 shrink-0">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <button
+                      type="button"
                       onClick={previousMonth}
-                      className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                      className="cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                      aria-label="Previous month"
                     >
-                      <ChevronLeft className="h-5 w-5 text-slate-600" />
+                      <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                     </button>
 
                     <div className="flex items-center gap-2">
                       {/* Month Dropdown */}
                       <div className="relative calendar-month-dropdown">
                         <button
+                          type="button"
                           onClick={() => {
                             setMonthDropdownOpen(!monthDropdownOpen);
                             setYearDropdownOpen(false);
                           }}
-                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                          aria-expanded={monthDropdownOpen}
+                          className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                         >
                           {months[currentDate.getMonth()]}
-                          <ChevronDown className="w-4 h-4" />
+                          <ChevronDown className="w-4 h-4" aria-hidden="true" />
                         </button>
                         {monthDropdownOpen && (
-                          <div className="absolute left-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-20 max-h-64 overflow-y-auto">
+                          <div className="absolute left-0 z-40 mt-1 w-40 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
                             {months.map((month, index) => (
                               <button
+                                type="button"
                                 key={month}
                                 onClick={() => handleMonthSelect(index)}
-                                className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors cursor-pointer ${
+                                className={`cursor-pointer w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 transition-colors ${
                                   currentDate.getMonth() === index
-                                    ? "text-primary font-semibold bg-primary/5"
-                                    : "text-slate-600"
+                                    ? "text-primary font-medium bg-primary/10"
+                                    : "text-slate-700"
                                 }`}
                               >
                                 {month}
@@ -917,25 +962,28 @@ export default function CalendarPage() {
                       {/* Year Dropdown */}
                       <div className="relative calendar-year-dropdown">
                         <button
+                          type="button"
                           onClick={() => {
                             setYearDropdownOpen(!yearDropdownOpen);
                             setMonthDropdownOpen(false);
                           }}
-                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                          aria-expanded={yearDropdownOpen}
+                          className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                         >
                           {currentDate.getFullYear()}
-                          <ChevronDown className="w-4 h-4" />
+                          <ChevronDown className="w-4 h-4" aria-hidden="true" />
                         </button>
                         {yearDropdownOpen && (
-                          <div className="absolute left-0 mt-1 w-28 bg-white border border-slate-200 rounded-lg shadow-lg z-20 max-h-64 overflow-y-auto">
+                          <div className="absolute left-0 z-40 mt-1 w-28 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
                             {years.map((year) => (
                               <button
+                                type="button"
                                 key={year}
                                 onClick={() => handleYearSelect(year)}
-                                className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors cursor-pointer ${
+                                className={`cursor-pointer w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 transition-colors ${
                                   currentDate.getFullYear() === year
-                                    ? "text-primary font-semibold bg-primary/5"
-                                    : "text-slate-600"
+                                    ? "text-primary font-medium bg-primary/10"
+                                    : "text-slate-700"
                                 }`}
                               >
                                 {year}
@@ -947,19 +995,32 @@ export default function CalendarPage() {
                     </div>
 
                     <button
+                      type="button"
                       onClick={nextMonth}
-                      className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                      className="cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                      aria-label="Next month"
                     >
-                      <ChevronRight className="h-5 w-5 text-slate-600" />
+                      <ChevronRight className="w-5 h-5" aria-hidden="true" />
                     </button>
 
                     <button
+                      type="button"
                       onClick={goToToday}
-                      className="cursor-pointer ml-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors duration-200"
+                      className="cursor-pointer ml-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                     >
                       Today
                     </button>
                   </div>
+
+                  {isLoadingEvents && (
+                    <div
+                      className="flex items-center gap-2 text-xs text-slate-500"
+                      role="status"
+                    >
+                      <span className="w-4 h-4 border-2 border-slate-200 border-t-primary rounded-full animate-spin" />
+                      Loading events…
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -971,7 +1032,7 @@ export default function CalendarPage() {
                     {daysOfWeek.map((day) => (
                       <div
                         key={day}
-                        className="text-center text-xs font-semibold text-slate-600 uppercase tracking-wide py-2"
+                        className="text-center text-xs font-medium text-slate-500 uppercase tracking-wider py-2"
                       >
                         {day}
                       </div>
@@ -985,20 +1046,26 @@ export default function CalendarPage() {
                       const isTodayDate = isToday(dayObj.date);
                       const isSelectedDate = isSelected(dayObj.date);
 
+                      const dayBackground = isSelectedDate
+                        ? "bg-blue-50"
+                        : dayObj.isCurrentMonth
+                          ? "bg-white"
+                          : "bg-slate-50 text-slate-400";
+                      const dayBorder = isTodayDate
+                        ? "border-primary"
+                        : isSelectedDate
+                          ? "border-blue-300"
+                          : dayObj.isCurrentMonth
+                            ? "border-slate-200 hover:border-primary/25"
+                            : "border-slate-200";
+
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={index}
                           onClick={() => setSelectedDate(dayObj.date)}
-                          className={`
-                                min-h-[100px] p-2 border rounded-lg cursor-pointer transition-all duration-200
-                                ${
-                                  dayObj.isCurrentMonth
-                                    ? "bg-white border-slate-200 hover:border-primary hover:shadow-sm"
-                                    : "bg-slate-50 border-slate-100 text-slate-400"
-                                }
-                                ${isTodayDate ? "ring-2 ring-primary ring-offset-1" : ""}
-                                ${isSelectedDate ? "bg-blue-50 border-blue-300" : ""}
-                              `}
+                          aria-pressed={isSelectedDate}
+                          className={`min-h-[100px] p-2 border rounded-lg text-left cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary ${dayBackground} ${dayBorder}`}
                         >
                           <div className="flex justify-between items-start mb-1">
                             <span
@@ -1025,7 +1092,7 @@ export default function CalendarPage() {
                               return (
                                 <div
                                   key={event.id}
-                                  className={`${styles.bg} text-white text-xs px-2 py-1 rounded truncate shadow-sm`}
+                                  className={`${styles.light} ${styles.text} border ${styles.border} text-xs font-medium px-2 py-1 rounded-sm truncate`}
                                   title={`${event.title}${event.lot ? ` - ${event.lot.name}` : ""}`}
                                 >
                                   {event.time} - {event.title}
@@ -1038,7 +1105,7 @@ export default function CalendarPage() {
                               </div>
                             )}
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -1052,29 +1119,30 @@ export default function CalendarPage() {
       {/* Quick View Modal */}
       {quickViewEvent && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
           onClick={() => setQuickViewEvent(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={quickViewEvent.title}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200"
+            className="bg-white rounded-xl border border-slate-200 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div
-              className={`px-5 py-4 bg-linear-to-r from-slate-50 to-white border-b border-slate-100 flex justify-between items-start`}
-            >
-              <div>
-                <h3 className="font-bold text-lg text-slate-800 leading-tight">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-start gap-3">
+              <div className="min-w-0">
+                <h3 className="text-lg font-semibold text-slate-800 leading-tight">
                   {quickViewEvent.title}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span
-                    className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium uppercase border ${
                       (
                         eventTypeStyles[quickViewEvent.type] ||
                         eventTypeStyles.default
                       ).light
-                    } ${(eventTypeStyles[quickViewEvent.type] || eventTypeStyles.default).text}`}
+                    } ${(eventTypeStyles[quickViewEvent.type] || eventTypeStyles.default).text} ${(eventTypeStyles[quickViewEvent.type] || eventTypeStyles.default).border}`}
                   >
                     {quickViewEvent.type}
                   </span>
@@ -1092,34 +1160,36 @@ export default function CalendarPage() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setQuickViewEvent(null)}
-                className="cursor-pointer text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors"
+                className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                aria-label="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
             {/* Body */}
-            <div className="p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Lot Info */}
               {/* Lot Info */}
               {quickViewEvent.lots && quickViewEvent.lots.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                  <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Lots
                   </h4>
                   {quickViewEvent.lots.map((lotData, idx) => (
                     <div
                       key={lotData.lot_id || idx}
-                      className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl"
+                      className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center shrink-0">
-                        <Home className="w-4 h-4 text-slate-500" />
+                      <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                        <Home
+                          className="w-4 h-4 text-slate-500"
+                          aria-hidden="true"
+                        />
                       </div>
-                      <div>
-                        {/* <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-0.5">
-                          Lot
-                        </h4> */}
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-800">
                           {lotData.name}
                         </p>
@@ -1136,7 +1206,7 @@ export default function CalendarPage() {
               {quickViewEvent.participants &&
                 quickViewEvent.participants.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">
+                    <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
                       Participants
                     </h4>
                     <div className="flex flex-wrap gap-2">
@@ -1147,7 +1217,7 @@ export default function CalendarPage() {
                         return (
                           <span
                             key={p.id}
-                            className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md mb-1"
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200"
                           >
                             {displayName}
                           </span>
@@ -1160,31 +1230,33 @@ export default function CalendarPage() {
               {/* Notes */}
               {quickViewEvent.notes && (
                 <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">
+                  <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
                     Notes
                   </h4>
-                  <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl italic">
-                    "{quickViewEvent.notes}"
+                  <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 p-3 rounded-lg whitespace-pre-line">
+                    {quickViewEvent.notes}
                   </p>
                 </div>
               )}
             </div>
 
             {/* Footer Actions */}
-            <div className="p-4 border-t border-slate-100 grid grid-cols-2 gap-3 bg-slate-50/50">
+            <div className="grid grid-cols-2 gap-3 px-6 py-4 border-t border-slate-200">
               <button
-                onClick={() => handleEditEvent(quickViewEvent)}
-                className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all"
+                type="button"
+                onClick={() => handleDeleteEvent(quickViewEvent)}
+                className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200"
               >
-                <Pen className="w-4 h-4" />
-                Edit
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                Delete
               </button>
               <button
-                onClick={() => handleDeleteEvent(quickViewEvent)}
-                className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all"
+                type="button"
+                onClick={() => handleEditEvent(quickViewEvent)}
+                className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
               >
-                <Trash2 className="w-4 h-4" />
-                Delete
+                <Pen className="w-4 h-4" aria-hidden="true" />
+                Edit
               </button>
             </div>
           </div>
@@ -1208,36 +1280,45 @@ export default function CalendarPage() {
       {/* New Event Modal */}
       {showNewEventModal && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
           onClick={handleCloseModal}
+          role="dialog"
+          aria-modal="true"
+          aria-label={editingEventId ? "Edit Event" : "New Event"}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col"
+            className="bg-white rounded-xl border border-slate-200 w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h2 className="text-lg font-bold text-slate-800">
+              <h2 className="text-lg font-semibold text-slate-800">
                 {editingEventId ? "Edit Event" : "New Event"}
               </h2>
               <button
+                type="button"
                 onClick={handleCloseModal}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                aria-label="Close"
               >
-                <X className="h-5 w-5 text-slate-500" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
             {/* Modal Body - Two Column Layout */}
             <div className="flex-5 flex overflow-hidden">
               {/* Left Pane - Form */}
-              <div className="flex-3 overflow-y-auto p-6 space-y-5 border-r border-slate-200">
+              <div className="flex-3 overflow-y-auto p-6 space-y-4 border-r border-slate-200">
                 {/* Title */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Event Title <span className="text-red-500">*</span>
+                  <label
+                    htmlFor="event-title"
+                    className="block text-sm font-medium text-slate-700 mb-1.5"
+                  >
+                    Event Title <span className="text-red-600">*</span>
                   </label>
                   <input
+                    id="event-title"
                     type="text"
                     value={newEventForm.title}
                     onChange={(e) =>
@@ -1247,16 +1328,20 @@ export default function CalendarPage() {
                       })
                     }
                     placeholder="Enter event title"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
 
                 {/* Participants - Multi-select with search */}
                 <div className="relative participants-dropdown">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label
+                    htmlFor="event-participants"
+                    className="block text-sm font-medium text-slate-700 mb-1.5"
+                  >
                     Participants
                   </label>
                   <input
+                    id="event-participants"
                     type="text"
                     value={participantSearch}
                     onChange={(e) => setParticipantSearch(e.target.value)}
@@ -1266,7 +1351,7 @@ export default function CalendarPage() {
                         ? "Search participants..."
                         : `${newEventForm.participants.length} selected - Search more...`
                     }
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                   {/* Selected chips */}
                   {newEventForm.participants.length > 0 && (
@@ -1274,14 +1359,16 @@ export default function CalendarPage() {
                       {newEventForm.participants.map((user) => (
                         <span
                           key={user.id}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
                         >
                           {user.name || user.username}
                           <button
+                            type="button"
                             onClick={() => toggleParticipant(user)}
-                            className="cursor-pointer hover:bg-primary/20 rounded-full p-0.5"
+                            className="cursor-pointer hover:bg-primary/20 rounded-full p-0.5 transition-colors duration-200"
+                            aria-label={`Remove ${user.name || user.username}`}
                           >
-                            <X className="h-3 w-3" />
+                            <X className="w-3 h-3" aria-hidden="true" />
                           </button>
                         </span>
                       ))}
@@ -1289,7 +1376,7 @@ export default function CalendarPage() {
                   )}
                   {/* Dropdown */}
                   {showParticipantsDropdown && (
-                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                    <div className="absolute left-0 right-0 z-40 mt-1 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
                       {users.length === 0 ? (
                         <div className="px-4 py-3 text-sm text-slate-500">
                           Loading users...
@@ -1308,7 +1395,7 @@ export default function CalendarPage() {
                           .map((user) => (
                             <label
                               key={user.id}
-                              className="flex items-center justify-between px-4 py-2 text-sm hover:bg-slate-50 cursor-pointer"
+                              className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-slate-100 transition-colors cursor-pointer"
                             >
                               <span className="text-slate-700">
                                 {user.name || user.username}
@@ -1319,7 +1406,7 @@ export default function CalendarPage() {
                                   (p) => p.id === user.id,
                                 )}
                                 onChange={() => toggleParticipant(user)}
-                                className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                className="w-4 h-4 accent-primary border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                               />
                             </label>
                           ))
@@ -1345,10 +1432,14 @@ export default function CalendarPage() {
                 {/* Date and Time */}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      Date <span className="text-red-500">*</span>
+                    <label
+                      htmlFor="event-date"
+                      className="block text-sm font-medium text-slate-700 mb-1.5"
+                    >
+                      Date <span className="text-red-600">*</span>
                     </label>
                     <input
+                      id="event-date"
                       type="date"
                       value={newEventForm.date}
                       min={new Date().toISOString().split("T")[0]}
@@ -1358,14 +1449,18 @@ export default function CalendarPage() {
                           date: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    <label
+                      htmlFor="event-start-time"
+                      className="block text-sm font-medium text-slate-700 mb-1.5"
+                    >
                       Start Time
                     </label>
                     <input
+                      id="event-start-time"
                       type="time"
                       value={newEventForm.startTime}
                       onChange={(e) => {
@@ -1379,14 +1474,18 @@ export default function CalendarPage() {
                               : prev.endTime,
                         }));
                       }}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    <label
+                      htmlFor="event-end-time"
+                      className="block text-sm font-medium text-slate-700 mb-1.5"
+                    >
                       End Time
                     </label>
                     <input
+                      id="event-end-time"
                       type="time"
                       value={newEventForm.endTime}
                       min={newEventForm.startTime}
@@ -1401,16 +1500,20 @@ export default function CalendarPage() {
                           toast.error("End time cannot be before start time");
                         }
                       }}
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     />
                   </div>
                 </div>
                 {/* Lots - Multi-select with search */}
                 <div className="relative lots-dropdown">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label
+                    htmlFor="event-lots"
+                    className="block text-sm font-medium text-slate-700 mb-1.5"
+                  >
                     Lots
                   </label>
                   <input
+                    id="event-lots"
                     type="text"
                     value={lotSearch}
                     onChange={(e) => setLotSearch(e.target.value)}
@@ -1420,7 +1523,7 @@ export default function CalendarPage() {
                         ? "Search lots..."
                         : `${newEventForm.lots.length} selected - Search more...`
                     }
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                   {/* Selected chips */}
                   {newEventForm.lots.length > 0 && (
@@ -1428,14 +1531,16 @@ export default function CalendarPage() {
                       {newEventForm.lots.map((lot) => (
                         <span
                           key={lot.lot_id}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
                         >
                           {lot.lot_id}
                           <button
+                            type="button"
                             onClick={() => toggleLot(lot)}
-                            className="cursor-pointer hover:bg-emerald-100 rounded-full p-0.5"
+                            className="cursor-pointer hover:bg-green-200 rounded-full p-0.5 transition-colors duration-200"
+                            aria-label={`Remove lot ${lot.lot_id}`}
                           >
-                            <X className="h-3 w-3" />
+                            <X className="w-3 h-3" aria-hidden="true" />
                           </button>
                         </span>
                       ))}
@@ -1443,7 +1548,7 @@ export default function CalendarPage() {
                   )}
                   {/* Dropdown */}
                   {showLotsDropdown && (
-                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                    <div className="absolute left-0 right-0 z-40 mt-1 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
                       {lots.length === 0 ? (
                         <div className="px-4 py-3 text-sm text-slate-500">
                           Loading lots...
@@ -1478,7 +1583,7 @@ export default function CalendarPage() {
                           .map((lot) => (
                             <label
                               key={lot.lot_id}
-                              className="flex items-center justify-between px-4 py-2 text-sm hover:bg-slate-50 cursor-pointer"
+                              className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-slate-100 transition-colors cursor-pointer"
                             >
                               <div className="flex-1 min-w-0">
                                 <p className="text-slate-700 font-medium">
@@ -1494,7 +1599,7 @@ export default function CalendarPage() {
                                   (l) => l.lot_id === lot.lot_id,
                                 )}
                                 onChange={() => toggleLot(lot)}
-                                className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded ml-2"
+                                className="w-4 h-4 ml-2 accent-primary border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                               />
                             </label>
                           ))
@@ -1505,10 +1610,14 @@ export default function CalendarPage() {
 
                 {/* Notes */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label
+                    htmlFor="event-notes"
+                    className="block text-sm font-medium text-slate-700 mb-1.5"
+                  >
                     Notes
                   </label>
                   <textarea
+                    id="event-notes"
                     value={newEventForm.notes}
                     onChange={(e) =>
                       setNewEventForm({
@@ -1518,15 +1627,15 @@ export default function CalendarPage() {
                     }
                     placeholder="Add any notes..."
                     rows={5}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                   />
                 </div>
               </div>
 
               {/* Lots - Multi-select with search - moved here */}
               <div className="relative lots-dropdown flex-2">
-                <div className="bg-slate-50 px-3 py-2 border-b border-slate-200">
-                  <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Timeline
                   </span>
                 </div>
@@ -1613,7 +1722,7 @@ export default function CalendarPage() {
                             <div className="font-semibold truncate">
                               {event.title}
                             </div>
-                            <div className="opacity-75 truncate text-[10px]">
+                            <div className="opacity-75 truncate text-xs">
                               {event.time} -{" "}
                               {end.toLocaleTimeString([], {
                                 hour: "2-digit",
@@ -1711,7 +1820,7 @@ export default function CalendarPage() {
 
                       return (
                         <div
-                          className="absolute left-12 right-2 bg-primary/20 border-2 border-primary rounded-lg cursor-move group transition-colors hover:bg-primary/30"
+                          className="absolute left-12 right-2 bg-primary/20 border border-primary rounded-lg cursor-move group transition-colors duration-200 hover:bg-primary/30"
                           style={{
                             top: `${topOffset}px`,
                             height: `${Math.max(height, 24)}px`,
@@ -1720,7 +1829,7 @@ export default function CalendarPage() {
                         >
                           {/* Top resize handle */}
                           <div
-                            className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize bg-primary/50 opacity-0 group-hover:opacity-100 rounded-t-md transition-opacity"
+                            className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize bg-primary/50 opacity-0 group-hover:opacity-100 rounded-t-lg transition-opacity duration-200"
                             onMouseDown={(e) => {
                               e.stopPropagation();
                               handleMouseDown(e, "top");
@@ -1732,7 +1841,7 @@ export default function CalendarPage() {
                           </div>
                           {/* Bottom resize handle */}
                           <div
-                            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize bg-primary/50 opacity-0 group-hover:opacity-100 rounded-b-md transition-opacity"
+                            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize bg-primary/50 opacity-0 group-hover:opacity-100 rounded-b-lg transition-opacity duration-200"
                             onMouseDown={(e) => {
                               e.stopPropagation();
                               handleMouseDown(e, "bottom");
@@ -1749,28 +1858,26 @@ export default function CalendarPage() {
             {/* Modal Footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">
               <button
+                type="button"
                 onClick={handleCloseModal}
-                className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSubmitEvent}
                 disabled={isCreatingEvent}
-                className={`cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg transition-colors ${
-                  isCreatingEvent
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-primary/90"
-                }`}
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isCreatingEvent ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     {editingEventId ? "Updating..." : "Creating..."}
                   </>
                 ) : (
                   <>
-                    <Check className="h-4 w-4" />
+                    <Check className="w-4 h-4" aria-hidden="true" />
                     {editingEventId ? "Update Event" : "Create Event"}
                   </>
                 )}

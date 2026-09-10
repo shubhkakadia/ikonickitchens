@@ -392,19 +392,19 @@ export default function page() {
                 )}
 
                 {errorType === "network" && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-sm">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 shadow-sm">
                     <div className="flex items-start">
                       <div className="shrink-0">
-                        <AlertCircle className="h-6 w-6 text-gray-500" />
+                        <AlertCircle className="h-6 w-6 text-slate-500" />
                       </div>
                       <div className="ml-3 flex-1">
-                        <h3 className="text-sm font-semibold text-gray-800 mb-2">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-2">
                           Connection Error
                         </h3>
-                        <p className="text-sm text-gray-700 mb-3">
+                        <p className="text-sm text-slate-700 mb-3">
                           {errors.general}
                         </p>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-slate-600">
                           <p>• Check your internet connection</p>
                           <p>• Try refreshing the page</p>
                           <p>• Contact support if the issue persists</p>

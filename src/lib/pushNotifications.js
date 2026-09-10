@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { Expo } from "expo-server-sdk";
 
 import { prisma } from "@/lib/db";
+import { sendPushAlert } from "@/lib/pushAlerts";
 
 const MAX_RECIPIENTS_PER_EVENT = 1000;
 const RECEIPT_BATCH_SIZE = 1000;
@@ -25,12 +26,32 @@ const RETRYABLE_NETWORK_CODES = new Set([
   "UND_ERR_SOCKET",
 ]);
 const INVESTIGATABLE_DELIVERY_CODES = new Set([
+  "BadDeviceToken",
   "DeveloperError",
   "ExpoError",
   "InvalidCredentials",
   "MessageTooBig",
+  "MismatchSenderId",
   "ProviderError",
 ]);
+// Only the production EAS profile is signed with aps-environment: production.
+// Tokens minted by these profiles are sandbox (or, for Expo Go, belong to a
+// different bundle identifier) and are excluded from production sends.
+const INTERNAL_BUILD_PROFILES = ["development", "preview", "expo-go"];
+const PRODUCTION_BUILD_PROFILE = "production";
+// Wrong-environment failures. Retrying never helps, so they are permanent for
+// the current registration and are healed only by re-registration.
+const PERMANENT_ENVIRONMENT_ERRORS = [
+  { code: "BadDeviceToken", reason: "bad_device_token" },
+  { code: "MismatchSenderId", reason: "mismatch_sender_id" },
+];
+const BAD_DEVICE_TOKEN_WINDOW_MS = 24 * 60 * 60 * 1000;
+const BAD_DEVICE_TOKEN_MIN_SAMPLE = 50;
+const BAD_DEVICE_TOKEN_ALERT_RATIO = 0.01;
+// Credential and wrong-environment problems persist until someone fixes them,
+// so these page once per window rather than on every 15-minute cron run. The
+// per-run monitor log still records each occurrence.
+const PERSISTENT_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 let expoClient;
 
@@ -45,6 +66,169 @@ function getExpoClient() {
   });
 
   return expoClient;
+}
+
+/**
+ * Expo does not surface wrong-environment failures as a stable enum the way it
+ * does DeviceNotRegistered. Depending on the failure they arrive as a
+ * DeveloperError, as details.error, or only as an APNs reason inside the
+ * human-readable message, so match on both.
+ */
+function classifyPermanentEnvironmentError({ code, message }) {
+  for (const candidate of PERMANENT_ENVIRONMENT_ERRORS) {
+    if (code === candidate.code) return candidate;
+    if (typeof message === "string" && message.includes(candidate.code)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Internal-profile registrations are excluded from production sends. Set
+ * PUSH_ALLOW_INTERNAL_BUILD_PROFILES=true to send to them from a production
+ * deployment while smoke-testing an internal build.
+ */
+function shouldExcludeInternalBuildProfiles() {
+  if (process.env.PUSH_ALLOW_INTERNAL_BUILD_PROFILES === "true") return false;
+
+  return process.env.NODE_ENV === "production";
+}
+
+function createRunState() {
+  return {
+    metrics: new Map(),
+    credentialFailures: 0,
+    productionEnvironmentFailures: 0,
+  };
+}
+
+function recordDeliveryMetric(runState, { code, platform, buildProfile }) {
+  const key = `${code}|${platform || "unknown"}|${buildProfile || "unreported"}`;
+  runState.metrics.set(key, (runState.metrics.get(key) || 0) + 1);
+}
+
+/**
+ * Emits one aggregated counter per error code / platform / build profile so
+ * wrong-environment failures are visible as a rate rather than as single rows.
+ */
+async function emitDeliveryMetrics(runState, scope) {
+  if (runState.metrics.size === 0) return;
+
+  const summary = [...runState.metrics.entries()]
+    .map(([key, count]) => {
+      const [code, platform, buildProfile] = key.split("|");
+      return `${code}/${platform}/${buildProfile}=${count}`;
+    })
+    .sort()
+    .join(", ");
+
+  await logPushMonitor(
+    `${scope}-delivery-metrics`,
+    `Push delivery errors by code/platform/build_profile: ${summary}`,
+  );
+}
+
+/**
+ * A permanent environment failure on an internal build is expected noise from
+ * testing; the same failure on a production-signed build points at an APNs key,
+ * team, or bundle identifier mismatch and must page on-call.
+ */
+async function alertOnRunState(runState, scope) {
+  if (runState.credentialFailures > 0) {
+    const description = `${runState.credentialFailures} InvalidCredentials result(s) during ${scope}. APNs/FCM credentials or the Expo access token need attention.`;
+    await logPushMonitor("credential-monitor", description);
+    await sendPushAlert({
+      severity: "critical",
+      title: "Expo push credentials rejected",
+      description,
+      context: { scope, count: runState.credentialFailures },
+      cooldownMs: PERSISTENT_ALERT_COOLDOWN_MS,
+    });
+  }
+
+  if (runState.productionEnvironmentFailures > 0) {
+    const description = `${runState.productionEnvironmentFailures} wrong-environment delivery error(s) on production-profile registrations during ${scope}. Check the APNs key, Apple team, and bundle identifier.`;
+    await logPushMonitor("wrong-environment-monitor", description);
+    await sendPushAlert({
+      severity: "critical",
+      title: "Production build produced rejected device tokens",
+      description,
+      context: {
+        scope,
+        build_profile: PRODUCTION_BUILD_PROFILE,
+        count: runState.productionEnvironmentFailures,
+      },
+      cooldownMs: PERSISTENT_ALERT_COOLDOWN_MS,
+    });
+  }
+}
+
+/**
+ * Rolling-window rate check. A healthy project sits near zero because
+ * production tokens that go bad normally surface as DeviceNotRegistered.
+ */
+async function evaluateBadDeviceTokenRate() {
+  const since = new Date(Date.now() - BAD_DEVICE_TOKEN_WINDOW_MS);
+  const productionScope = {
+    createdAt: { gte: since },
+    push_token: { is: { build_profile: PRODUCTION_BUILD_PROFILE } },
+  };
+
+  const [total, permanentFailures] = await Promise.all([
+    prisma.push_notification_tickets.count({ where: productionScope }),
+    prisma.push_notification_tickets.count({
+      where: {
+        ...productionScope,
+        error_code: { in: PERMANENT_ENVIRONMENT_ERRORS.map((e) => e.code) },
+      },
+    }),
+  ]);
+
+  if (total < BAD_DEVICE_TOKEN_MIN_SAMPLE) return null;
+
+  const ratio = permanentFailures / total;
+  if (ratio < BAD_DEVICE_TOKEN_ALERT_RATIO)
+    return { total, permanentFailures, ratio };
+
+  const description = `${permanentFailures}/${total} (${(ratio * 100).toFixed(2)}%) of production-profile pushes in the last 24 hours were rejected as wrong-environment tokens.`;
+  await logPushMonitor("wrong-environment-rate-monitor", description);
+  await sendPushAlert({
+    severity: "critical",
+    title: "Wrong-environment push failure rate is elevated",
+    description,
+    cooldownMs: PERSISTENT_ALERT_COOLDOWN_MS,
+    context: {
+      window_hours: BAD_DEVICE_TOKEN_WINDOW_MS / (60 * 60 * 1000),
+      threshold: BAD_DEVICE_TOKEN_ALERT_RATIO,
+      permanent_failures: permanentFailures,
+      total,
+    },
+  });
+
+  return { total, permanentFailures, ratio };
+}
+
+/**
+ * Builds the push_tokens update for a delivery failure. A row is disabled but
+ * never deleted: the unique index on expo_push_token is what lets a later
+ * registration find and re-enable it.
+ */
+function tokenFailureData({ code, message, disableReason, occurredAt }) {
+  return {
+    ...(disableReason
+      ? {
+          enabled: false,
+          session_id: null,
+          disabled_at: occurredAt,
+          disabled_reason: disableReason,
+        }
+      : {}),
+    last_error_code: code,
+    last_error: `${code}: ${message}`,
+    last_error_at: occurredAt,
+  };
 }
 
 function ticketError(ticket) {
@@ -102,6 +286,16 @@ async function logReceiptFetchError(error, receiptIds, attempts, retryable) {
     });
   } catch (loggingError) {
     console.error("Failed to persist Expo receipt error audit:", loggingError);
+  }
+
+  if (classification === "CREDENTIAL_ERROR") {
+    await sendPushAlert({
+      severity: "critical",
+      title: "Expo rejected the push access token",
+      description: `Expo receipt fetch failed with HTTP ${status}. Rotate or repair EXPO_PUSH_ACCESS_TOKEN.`,
+      context: { status, code, receipt_count: receiptIds.length },
+      cooldownMs: PERSISTENT_ALERT_COOLDOWN_MS,
+    });
   }
 }
 
@@ -229,10 +423,23 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
         employee_id: { in: [...employeeIds] },
         ...(actorUserId ? { id: { not: actorUserId } } : {}),
       },
+      // Sandbox and Expo Go tokens are excluded from production sends rather
+      // than sent to and then disabled. Rows from clients that never reported a
+      // profile stay eligible.
+      ...(shouldExcludeInternalBuildProfiles()
+        ? {
+            OR: [
+              { build_profile: null },
+              { build_profile: { notIn: INTERNAL_BUILD_PROFILES } },
+            ],
+          }
+        : {}),
     },
     select: {
       id: true,
       expo_push_token: true,
+      platform: true,
+      build_profile: true,
     },
     take: MAX_RECIPIENTS_PER_EVENT,
   });
@@ -254,8 +461,10 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
         enabled: false,
         session_id: null,
         disabled_at: new Date(),
+        disabled_reason: "invalid_expo_push_token",
         last_error_code: "InvalidExpoPushToken",
         last_error: "Invalid Expo push token",
+        last_error_at: new Date(),
       },
     });
   }
@@ -280,6 +489,7 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
     data: { screen: "projects" },
   }));
 
+  const runState = createRunState();
   let offset = 0;
   let sent = 0;
   let rejected = invalidTokenIds.length;
@@ -306,20 +516,41 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
       }
 
       const error = ticketError(ticket);
+      const environmentError = classifyPermanentEnvironmentError(error);
+      // Normalize so a wrong-environment failure delivered as a DeveloperError
+      // is still queryable by its real cause.
+      const code = environmentError?.code ?? error.code;
+      const disableReason =
+        error.code === "DeviceNotRegistered"
+          ? "device_not_registered"
+          : (environmentError?.reason ?? null);
+
       rejected += 1;
+      recordDeliveryMetric(runState, {
+        code,
+        platform: tokenRecord.platform,
+        buildProfile: tokenRecord.build_profile,
+      });
+
+      if (code === "InvalidCredentials") runState.credentialFailures += 1;
+      if (
+        environmentError &&
+        tokenRecord.build_profile === PRODUCTION_BUILD_PROFILE
+      ) {
+        runState.productionEnvironmentFailures += 1;
+      }
+
       await prisma.push_tokens.update({
         where: { id: tokenRecord.id },
-        data: {
-          enabled: error.code !== "DeviceNotRegistered",
-          ...(error.code === "DeviceNotRegistered"
-            ? { session_id: null, disabled_at: new Date() }
-            : {}),
-          last_error_code: error.code,
-          last_error: `${error.code}: ${error.message}`,
-        },
+        data: tokenFailureData({
+          code,
+          message: error.message,
+          disableReason,
+          occurredAt: new Date(),
+        }),
       });
       await logDeliveryError({
-        code: error.code,
+        code,
         message: error.message,
         entityId: lot.lot_id,
         tokenId: tokenRecord.id,
@@ -336,6 +567,8 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
     offset += chunk.length;
   }
 
+  await emitDeliveryMetrics(runState, "send");
+  await alertOnRunState(runState, "send");
   await recordSendAudit({ actorUserId, lotId: lot.lot_id, sent, rejected });
 
   return { recipients: tokenRecords.length, sent, rejected };
@@ -377,6 +610,16 @@ export async function processPushNotificationReceipts() {
       push_token_id: true,
       lot_id: true,
       attempt_count: true,
+      // createdAt is written immediately after the send call, so it is the
+      // send time the freshness guard below compares against.
+      createdAt: true,
+      push_token: {
+        select: {
+          platform: true,
+          build_profile: true,
+          last_registered_at: true,
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
     take: RECEIPT_BATCH_SIZE,
@@ -393,17 +636,25 @@ export async function processPushNotificationReceipts() {
   });
 
   if (expiredTickets.count > 0) {
-    await logPushMonitor(
-      "expiry-monitor",
-      `${expiredTickets.count} Expo push receipt(s) expired before processing`,
-    );
+    const description = `${expiredTickets.count} Expo push receipt(s) expired before processing`;
+    await logPushMonitor("expiry-monitor", description);
+    await sendPushAlert({
+      severity: "warning",
+      title: "Expo push receipts expired unprocessed",
+      description,
+      context: { expired: expiredTickets.count },
+    });
   }
 
   if (expiringTicketCount > 0) {
-    await logPushMonitor(
-      "expiry-warning-monitor",
-      `${expiringTicketCount} Expo push receipt(s) remain unprocessed within two hours of expiry`,
-    );
+    const description = `${expiringTicketCount} Expo push receipt(s) remain unprocessed within two hours of expiry`;
+    await logPushMonitor("expiry-warning-monitor", description);
+    await sendPushAlert({
+      severity: "warning",
+      title: "Expo push receipts near expiry",
+      description,
+      context: { pending: expiringTicketCount },
+    });
   }
 
   if (pendingTickets.length === 0) {
@@ -416,6 +667,7 @@ export async function processPushNotificationReceipts() {
   }
 
   const expo = getExpoClient();
+  const runState = createRunState();
   const ticketById = new Map(
     pendingTickets.map((ticket) => [ticket.expo_ticket_id, ticket]),
   );
@@ -473,7 +725,38 @@ export async function processPushNotificationReceipts() {
 
       failed += 1;
       const error = ticketError(receipt);
+      const registration = pendingTicket.push_token;
+      const environmentError = classifyPermanentEnvironmentError(error);
+      // A receipt is fetched roughly 15 minutes after the send, so the device
+      // may already have re-registered a good token. Only act on a registration
+      // that has not been refreshed since the failing send.
+      const registrationIsStale =
+        registration.last_registered_at <= pendingTicket.createdAt;
+      const code = environmentError?.code ?? error.code;
+      const disableReason =
+        error.code === "DeviceNotRegistered"
+          ? "device_not_registered"
+          : environmentError && registrationIsStale
+            ? environmentError.reason
+            : null;
+
+      recordDeliveryMetric(runState, {
+        code,
+        platform: registration.platform,
+        buildProfile: registration.build_profile,
+      });
+
+      if (code === "InvalidCredentials") runState.credentialFailures += 1;
+      if (
+        environmentError &&
+        registration.build_profile === PRODUCTION_BUILD_PROFILE
+      ) {
+        runState.productionEnvironmentFailures += 1;
+      }
+
       await prisma.$transaction([
+        // Permanently failed: this is not a backoff case, so the attempt
+        // counter is left alone and no next attempt is scheduled.
         prisma.push_notification_tickets.update({
           where: { expo_ticket_id: receiptId },
           data: {
@@ -481,24 +764,22 @@ export async function processPushNotificationReceipts() {
             next_attempt_at: null,
             receipt_checked_at: now,
             receipt_result: JSON.stringify(receipt),
-            error_code: error.code,
+            error_code: code,
             error_message: error.message,
           },
         }),
         prisma.push_tokens.update({
           where: { id: pendingTicket.push_token_id },
-          data: {
-            enabled: error.code !== "DeviceNotRegistered",
-            ...(error.code === "DeviceNotRegistered"
-              ? { session_id: null, disabled_at: now }
-              : {}),
-            last_error_code: error.code,
-            last_error: `${error.code}: ${error.message}`,
-          },
+          data: tokenFailureData({
+            code,
+            message: error.message,
+            disableReason,
+            occurredAt: now,
+          }),
         }),
       ]);
       await logDeliveryError({
-        code: error.code,
+        code,
         message: error.message,
         entityId: pendingTicket.lot_id || receiptId,
         tokenId: pendingTicket.push_token_id,
@@ -506,11 +787,19 @@ export async function processPushNotificationReceipts() {
     }
   }
 
+  await emitDeliveryMetrics(runState, "receipts");
+  await alertOnRunState(runState, "receipts");
+  await evaluateBadDeviceTokenRate();
+
   if (checked >= 10 && failed / checked >= 0.25) {
-    await logPushMonitor(
-      "failure-rate-monitor",
-      `Abnormal Expo receipt failure rate: ${failed}/${checked} (${Math.round((failed / checked) * 100)}%)`,
-    );
+    const description = `Abnormal Expo receipt failure rate: ${failed}/${checked} (${Math.round((failed / checked) * 100)}%)`;
+    await logPushMonitor("failure-rate-monitor", description);
+    await sendPushAlert({
+      severity: "warning",
+      title: "Abnormal Expo receipt failure rate",
+      description,
+      context: { checked, failed },
+    });
   }
 
   return { checked, delivered, failed, expired: expiredTickets.count };

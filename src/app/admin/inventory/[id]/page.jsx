@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import Sidebar from "@/components/sidebar";
 import { useState, useEffect } from "react";
 import {
   AlertTriangle,
@@ -32,7 +31,7 @@ import TabsController from "@/components/tabscontroller";
 import Image from "next/image";
 import { CiMenuKebab } from "react-icons/ci";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
 
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
@@ -1992,386 +1991,351 @@ export default function page() {
   };
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-slate-600">Loading item details...</p>
+    <AdminShell>
+      <main className="h-full overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+              <p className="text-slate-600">Loading item details...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : !item ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Package className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <p className="text-slate-600">Item not found</p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <TabsController back={true}>
+                <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
+                  <ChevronLeft className="w-6 h-6 text-slate-600" />
                 </div>
+              </TabsController>
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold text-slate-600">
+                  {getItemTitle()}
+                </h1>
               </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-red-600 mb-4">{error}</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            ) : !item ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <Package className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                  <p className="text-slate-600">Item not found</p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-4">
-                  <TabsController back={true}>
-                    <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                      <ChevronLeft className="w-6 h-6 text-slate-600" />
-                    </div>
-                  </TabsController>
-                  <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-slate-600">
-                      {getItemTitle()}
-                    </h1>
-                  </div>
-                  <div className="flex gap-2">
-                    {!isEditing ? (
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() => setShowDropdown(!showDropdown)}
-                          className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-                        >
-                          <CiMenuKebab className="w-4 h-4 text-slate-600" />
-                          <span className="text-slate-600">More Actions</span>
-                        </button>
+              <div className="flex gap-2">
+                {!isEditing ? (
+                  <div className="relative dropdown-container">
+                    <button
+                      onClick={() => setShowDropdown(!showDropdown)}
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      <CiMenuKebab className="w-4 h-4 text-slate-600" />
+                      <span className="text-slate-600">More Actions</span>
+                    </button>
 
-                        {showDropdown && (
-                          <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                            <div className="py-1">
-                              <button
-                                onClick={() => {
-                                  handleEdit();
-                                  setShowDropdown(false);
-                                }}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                              >
-                                <Edit className="w-4 h-4" />
-                                Edit Item Details
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setShowDeleteModal(true);
-                                  setShowDropdown(false);
-                                }}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete Item
-                              </button>
+                    {showDropdown && (
+                      <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              handleEdit();
+                              setShowDropdown(false);
+                            }}
+                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Edit Item Details
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowDeleteModal(true);
+                              setShowDropdown(false);
+                            }}
+                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Item
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleSave}
+                      disabled={isUpdating}
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Edit className="w-4 h-4" />
+                      {isUpdating ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-4">
+              {/* Main Info and Details Section */}
+              <div className="grid grid-cols-10 gap-4">
+                {/* Main Information - 70% width */}
+                <div className="col-span-7">
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="relative w-16 h-16 overflow-hidden rounded-lg group">
+                        {isEditing && !deleteImage && (
+                          <button
+                            onClick={handleDeleteImage}
+                            className="cursor-pointer absolute top-1 right-1 z-10 p-1 bg-red-500 hover:bg-red-600 text-white rounded transition-all duration-200"
+                            title="Delete Image"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                        {deleteImage && !imagePreview ? (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
+                            <div className="text-center">
+                              <Trash2 className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                              <p className="text-xs text-slate-500">
+                                Image will be deleted
+                              </p>
                             </div>
+                          </div>
+                        ) : item.image?.url || imagePreview ? (
+                          <button
+                            onClick={() => {
+                              if (imagePreview) {
+                                // New image preview (blob URL)
+                                setSelectedFile({
+                                  name: item.item_id || "item-image",
+                                  type: "image",
+                                  url: imagePreview,
+                                  isExisting: false,
+                                });
+                              } else if (item.image?.url) {
+                                // Existing image
+                                setSelectedFile({
+                                  name:
+                                    item.image.filename ||
+                                    item.item_id ||
+                                    "item-image",
+                                  type: "image",
+                                  url: item.image.url.startsWith("/")
+                                    ? item.image.url
+                                    : `/${item.image.url}`,
+                                  size: item.image.size || 0,
+                                  isExisting: true,
+                                });
+                              }
+                              setViewFileModal(true);
+                            }}
+                          >
+                            <Image
+                              src={imagePreview || `/${item.image.url}`}
+                              alt={item.item_id}
+                              fill
+                              className="cursor-pointer object-cover rounded-lg border border-slate-200 transition-all duration-300 group-hover:scale-110"
+                            />
+                          </button>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
+                            <Package className="w-6 h-6 text-slate-400" />
+                          </div>
+                        )}
+                        {isEditing && (
+                          <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-1">
+                            <label className="cursor-pointer px-2 py-1 bg-primary/90 hover:bg-primary text-white text-xs font-medium rounded transition-all duration-200">
+                              Change
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                className="hidden"
+                              />
+                            </label>
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <>
-                        <button
-                          onClick={handleSave}
-                          disabled={isUpdating}
-                          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Edit className="w-4 h-4" />
-                          {isUpdating ? "Saving..." : "Save"}
-                        </button>
-                        <button
-                          onClick={handleCancel}
-                          className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="space-y-4">
-                  {/* Main Info and Details Section */}
-                  <div className="grid grid-cols-10 gap-4">
-                    {/* Main Information - 70% width */}
-                    <div className="col-span-7">
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <div className="flex items-start gap-4">
-                          <div className="relative w-16 h-16 overflow-hidden rounded-lg group">
-                            {isEditing && !deleteImage && (
-                              <button
-                                onClick={handleDeleteImage}
-                                className="cursor-pointer absolute top-1 right-1 z-10 p-1 bg-red-500 hover:bg-red-600 text-white rounded transition-all duration-200"
-                                title="Delete Image"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
-                            {deleteImage && !imagePreview ? (
-                              <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
-                                <div className="text-center">
-                                  <Trash2 className="w-4 h-4 text-slate-400 mx-auto mb-1" />
-                                  <p className="text-xs text-slate-500">
-                                    Image will be deleted
-                                  </p>
-                                </div>
-                              </div>
-                            ) : item.image?.url || imagePreview ? (
-                              <button
-                                onClick={() => {
-                                  if (imagePreview) {
-                                    // New image preview (blob URL)
-                                    setSelectedFile({
-                                      name: item.item_id || "item-image",
-                                      type: "image",
-                                      url: imagePreview,
-                                      isExisting: false,
-                                    });
-                                  } else if (item.image?.url) {
-                                    // Existing image
-                                    setSelectedFile({
-                                      name:
-                                        item.image.filename ||
-                                        item.item_id ||
-                                        "item-image",
-                                      type: "image",
-                                      url: item.image.url.startsWith("/")
-                                        ? item.image.url
-                                        : `/${item.image.url}`,
-                                      size: item.image.size || 0,
-                                      isExisting: true,
-                                    });
-                                  }
-                                  setViewFileModal(true);
-                                }}
-                              >
-                                <Image
-                                  src={imagePreview || `/${item.image.url}`}
-                                  alt={item.item_id}
-                                  fill
-                                  className="cursor-pointer object-cover rounded-lg border border-slate-200 transition-all duration-300 group-hover:scale-110"
-                                />
-                              </button>
+                      <div className="flex-1">
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <h2 className="text-lg font-bold text-slate-800">
+                                {getItemTitle()}
+                              </h2>
+                              <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
+                                {item.category
+                                  .toLowerCase()
+                                  .charAt(0)
+                                  .toUpperCase() +
+                                  item.category.toLowerCase().slice(1)}
+                              </span>
+                              {item.category.toLowerCase() === "sheet" &&
+                                item.sheet?.is_sunmica && (
+                                  <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
+                                    Sunmica
+                                  </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-500">
+                              ID: {item.item_id}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                value={formData.quantity || ""}
+                                onChange={(e) =>
+                                  handleInputChange("quantity", e.target.value)
+                                }
+                                placeholder={formatValue(item.quantity)}
+                                className="w-full text-lg text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-right"
+                                step="0.1"
+                              />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
-                                <Package className="w-6 h-6 text-slate-400" />
-                              </div>
-                            )}
-                            {isEditing && (
-                              <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-1">
-                                <label className="cursor-pointer px-2 py-1 bg-primary/90 hover:bg-primary text-white text-xs font-medium rounded transition-all duration-200">
-                                  Change
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    className="hidden"
-                                  />
-                                </label>
-                              </div>
+                              <p className="text-2xl font-bold text-emerald-600">
+                                {formatValue(item.quantity)}
+                                {item.measurement_unit && (
+                                  <span className="ml-1 text-sm font-normal">
+                                    {item.measurement_unit}
+                                  </span>
+                                )}
+                              </p>
                             )}
                           </div>
-                          <div className="flex-1">
-                            <div className="grid grid-cols-2 gap-4 mb-3">
-                              <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h2 className="text-lg font-bold text-slate-800">
-                                    {getItemTitle()}
-                                  </h2>
-                                  <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
-                                    {item.category
-                                      .toLowerCase()
-                                      .charAt(0)
-                                      .toUpperCase() +
-                                      item.category.toLowerCase().slice(1)}
-                                  </span>
-                                  {item.category.toLowerCase() === "sheet" &&
-                                    item.sheet?.is_sunmica && (
-                                      <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
-                                        Sunmica
-                                      </span>
-                                    )}
-                                </div>
-                                <p className="text-xs text-slate-500">
-                                  ID: {item.item_id}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                {isEditing ? (
-                                  <input
-                                    type="number"
-                                    value={formData.quantity || ""}
-                                    onChange={(e) =>
-                                      handleInputChange(
-                                        "quantity",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder={formatValue(item.quantity)}
-                                    className="w-full text-lg text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-right"
-                                    step="0.1"
-                                  />
-                                ) : (
-                                  <p className="text-2xl font-bold text-emerald-600">
-                                    {formatValue(item.quantity)}
-                                    {item.measurement_unit && (
-                                      <span className="ml-1 text-sm font-normal">
-                                        {item.measurement_unit}
-                                      </span>
-                                    )}
-                                  </p>
-                                )}
-                              </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                              Description
+                            </label>
+                            {isEditing ? (
+                              <textarea
+                                value={formData.description || ""}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "description",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder={formatValue(item.description)}
+                                rows={3}
+                                className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                              />
+                            ) : (
+                              <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
+                                {formatValue(item.description)}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Category-Specific Details Section - Moved from sidebar */}
+                          <div className="col-span-2 pt-3 border-t border-slate-200">
+                            <div className="grid grid-cols-3 gap-4">
+                              {renderCategorySpecificFields()}
                             </div>
-                            <div className="space-y-3">
-                              <div>
-                                <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                                  Description
-                                </label>
-                                {isEditing ? (
-                                  <textarea
-                                    value={formData.description || ""}
-                                    onChange={(e) =>
-                                      handleInputChange(
-                                        "description",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder={formatValue(item.description)}
-                                    rows={3}
-                                    className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                  />
-                                ) : (
-                                  <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
-                                    {formatValue(item.description)}
-                                  </p>
-                                )}
-                              </div>
+                          </div>
 
-                              {/* Category-Specific Details Section - Moved from sidebar */}
-                              <div className="col-span-2 pt-3 border-t border-slate-200">
-                                <div className="grid grid-cols-3 gap-4">
-                                  {renderCategorySpecificFields()}
-                                </div>
-                              </div>
+                          {/* Measurement Unit Field - Back to grid */}
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Measurement Unit Field */}
+                            <div
+                              className="relative"
+                              ref={measuringUnitDropdownRef}
+                            >
+                              <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
+                                <Ruler className="w-3.5 h-3.5" />
+                                Measurement Unit
+                              </label>
+                              {isEditing ? (
+                                <>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={
+                                        measuringUnitSearchTerm ||
+                                        formData.measurement_unit ||
+                                        ""
+                                      }
+                                      onChange={handleMeasuringUnitSearchChange}
+                                      onFocus={() =>
+                                        setIsMeasuringUnitDropdownOpen(true)
+                                      }
+                                      placeholder={formatValue(
+                                        item.measurement_unit,
+                                      )}
+                                      className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setIsMeasuringUnitDropdownOpen(
+                                          !isMeasuringUnitDropdownOpen,
+                                        )
+                                      }
+                                      className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                      <ChevronDown
+                                        className={`w-4 h-4 transition-transform ${
+                                          isMeasuringUnitDropdownOpen
+                                            ? "rotate-180"
+                                            : ""
+                                        }`}
+                                      />
+                                    </button>
+                                  </div>
 
-                              {/* Measurement Unit Field - Back to grid */}
-                              <div className="grid grid-cols-2 gap-4">
-                                {/* Measurement Unit Field */}
-                                <div
-                                  className="relative"
-                                  ref={measuringUnitDropdownRef}
-                                >
-                                  <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                                    <Ruler className="w-3.5 h-3.5" />
-                                    Measurement Unit
-                                  </label>
-                                  {isEditing ? (
-                                    <>
-                                      <div className="relative">
-                                        <input
-                                          type="text"
-                                          value={
-                                            measuringUnitSearchTerm ||
-                                            formData.measurement_unit ||
-                                            ""
-                                          }
-                                          onChange={
-                                            handleMeasuringUnitSearchChange
-                                          }
-                                          onFocus={() =>
-                                            setIsMeasuringUnitDropdownOpen(true)
-                                          }
-                                          placeholder={formatValue(
-                                            item.measurement_unit,
+                                  {isMeasuringUnitDropdownOpen && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                      {loadingMeasuringUnits ? (
+                                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                          Loading measuring units...
+                                        </div>
+                                      ) : filteredMeasuringUnits.length > 0 ? (
+                                        <>
+                                          {filteredMeasuringUnits.map(
+                                            (unit, index) => (
+                                              <button
+                                                key={index}
+                                                type="button"
+                                                onClick={() =>
+                                                  handleMeasuringUnitSelect(
+                                                    unit,
+                                                  )
+                                                }
+                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                              >
+                                                {unit}
+                                              </button>
+                                            ),
                                           )}
-                                          className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setIsMeasuringUnitDropdownOpen(
-                                              !isMeasuringUnitDropdownOpen,
-                                            )
-                                          }
-                                          className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                        >
-                                          <ChevronDown
-                                            className={`w-4 h-4 transition-transform ${
-                                              isMeasuringUnitDropdownOpen
-                                                ? "rotate-180"
-                                                : ""
-                                            }`}
-                                          />
-                                        </button>
-                                      </div>
-
-                                      {isMeasuringUnitDropdownOpen && (
-                                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                          {loadingMeasuringUnits ? (
-                                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                              Loading measuring units...
-                                            </div>
-                                          ) : filteredMeasuringUnits.length >
-                                            0 ? (
-                                            <>
-                                              {filteredMeasuringUnits.map(
-                                                (unit, index) => (
-                                                  <button
-                                                    key={index}
-                                                    type="button"
-                                                    onClick={() =>
-                                                      handleMeasuringUnitSelect(
-                                                        unit,
-                                                      )
-                                                    }
-                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                                  >
-                                                    {unit}
-                                                  </button>
-                                                ),
-                                              )}
-                                              {measuringUnitSearchTerm &&
-                                                !filteredMeasuringUnits.some(
-                                                  (u) =>
-                                                    u.toLowerCase() ===
-                                                    measuringUnitSearchTerm.toLowerCase(),
-                                                ) && (
-                                                  <div className="border-t border-slate-200">
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => {
-                                                        setNewMeasuringUnitValue(
-                                                          measuringUnitSearchTerm,
-                                                        );
-                                                        setShowCreateMeasuringUnitModal(
-                                                          true,
-                                                        );
-                                                      }}
-                                                      className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                                    >
-                                                      <Plus className="w-4 h-4" />
-                                                      Create "
-                                                      {measuringUnitSearchTerm}"
-                                                    </button>
-                                                  </div>
-                                                )}
-                                            </>
-                                          ) : (
-                                            <div className="px-4 py-3">
-                                              <div className="text-sm text-slate-500 mb-2">
-                                                No matching measuring units
-                                                found
-                                              </div>
-                                              {measuringUnitSearchTerm && (
+                                          {measuringUnitSearchTerm &&
+                                            !filteredMeasuringUnits.some(
+                                              (u) =>
+                                                u.toLowerCase() ===
+                                                measuringUnitSearchTerm.toLowerCase(),
+                                            ) && (
+                                              <div className="border-t border-slate-200">
                                                 <button
                                                   type="button"
                                                   onClick={() => {
@@ -2382,495 +2346,504 @@ export default function page() {
                                                       true,
                                                     );
                                                   }}
-                                                  className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
                                                 >
                                                   <Plus className="w-4 h-4" />
                                                   Create "
                                                   {measuringUnitSearchTerm}"
                                                 </button>
-                                              )}
-                                            </div>
+                                              </div>
+                                            )}
+                                        </>
+                                      ) : (
+                                        <div className="px-4 py-3">
+                                          <div className="text-sm text-slate-500 mb-2">
+                                            No matching measuring units found
+                                          </div>
+                                          {measuringUnitSearchTerm && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setNewMeasuringUnitValue(
+                                                  measuringUnitSearchTerm,
+                                                );
+                                                setShowCreateMeasuringUnitModal(
+                                                  true,
+                                                );
+                                              }}
+                                              className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                            >
+                                              <Plus className="w-4 h-4" />
+                                              Create "{measuringUnitSearchTerm}"
+                                            </button>
                                           )}
                                         </div>
                                       )}
-                                    </>
-                                  ) : (
-                                    <p className="text-sm text-slate-800">
-                                      {formatValue(item.measurement_unit)}
-                                    </p>
+                                    </div>
                                   )}
-                                </div>
-                              </div>
+                                </>
+                              ) : (
+                                <p className="text-sm text-slate-800">
+                                  {formatValue(item.measurement_unit)}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Reserved Stock Section */}
-                      {item?.reserve_item_stock &&
-                        item.reserve_item_stock.length > 0 &&
-                        (() => {
-                          // Calculate total reserved quantity
-                          const totalReserved = item.reserve_item_stock.reduce(
-                            (sum, reservation) =>
-                              sum +
-                              (reservation.quantity -
-                                reservation.used_quantity),
-                            0,
-                          );
-
-                          return (
-                            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
-                              <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                                  <Box className="w-4 h-4" />
-                                  Reserved Stock
-                                </h3>
-                                <div className="text-right">
-                                  <label className="text-xs uppercase tracking-wide text-slate-500">
-                                    Total Reserved
-                                  </label>
-                                  <p className="text-sm font-bold text-amber-600">
-                                    {totalReserved}
-                                    {item.measurement_unit && (
-                                      <span className="ml-1 text-xs text-slate-500 font-normal">
-                                        {item.measurement_unit}
-                                      </span>
-                                    )}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className="border-b border-slate-200">
-                                      <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                        Project Name
-                                      </th>
-                                      <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                        Lot ID
-                                      </th>
-                                      <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                        Reserved Qty
-                                      </th>
-                                      <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                        Used Qty
-                                      </th>
-                                      <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                        Remaining
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {item.reserve_item_stock.map(
-                                      (reservation) => {
-                                        const remaining =
-                                          reservation.quantity -
-                                          reservation.used_quantity;
-                                        return (
-                                          <tr
-                                            key={reservation.id}
-                                            className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                                          >
-                                            <td className="py-2 px-3 text-slate-700">
-                                              {reservation.mto?.mto?.project
-                                                ?.name || "-"}
-                                            </td>
-                                            <td className="py-2 px-3 text-slate-700">
-                                              {reservation.mto?.mto?.lots &&
-                                              reservation.mto.mto.lots.length >
-                                                0 ? (
-                                                <span className="text-xs font-medium text-slate-800">
-                                                  {reservation.mto.mto.lots
-                                                    .map((lot) => lot.lot_id)
-                                                    .join(", ")}
-                                                </span>
-                                              ) : (
-                                                "-"
-                                              )}
-                                            </td>
-                                            <td className="py-2 px-3 text-right font-medium text-slate-800">
-                                              {reservation.quantity}
-                                              {item.measurement_unit && (
-                                                <span className="ml-1 text-xs text-slate-500 font-normal">
-                                                  {item.measurement_unit}
-                                                </span>
-                                              )}
-                                            </td>
-                                            <td className="py-2 px-3 text-right text-slate-600">
-                                              {reservation.used_quantity}
-                                              {item.measurement_unit && (
-                                                <span className="ml-1 text-xs text-slate-500 font-normal">
-                                                  {item.measurement_unit}
-                                                </span>
-                                              )}
-                                            </td>
-                                            <td className="py-2 px-3 text-right font-bold text-amber-600">
-                                              {remaining}
-                                              {item.measurement_unit && (
-                                                <span className="ml-1 text-xs text-slate-500 font-normal">
-                                                  {item.measurement_unit}
-                                                </span>
-                                              )}
-                                            </td>
-                                          </tr>
-                                        );
-                                      },
-                                    )}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                      {/* Stock Transactions Section */}
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                          <Package className="w-4 h-4" />
-                          Stock Transactions
-                        </h3>
-                        {sortedStockTransactions.length > 0 ? (
-                          <>
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="border-b border-slate-200">
-                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide w-8"></th>
-                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                      Date
-                                    </th>
-                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                      Type
-                                    </th>
-                                    <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                      Quantity
-                                    </th>
-                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                      Purchase Order
-                                    </th>
-                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                      Project Name
-                                    </th>
-                                    <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                      Lot ID
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {currentStockTransactions.map(
-                                    (transaction) => (
-                                      <React.Fragment key={transaction.id}>
-                                        <tr
-                                          className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                                            transaction.notes
-                                              ? "cursor-pointer"
-                                              : ""
-                                          }`}
-                                          onClick={() =>
-                                            transaction.notes &&
-                                            toggleNotes(transaction.id)
-                                          }
-                                        >
-                                          <td className="py-2 px-3 whitespace-nowrap">
-                                            {transaction.notes && (
-                                              <div className="flex items-center">
-                                                {expandedNotes.has(
-                                                  transaction.id,
-                                                ) ? (
-                                                  <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
-                                                ) : (
-                                                  <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-                                                )}
-                                              </div>
-                                            )}
-                                          </td>
-                                          <td className="py-2 px-3 text-slate-700">
-                                            {new Date(
-                                              transaction.createdAt,
-                                            ).toLocaleString("en-US", {
-                                              year: "numeric",
-                                              month: "short",
-                                              day: "numeric",
-                                              hour: "2-digit",
-                                              minute: "2-digit",
-                                            })}
-                                          </td>
-                                          <td className="py-2 px-3">
-                                            <span
-                                              className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                                transaction.type === "ADDED"
-                                                  ? "bg-emerald-100 text-emerald-800"
-                                                  : transaction.type === "USED"
-                                                    ? "bg-blue-100 text-blue-800"
-                                                    : "bg-red-100 text-red-800"
-                                              }`}
-                                            >
-                                              {transaction.type}
-                                            </span>
-                                          </td>
-                                          <td className="py-2 px-3 text-right font-medium text-slate-800">
-                                            {transaction.type === "ADDED"
-                                              ? "+"
-                                              : "-"}
-                                            {transaction.quantity}
-                                            {item.measurement_unit && (
-                                              <span className="ml-1 text-xs text-slate-500 font-normal">
-                                                {item.measurement_unit}
-                                              </span>
-                                            )}
-                                          </td>
-                                          <td className="py-2 px-3 text-slate-600">
-                                            {transaction.type === "ADDED" &&
-                                            transaction.purchase_order
-                                              ?.order_no ? (
-                                              <span className="text-xs font-medium text-primary">
-                                                {
-                                                  transaction.purchase_order
-                                                    .order_no
-                                                }
-                                              </span>
-                                            ) : (
-                                              "-"
-                                            )}
-                                          </td>
-                                          <td className="py-2 px-3 text-slate-600">
-                                            {transaction.type === "USED" &&
-                                            (transaction.materials_to_order
-                                              ?.project?.name ||
-                                              transaction.project?.name) ? (
-                                              <span className="text-xs font-medium text-slate-800">
-                                                {transaction.materials_to_order
-                                                  ?.project?.name ||
-                                                  transaction.project?.name}
-                                              </span>
-                                            ) : (
-                                              "-"
-                                            )}
-                                          </td>
-                                          <td className="py-2 px-3 text-slate-600">
-                                            {transaction.type === "USED" &&
-                                            (transaction.lot?.lot_id ||
-                                              (transaction.materials_to_order
-                                                ?.lots &&
-                                                transaction.materials_to_order
-                                                  .lots.length > 0)) ? (
-                                              <span className="text-xs font-medium text-slate-800">
-                                                {transaction.lot?.lot_id ||
-                                                  transaction.materials_to_order.lots
-                                                    .map((lot) => lot.lot_id)
-                                                    .join(", ")}
-                                              </span>
-                                            ) : (
-                                              "-"
-                                            )}
-                                          </td>
-                                        </tr>
-                                        {transaction.notes &&
-                                          expandedNotes.has(transaction.id) && (
-                                            <tr className="bg-slate-50">
-                                              <td
-                                                colSpan="7"
-                                                className="px-4 py-4"
-                                              >
-                                                <div className="text-xs text-slate-700">
-                                                  <span className="font-medium text-slate-800 mb-2 block">
-                                                    Notes:
-                                                  </span>
-                                                  <div className="text-slate-600 whitespace-pre-wrap pl-4 border-l-2 border-slate-300">
-                                                    {transaction.notes}
-                                                  </div>
-                                                </div>
-                                              </td>
-                                            </tr>
-                                          )}
-                                      </React.Fragment>
-                                    ),
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
-
-                            {/* Pagination (same UI as Jobs list) */}
-                            {stockTxTotalPages > 1 && (
-                              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
-                                <div className="text-xs text-slate-500">
-                                  Showing {stockTxStartIndex + 1} to{" "}
-                                  {Math.min(
-                                    stockTxEndIndex,
-                                    sortedStockTransactions.length,
-                                  )}{" "}
-                                  of {sortedStockTransactions.length} results
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() =>
-                                      handleStockTxPageChange(
-                                        stockTxCurrentPage - 1,
-                                      )
-                                    }
-                                    disabled={stockTxCurrentPage === 1}
-                                    className="cursor-pointer px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    Previous
-                                  </button>
-                                  <div className="flex items-center gap-1">
-                                    {Array.from(
-                                      { length: stockTxTotalPages },
-                                      (_, i) => i + 1,
-                                    ).map((page) => (
-                                      <button
-                                        key={page}
-                                        onClick={() =>
-                                          handleStockTxPageChange(page)
-                                        }
-                                        className={`cursor-pointer px-2 py-1 text-xs font-medium rounded ${
-                                          stockTxCurrentPage === page
-                                            ? "bg-primary text-white"
-                                            : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
-                                        }`}
-                                      >
-                                        {page}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  <button
-                                    onClick={() =>
-                                      handleStockTxPageChange(
-                                        stockTxCurrentPage + 1,
-                                      )
-                                    }
-                                    disabled={
-                                      stockTxCurrentPage === stockTxTotalPages
-                                    }
-                                    className="cursor-pointer px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    Next
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="text-center py-8 text-slate-500">
-                            <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                            <p className="text-sm">
-                              No stock transactions found
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </div>
+                  </div>
 
-                    {/* Suppliers Section - 30% width (moved from main section) */}
-                    <div className="col-span-3">
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                            <Building2 className="w-4 h-4" />
-                            Suppliers
-                          </h3>
-                          {isEditing && (
-                            <button
-                              type="button"
-                              onClick={handleAddSupplier}
-                              className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                              Add Supplier
-                            </button>
-                          )}
+                  {/* Reserved Stock Section */}
+                  {item?.reserve_item_stock &&
+                    item.reserve_item_stock.length > 0 &&
+                    (() => {
+                      // Calculate total reserved quantity
+                      const totalReserved = item.reserve_item_stock.reduce(
+                        (sum, reservation) =>
+                          sum +
+                          (reservation.quantity - reservation.used_quantity),
+                        0,
+                      );
+
+                      return (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                              <Box className="w-4 h-4" />
+                              Reserved Stock
+                            </h3>
+                            <div className="text-right">
+                              <label className="text-xs uppercase tracking-wide text-slate-500">
+                                Total Reserved
+                              </label>
+                              <p className="text-sm font-bold text-amber-600">
+                                {totalReserved}
+                                {item.measurement_unit && (
+                                  <span className="ml-1 text-xs text-slate-500 font-normal">
+                                    {item.measurement_unit}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-slate-200">
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Project Name
+                                  </th>
+                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Lot ID
+                                  </th>
+                                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Reserved Qty
+                                  </th>
+                                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Used Qty
+                                  </th>
+                                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Remaining
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.reserve_item_stock.map((reservation) => {
+                                  const remaining =
+                                    reservation.quantity -
+                                    reservation.used_quantity;
+                                  return (
+                                    <tr
+                                      key={reservation.id}
+                                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <td className="py-2 px-3 text-slate-700">
+                                        {reservation.mto?.mto?.project?.name ||
+                                          "-"}
+                                      </td>
+                                      <td className="py-2 px-3 text-slate-700">
+                                        {reservation.mto?.mto?.lots &&
+                                        reservation.mto.mto.lots.length > 0 ? (
+                                          <span className="text-xs font-medium text-slate-800">
+                                            {reservation.mto.mto.lots
+                                              .map((lot) => lot.lot_id)
+                                              .join(", ")}
+                                          </span>
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-medium text-slate-800">
+                                        {reservation.quantity}
+                                        {item.measurement_unit && (
+                                          <span className="ml-1 text-xs text-slate-500 font-normal">
+                                            {item.measurement_unit}
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="py-2 px-3 text-right text-slate-600">
+                                        {reservation.used_quantity}
+                                        {item.measurement_unit && (
+                                          <span className="ml-1 text-xs text-slate-500 font-normal">
+                                            {item.measurement_unit}
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-bold text-amber-600">
+                                        {remaining}
+                                        {item.measurement_unit && (
+                                          <span className="ml-1 text-xs text-slate-500 font-normal">
+                                            {item.measurement_unit}
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                  {/* Stock Transactions Section */}
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
+                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                      <Package className="w-4 h-4" />
+                      Stock Transactions
+                    </h3>
+                    {sortedStockTransactions.length > 0 ? (
+                      <>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-slate-200">
+                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide w-8"></th>
+                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                  Date
+                                </th>
+                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                  Type
+                                </th>
+                                <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                  Quantity
+                                </th>
+                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                  Purchase Order
+                                </th>
+                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                  Project Name
+                                </th>
+                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                  Lot ID
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {currentStockTransactions.map((transaction) => (
+                                <React.Fragment key={transaction.id}>
+                                  <tr
+                                    className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                                      transaction.notes ? "cursor-pointer" : ""
+                                    }`}
+                                    onClick={() =>
+                                      transaction.notes &&
+                                      toggleNotes(transaction.id)
+                                    }
+                                  >
+                                    <td className="py-2 px-3 whitespace-nowrap">
+                                      {transaction.notes && (
+                                        <div className="flex items-center">
+                                          {expandedNotes.has(transaction.id) ? (
+                                            <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                                          ) : (
+                                            <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                                          )}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-700">
+                                      {new Date(
+                                        transaction.createdAt,
+                                      ).toLocaleString("en-US", {
+                                        year: "numeric",
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </td>
+                                    <td className="py-2 px-3">
+                                      <span
+                                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                          transaction.type === "ADDED"
+                                            ? "bg-emerald-100 text-emerald-800"
+                                            : transaction.type === "USED"
+                                              ? "bg-blue-100 text-blue-800"
+                                              : "bg-red-100 text-red-800"
+                                        }`}
+                                      >
+                                        {transaction.type}
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-3 text-right font-medium text-slate-800">
+                                      {transaction.type === "ADDED" ? "+" : "-"}
+                                      {transaction.quantity}
+                                      {item.measurement_unit && (
+                                        <span className="ml-1 text-xs text-slate-500 font-normal">
+                                          {item.measurement_unit}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-600">
+                                      {transaction.type === "ADDED" &&
+                                      transaction.purchase_order?.order_no ? (
+                                        <span className="text-xs font-medium text-primary">
+                                          {transaction.purchase_order.order_no}
+                                        </span>
+                                      ) : (
+                                        "-"
+                                      )}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-600">
+                                      {transaction.type === "USED" &&
+                                      (transaction.materials_to_order?.project
+                                        ?.name ||
+                                        transaction.project?.name) ? (
+                                        <span className="text-xs font-medium text-slate-800">
+                                          {transaction.materials_to_order
+                                            ?.project?.name ||
+                                            transaction.project?.name}
+                                        </span>
+                                      ) : (
+                                        "-"
+                                      )}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-600">
+                                      {transaction.type === "USED" &&
+                                      (transaction.lot?.lot_id ||
+                                        (transaction.materials_to_order?.lots &&
+                                          transaction.materials_to_order.lots
+                                            .length > 0)) ? (
+                                        <span className="text-xs font-medium text-slate-800">
+                                          {transaction.lot?.lot_id ||
+                                            transaction.materials_to_order.lots
+                                              .map((lot) => lot.lot_id)
+                                              .join(", ")}
+                                        </span>
+                                      ) : (
+                                        "-"
+                                      )}
+                                    </td>
+                                  </tr>
+                                  {transaction.notes &&
+                                    expandedNotes.has(transaction.id) && (
+                                      <tr className="bg-slate-50">
+                                        <td colSpan={7} className="px-4 py-4">
+                                          <div className="text-xs text-slate-700">
+                                            <span className="font-medium text-slate-800 mb-2 block">
+                                              Notes:
+                                            </span>
+                                            <div className="text-slate-600 whitespace-pre-wrap pl-4 border-l-2 border-slate-300">
+                                              {transaction.notes}
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                </React.Fragment>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
 
-                        {isEditing ? (
-                          <div className="space-y-3">
-                            {itemSuppliers.map((supplier, index) => (
-                              <div
-                                key={supplier.id}
-                                className="border border-slate-300 rounded-lg p-3 space-y-3 relative bg-white"
+                        {/* Pagination (same UI as Jobs list) */}
+                        {stockTxTotalPages > 1 && (
+                          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
+                            <div className="text-xs text-slate-500">
+                              Showing {stockTxStartIndex + 1} to{" "}
+                              {Math.min(
+                                stockTxEndIndex,
+                                sortedStockTransactions.length,
+                              )}{" "}
+                              of {sortedStockTransactions.length} results
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() =>
+                                  handleStockTxPageChange(
+                                    stockTxCurrentPage - 1,
+                                  )
+                                }
+                                disabled={stockTxCurrentPage === 1}
+                                className="cursor-pointer px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                {/* Remove button */}
-                                {itemSuppliers.length > 1 && (
+                                Previous
+                              </button>
+                              <div className="flex items-center gap-1">
+                                {Array.from(
+                                  { length: stockTxTotalPages },
+                                  (_, i) => i + 1,
+                                ).map((page) => (
                                   <button
-                                    type="button"
+                                    key={page}
                                     onClick={() =>
-                                      handleRemoveSupplier(supplier.id)
+                                      handleStockTxPageChange(page)
                                     }
-                                    className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                    title="Remove supplier"
+                                    className={`cursor-pointer px-2 py-1 text-xs font-medium rounded ${
+                                      stockTxCurrentPage === page
+                                        ? "bg-primary text-white"
+                                        : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
+                                    }`}
                                   >
-                                    <X className="w-3.5 h-3.5" />
+                                    {page}
                                   </button>
-                                )}
+                                ))}
+                              </div>
+                              <button
+                                onClick={() =>
+                                  handleStockTxPageChange(
+                                    stockTxCurrentPage + 1,
+                                  )
+                                }
+                                disabled={
+                                  stockTxCurrentPage === stockTxTotalPages
+                                }
+                                className="cursor-pointer px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm">No stock transactions found</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                                <div className="text-xs font-medium text-slate-600">
-                                  Supplier #{index + 1}
-                                </div>
+                {/* Suppliers Section - 30% width (moved from main section) */}
+                <div className="col-span-3">
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                        <Building2 className="w-4 h-4" />
+                        Suppliers
+                      </h3>
+                      {isEditing && (
+                        <button
+                          type="button"
+                          onClick={handleAddSupplier}
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Add Supplier
+                        </button>
+                      )}
+                    </div>
 
-                                <div className="space-y-3">
-                                  {/* Supplier Dropdown */}
-                                  <div className="relative">
-                                    <label className="text-xs text-slate-600 mb-1 block">
-                                      Supplier Name
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={supplier.supplier_search_term}
-                                      onChange={(e) =>
-                                        handleSupplierFieldChange(
-                                          supplier.id,
-                                          "supplier_search_term",
-                                          e.target.value,
-                                        )
-                                      }
-                                      onFocus={() => {
-                                        const updatedSuppliers =
-                                          itemSuppliers.map((s) =>
-                                            s.id === supplier.id
-                                              ? {
-                                                  ...s,
-                                                  _dropdownOpen: true,
-                                                }
-                                              : {
-                                                  ...s,
-                                                  _dropdownOpen: false,
-                                                },
-                                          );
-                                        setItemSuppliers(updatedSuppliers);
-                                      }}
-                                      placeholder="Search supplier..."
-                                      className="w-full text-sm text-slate-800 px-2 py-1.5 pr-7 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const updatedSuppliers =
-                                          itemSuppliers.map((s) =>
-                                            s.id === supplier.id
-                                              ? {
-                                                  ...s,
-                                                  _dropdownOpen:
-                                                    !s._dropdownOpen,
-                                                }
-                                              : s,
-                                          );
-                                        setItemSuppliers(updatedSuppliers);
-                                      }}
-                                      className="absolute right-2 top-7 text-slate-400 hover:text-slate-600 transition-colors"
-                                    >
-                                      <ChevronDown
-                                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                          supplier._dropdownOpen
-                                            ? "rotate-180"
-                                            : ""
-                                        }`}
-                                      />
-                                    </button>
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        {itemSuppliers.map((supplier, index) => (
+                          <div
+                            key={supplier.id}
+                            className="border border-slate-300 rounded-lg p-3 space-y-3 relative bg-white"
+                          >
+                            {/* Remove button */}
+                            {itemSuppliers.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleRemoveSupplier(supplier.id)
+                                }
+                                className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                title="Remove supplier"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
 
-                                    {supplier._dropdownOpen && (
-                                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-auto">
-                                        {filteredSuppliers.filter((s) =>
+                            <div className="text-xs font-medium text-slate-600">
+                              Supplier #{index + 1}
+                            </div>
+
+                            <div className="space-y-3">
+                              {/* Supplier Dropdown */}
+                              <div className="relative">
+                                <label className="text-xs text-slate-600 mb-1 block">
+                                  Supplier Name
+                                </label>
+                                <input
+                                  type="text"
+                                  value={supplier.supplier_search_term}
+                                  onChange={(e) =>
+                                    handleSupplierFieldChange(
+                                      supplier.id,
+                                      "supplier_search_term",
+                                      e.target.value,
+                                    )
+                                  }
+                                  onFocus={() => {
+                                    const updatedSuppliers = itemSuppliers.map(
+                                      (s) =>
+                                        s.id === supplier.id
+                                          ? {
+                                              ...s,
+                                              _dropdownOpen: true,
+                                            }
+                                          : {
+                                              ...s,
+                                              _dropdownOpen: false,
+                                            },
+                                    );
+                                    setItemSuppliers(updatedSuppliers);
+                                  }}
+                                  placeholder="Search supplier..."
+                                  className="w-full text-sm text-slate-800 px-2 py-1.5 pr-7 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updatedSuppliers = itemSuppliers.map(
+                                      (s) =>
+                                        s.id === supplier.id
+                                          ? {
+                                              ...s,
+                                              _dropdownOpen: !s._dropdownOpen,
+                                            }
+                                          : s,
+                                    );
+                                    setItemSuppliers(updatedSuppliers);
+                                  }}
+                                  className="absolute right-2 top-7 text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                      supplier._dropdownOpen ? "rotate-180" : ""
+                                    }`}
+                                  />
+                                </button>
+
+                                {supplier._dropdownOpen && (
+                                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-auto">
+                                    {filteredSuppliers.filter((s) =>
+                                      s.name
+                                        .toLowerCase()
+                                        .includes(
+                                          (
+                                            supplier.supplier_search_term || ""
+                                          ).toLowerCase(),
+                                        ),
+                                    ).length > 0 ? (
+                                      filteredSuppliers
+                                        .filter((s) =>
                                           s.name
                                             .toLowerCase()
                                             .includes(
@@ -2879,503 +2852,488 @@ export default function page() {
                                                 ""
                                               ).toLowerCase(),
                                             ),
-                                        ).length > 0 ? (
-                                          filteredSuppliers
-                                            .filter((s) =>
-                                              s.name
-                                                .toLowerCase()
-                                                .includes(
-                                                  (
-                                                    supplier.supplier_search_term ||
-                                                    ""
-                                                  ).toLowerCase(),
+                                        )
+                                        .map((s) => (
+                                          <button
+                                            key={s.supplier_id}
+                                            type="button"
+                                            onClick={() => {
+                                              // Update supplier selection and close dropdown in one state update
+                                              setItemSuppliers(
+                                                itemSuppliers.map((sup) =>
+                                                  sup.id === supplier.id
+                                                    ? {
+                                                        ...sup,
+                                                        supplier_id:
+                                                          s.supplier_id,
+                                                        supplier_search_term:
+                                                          s.name,
+                                                        _dropdownOpen: false,
+                                                      }
+                                                    : sup,
                                                 ),
-                                            )
-                                            .map((s) => (
-                                              <button
-                                                key={s.supplier_id}
-                                                type="button"
-                                                onClick={() => {
-                                                  // Update supplier selection and close dropdown in one state update
-                                                  setItemSuppliers(
-                                                    itemSuppliers.map((sup) =>
-                                                      sup.id === supplier.id
-                                                        ? {
-                                                            ...sup,
-                                                            supplier_id:
-                                                              s.supplier_id,
-                                                            supplier_search_term:
-                                                              s.name,
-                                                            _dropdownOpen: false,
-                                                          }
-                                                        : sup,
-                                                    ),
-                                                  );
-                                                }}
-                                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                              >
-                                                <div className="font-medium">
-                                                  {s.name}
-                                                </div>
-                                                <div className="text-xs text-slate-500">
-                                                  {s.supplier_id}
-                                                </div>
-                                              </button>
-                                            ))
-                                        ) : (
-                                          <div className="px-3 py-2 text-xs text-slate-500 text-center">
-                                            No suppliers found
-                                          </div>
-                                        )}
+                                              );
+                                            }}
+                                            className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                                          >
+                                            <div className="font-medium">
+                                              {s.name}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                              {s.supplier_id}
+                                            </div>
+                                          </button>
+                                        ))
+                                    ) : (
+                                      <div className="px-3 py-2 text-xs text-slate-500 text-center">
+                                        No suppliers found
                                       </div>
                                     )}
                                   </div>
+                                )}
+                              </div>
 
-                                  {/* Price */}
-                                  <div>
-                                    <label className="text-xs text-slate-600 mb-1 block">
-                                      Price per Unit
-                                    </label>
-                                    <div className="relative">
-                                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">
-                                        $
-                                      </span>
-                                      <input
-                                        type="number"
-                                        value={supplier.price}
-                                        onChange={(e) =>
-                                          handleSupplierFieldChange(
-                                            supplier.id,
-                                            "price",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="0.00"
-                                        step="0.01"
-                                        className="w-full text-sm text-slate-800 pl-6 pr-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* Supplier Reference */}
-                                  <div>
-                                    <label className="text-xs text-slate-600 mb-1 block">
-                                      Supplier Reference
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={supplier.supplier_reference}
-                                      onChange={(e) =>
-                                        handleSupplierFieldChange(
-                                          supplier.id,
-                                          "supplier_reference",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder="e.g. SUP-12345"
-                                      className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                    />
-                                  </div>
-
-                                  {/* Supplier Product Link */}
-                                  <div>
-                                    <label className="text-xs text-slate-600 mb-1 block">
-                                      Product Link
-                                    </label>
-                                    <input
-                                      type="url"
-                                      value={supplier.supplier_product_link}
-                                      onChange={(e) =>
-                                        handleSupplierFieldChange(
-                                          supplier.id,
-                                          "supplier_product_link",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder="https://..."
-                                      className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                    />
-                                  </div>
+                              {/* Price */}
+                              <div>
+                                <label className="text-xs text-slate-600 mb-1 block">
+                                  Price per Unit
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">
+                                    $
+                                  </span>
+                                  <input
+                                    type="number"
+                                    value={supplier.price}
+                                    onChange={(e) =>
+                                      handleSupplierFieldChange(
+                                        supplier.id,
+                                        "price",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    className="w-full text-sm text-slate-800 pl-6 pr-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                  />
                                 </div>
                               </div>
-                            ))}
+
+                              {/* Supplier Reference */}
+                              <div>
+                                <label className="text-xs text-slate-600 mb-1 block">
+                                  Supplier Reference
+                                </label>
+                                <input
+                                  type="text"
+                                  value={supplier.supplier_reference}
+                                  onChange={(e) =>
+                                    handleSupplierFieldChange(
+                                      supplier.id,
+                                      "supplier_reference",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="e.g. SUP-12345"
+                                  className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                />
+                              </div>
+
+                              {/* Supplier Product Link */}
+                              <div>
+                                <label className="text-xs text-slate-600 mb-1 block">
+                                  Product Link
+                                </label>
+                                <input
+                                  type="url"
+                                  value={supplier.supplier_product_link}
+                                  onChange={(e) =>
+                                    handleSupplierFieldChange(
+                                      supplier.id,
+                                      "supplier_product_link",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="https://..."
+                                  className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                />
+                              </div>
+                            </div>
                           </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {item?.itemSuppliers &&
-                            item.itemSuppliers.length > 0 ? (
-                              item.itemSuppliers.map((itemSupplier, index) => (
-                                <div
-                                  key={index}
-                                  className="border border-slate-200 rounded-lg p-3 bg-slate-50"
-                                >
-                                  <div className="space-y-2 text-sm">
-                                    <div>
-                                      <div className="text-xs text-slate-500 mb-0.5">
-                                        Supplier
-                                      </div>
-                                      {itemSupplier.supplier ? (
-                                        <p
-                                          className="text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors font-medium"
-                                          onClick={() =>
-                                            router.push(
-                                              `/admin/suppliers/${itemSupplier.supplier.supplier_id}`,
-                                            )
-                                          }
-                                        >
-                                          {itemSupplier.supplier.name}
-                                        </p>
-                                      ) : (
-                                        <p className="text-slate-800">-</p>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <div className="text-xs text-slate-500 mb-0.5">
-                                        Price
-                                      </div>
-                                      <p className="text-slate-800">
-                                        {itemSupplier.price
-                                          ? `$${parseFloat(itemSupplier.price).toFixed(2)}`
-                                          : "-"}
-                                      </p>
-                                    </div>
-                                    {itemSupplier.supplier_reference && (
-                                      <div>
-                                        <div className="text-xs text-slate-500 mb-0.5">
-                                          Reference
-                                        </div>
-                                        <p className="text-slate-800">
-                                          {itemSupplier.supplier_reference}
-                                        </p>
-                                      </div>
-                                    )}
-                                    {itemSupplier.supplier_product_link && (
-                                      <div>
-                                        <div className="text-xs text-slate-500 mb-0.5">
-                                          Product Link
-                                        </div>
-                                        <a
-                                          href={
-                                            itemSupplier.supplier_product_link
-                                          }
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-primary hover:underline flex items-center gap-1"
-                                        >
-                                          View
-                                          <ExternalLink className="w-3 h-3" />
-                                        </a>
-                                      </div>
-                                    )}
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {item?.itemSuppliers &&
+                        item.itemSuppliers.length > 0 ? (
+                          item.itemSuppliers.map((itemSupplier, index) => (
+                            <div
+                              key={index}
+                              className="border border-slate-200 rounded-lg p-3 bg-slate-50"
+                            >
+                              <div className="space-y-2 text-sm">
+                                <div>
+                                  <div className="text-xs text-slate-500 mb-0.5">
+                                    Supplier
                                   </div>
+                                  {itemSupplier.supplier ? (
+                                    <p
+                                      className="text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors font-medium"
+                                      onClick={() =>
+                                        router.push(
+                                          `/admin/suppliers/${itemSupplier.supplier.supplier_id}`,
+                                        )
+                                      }
+                                    >
+                                      {itemSupplier.supplier.name}
+                                    </p>
+                                  ) : (
+                                    <p className="text-slate-800">-</p>
+                                  )}
                                 </div>
-                              ))
-                            ) : (
-                              <p className="text-sm text-slate-500 italic">
-                                No suppliers assigned
-                              </p>
-                            )}
-                          </div>
+                                <div>
+                                  <div className="text-xs text-slate-500 mb-0.5">
+                                    Price
+                                  </div>
+                                  <p className="text-slate-800">
+                                    {itemSupplier.price
+                                      ? `$${parseFloat(itemSupplier.price).toFixed(2)}`
+                                      : "-"}
+                                  </p>
+                                </div>
+                                {itemSupplier.supplier_reference && (
+                                  <div>
+                                    <div className="text-xs text-slate-500 mb-0.5">
+                                      Reference
+                                    </div>
+                                    <p className="text-slate-800">
+                                      {itemSupplier.supplier_reference}
+                                    </p>
+                                  </div>
+                                )}
+                                {itemSupplier.supplier_product_link && (
+                                  <div>
+                                    <div className="text-xs text-slate-500 mb-0.5">
+                                      Product Link
+                                    </div>
+                                    <a
+                                      href={itemSupplier.supplier_product_link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      View
+                                      <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-slate-500 italic">
+                            No suppliers assigned
+                          </p>
                         )}
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-
-        {viewFileModal && selectedFile && (
-          <ViewMedia
-            selectedFile={selectedFile}
-            setSelectedFile={setSelectedFile}
-            setViewFileModal={setViewFileModal}
-            setPageNumber={setPageNumber}
-            allFiles={
-              item?.image
-                ? [
-                    {
-                      url: item.image.url.startsWith("/")
-                        ? item.image.url
-                        : `/${item.image.url}`,
-                      filename:
-                        item.image.filename || item.item_id || "item-image",
-                      mime_type: "image",
-                      size: item.image.size || 0,
-                      id: item.image.id || item.item_id,
-                    },
-                  ]
-                : []
-            }
-            currentIndex={0}
-          />
         )}
+      </main>
 
-        {/* Delete Confirmation Modal */}
-        <DeleteConfirmation
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDeleteConfirm}
-          deleteWithInput={true}
-          heading="Item"
-          message="This will permanently delete this item from inventory. This action cannot be undone."
-          comparingName={item ? item.item_id : ""}
-          isDeleting={isDeleting}
-          entityType="item"
+      {viewFileModal && selectedFile && (
+        <ViewMedia
+          selectedFile={selectedFile}
+          setSelectedFile={setSelectedFile}
+          setViewFileModal={setViewFileModal}
+          setPageNumber={setPageNumber}
+          allFiles={
+            item?.image
+              ? [
+                  {
+                    url: item.image.url.startsWith("/")
+                      ? item.image.url
+                      : `/${item.image.url}`,
+                    filename:
+                      item.image.filename || item.item_id || "item-image",
+                    mime_type: "image",
+                    size: item.image.size || 0,
+                    id: item.image.id || item.item_id,
+                  },
+                ]
+              : []
+          }
+          currentIndex={0}
         />
+      )}
 
-        {/* Create Finish Modal */}
-        {showCreateFinishModal && (
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmation
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteConfirm}
+        deleteWithInput={true}
+        heading="Item"
+        message="This will permanently delete this item from inventory. This action cannot be undone."
+        comparingName={item ? item.item_id : ""}
+        isDeleting={isDeleting}
+        entityType="item"
+      />
+
+      {/* Create Finish Modal */}
+      {showCreateFinishModal && (
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateFinishModal(false)}
+        >
           <div
-            className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setShowCreateFinishModal(false)}
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h2 className="text-xl font-bold text-slate-800">
-                  Create New Finish
-                </h2>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Finish
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateFinishModal(false);
+                  setNewFinishValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Finish Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newFinishValue}
+                  onChange={(e) => setNewFinishValue(e.target.value)}
+                  placeholder="Enter finish name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => {
                     setShowCreateFinishModal(false);
                     setNewFinishValue("");
                   }}
-                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5 text-slate-600" />
+                  Cancel
                 </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Finish Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newFinishValue}
-                    onChange={(e) => setNewFinishValue(e.target.value)}
-                    placeholder="Enter finish name"
-                    className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    onClick={() => {
-                      setShowCreateFinishModal(false);
-                      setNewFinishValue("");
-                    }}
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateNewFinish}
-                    disabled={isCreatingFinish || !newFinishValue?.trim()}
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isCreatingFinish ? "Creating..." : "Create Finish"}
-                  </button>
-                </div>
+                <button
+                  onClick={handleCreateNewFinish}
+                  disabled={isCreatingFinish || !newFinishValue?.trim()}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingFinish ? "Creating..." : "Create Finish"}
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {showCreateBrandModal && (
+      {showCreateBrandModal && (
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateBrandModal(false)}
+        >
           <div
-            className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setShowCreateBrandModal(false)}
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h2 className="text-xl font-bold text-slate-800">
-                  Create New Brand
-                </h2>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Brand
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateBrandModal(false);
+                  setNewBrandValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Brand Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newBrandValue}
+                  onChange={(e) => setNewBrandValue(e.target.value)}
+                  placeholder="Enter brand name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => {
                     setShowCreateBrandModal(false);
                     setNewBrandValue("");
                   }}
-                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5 text-slate-600" />
+                  Cancel
                 </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Brand Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newBrandValue}
-                    onChange={(e) => setNewBrandValue(e.target.value)}
-                    placeholder="Enter brand name"
-                    className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    onClick={() => {
-                      setShowCreateBrandModal(false);
-                      setNewBrandValue("");
-                    }}
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateNewBrand}
-                    disabled={isCreatingBrand || !newBrandValue?.trim()}
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isCreatingBrand ? "Creating..." : "Create Brand"}
-                  </button>
-                </div>
+                <button
+                  onClick={handleCreateNewBrand}
+                  disabled={isCreatingBrand || !newBrandValue?.trim()}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingBrand ? "Creating..." : "Create Brand"}
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Create Measuring Unit Modal */}
-        {showCreateMeasuringUnitModal && (
+      {/* Create Measuring Unit Modal */}
+      {showCreateMeasuringUnitModal && (
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateMeasuringUnitModal(false)}
+        >
           <div
-            className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setShowCreateMeasuringUnitModal(false)}
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h2 className="text-xl font-bold text-slate-800">
-                  Create New Measuring Unit
-                </h2>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Measuring Unit
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateMeasuringUnitModal(false);
+                  setNewMeasuringUnitValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Measuring Unit Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newMeasuringUnitValue}
+                  onChange={(e) => setNewMeasuringUnitValue(e.target.value)}
+                  placeholder="Enter measuring unit name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => {
                     setShowCreateMeasuringUnitModal(false);
                     setNewMeasuringUnitValue("");
                   }}
-                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5 text-slate-600" />
+                  Cancel
                 </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Measuring Unit Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newMeasuringUnitValue}
-                    onChange={(e) => setNewMeasuringUnitValue(e.target.value)}
-                    placeholder="Enter measuring unit name"
-                    className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    onClick={() => {
-                      setShowCreateMeasuringUnitModal(false);
-                      setNewMeasuringUnitValue("");
-                    }}
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateNewMeasuringUnit}
-                    disabled={
-                      isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()
-                    }
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isCreatingMeasuringUnit
-                      ? "Creating..."
-                      : "Create Measuring Unit"}
-                  </button>
-                </div>
+                <button
+                  onClick={handleCreateNewMeasuringUnit}
+                  disabled={
+                    isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()
+                  }
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingMeasuringUnit
+                    ? "Creating..."
+                    : "Create Measuring Unit"}
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Create Hardware Sub Category Modal */}
-        {showCreateSubCategoryModal && (
+      {/* Create Hardware Sub Category Modal */}
+      {showCreateSubCategoryModal && (
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateSubCategoryModal(false)}
+        >
           <div
-            className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setShowCreateSubCategoryModal(false)}
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h2 className="text-xl font-bold text-slate-800">
-                  Create New Hardware Sub Category
-                </h2>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Hardware Sub Category
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateSubCategoryModal(false);
+                  setNewSubCategoryValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Sub Category Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newSubCategoryValue}
+                  onChange={(e) => setNewSubCategoryValue(e.target.value)}
+                  placeholder="Enter sub category name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => {
                     setShowCreateSubCategoryModal(false);
                     setNewSubCategoryValue("");
                   }}
-                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5 text-slate-600" />
+                  Cancel
                 </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Sub Category Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newSubCategoryValue}
-                    onChange={(e) => setNewSubCategoryValue(e.target.value)}
-                    placeholder="Enter sub category name"
-                    className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    onClick={() => {
-                      setShowCreateSubCategoryModal(false);
-                      setNewSubCategoryValue("");
-                    }}
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateNewSubCategory}
-                    disabled={
-                      isCreatingSubCategory || !newSubCategoryValue?.trim()
-                    }
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isCreatingSubCategory
-                      ? "Creating..."
-                      : "Create Sub Category"}
-                  </button>
-                </div>
+                <button
+                  onClick={handleCreateNewSubCategory}
+                  disabled={
+                    isCreatingSubCategory || !newSubCategoryValue?.trim()
+                  }
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingSubCategory
+                    ? "Creating..."
+                    : "Create Sub Category"}
+                </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
-    </AdminRoute>
+        </div>
+      )}
+    </AdminShell>
   );
 }

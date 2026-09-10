@@ -10,6 +10,8 @@ import { rateLimit } from "@/lib/rateLimit";
 
 const SUPPORTED_PLATFORMS = new Set(["ios", "android"]);
 const REVOCATION_HANDLE_BYTES = 32;
+const BUILD_PROFILE_MAX_LENGTH = 64;
+const BUILD_PROFILE_PATTERN = /^[a-zA-Z0-9._-]+$/;
 const pushTokenRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,
@@ -38,6 +40,27 @@ function validateExpoPushToken(expoPushToken) {
     expoPushToken.length <= 191 &&
     Expo.isExpoPushToken(expoPushToken)
   );
+}
+
+/**
+ * The build profile is a diagnostic only: it records which EAS build minted the
+ * token so a permanent delivery error can be traced back to an APNs
+ * environment. It is never an authorization input, so an unusable value is
+ * dropped rather than rejected.
+ */
+function normalizeBuildProfile(buildProfile) {
+  if (typeof buildProfile !== "string") return null;
+
+  const trimmed = buildProfile.trim();
+  if (
+    trimmed.length === 0 ||
+    trimmed.length > BUILD_PROFILE_MAX_LENGTH ||
+    !BUILD_PROFILE_PATTERN.test(trimmed)
+  ) {
+    return null;
+  }
+
+  return trimmed;
 }
 
 function createRevocationHandle() {
@@ -84,6 +107,7 @@ async function registerPushToken(request, sessionData) {
     }
 
     const now = new Date();
+    const buildProfile = normalizeBuildProfile(body.build_profile);
     const revocationHandle = createRevocationHandle();
     const revocationHandleHash = hashRevocationHandle(revocationHandle);
 
@@ -95,23 +119,34 @@ async function registerPushToken(request, sessionData) {
           session_id: sessionData.sessionId,
           expo_push_token: body.expo_push_token,
           platform: body.platform,
+          build_profile: buildProfile,
           enabled: true,
           revocation_handle_hash: revocationHandleHash,
           consented_at: now,
           disabled_at: null,
+          disabled_reason: null,
           last_registered_at: now,
         },
+        // Re-registration is the only recovery path for a row the receipt
+        // worker disabled, so it must clear the whole disable/error record.
         update: {
           user_id: sessionData.userId,
           session_id: sessionData.sessionId,
           platform: body.platform,
+          // A client that reports no profile must not erase the last known
+          // one. With EAS Update an older JS bundle can run on a preview
+          // native build, and nulling the column would make that sandbox
+          // registration eligible for production sends again.
+          ...(buildProfile ? { build_profile: buildProfile } : {}),
           enabled: true,
           revocation_handle_hash: revocationHandleHash,
           consented_at: now,
           disabled_at: null,
+          disabled_reason: null,
           last_registered_at: now,
           last_error_code: null,
           last_error: null,
+          last_error_at: null,
         },
       });
 
@@ -121,7 +156,7 @@ async function registerPushToken(request, sessionData) {
           entity_type: "push_token",
           entity_id: registration.id,
           action: "UPDATE",
-          description: `Registered an ${body.platform} push notification device`,
+          description: `Registered an ${body.platform} push notification device${buildProfile ? ` (${buildProfile} build)` : ""}`,
         },
       });
 
@@ -162,6 +197,7 @@ async function disablePushToken(request, sessionData) {
         enabled: false,
         session_id: null,
         disabled_at: new Date(),
+        disabled_reason: "user_disabled",
       },
     });
 

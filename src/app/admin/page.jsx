@@ -1,14 +1,11 @@
 "use client";
 import React from "react";
-import { AdminRoute } from "@/components/ProtectedRoute";
-import Sidebar from "@/components/sidebar";
+import AdminShell from "@/components/AdminShell";
+
 export default function page() {
   return (
-    <AdminRoute>
-      <div className="fex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="fex-1 flex flex-col overflow-hidden"></div>
-      </div>
-    </AdminRoute>
+    <AdminShell>
+      <main className="flex h-full min-h-0 flex-col overflow-hidden" />
+    </AdminShell>
   );
 }

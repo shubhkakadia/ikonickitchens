@@ -98,6 +98,7 @@ export async function revokePushToken(request) {
             enabled: false,
             session_id: null,
             disabled_at: new Date(),
+            disabled_reason: "revoked",
           },
         });
 

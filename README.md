@@ -817,11 +817,18 @@ This project is **production-ready for enterprise deployment** and continues to 
 ```env
 # Database (Prisma 7 driver adapter — MariaDB)
 DATABASE_HOST=
-EXPO_PUSH_ACCESS_TOKEN=
 DATABASE_PORT=3306
 DATABASE_USER=
 DATABASE_PASSWORD=
 DATABASE_NAME=
+
+# Push notifications (backend only — never expose via EXPO_PUBLIC_)
+EXPO_PUSH_ACCESS_TOKEN=
+# Alert sink for credential, failure-rate, and expired-receipt alerts.
+PUSH_ALERT_WEBHOOK_URL=
+# Set to "true" to send to development/preview/expo-go registrations from a
+# production deployment while smoke-testing an internal build. Off by default.
+PUSH_ALLOW_INTERNAL_BUILD_PROFILES=
 
 # App
 NEXT_PUBLIC_BASE_URL=http://localhost:3000

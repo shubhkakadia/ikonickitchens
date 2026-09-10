@@ -1,5 +1,4 @@
 "use client";
-import Sidebar from "@/components/sidebar";
 import TabsController from "@/components/tabscontroller";
 import WorkingHours from "../components/WorkingHours";
 import {
@@ -41,7 +40,7 @@ import {
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import Image from "next/image";
-import { AdminRoute } from "@/components/ProtectedRoute";
+import AdminShell from "@/components/AdminShell";
 import { useRouter } from "next/navigation";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
 
@@ -1107,389 +1106,346 @@ export default function EmployeeDetailPage() {
   };
 
   return (
-    <AdminRoute>
-      <div className="flex h-screen bg-tertiary">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-slate-600">Loading employee details...</p>
+    <AdminShell>
+      <main className="h-full overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+              <p className="text-slate-600">Loading employee details...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <p className="text-red-600 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : !employee ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <User className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <p className="text-slate-600">Employee not found</p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-3">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <TabsController back={true}>
+                <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
+                  <ChevronLeft className="w-6 h-6 text-slate-600" />
                 </div>
+              </TabsController>
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold text-slate-600">
+                  {employee.first_name} {employee.last_name}
+                </h1>
               </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-red-600 mb-4">{error}</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            ) : !employee ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <User className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                  <p className="text-slate-600">Employee not found</p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-4">
-                  <TabsController back={true}>
-                    <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                      <ChevronLeft className="w-6 h-6 text-slate-600" />
-                    </div>
-                  </TabsController>
-                  <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-slate-600">
-                      {employee.first_name} {employee.last_name}
-                    </h1>
-                  </div>
-                  <div className="flex gap-2">
-                    {!isEditing ? (
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() => setShowDropdown(!showDropdown)}
-                          className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-                        >
-                          <CiMenuKebab className="w-4 h-4 text-slate-600" />
-                          <span className="text-slate-600">More Actions</span>
-                        </button>
+              <div className="flex gap-2">
+                {!isEditing ? (
+                  <div className="relative dropdown-container">
+                    <button
+                      onClick={() => setShowDropdown(!showDropdown)}
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      <CiMenuKebab className="w-4 h-4 text-slate-600" />
+                      <span className="text-slate-600">More Actions</span>
+                    </button>
 
-                        {showDropdown && (
-                          <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                            <div className="py-1">
-                              <button
-                                onClick={() => {
-                                  handleEdit();
-                                  setShowDropdown(false);
-                                }}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                              >
-                                <Edit className="w-4 h-4" />
-                                Edit Employee Details
-                              </button>
-                              {isAdmin() && (
-                                <>
-                                  {user && Object.keys(user).length > 0 ? (
-                                    <button
-                                      onClick={() => {
-                                        handleViewUser();
-                                        setShowDropdown(false);
-                                      }}
-                                      className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                      View User Details
-                                    </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        handleCreateUser();
-                                        setShowDropdown(false);
-                                      }}
-                                      className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                                    >
-                                      <User className="w-4 h-4" />
-                                      Create User
-                                    </button>
-                                  )}
-                                </>
+                    {showDropdown && (
+                      <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              handleEdit();
+                              setShowDropdown(false);
+                            }}
+                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Edit Employee Details
+                          </button>
+                          {isAdmin() && (
+                            <>
+                              {user && Object.keys(user).length > 0 ? (
+                                <button
+                                  onClick={() => {
+                                    handleViewUser();
+                                    setShowDropdown(false);
+                                  }}
+                                  className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  View User Details
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    handleCreateUser();
+                                    setShowDropdown(false);
+                                  }}
+                                  className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                                >
+                                  <User className="w-4 h-4" />
+                                  Create User
+                                </button>
                               )}
-                              <button
-                                onClick={() => {
-                                  setShowDeleteEmployeeModal(true);
-                                  setShowDropdown(false);
-                                }}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete Employee
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                            </>
+                          )}
+                          <button
+                            onClick={() => {
+                              setShowDeleteEmployeeModal(true);
+                              setShowDropdown(false);
+                            }}
+                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Employee
+                          </button>
+                        </div>
                       </div>
-                    ) : (
-                      <>
-                        <button
-                          onClick={handleSave}
-                          disabled={isUpdating}
-                          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Edit className="w-4 h-4" />
-                          {isUpdating ? "Saving..." : "Save"}
-                        </button>
-                        <button
-                          onClick={handleCancel}
-                          className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                        >
-                          Cancel
-                        </button>
-                      </>
                     )}
                   </div>
-                </div>
-
-                {/* Main Tab Navigation */}
-                <div className="bg-white rounded-lg shadow-sm border border-slate-200 mb-4">
-                  <nav className="flex space-x-8 px-4">
+                ) : (
+                  <>
                     <button
-                      onClick={() => setActiveTab("overview")}
-                      className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "overview"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                      }`}
+                      onClick={handleSave}
+                      disabled={isUpdating}
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4" />
-                        Overview
-                      </div>
+                      <Edit className="w-4 h-4" />
+                      {isUpdating ? "Saving..." : "Save"}
                     </button>
                     <button
-                      onClick={() => setActiveTab("working-hours")}
-                      className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "working-hours"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                      }`}
+                      onClick={handleCancel}
+                      className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
                     >
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        Working Hours
-                      </div>
+                      Cancel
                     </button>
-                  </nav>
-                </div>
+                  </>
+                )}
+              </div>
+            </div>
 
-                {activeTab === "overview" && (
-                  <div className="grid grid-cols-3 gap-4">
-                    {/* Left Column - Main Info */}
-                    <div className="col-span-2 space-y-4">
-                      {/* Profile Card */}
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <div className="flex items-start gap-4">
-                          {isEditing ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="relative group">
-                                <input
-                                  ref={fileInputRef}
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleImageChange}
-                                  className="hidden"
-                                  id="image-upload-edit"
-                                />
+            {/* Main Tab Navigation */}
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 mb-4">
+              <nav className="flex space-x-8 px-4">
+                <button
+                  onClick={() => setActiveTab("overview")}
+                  className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "overview"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Overview
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab("working-hours")}
+                  className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "working-hours"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Working Hours
+                  </div>
+                </button>
+              </nav>
+            </div>
 
-                                {imagePreview ? (
-                                  <div className="relative">
-                                    <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-primary shadow-lg">
-                                      <Image
-                                        loading="lazy"
-                                        src={imagePreview}
-                                        alt="Preview"
-                                        className="w-full h-full object-cover"
-                                        width={64}
-                                        height={64}
-                                      />
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={handleRemoveImage}
-                                      className="absolute top-1 right-1 bg-secondary text-white rounded-full p-1.5 shadow-lg hover:bg-secondary transition-all duration-200 transform hover:scale-110 cursor-pointer"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        fileInputRef.current?.click()
-                                      }
-                                      className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white rounded-full px-3 py-1 text-xs shadow-lg hover:scale-110 transition-all duration-200 cursor-pointer"
-                                    >
-                                      Change
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <label
-                                    htmlFor="image-upload-edit"
-                                    className="w-16 h-16 rounded-full border-4 border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-blue-50 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group-hover:shadow-lg"
-                                  >
-                                    <Upload className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors mb-1" />
-                                    <span className="text-xs text-slate-500 group-hover:text-primary font-medium">
-                                      Upload
-                                    </span>
-                                  </label>
-                                )}
+            {activeTab === "overview" && (
+              <div className="grid grid-cols-3 gap-4">
+                {/* Left Column - Main Info */}
+                <div className="col-span-2 space-y-4">
+                  {/* Profile Card */}
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                    <div className="flex items-start gap-4">
+                      {isEditing ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="relative group">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageChange}
+                              className="hidden"
+                              id="image-upload-edit"
+                            />
+
+                            {imagePreview ? (
+                              <div className="relative">
+                                <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-primary shadow-lg">
+                                  <Image
+                                    loading="lazy"
+                                    src={imagePreview}
+                                    alt="Preview"
+                                    className="w-full h-full object-cover"
+                                    width={64}
+                                    height={64}
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveImage}
+                                  className="absolute top-1 right-1 bg-secondary text-white rounded-full p-1.5 shadow-lg hover:bg-secondary transition-all duration-200 transform hover:scale-110 cursor-pointer"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white rounded-full px-3 py-1 text-xs shadow-lg hover:scale-110 transition-all duration-200 cursor-pointer"
+                                >
+                                  Change
+                                </button>
                               </div>
-                              <div className="flex flex-col items-center gap-1">
-                                <p className="text-xs text-slate-500 text-center">
-                                  {imagePreview
-                                    ? "Click X to remove"
-                                    : "Click to upload photo"}
-                                </p>
-                                {employee?.image && !imagePreview && (
+                            ) : (
+                              <label
+                                htmlFor="image-upload-edit"
+                                className="w-16 h-16 rounded-full border-4 border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-blue-50 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group-hover:shadow-lg"
+                              >
+                                <Upload className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors mb-1" />
+                                <span className="text-xs text-slate-500 group-hover:text-primary font-medium">
+                                  Upload
+                                </span>
+                              </label>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-center gap-1">
+                            <p className="text-xs text-slate-500 text-center">
+                              {imagePreview
+                                ? "Click X to remove"
+                                : "Click to upload photo"}
+                            </p>
+                            {employee?.image && !imagePreview && (
+                              <button
+                                type="button"
+                                onClick={handleRemoveImage}
+                                className="text-xs text-red-600 hover:text-red-700 underline cursor-pointer"
+                              >
+                                Remove current photo
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ) : employee.image ? (
+                        <div
+                          onClick={handleViewEmployeeImage}
+                          className="cursor-pointer group relative"
+                        >
+                          <Image
+                            loading="lazy"
+                            src={`/${employee.image.url}`}
+                            alt={employee.first_name + " " + employee.last_name}
+                            className="w-16 h-16 rounded-full object-cover transition-transform duration-200 group-hover:scale-105 group-hover:shadow-lg"
+                            width={64}
+                            height={64}
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-full transition-colors duration-200 flex items-center justify-center">
+                            <Eye className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 bg-linear-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
+                          {employee?.first_name?.[0] || ""}
+                          {employee?.last_name?.[0] || ""}
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editData.first_name || ""}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "first_name",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder={employee.first_name}
+                                className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                              />
+                              <input
+                                type="text"
+                                value={editData.last_name || ""}
+                                onChange={(e) =>
+                                  handleInputChange("last_name", e.target.value)
+                                }
+                                placeholder={employee.last_name}
+                                className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                              />
+                              <div className="relative" ref={roleDropdownRef}>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={
+                                      roleSearchTerm || editData.role || ""
+                                    }
+                                    onChange={handleRoleSearchChange}
+                                    onFocus={() => setIsRoleDropdownOpen(true)}
+                                    className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full pr-8"
+                                    placeholder="Search or type a role..."
+                                  />
                                   <button
                                     type="button"
-                                    onClick={handleRemoveImage}
-                                    className="text-xs text-red-600 hover:text-red-700 underline cursor-pointer"
+                                    onClick={() =>
+                                      setIsRoleDropdownOpen(!isRoleDropdownOpen)
+                                    }
+                                    className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                   >
-                                    Remove current photo
+                                    <ChevronDown
+                                      className={`w-4 h-4 transition-transform ${
+                                        isRoleDropdownOpen ? "rotate-180" : ""
+                                      }`}
+                                    />
                                   </button>
-                                )}
-                              </div>
-                            </div>
-                          ) : employee.image ? (
-                            <div
-                              onClick={handleViewEmployeeImage}
-                              className="cursor-pointer group relative"
-                            >
-                              <Image
-                                loading="lazy"
-                                src={`/${employee.image.url}`}
-                                alt={
-                                  employee.first_name + " " + employee.last_name
-                                }
-                                className="w-16 h-16 rounded-full object-cover transition-transform duration-200 group-hover:scale-105 group-hover:shadow-lg"
-                                width={64}
-                                height={64}
-                              />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-full transition-colors duration-200 flex items-center justify-center">
-                                <Eye className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="w-16 h-16 bg-linear-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
-                              {employee?.first_name?.[0] || ""}
-                              {employee?.last_name?.[0] || ""}
-                            </div>
-                          )}
-                          <div className="flex-1">
-                            {isEditing ? (
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="text"
-                                    value={editData.first_name || ""}
-                                    onChange={(e) =>
-                                      handleInputChange(
-                                        "first_name",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder={employee.first_name}
-                                    className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                  />
-                                  <input
-                                    type="text"
-                                    value={editData.last_name || ""}
-                                    onChange={(e) =>
-                                      handleInputChange(
-                                        "last_name",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder={employee.last_name}
-                                    className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                  />
-                                  <div
-                                    className="relative"
-                                    ref={roleDropdownRef}
-                                  >
-                                    <div className="relative">
-                                      <input
-                                        type="text"
-                                        value={
-                                          roleSearchTerm || editData.role || ""
-                                        }
-                                        onChange={handleRoleSearchChange}
-                                        onFocus={() =>
-                                          setIsRoleDropdownOpen(true)
-                                        }
-                                        className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full pr-8"
-                                        placeholder="Search or type a role..."
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setIsRoleDropdownOpen(
-                                            !isRoleDropdownOpen,
-                                          )
-                                        }
-                                        className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                      >
-                                        <ChevronDown
-                                          className={`w-4 h-4 transition-transform ${
-                                            isRoleDropdownOpen
-                                              ? "rotate-180"
-                                              : ""
-                                          }`}
-                                        />
-                                      </button>
-                                    </div>
+                                </div>
 
-                                    {isRoleDropdownOpen && (
-                                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                        {loadingRoles ? (
-                                          <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                            Loading roles...
-                                          </div>
-                                        ) : filteredRoleOptions.length > 0 ? (
-                                          <>
-                                            {filteredRoleOptions.map(
-                                              (role, index) => (
-                                                <button
-                                                  key={index}
-                                                  type="button"
-                                                  onClick={() =>
-                                                    handleRoleSelect(role)
-                                                  }
-                                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                                >
-                                                  {role}
-                                                </button>
-                                              ),
-                                            )}
-                                            {roleSearchTerm &&
-                                              !filteredRoleOptions.some(
-                                                (r) =>
-                                                  r.toLowerCase() ===
-                                                  roleSearchTerm.toLowerCase(),
-                                              ) && (
-                                                <div className="border-t border-slate-200">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      setNewRoleValue(
-                                                        roleSearchTerm,
-                                                      );
-                                                      setShowCreateRoleModal(
-                                                        true,
-                                                      );
-                                                    }}
-                                                    className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                                  >
-                                                    <Plus className="w-4 h-4" />
-                                                    Create "{roleSearchTerm}"
-                                                  </button>
-                                                </div>
-                                              )}
-                                          </>
-                                        ) : (
-                                          <div className="px-4 py-3">
-                                            <div className="text-sm text-slate-500 mb-2">
-                                              No matching roles found
-                                            </div>
-                                            {roleSearchTerm && (
+                                {isRoleDropdownOpen && (
+                                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                    {loadingRoles ? (
+                                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                        Loading roles...
+                                      </div>
+                                    ) : filteredRoleOptions.length > 0 ? (
+                                      <>
+                                        {filteredRoleOptions.map(
+                                          (role, index) => (
+                                            <button
+                                              key={index}
+                                              type="button"
+                                              onClick={() =>
+                                                handleRoleSelect(role)
+                                              }
+                                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
+                                            >
+                                              {role}
+                                            </button>
+                                          ),
+                                        )}
+                                        {roleSearchTerm &&
+                                          !filteredRoleOptions.some(
+                                            (r) =>
+                                              r.toLowerCase() ===
+                                              roleSearchTerm.toLowerCase(),
+                                          ) && (
+                                            <div className="border-t border-slate-200">
                                               <button
                                                 type="button"
                                                 onClick={() => {
@@ -1498,1234 +1454,1213 @@ export default function EmployeeDetailPage() {
                                                   );
                                                   setShowCreateRoleModal(true);
                                                 }}
-                                                className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
                                               >
                                                 <Plus className="w-4 h-4" />
                                                 Create "{roleSearchTerm}"
                                               </button>
-                                            )}
-                                          </div>
+                                            </div>
+                                          )}
+                                      </>
+                                    ) : (
+                                      <div className="px-4 py-3">
+                                        <div className="text-sm text-slate-500 mb-2">
+                                          No matching roles found
+                                        </div>
+                                        {roleSearchTerm && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setNewRoleValue(roleSearchTerm);
+                                              setShowCreateRoleModal(true);
+                                            }}
+                                            className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                          >
+                                            <Plus className="w-4 h-4" />
+                                            Create "{roleSearchTerm}"
+                                          </button>
                                         )}
                                       </div>
                                     )}
                                   </div>
-                                </div>
-                                <p className="text-sm text-slate-500">
-                                  Employee ID: {employee.employee_id}
-                                </p>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-sm text-slate-500">
+                              Employee ID: {employee.employee_id}
+                            </p>
 
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <Mail className="w-4 h-4 text-slate-600" />
-                                    <input
-                                      type="email"
-                                      value={editData.email || ""}
-                                      onChange={(e) =>
-                                        handleInputChange(
-                                          "email",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder={employee.email || "Email"}
-                                      className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
-                                    />
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Phone className="w-4 h-4 text-slate-600" />
-                                    <div className="flex-1">
-                                      <input
-                                        type="tel"
-                                        value={editData.phone || ""}
-                                        onChange={(e) =>
-                                          handleInputChange(
-                                            "phone",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                                        className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
-                                          (editData.phone &&
-                                            !validatePhone(editData.phone)) ||
-                                          (editData.phone &&
-                                            editData.phone_secondary &&
-                                            formatPhoneToNational(
-                                              editData.phone,
-                                            ) ===
-                                              formatPhoneToNational(
-                                                editData.phone_secondary,
-                                              ))
-                                            ? "border-red-500"
-                                            : "border-slate-300"
-                                        }`}
-                                      />
-                                      {editData.phone &&
-                                        !validatePhone(editData.phone) && (
-                                          <p className="mt-1 text-xs text-red-500">
-                                            Please enter a valid Australian
-                                            phone number
-                                          </p>
-                                        )}
-                                      {editData.phone &&
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Mail className="w-4 h-4 text-slate-600" />
+                                <input
+                                  type="email"
+                                  value={editData.email || ""}
+                                  onChange={(e) =>
+                                    handleInputChange("email", e.target.value)
+                                  }
+                                  placeholder={employee.email || "Email"}
+                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-4 h-4 text-slate-600" />
+                                <div className="flex-1">
+                                  <input
+                                    type="tel"
+                                    value={editData.phone || ""}
+                                    onChange={(e) =>
+                                      handleInputChange("phone", e.target.value)
+                                    }
+                                    placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                                    className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
+                                      (editData.phone &&
+                                        !validatePhone(editData.phone)) ||
+                                      (editData.phone &&
                                         editData.phone_secondary &&
-                                        validatePhone(editData.phone) &&
-                                        validatePhone(
-                                          editData.phone_secondary,
-                                        ) &&
                                         formatPhoneToNational(
                                           editData.phone,
                                         ) ===
                                           formatPhoneToNational(
                                             editData.phone_secondary,
-                                          ) && (
-                                          <p className="mt-1 text-xs text-red-500">
-                                            Primary and secondary phone cannot
-                                            be the same
-                                          </p>
-                                        )}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Phone className="w-4 h-4 text-slate-600" />
-                                    <div className="flex-1">
-                                      <input
-                                        type="tel"
-                                        value={editData.phone_secondary || ""}
-                                        onChange={(e) =>
-                                          handleInputChange(
-                                            "phone_secondary",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="Secondary Phone (optional)"
-                                        className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
-                                          (editData.phone_secondary &&
-                                            !validatePhone(
-                                              editData.phone_secondary,
-                                            )) ||
-                                          (editData.phone &&
-                                            editData.phone_secondary &&
-                                            formatPhoneToNational(
-                                              editData.phone,
-                                            ) ===
-                                              formatPhoneToNational(
-                                                editData.phone_secondary,
-                                              ))
-                                            ? "border-red-500"
-                                            : "border-slate-300"
-                                        }`}
-                                      />
-                                      {editData.phone_secondary &&
+                                          ))
+                                        ? "border-red-500"
+                                        : "border-slate-300"
+                                    }`}
+                                  />
+                                  {editData.phone &&
+                                    !validatePhone(editData.phone) && (
+                                      <p className="mt-1 text-xs text-red-500">
+                                        Please enter a valid Australian phone
+                                        number
+                                      </p>
+                                    )}
+                                  {editData.phone &&
+                                    editData.phone_secondary &&
+                                    validatePhone(editData.phone) &&
+                                    validatePhone(editData.phone_secondary) &&
+                                    formatPhoneToNational(editData.phone) ===
+                                      formatPhoneToNational(
+                                        editData.phone_secondary,
+                                      ) && (
+                                      <p className="mt-1 text-xs text-red-500">
+                                        Primary and secondary phone cannot be
+                                        the same
+                                      </p>
+                                    )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Phone className="w-4 h-4 text-slate-600" />
+                                <div className="flex-1">
+                                  <input
+                                    type="tel"
+                                    value={editData.phone_secondary || ""}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        "phone_secondary",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Secondary Phone (optional)"
+                                    className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
+                                      (editData.phone_secondary &&
                                         !validatePhone(
                                           editData.phone_secondary,
-                                        ) && (
-                                          <p className="mt-1 text-xs text-red-500">
-                                            Please enter a valid Australian
-                                            phone number
-                                          </p>
-                                        )}
-                                      {editData.phone &&
+                                        )) ||
+                                      (editData.phone &&
                                         editData.phone_secondary &&
-                                        validatePhone(editData.phone) &&
-                                        validatePhone(
-                                          editData.phone_secondary,
-                                        ) &&
                                         formatPhoneToNational(
                                           editData.phone,
                                         ) ===
                                           formatPhoneToNational(
                                             editData.phone_secondary,
-                                          ) && (
-                                          <p className="mt-1 text-xs text-red-500">
-                                            Primary and secondary phone cannot
-                                            be the same
-                                          </p>
-                                        )}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-slate-600" />
-                                    <input
-                                      type="text"
-                                      value={editData.address || ""}
-                                      onChange={(e) =>
-                                        handleInputChange(
-                                          "address",
-                                          e.target.value,
-                                        )
-                                      }
-                                      placeholder={
-                                        employee.address || "Address"
-                                      }
-                                      className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h2 className="text-lg font-bold text-slate-800">
-                                    {employee.first_name} {employee.last_name}
-                                  </h2>
-                                  {user && Object.keys(user).length > 0 && (
-                                    <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
-                                      {user.user_type}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs text-slate-500 mb-3">
-                                  ID: {employee.employee_id}
-                                </p>
-                                <div className="space-y-1">
-                                  <div className="flex flex-wrap gap-3 text-sm">
-                                    <a href={`mailto:${employee.email}`}>
-                                      <div className="flex items-center gap-1.5 text-slate-600 hover:text-slate-800">
-                                        <Mail className="w-3.5 h-3.5" />
-                                        {formatValue(employee.email)}
-                                      </div>
-                                    </a>
-                                    <div className="flex items-center gap-1.5 text-slate-600">
-                                      <Phone className="w-3.5 h-3.5" />
-                                      {formatValue(employee.phone)}
-                                    </div>
-                                    {employee.phone_secondary && (
-                                      <div className="flex items-center gap-1.5 text-slate-600">
-                                        <Phone className="w-3.5 h-3.5" />
-                                        {formatValue(employee.phone_secondary)}
-                                        <span className="text-xs text-slate-400">
-                                          (Secondary)
-                                        </span>
-                                      </div>
-                                    )}
-                                    <div className="flex items-center gap-1.5 text-slate-600 text-sm">
-                                      <MapPin className="w-3.5 h-3.5" />
-                                      {formatValue(employee.address)}
-                                    </div>
-                                  </div>
-                                  {employee.role && (
-                                    <div className="text-xs text-slate-500">
-                                      Role: {employee.role}
-                                    </div>
-                                  )}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Personal Information */}
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                          <User className="w-4 h-4" />
-                          Personal Information
-                        </h3>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Date of Birth
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="date"
-                                value={editData.dob || ""}
-                                onChange={(e) =>
-                                  handleInputChange("dob", e.target.value)
-                                }
-                                placeholder={formatDate(employee.dob)}
-                                className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700">
-                                {formatDate(employee.dob)}
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Join Date
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="date"
-                                value={editData.join_date || ""}
-                                onChange={(e) =>
-                                  handleInputChange("join_date", e.target.value)
-                                }
-                                placeholder={formatDate(employee.join_date)}
-                                max={new Date().toISOString().split("T")[0]}
-                                className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700">
-                                {formatDate(employee.join_date)}
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              TFN Number
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editData.tfn_number || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "tfn_number",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={formatValue(employee.tfn_number)}
-                                className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700 font-mono">
-                                {formatValue(employee.tfn_number)}
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              ABN Number
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editData.abn_number || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "abn_number",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={formatValue(employee.abn_number)}
-                                className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700 font-mono">
-                                {formatValue(employee.abn_number)}
-                              </p>
-                            )}
-                          </div>
-                          <div className="col-span-2">
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Education
-                            </label>
-                            {isEditing ? (
-                              <textarea
-                                value={editData.education || ""}
-                                onChange={(e) =>
-                                  handleInputChange("education", e.target.value)
-                                }
-                                placeholder={formatValue(employee.education)}
-                                rows={3}
-                                className="w-full text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <div className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
-                                {formatValue(employee.education)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Emergency Contact */}
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                          <AlertTriangle className="w-4 h-4" />
-                          Emergency Contact
-                        </h3>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Contact Name
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editData.emergency_contact_name || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "emergency_contact_name",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={formatValue(
-                                  employee.emergency_contact_name,
-                                )}
-                                className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700">
-                                {formatValue(employee.emergency_contact_name)}
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Contact Phone
-                            </label>
-                            {isEditing ? (
-                              <div>
-                                <input
-                                  type="tel"
-                                  value={editData.emergency_contact_phone || ""}
-                                  onChange={(e) =>
-                                    handleInputChange(
-                                      "emergency_contact_phone",
-                                      e.target.value,
-                                    )
-                                  }
-                                  placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                                  className={`w-full text-sm text-slate-800 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${
-                                    editData.emergency_contact_phone &&
+                                          ))
+                                        ? "border-red-500"
+                                        : "border-slate-300"
+                                    }`}
+                                  />
+                                  {editData.phone_secondary &&
                                     !validatePhone(
-                                      editData.emergency_contact_phone,
-                                    )
-                                      ? "border-red-500"
-                                      : "border-slate-300"
-                                  }`}
-                                />
-                                {editData.emergency_contact_phone &&
-                                  !validatePhone(
-                                    editData.emergency_contact_phone,
-                                  ) && (
-                                    <p className="mt-1 text-xs text-red-500">
-                                      Please enter a valid Australian phone
-                                      number
-                                    </p>
-                                  )}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-slate-700">
-                                {formatValue(employee.emergency_contact_phone)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Availability Schedule */}
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                          <Clock className="w-4 h-4" />
-                          Work Schedule
-                        </h3>
-                        <div className="space-y-2">
-                          {isEditing ? (
-                            // Show editable time inputs for all days when editing
-                            [
-                              "monday",
-                              "tuesday",
-                              "wednesday",
-                              "thursday",
-                              "friday",
-                              "saturday",
-                              "sunday",
-                            ].map((day) => (
-                              <div
-                                key={day}
-                                className="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg"
-                              >
-                                <span className="text-xs font-medium text-slate-700 capitalize">
-                                  {day}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="time"
-                                    value={
-                                      editData.availability?.[day]?.start || ""
-                                    }
-                                    onChange={(e) =>
-                                      handleAvailabilityChange(
-                                        day,
-                                        "start",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="text-xs text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                  />
-                                  <span className="text-xs text-slate-400">
-                                    -
-                                  </span>
-                                  <input
-                                    type="time"
-                                    value={
-                                      editData.availability?.[day]?.end || ""
-                                    }
-                                    onChange={(e) =>
-                                      handleAvailabilityChange(
-                                        day,
-                                        "end",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="text-xs text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                  />
+                                      editData.phone_secondary,
+                                    ) && (
+                                      <p className="mt-1 text-xs text-red-500">
+                                        Please enter a valid Australian phone
+                                        number
+                                      </p>
+                                    )}
+                                  {editData.phone &&
+                                    editData.phone_secondary &&
+                                    validatePhone(editData.phone) &&
+                                    validatePhone(editData.phone_secondary) &&
+                                    formatPhoneToNational(editData.phone) ===
+                                      formatPhoneToNational(
+                                        editData.phone_secondary,
+                                      ) && (
+                                      <p className="mt-1 text-xs text-red-500">
+                                        Primary and secondary phone cannot be
+                                        the same
+                                      </p>
+                                    )}
                                 </div>
                               </div>
-                            ))
-                          ) : // Show existing availability or empty state when not editing
-                          employee.availability ? (
-                            Object.entries(
-                              (() => {
-                                if (typeof employee.availability === "string") {
-                                  try {
-                                    return JSON.parse(employee.availability);
-                                  } catch (e) {
-                                    console.error(
-                                      "Error parsing availability:",
-                                      e,
-                                    );
-                                    return {};
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-4 h-4 text-slate-600" />
+                                <input
+                                  type="text"
+                                  value={editData.address || ""}
+                                  onChange={(e) =>
+                                    handleInputChange("address", e.target.value)
                                   }
-                                }
-                                return employee.availability;
-                              })(),
-                            ).map(([day, schedule]) => (
-                              <div
-                                key={day}
-                                className="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg"
-                              >
-                                <span className="text-xs font-medium text-slate-700 capitalize">
-                                  {day}
+                                  placeholder={employee.address || "Address"}
+                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2 mb-2">
+                              <h2 className="text-lg font-bold text-slate-800">
+                                {employee.first_name} {employee.last_name}
+                              </h2>
+                              {user && Object.keys(user).length > 0 && (
+                                <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
+                                  {user.user_type}
                                 </span>
-                                <div className="flex items-center gap-2 text-xs text-slate-600">
-                                  <span>{formatTime(schedule.start)}</span>
-                                  <span>
-                                    {formatTime(schedule.start) !== "-" &&
-                                    formatTime(schedule.end) !== "-"
-                                      ? "-"
-                                      : ""}
-                                  </span>
-                                  <span>{formatTime(schedule.end)}</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 mb-3">
+                              ID: {employee.employee_id}
+                            </p>
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap gap-3 text-sm">
+                                <a href={`mailto:${employee.email}`}>
+                                  <div className="flex items-center gap-1.5 text-slate-600 hover:text-slate-800">
+                                    <Mail className="w-3.5 h-3.5" />
+                                    {formatValue(employee.email)}
+                                  </div>
+                                </a>
+                                <div className="flex items-center gap-1.5 text-slate-600">
+                                  <Phone className="w-3.5 h-3.5" />
+                                  {formatValue(employee.phone)}
+                                </div>
+                                {employee.phone_secondary && (
+                                  <div className="flex items-center gap-1.5 text-slate-600">
+                                    <Phone className="w-3.5 h-3.5" />
+                                    {formatValue(employee.phone_secondary)}
+                                    <span className="text-xs text-slate-400">
+                                      (Secondary)
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1.5 text-slate-600 text-sm">
+                                  <MapPin className="w-3.5 h-3.5" />
+                                  {formatValue(employee.address)}
                                 </div>
                               </div>
-                            ))
-                          ) : (
-                            <div className="text-center py-6 text-slate-500">
-                              <Clock className="w-6 h-6 mx-auto mb-2 text-slate-400" />
-                              <p className="text-sm">No work schedule set</p>
+                              {employee.role && (
+                                <div className="text-xs text-slate-500">
+                                  Role: {employee.role}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </>
+                        )}
                       </div>
                     </div>
+                  </div>
 
-                    {/* Right Column - Financial Info */}
-                    <div className="space-y-4">
-                      {/* Banking Information */}
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                          <CreditCard className="w-4 h-4" />
-                          Banking Details
-                        </h3>
-                        <div className="space-y-3">
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Bank Account Holder Name
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editData.bank_account_name || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "bank_account_name",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={formatValue(
-                                  employee.bank_account_name,
-                                )}
-                                className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700">
-                                {formatValue(employee.bank_account_name)}
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Bank Account Number
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editData.bank_account_number || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "bank_account_number",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={formatValue(
-                                  employee.bank_account_number,
-                                )}
-                                className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700 font-mono">
-                                {formatValue(employee.bank_account_number)}
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Bank Account BSB
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editData.bank_account_bsb || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "bank_account_bsb",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={formatValue(
-                                  employee.bank_account_bsb,
-                                )}
-                                className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700 font-mono">
-                                {formatValue(employee.bank_account_bsb)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                  {/* Personal Information */}
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                      <User className="w-4 h-4" />
+                      Personal Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Date of Birth
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="date"
+                            value={editData.dob || ""}
+                            onChange={(e) =>
+                              handleInputChange("dob", e.target.value)
+                            }
+                            placeholder={formatDate(employee.dob)}
+                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700">
+                            {formatDate(employee.dob)}
+                          </p>
+                        )}
                       </div>
-
-                      {/* Superannuation */}
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                          <Shield className="w-4 h-4" />
-                          Superannuation
-                        </h3>
-                        <div className="space-y-3">
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Fund Name
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editData.supper_account_name || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "supper_account_name",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={formatValue(
-                                  employee.supper_account_name,
-                                )}
-                                className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700">
-                                {formatValue(employee.supper_account_name)}
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
-                              Member ID
-                            </label>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editData.supper_account_number || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "supper_account_number",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={formatValue(
-                                  employee.supper_account_number,
-                                )}
-                                className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-sm text-slate-700 font-mono">
-                                {formatValue(employee.supper_account_number)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Join Date
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="date"
+                            value={editData.join_date || ""}
+                            onChange={(e) =>
+                              handleInputChange("join_date", e.target.value)
+                            }
+                            placeholder={formatDate(employee.join_date)}
+                            max={new Date().toISOString().split("T")[0]}
+                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700">
+                            {formatDate(employee.join_date)}
+                          </p>
+                        )}
                       </div>
-
-                      {/* Notes */}
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-3">
-                          Notes
-                        </h3>
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          TFN Number
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.tfn_number || ""}
+                            onChange={(e) =>
+                              handleInputChange("tfn_number", e.target.value)
+                            }
+                            placeholder={formatValue(employee.tfn_number)}
+                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700 font-mono">
+                            {formatValue(employee.tfn_number)}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          ABN Number
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.abn_number || ""}
+                            onChange={(e) =>
+                              handleInputChange("abn_number", e.target.value)
+                            }
+                            placeholder={formatValue(employee.abn_number)}
+                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700 font-mono">
+                            {formatValue(employee.abn_number)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Education
+                        </label>
                         {isEditing ? (
                           <textarea
-                            value={editData.notes || ""}
+                            value={editData.education || ""}
                             onChange={(e) =>
-                              handleInputChange("notes", e.target.value)
+                              handleInputChange("education", e.target.value)
                             }
-                            placeholder={formatValue(employee.notes)}
+                            placeholder={formatValue(employee.education)}
                             rows={3}
                             className="w-full text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
                           />
                         ) : (
                           <div className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
-                            {formatValue(employee.notes)}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Active Status */}
-                      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                        <h3 className="text-sm font-bold text-slate-800 mb-3">
-                          Status
-                        </h3>
-                        {isEditing ? (
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={
-                                editData.is_active !== undefined
-                                  ? editData.is_active
-                                  : true
-                              }
-                              onChange={(e) =>
-                                handleInputChange("is_active", e.target.checked)
-                              }
-                              className="w-4 h-4 text-primary focus:ring-primary border-slate-300 rounded"
-                            />
-                            <span className="text-sm font-medium text-slate-700">
-                              Current Employee
-                            </span>
-                          </label>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`px-3 py-1 text-xs font-medium rounded-full ${
-                                employee.is_active !== false
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {employee.is_active !== false
-                                ? "Current Employee"
-                                : "Former Employee"}
-                            </span>
+                            {formatValue(employee.education)}
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
-                )}
 
-                {activeTab === "working-hours" && (
+                  {/* Emergency Contact */}
                   <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                    <WorkingHours employeeId={employee.employee_id} />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* User Details Modal */}
-        {showUserModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
-            <div
-              className="absolute inset-0 bg-slate-900/40"
-              onClick={() => {
-                setShowUserModal(false);
-                setShowPassword(false);
-              }}
-            />
-            <div className="relative bg-white w-full max-w-lg mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-700">
-                  {isCreatingUser ? "Create User Account" : "User Details"}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowUserModal(false);
-                    setShowPassword(false);
-                  }}
-                  className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
-                >
-                  <X className="w-5 h-5 text-slate-600" />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-4">
-                {/* User Information */}
-                {!isCreatingUser && user && Object.keys(user).length > 0 && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                        Username
-                      </div>
-                      <div className="text-slate-700">{user.username}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                        User ID
-                      </div>
-                      <div className="text-slate-700 font-mono text-sm">
-                        {user.id}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Editable Fields */}
-                <div className="space-y-4">
-                  {/* Employee ID - First */}
-                  {isCreatingUser && (
-                    <div>
-                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                        Employee ID
-                      </div>
-                      <input
-                        type="text"
-                        value={userEditData.employee_id || ""}
-                        disabled
-                        className="w-full text-sm text-slate-500 px-3 py-2 border border-slate-300 rounded bg-slate-100"
-                      />
-                    </div>
-                  )}
-
-                  {/* Username and User Type - Side by side */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {isCreatingUser && (
+                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4" />
+                      Emergency Contact
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                          Username <span className="text-red-500">*</span>
-                        </div>
-                        <input
-                          type="email"
-                          value={userEditData.username || ""}
-                          onChange={(e) =>
-                            handleUserInputChange("username", e.target.value)
-                          }
-                          placeholder="Enter username (email)"
-                          className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                        User Type <span className="text-red-500">*</span>
-                      </div>
-                      {isEditingUser || isCreatingUser ? (
-                        <select
-                          value={userEditData.user_type || ""}
-                          onChange={(e) =>
-                            handleUserInputChange("user_type", e.target.value)
-                          }
-                          className="cursor-pointer w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                        >
-                          <option value="">Select User Type</option>
-                          {isMasterAdmin() && (
-                            <option value="master-admin">Master Admin</option>
-                          )}
-                          <option value="admin">Admin</option>
-                          <option value="manager">Manager</option>
-                          <option value="employee">Employee</option>
-                        </select>
-                      ) : (
-                        <div className="text-slate-700">{user.user_type}</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Password - Full width */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-full">
-                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                        Password <span className="text-red-500">*</span>
-                      </div>
-                      {isEditingUser || isCreatingUser ? (
-                        <div className="relative">
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            value={userEditData.password || ""}
-                            onChange={(e) =>
-                              handleUserInputChange("password", e.target.value)
-                            }
-                            placeholder={
-                              isCreatingUser
-                                ? "Enter password"
-                                : "Enter new password"
-                            }
-                            className="w-full text-sm text-slate-800 px-3 py-2 pr-10 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="cursor-pointer absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="text-slate-700">••••••••</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-full">
-                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                        Active Status
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="is_active"
-                          checked={
-                            isEditingUser || isCreatingUser
-                              ? userEditData.is_active
-                              : user
-                                ? user.is_active
-                                : false
-                          }
-                          onChange={(e) =>
-                            handleUserInputChange("is_active", e.target.checked)
-                          }
-                          disabled={!(isEditingUser || isCreatingUser)}
-                          className="cursor-pointer w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
-                        />
-                        <label
-                          htmlFor="is_active"
-                          className="ml-2 text-sm font-medium text-slate-600"
-                        >
-                          Active
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Contact Name
                         </label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.emergency_contact_name || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "emergency_contact_name",
+                                e.target.value,
+                              )
+                            }
+                            placeholder={formatValue(
+                              employee.emergency_contact_name,
+                            )}
+                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700">
+                            {formatValue(employee.emergency_contact_name)}
+                          </p>
+                        )}
                       </div>
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Contact Phone
+                        </label>
+                        {isEditing ? (
+                          <div>
+                            <input
+                              type="tel"
+                              value={editData.emergency_contact_phone || ""}
+                              onChange={(e) =>
+                                handleInputChange(
+                                  "emergency_contact_phone",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Eg. 0400 123 456 or +61 400 123 456"
+                              className={`w-full text-sm text-slate-800 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${
+                                editData.emergency_contact_phone &&
+                                !validatePhone(editData.emergency_contact_phone)
+                                  ? "border-red-500"
+                                  : "border-slate-300"
+                              }`}
+                            />
+                            {editData.emergency_contact_phone &&
+                              !validatePhone(
+                                editData.emergency_contact_phone,
+                              ) && (
+                                <p className="mt-1 text-xs text-red-500">
+                                  Please enter a valid Australian phone number
+                                </p>
+                              )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-700">
+                            {formatValue(employee.emergency_contact_phone)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Availability Schedule */}
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4" />
+                      Work Schedule
+                    </h3>
+                    <div className="space-y-2">
+                      {isEditing ? (
+                        // Show editable time inputs for all days when editing
+                        [
+                          "monday",
+                          "tuesday",
+                          "wednesday",
+                          "thursday",
+                          "friday",
+                          "saturday",
+                          "sunday",
+                        ].map((day) => (
+                          <div
+                            key={day}
+                            className="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg"
+                          >
+                            <span className="text-xs font-medium text-slate-700 capitalize">
+                              {day}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="time"
+                                value={
+                                  editData.availability?.[day]?.start || ""
+                                }
+                                onChange={(e) =>
+                                  handleAvailabilityChange(
+                                    day,
+                                    "start",
+                                    e.target.value,
+                                  )
+                                }
+                                className="text-xs text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                              />
+                              <span className="text-xs text-slate-400">-</span>
+                              <input
+                                type="time"
+                                value={editData.availability?.[day]?.end || ""}
+                                onChange={(e) =>
+                                  handleAvailabilityChange(
+                                    day,
+                                    "end",
+                                    e.target.value,
+                                  )
+                                }
+                                className="text-xs text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        ))
+                      ) : // Show existing availability or empty state when not editing
+                      employee.availability ? (
+                        Object.entries(
+                          (() => {
+                            if (typeof employee.availability === "string") {
+                              try {
+                                return JSON.parse(employee.availability);
+                              } catch (e) {
+                                console.error("Error parsing availability:", e);
+                                return {};
+                              }
+                            }
+                            return employee.availability;
+                          })(),
+                        ).map(([day, schedule]) => (
+                          <div
+                            key={day}
+                            className="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg"
+                          >
+                            <span className="text-xs font-medium text-slate-700 capitalize">
+                              {day}
+                            </span>
+                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                              <span>{formatTime(schedule.start)}</span>
+                              <span>
+                                {formatTime(schedule.start) !== "-" &&
+                                formatTime(schedule.end) !== "-"
+                                  ? "-"
+                                  : ""}
+                              </span>
+                              <span>{formatTime(schedule.end)}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-6 text-slate-500">
+                          <Clock className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+                          <p className="text-sm">No work schedule set</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Module Access - Only visible to master-admin */}
-                {isMasterAdmin() && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-full">
-                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-3">
-                        Module Access
-                      </div>
-                      <div className="space-y-2 border border-slate-200 rounded-lg p-3 bg-slate-50">
-                        {moduleStructure.map((module) => (
-                          <div key={module.key}>
-                            {module.isParent ? (
-                              <>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center flex-1">
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        toggleModuleExpansion(module.key)
-                                      }
-                                      disabled={
-                                        !(isEditingUser || isCreatingUser)
-                                      }
-                                      className="cursor-pointer p-1 hover:bg-slate-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      {expandedModules[module.key] ? (
-                                        <ChevronDown className="w-4 h-4 text-slate-600" />
-                                      ) : (
-                                        <ChevronRight className="w-4 h-4 text-slate-600" />
-                                      )}
-                                    </button>
-                                    <label
-                                      htmlFor={module.key}
-                                      className="ml-2 text-sm font-semibold text-slate-700 cursor-pointer flex-1"
-                                    >
-                                      {module.label}
-                                    </label>
-                                  </div>
-                                  <input
-                                    type="checkbox"
-                                    id={module.key}
-                                    checked={
-                                      module.children?.every(
-                                        (child) =>
-                                          moduleAccess[child.key] === true,
-                                      ) || false
-                                    }
-                                    ref={(el) => {
-                                      if (el && module.children) {
-                                        const checkedCount =
-                                          module.children.filter(
-                                            (child) =>
-                                              moduleAccess[child.key] === true,
-                                          ).length;
-                                        el.indeterminate =
-                                          checkedCount > 0 &&
-                                          checkedCount < module.children.length;
-                                      }
-                                    }}
-                                    onChange={(e) => {
-                                      // Toggle all children when parent is clicked
-                                      module.children?.forEach((child) => {
-                                        handleModuleAccessChange(
-                                          child.key,
-                                          e.target.checked,
-                                        );
-                                      });
-                                    }}
-                                    disabled={
-                                      !(isEditingUser || isCreatingUser)
-                                    }
-                                    className="cursor-pointer w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
-                                  />
-                                </div>
-                                {expandedModules[module.key] && (
-                                  <div className="ml-6 mt-2 space-y-2">
-                                    {module.children?.map((child) => (
-                                      <div
-                                        key={child.key}
-                                        className="flex items-center justify-between"
-                                      >
-                                        <label
-                                          htmlFor={child.key}
-                                          className="text-sm text-slate-600 cursor-pointer flex-1"
-                                        >
-                                          {child.label}
-                                        </label>
-                                        <input
-                                          type="checkbox"
-                                          id={child.key}
-                                          checked={
-                                            moduleAccess[child.key] === true
-                                          }
-                                          onChange={(e) =>
-                                            handleModuleAccessChange(
-                                              child.key,
-                                              e.target.checked,
-                                            )
-                                          }
-                                          disabled={
-                                            !(isEditingUser || isCreatingUser)
-                                          }
-                                          className="cursor-pointer w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
-                                        />
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <div className="flex items-center justify-between">
-                                <label
-                                  htmlFor={module.key}
-                                  className="text-sm font-semibold text-slate-700 cursor-pointer flex-1"
-                                >
-                                  {module.label}
-                                </label>
-                                <input
-                                  type="checkbox"
-                                  id={module.key}
-                                  checked={moduleAccess[module.key] === true}
-                                  onChange={(e) =>
-                                    handleModuleAccessChange(
-                                      module.key,
-                                      e.target.checked,
-                                    )
-                                  }
-                                  disabled={!(isEditingUser || isCreatingUser)}
-                                  className="cursor-pointer w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
-                                />
-                              </div>
+                {/* Right Column - Financial Info */}
+                <div className="space-y-4">
+                  {/* Banking Information */}
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                      <CreditCard className="w-4 h-4" />
+                      Banking Details
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Bank Account Holder Name
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.bank_account_name || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "bank_account_name",
+                                e.target.value,
+                              )
+                            }
+                            placeholder={formatValue(
+                              employee.bank_account_name,
                             )}
-                          </div>
-                        ))}
+                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700">
+                            {formatValue(employee.bank_account_name)}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Bank Account Number
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.bank_account_number || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "bank_account_number",
+                                e.target.value,
+                              )
+                            }
+                            placeholder={formatValue(
+                              employee.bank_account_number,
+                            )}
+                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700 font-mono">
+                            {formatValue(employee.bank_account_number)}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Bank Account BSB
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.bank_account_bsb || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "bank_account_bsb",
+                                e.target.value,
+                              )
+                            }
+                            placeholder={formatValue(employee.bank_account_bsb)}
+                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700 font-mono">
+                            {formatValue(employee.bank_account_bsb)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Action Buttons */}
-              <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
-                {!isCreatingUser && !isEditingUser && (
-                  <button
-                    onClick={() => setShowDeleteModal(true)}
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md transition-colors flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Remove User Access
-                  </button>
-                )}
-                {isCreatingUser ? (
-                  <>
-                    <button
-                      onClick={handleCreateUserCancel}
-                      className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleCreateUserSave}
-                      disabled={isUpdating}
-                      className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      <Save className="w-4 h-4" />
-                      {isUpdating ? "Creating..." : "Create User"}
-                    </button>
-                  </>
-                ) : !isEditingUser ? (
-                  <>
-                    <button
-                      onClick={() => setIsEditingUser(true)}
-                      className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowUserModal(false);
-                        setShowPassword(false);
-                      }}
-                      className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                    >
-                      Close
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleUserCancel}
-                      disabled={isUpdating}
-                      className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleUserSave}
-                      disabled={isUpdating}
-                      className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isUpdating ? "Saving..." : "Save"}
-                    </button>
-                  </>
-                )}
+                  {/* Superannuation */}
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                      <Shield className="w-4 h-4" />
+                      Superannuation
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Fund Name
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.supper_account_name || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "supper_account_name",
+                                e.target.value,
+                              )
+                            }
+                            placeholder={formatValue(
+                              employee.supper_account_name,
+                            )}
+                            className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700">
+                            {formatValue(employee.supper_account_name)}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 block">
+                          Member ID
+                        </label>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.supper_account_number || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "supper_account_number",
+                                e.target.value,
+                              )
+                            }
+                            placeholder={formatValue(
+                              employee.supper_account_number,
+                            )}
+                            className="w-full text-sm text-slate-800 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-700 font-mono">
+                            {formatValue(employee.supper_account_number)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                    <h3 className="text-sm font-bold text-slate-800 mb-3">
+                      Notes
+                    </h3>
+                    {isEditing ? (
+                      <textarea
+                        value={editData.notes || ""}
+                        onChange={(e) =>
+                          handleInputChange("notes", e.target.value)
+                        }
+                        placeholder={formatValue(employee.notes)}
+                        rows={3}
+                        className="w-full text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                      />
+                    ) : (
+                      <div className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
+                        {formatValue(employee.notes)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Active Status */}
+                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                    <h3 className="text-sm font-bold text-slate-800 mb-3">
+                      Status
+                    </h3>
+                    {isEditing ? (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={
+                            editData.is_active !== undefined
+                              ? editData.is_active
+                              : true
+                          }
+                          onChange={(e) =>
+                            handleInputChange("is_active", e.target.checked)
+                          }
+                          className="w-4 h-4 text-primary focus:ring-primary border-slate-300 rounded"
+                        />
+                        <span className="text-sm font-medium text-slate-700">
+                          Current Employee
+                        </span>
+                      </label>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-3 py-1 text-xs font-medium rounded-full ${
+                            employee.is_active !== false
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {employee.is_active !== false
+                            ? "Current Employee"
+                            : "Former Employee"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {activeTab === "working-hours" && (
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                <WorkingHours employeeId={employee.employee_id} />
+              </div>
+            )}
           </div>
         )}
+      </main>
 
-        {/* Delete User Access Confirmation Modal */}
-        <DeleteConfirmation
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDeleteConfirm}
-          deleteWithInput={true}
-          heading="User Access"
-          message="This will remove the user account and revoke system access. Employee data will be preserved but they will no longer be able to login."
-          comparingName={
-            employee ? `${employee.first_name} ${employee.last_name}` : ""
-          }
-          isDeleting={isUpdating}
-          entityType="users"
-        />
-
-        {/* Delete Employee Confirmation Modal */}
-        <DeleteConfirmation
-          isOpen={showDeleteEmployeeModal}
-          onClose={() => setShowDeleteEmployeeModal(false)}
-          onConfirm={handleDeleteEmployeeConfirm}
-          deleteWithInput={true}
-          heading="Employee"
-          message="This will permanently delete the employee and all associated data. This action cannot be undone."
-          comparingName={
-            employee ? `${employee.first_name} ${employee.last_name}` : ""
-          }
-          isDeleting={isDeletingEmployee}
-          entityType="employees"
-        />
-
-        {/* View Media Modal */}
-        {viewFileModal && selectedFile && (
-          <ViewMedia
-            selectedFile={selectedFile}
-            setSelectedFile={setSelectedFile}
-            setViewFileModal={setViewFileModal}
-            setPageNumber={setPageNumber}
-          />
-        )}
-
-        {/* Create Role Modal */}
-        {showCreateRoleModal && (
+      {/* User Details Modal */}
+      {showUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
           <div
-            className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setShowCreateRoleModal(false)}
+            className="absolute inset-0 bg-slate-900/40"
+            onClick={() => {
+              setShowUserModal(false);
+              setShowPassword(false);
+            }}
+          />
+          <div className="relative bg-white w-full max-w-lg mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-700">
+                {isCreatingUser ? "Create User Account" : "User Details"}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowUserModal(false);
+                  setShowPassword(false);
+                }}
+                className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* User Information */}
+              {!isCreatingUser && user && Object.keys(user).length > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                      Username
+                    </div>
+                    <div className="text-slate-700">{user.username}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                      User ID
+                    </div>
+                    <div className="text-slate-700 font-mono text-sm">
+                      {user.id}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Editable Fields */}
+              <div className="space-y-4">
+                {/* Employee ID - First */}
+                {isCreatingUser && (
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                      Employee ID
+                    </div>
+                    <input
+                      type="text"
+                      value={userEditData.employee_id || ""}
+                      disabled
+                      className="w-full text-sm text-slate-500 px-3 py-2 border border-slate-300 rounded bg-slate-100"
+                    />
+                  </div>
+                )}
+
+                {/* Username and User Type - Side by side */}
+                <div className="grid grid-cols-2 gap-3">
+                  {isCreatingUser && (
+                    <div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                        Username <span className="text-red-500">*</span>
+                      </div>
+                      <input
+                        type="email"
+                        value={userEditData.username || ""}
+                        onChange={(e) =>
+                          handleUserInputChange("username", e.target.value)
+                        }
+                        placeholder="Enter username (email)"
+                        className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                      User Type <span className="text-red-500">*</span>
+                    </div>
+                    {isEditingUser || isCreatingUser ? (
+                      <select
+                        value={userEditData.user_type || ""}
+                        onChange={(e) =>
+                          handleUserInputChange("user_type", e.target.value)
+                        }
+                        className="cursor-pointer w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                      >
+                        <option value="">Select User Type</option>
+                        {isMasterAdmin() && (
+                          <option value="master-admin">Master Admin</option>
+                        )}
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="employee">Employee</option>
+                      </select>
+                    ) : (
+                      <div className="text-slate-700">{user.user_type}</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Password - Full width */}
+                <div className="flex items-start gap-3">
+                  <div className="w-full">
+                    <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                      Password <span className="text-red-500">*</span>
+                    </div>
+                    {isEditingUser || isCreatingUser ? (
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={userEditData.password || ""}
+                          onChange={(e) =>
+                            handleUserInputChange("password", e.target.value)
+                          }
+                          placeholder={
+                            isCreatingUser
+                              ? "Enter password"
+                              : "Enter new password"
+                          }
+                          className="w-full text-sm text-slate-800 px-3 py-2 pr-10 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="cursor-pointer absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-slate-700">••••••••</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-full">
+                    <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                      Active Status
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        checked={
+                          isEditingUser || isCreatingUser
+                            ? userEditData.is_active
+                            : user
+                              ? user.is_active
+                              : false
+                        }
+                        onChange={(e) =>
+                          handleUserInputChange("is_active", e.target.checked)
+                        }
+                        disabled={!(isEditingUser || isCreatingUser)}
+                        className="cursor-pointer w-4 h-4 text-primary bg-slate-100 border-slate-300 rounded focus:ring-primary focus:ring-2"
+                      />
+                      <label
+                        htmlFor="is_active"
+                        className="ml-2 text-sm font-medium text-slate-600"
+                      >
+                        Active
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Module Access - Only visible to master-admin */}
+              {isMasterAdmin() && (
+                <div className="flex items-start gap-3">
+                  <div className="w-full">
+                    <div className="text-xs uppercase tracking-wide text-slate-500 mb-3">
+                      Module Access
+                    </div>
+                    <div className="space-y-2 border border-slate-200 rounded-lg p-3 bg-slate-50">
+                      {moduleStructure.map((module) => (
+                        <div key={module.key}>
+                          {module.isParent ? (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center flex-1">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleModuleExpansion(module.key)
+                                    }
+                                    disabled={
+                                      !(isEditingUser || isCreatingUser)
+                                    }
+                                    className="cursor-pointer p-1 hover:bg-slate-200 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {expandedModules[module.key] ? (
+                                      <ChevronDown className="w-4 h-4 text-slate-600" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4 text-slate-600" />
+                                    )}
+                                  </button>
+                                  <label
+                                    htmlFor={module.key}
+                                    className="ml-2 text-sm font-semibold text-slate-700 cursor-pointer flex-1"
+                                  >
+                                    {module.label}
+                                  </label>
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  id={module.key}
+                                  checked={
+                                    module.children?.every(
+                                      (child) =>
+                                        moduleAccess[child.key] === true,
+                                    ) || false
+                                  }
+                                  ref={(el) => {
+                                    if (el && module.children) {
+                                      const checkedCount =
+                                        module.children.filter(
+                                          (child) =>
+                                            moduleAccess[child.key] === true,
+                                        ).length;
+                                      el.indeterminate =
+                                        checkedCount > 0 &&
+                                        checkedCount < module.children.length;
+                                    }
+                                  }}
+                                  onChange={(e) => {
+                                    // Toggle all children when parent is clicked
+                                    module.children?.forEach((child) => {
+                                      handleModuleAccessChange(
+                                        child.key,
+                                        e.target.checked,
+                                      );
+                                    });
+                                  }}
+                                  disabled={!(isEditingUser || isCreatingUser)}
+                                  className="cursor-pointer w-4 h-4 text-primary bg-slate-100 border-slate-300 rounded focus:ring-primary focus:ring-2"
+                                />
+                              </div>
+                              {expandedModules[module.key] && (
+                                <div className="ml-6 mt-2 space-y-2">
+                                  {module.children?.map((child) => (
+                                    <div
+                                      key={child.key}
+                                      className="flex items-center justify-between"
+                                    >
+                                      <label
+                                        htmlFor={child.key}
+                                        className="text-sm text-slate-600 cursor-pointer flex-1"
+                                      >
+                                        {child.label}
+                                      </label>
+                                      <input
+                                        type="checkbox"
+                                        id={child.key}
+                                        checked={
+                                          moduleAccess[child.key] === true
+                                        }
+                                        onChange={(e) =>
+                                          handleModuleAccessChange(
+                                            child.key,
+                                            e.target.checked,
+                                          )
+                                        }
+                                        disabled={
+                                          !(isEditingUser || isCreatingUser)
+                                        }
+                                        className="cursor-pointer w-4 h-4 text-primary bg-slate-100 border-slate-300 rounded focus:ring-primary focus:ring-2"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <label
+                                htmlFor={module.key}
+                                className="text-sm font-semibold text-slate-700 cursor-pointer flex-1"
+                              >
+                                {module.label}
+                              </label>
+                              <input
+                                type="checkbox"
+                                id={module.key}
+                                checked={moduleAccess[module.key] === true}
+                                onChange={(e) =>
+                                  handleModuleAccessChange(
+                                    module.key,
+                                    e.target.checked,
+                                  )
+                                }
+                                disabled={!(isEditingUser || isCreatingUser)}
+                                className="cursor-pointer w-4 h-4 text-primary bg-slate-100 border-slate-300 rounded focus:ring-primary focus:ring-2"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-4 border-t border-slate-100 flex justify-end gap-2">
+              {!isCreatingUser && !isEditingUser && (
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md transition-colors flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Remove User Access
+                </button>
+              )}
+              {isCreatingUser ? (
+                <>
+                  <button
+                    onClick={handleCreateUserCancel}
+                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateUserSave}
+                    disabled={isUpdating}
+                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    {isUpdating ? "Creating..." : "Create User"}
+                  </button>
+                </>
+              ) : !isEditingUser ? (
+                <>
+                  <button
+                    onClick={() => setIsEditingUser(true)}
+                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowUserModal(false);
+                      setShowPassword(false);
+                    }}
+                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                  >
+                    Close
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleUserCancel}
+                    disabled={isUpdating}
+                    className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUserSave}
+                    disabled={isUpdating}
+                    className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isUpdating ? "Saving..." : "Save"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Access Confirmation Modal */}
+      <DeleteConfirmation
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteConfirm}
+        deleteWithInput={true}
+        heading="User Access"
+        message="This will remove the user account and revoke system access. Employee data will be preserved but they will no longer be able to login."
+        comparingName={
+          employee ? `${employee.first_name} ${employee.last_name}` : ""
+        }
+        isDeleting={isUpdating}
+        entityType="users"
+      />
+
+      {/* Delete Employee Confirmation Modal */}
+      <DeleteConfirmation
+        isOpen={showDeleteEmployeeModal}
+        onClose={() => setShowDeleteEmployeeModal(false)}
+        onConfirm={handleDeleteEmployeeConfirm}
+        deleteWithInput={true}
+        heading="Employee"
+        message="This will permanently delete the employee and all associated data. This action cannot be undone."
+        comparingName={
+          employee ? `${employee.first_name} ${employee.last_name}` : ""
+        }
+        isDeleting={isDeletingEmployee}
+        entityType="employees"
+      />
+
+      {/* View Media Modal */}
+      {viewFileModal && selectedFile && (
+        <ViewMedia
+          selectedFile={selectedFile}
+          setSelectedFile={setSelectedFile}
+          setViewFileModal={setViewFileModal}
+          setPageNumber={setPageNumber}
+        />
+      )}
+
+      {/* Create Role Modal */}
+      {showCreateRoleModal && (
+        <div
+          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowCreateRoleModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h2 className="text-xl font-bold text-slate-800">
-                  Create New Role
-                </h2>
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800">
+                Create New Role
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCreateRoleModal(false);
+                  setNewRoleValue("");
+                }}
+                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Role Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newRoleValue}
+                  onChange={(e) => setNewRoleValue(e.target.value)}
+                  placeholder="Enter role name"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
                 <button
                   onClick={() => {
                     setShowCreateRoleModal(false);
                     setNewRoleValue("");
                   }}
-                  className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5 text-slate-600" />
+                  Cancel
                 </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Role Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newRoleValue}
-                    onChange={(e) => setNewRoleValue(e.target.value)}
-                    placeholder="Enter role name"
-                    className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    onClick={() => {
-                      setShowCreateRoleModal(false);
-                      setNewRoleValue("");
-                    }}
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateNewRole}
-                    disabled={isCreatingRole || !newRoleValue?.trim()}
-                    className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isCreatingRole ? "Creating..." : "Create Role"}
-                  </button>
-                </div>
+                <button
+                  onClick={handleCreateNewRole}
+                  disabled={isCreatingRole || !newRoleValue?.trim()}
+                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isCreatingRole ? "Creating..." : "Create Role"}
+                </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
-    </AdminRoute>
+        </div>
+      )}
+    </AdminShell>
   );
 }

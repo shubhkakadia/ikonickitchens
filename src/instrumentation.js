@@ -7,11 +7,15 @@
 export async function register() {
   // Only run cron jobs on server-side
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { initializeMeetingReminderCron, initializePushReceiptCron } =
-      await import("@/lib/cron-jobs");
+    const {
+      initializeMeetingReminderCron,
+      initializePushReceiptCron,
+      initializeBreakReminderCron,
+    } = await import("@/lib/cron-jobs");
 
     // Initialize meeting reminder cron job
     initializeMeetingReminderCron();
     initializePushReceiptCron();
+    initializeBreakReminderCron();
   }
 }

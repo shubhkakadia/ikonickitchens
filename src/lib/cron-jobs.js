@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { processPushNotificationReceipts } from "@/lib/pushNotifications";
+import { processBreakReminders } from "@/lib/breakReminders";
 
 // Extend dayjs with timezone support
 dayjs.extend(utc);
@@ -190,4 +191,27 @@ export function initializePushReceiptCron() {
   });
 
   console.log("✓ Cron job initialized: Expo push receipts");
+}
+
+/**
+ * Break Reminder Cron Job
+ * Runs every minute because the "5 minutes left" heads-up is only useful if it
+ * lands close to the minute it is due. The worker itself is idempotent, so a
+ * missed or duplicated run costs nothing.
+ */
+export function initializeBreakReminderCron() {
+  cron.schedule("* * * * *", async () => {
+    try {
+      const result = await processBreakReminders();
+      if (result.warned > 0 || result.expired > 0) {
+        console.log(
+          `[Cron] Break reminders sent: ${result.warned} ending-soon, ${result.expired} break-over (from ${result.candidates} candidate punch(es))`,
+        );
+      }
+    } catch (error) {
+      console.error("[Cron] Break reminder processing failed:", error);
+    }
+  });
+
+  console.log("✓ Cron job initialized: Break reminders");
 }

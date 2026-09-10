@@ -1,17 +1,11 @@
 "use client";
 
 import axios from "axios";
-import {
-  AlertTriangle,
-  Coffee,
-  LogIn,
-  LogOut,
-  Play,
-  Timer,
-} from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
+import { Timer } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { calculateClockPunchHours } from "@/lib/clockPunchMetrics";
@@ -20,37 +14,16 @@ import {
   formatClockPunchAction,
   summarizeClockPunchDay,
 } from "@/lib/clockPunchSequence";
+import ClockPunchView from "./ClockPunchView";
 
 const CLOCK_PUNCH_TIME_ZONE = "Australia/Adelaide";
 const MINIMUM_BREAK_MS = CLOCK_PUNCH_MINIMUM_BREAK_MINUTES * 60 * 1000;
-
-const actionButtonStyles = {
-  CLOCK_IN: "bg-emerald-600 hover:bg-emerald-700 text-white",
-  BREAK_IN: "bg-amber-500 hover:bg-amber-600 text-white",
-  BREAK_OUT: "bg-blue-600 hover:bg-blue-700 text-white",
-  CLOCK_OUT: "bg-red-600 hover:bg-red-700 text-white",
-};
-
-const actionIcons = {
-  CLOCK_IN: LogIn,
-  BREAK_IN: Coffee,
-  BREAK_OUT: Play,
-  CLOCK_OUT: LogOut,
-};
 
 const dayFormatter = new Intl.DateTimeFormat("en-AU", {
   timeZone: CLOCK_PUNCH_TIME_ZONE,
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
-});
-
-const longDateFormatter = new Intl.DateTimeFormat("en-AU", {
-  timeZone: CLOCK_PUNCH_TIME_ZONE,
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
 });
 
 const timeFormatter = new Intl.DateTimeFormat("en-AU", {
@@ -73,22 +46,6 @@ function toDisplayTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return timeFormatter.format(date);
-}
-
-function formatDuration(milliseconds) {
-  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return [hours, minutes, seconds]
-    .map((part) => String(part).padStart(2, "0"))
-    .join(":");
-}
-
-function formatRemaining(milliseconds) {
-  const totalMinutes = Math.ceil(milliseconds / 60000);
-  return totalMinutes === 1 ? "1 minute" : `${totalMinutes} minutes`;
 }
 
 export default function ClockPunchCard() {
@@ -212,8 +169,29 @@ export default function ClockPunchCard() {
     }
   };
 
-  // The widget is only meaningful for accounts linked to an employee record.
-  if (!employeeId) return null;
+  // Punching requires a linked employee record. Master-admin accounts usually
+  // have none, so say so rather than rendering nothing.
+  if (!employeeId) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 px-5 py-3 flex items-center gap-3">
+        <Timer className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-600">
+            Time clock unavailable
+          </p>
+          <p className="text-[11px] text-slate-400">
+            This login isn&apos;t linked to an employee record, so it can&apos;t
+            record punches. Link it on the employee profile to clock in here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Progress through the minimum break, for the countdown ring.
+  const breakProgress = isOnBreak
+    ? Math.min(1, breakMilliseconds / MINIMUM_BREAK_MS)
+    : 0;
 
   const statusLabel = summary.isEmpty
     ? "Not clocked in yet"
@@ -231,112 +209,39 @@ export default function ClockPunchCard() {
         ? "border-slate-200 bg-slate-100 text-slate-700"
         : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
+  const accent = summary.isEmpty
+    ? "border-slate-200"
+    : isOnBreak
+      ? "border-amber-300"
+      : summary.isComplete
+        ? "border-slate-200"
+        : "border-emerald-300";
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Timer className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-bold text-slate-800">Time Clock</h2>
-            <span
-              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusStyles}`}
-            >
-              {statusLabel}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {longDateFormatter.format(new Date())} • Adelaide time
-          </p>
-
-          {summary.lastPunch && (
-            <p className="mt-1 text-sm text-slate-600">
-              Last punch:{" "}
-              <span className="font-medium text-slate-800">
-                {formatClockPunchAction(summary.lastAction)}
-              </span>{" "}
-              at {toDisplayTime(summary.lastPunch.punched_at)}
-            </p>
-          )}
-        </div>
-
-        {/* Live durations */}
-        <div className="flex flex-wrap items-center gap-6">
-          {isOnBreak && (
-            <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Break Duration
-              </p>
-              <p className="text-2xl font-bold tabular-nums text-amber-600">
-                {formatDuration(breakMilliseconds)}
-              </p>
-            </div>
-          )}
-          <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">
-              {summary.isComplete ? "Worked Today" : "Time Worked"}
-            </p>
-            <p className="text-2xl font-bold tabular-nums text-slate-800">
-              {formatDuration(workedMilliseconds)}
-            </p>
-          </div>
-        </div>
-
-        {/* Punch actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          {loading ? (
-            <span className="text-sm text-slate-500">Loading...</span>
-          ) : error ? (
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-sm text-red-600">{error}</span>
-              <button
-                type="button"
-                onClick={() => fetchToday()}
-                className="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
-              >
-                Retry
-              </button>
-            </div>
-          ) : (
-            summary.allowedActions.map((action) => {
-              const Icon = actionIcons[action];
-              const isLocked = action === "BREAK_OUT" && isBreakOutLocked;
-              const isSubmitting = submittingAction === action;
-              const isDisabled =
-                isLocked || Boolean(submittingAction) || isSubmitting;
-
-              return (
-                <button
-                  key={action}
-                  type="button"
-                  onClick={() => handlePunch(action)}
-                  disabled={isDisabled}
-                  title={
-                    isLocked
-                      ? `Break out unlocks after the ${CLOCK_PUNCH_MINIMUM_BREAK_MINUTES} minute minimum break`
-                      : undefined
-                  }
-                  className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-                    actionButtonStyles[action]
-                  } ${
-                    isDisabled
-                      ? "cursor-not-allowed opacity-50"
-                      : "cursor-pointer"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {isSubmitting ? "Saving..." : formatClockPunchAction(action)}
-                  {isLocked && (
-                    <span className="text-xs font-normal">
-                      (in {formatRemaining(breakRemainingMs)})
-                    </span>
-                  )}
-                </button>
-              );
-            })
-          )}
-        </div>
-      </div>
-    </div>
+    <ClockPunchView
+      statusLabel={statusLabel}
+      statusStyles={statusStyles}
+      accent={accent}
+      lastActionLabel={
+        summary.lastPunch ? formatClockPunchAction(summary.lastAction) : null
+      }
+      lastPunchTime={
+        summary.lastPunch ? toDisplayTime(summary.lastPunch.punched_at) : null
+      }
+      isComplete={summary.isComplete}
+      isOnBreak={isOnBreak}
+      isOnTheClock={isOnTheClock}
+      workedMilliseconds={workedMilliseconds}
+      breakMilliseconds={breakMilliseconds}
+      breakRemainingMs={breakRemainingMs}
+      isBreakOutLocked={isBreakOutLocked}
+      breakProgress={breakProgress}
+      allowedActions={summary.allowedActions}
+      loading={loading}
+      error={error}
+      submittingAction={submittingAction}
+      onPunch={handlePunch}
+      onRetry={() => fetchToday()}
+    />
   );
 }

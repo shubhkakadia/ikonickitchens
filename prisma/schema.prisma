@@ -522,6 +522,7 @@ model item {
   category                 Category
   description              String?
   quantity                 Decimal?                  @default(0) @db.Decimal(10, 2)
+  minimum_stock            Decimal?                  @db.Decimal(10, 2)
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   measurement_unit         String?
@@ -722,6 +723,7 @@ model purchase_order {
   total_amount       Decimal?              @db.Decimal(10, 2)
   delivery_charge    Decimal?              @db.Decimal(10, 2)
   invoice_date       DateTime?
+  expected_delivery_date DateTime?
   notes              String?               @db.LongText
   status             PurchaseOrderStatus   @default(DRAFT)
   createdAt          DateTime              @default(now())
@@ -805,28 +807,33 @@ model logs {
 }
 
 model clock_punch {
-  id              String                 @id @default(uuid())
-  employee_id     String
-  user_id         String
-  action          ClockPunchAction
-  punch_type      ClockPunchType         @default(EMPLOYEE)
-  punched_at      DateTime               @default(now())
-  review_status   ClockPunchReviewStatus @default(PENDING)
-  reviewed_by_id  String?
-  reviewed_at     DateTime?
-  review_notes    String?                @db.LongText
-  nfc_tag_id      String?
-  idempotency_key String?                @unique @db.VarChar(128)
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
-  employee        employees              @relation(fields: [employee_id], references: [employee_id], onDelete: Restrict)
-  user            users                  @relation("ClockPunchUser", fields: [user_id], references: [id], onDelete: Restrict)
-  reviewed_by     users?                 @relation("ClockPunchReviewer", fields: [reviewed_by_id], references: [id], onDelete: SetNull)
-  nfc_tag         nfc_punch_tag?         @relation(fields: [nfc_tag_id], references: [id], onDelete: SetNull)
+  id                    String                 @id @default(uuid())
+  employee_id           String
+  user_id               String
+  action                ClockPunchAction
+  punch_type            ClockPunchType         @default(EMPLOYEE)
+  punched_at            DateTime               @default(now())
+  review_status         ClockPunchReviewStatus @default(PENDING)
+  reviewed_by_id        String?
+  reviewed_at           DateTime?
+  review_notes          String?                @db.LongText
+  nfc_tag_id            String?
+  idempotency_key       String?                @unique @db.VarChar(128)
+  // Break reminder bookkeeping, set on the BREAK_IN punch so each reminder is
+  // sent once even if the cron runs late or twice.
+  break_warning_sent_at DateTime?
+  break_over_sent_at    DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  employee              employees              @relation(fields: [employee_id], references: [employee_id], onDelete: Restrict)
+  user                  users                  @relation("ClockPunchUser", fields: [user_id], references: [id], onDelete: Restrict)
+  reviewed_by           users?                 @relation("ClockPunchReviewer", fields: [reviewed_by_id], references: [id], onDelete: SetNull)
+  nfc_tag               nfc_punch_tag?         @relation(fields: [nfc_tag_id], references: [id], onDelete: SetNull)
 
   @@index([employee_id, punched_at])
   @@index([user_id])
   @@index([review_status, punched_at])
+  @@index([action, punched_at])
   @@index([reviewed_by_id])
   @@index([nfc_tag_id])
 }

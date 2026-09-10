@@ -372,44 +372,20 @@ async function recordSendAudit({ actorUserId, lotId, sent, rejected }) {
 }
 
 /**
- * Selects recipients on the backend from the lot's installer and stage
- * assignments, then sends and persists Expo push tickets.
+ * Shared delivery path for every push event. Resolves the devices belonging to
+ * the users matched by `userWhere`, sends the message, and persists the tickets
+ * the receipt cron later reconciles.
  */
-export async function sendProjectUpdate({ lotId, actorUserId = null }) {
-  const lot = await prisma.lot.findFirst({
-    where: {
-      OR: [{ id: lotId }, { lot_id: lotId }],
-      is_deleted: false,
-    },
-    select: {
-      lot_id: true,
-      installer_id: true,
-      stages: {
-        select: {
-          assigned_to: {
-            select: { employee_id: true },
-          },
-        },
-      },
-    },
-  });
-
-  if (!lot) {
-    throw new Error(`Cannot send project update: lot ${lotId} was not found`);
-  }
-
-  const employeeIds = new Set();
-  if (lot.installer_id) employeeIds.add(lot.installer_id);
-  for (const stage of lot.stages) {
-    for (const assignment of stage.assigned_to) {
-      employeeIds.add(assignment.employee_id);
-    }
-  }
-
-  if (employeeIds.size === 0) {
-    return { recipients: 0, sent: 0, rejected: 0 };
-  }
-
+export async function sendPushToUsers({
+  userWhere,
+  title,
+  body,
+  channelId,
+  data,
+  lotId = null,
+  auditEntityId,
+  scope = "send",
+}) {
   const tokenRecords = await prisma.push_tokens.findMany({
     where: {
       enabled: true,
@@ -418,11 +394,7 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
           expires_at: { gt: new Date() },
         },
       },
-      user: {
-        is_active: true,
-        employee_id: { in: [...employeeIds] },
-        ...(actorUserId ? { id: { not: actorUserId } } : {}),
-      },
+      user: userWhere,
       // Sandbox and Expo Go tokens are excluded from production sends rather
       // than sent to and then disabled. Rows from clients that never reported a
       // profile stay eligible.
@@ -483,10 +455,10 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
   const messages = validTokens.map(({ expo_push_token }) => ({
     to: expo_push_token,
     sound: "default",
-    title: "Project updated",
-    body: "An assigned project has new information.",
-    channelId: "project-updates",
-    data: { screen: "projects" },
+    title,
+    body,
+    channelId,
+    data,
   }));
 
   const runState = createRunState();
@@ -508,7 +480,7 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
           event_id: eventId,
           expo_ticket_id: ticket.id,
           push_token_id: tokenRecord.id,
-          lot_id: lot.lot_id,
+          lot_id: lotId,
           next_attempt_at: receiptAvailableAt,
         });
         sent += 1;
@@ -552,7 +524,7 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
       await logDeliveryError({
         code,
         message: error.message,
-        entityId: lot.lot_id,
+        entityId: auditEntityId,
         tokenId: tokenRecord.id,
       });
     }
@@ -567,11 +539,74 @@ export async function sendProjectUpdate({ lotId, actorUserId = null }) {
     offset += chunk.length;
   }
 
-  await emitDeliveryMetrics(runState, "send");
-  await alertOnRunState(runState, "send");
-  await recordSendAudit({ actorUserId, lotId: lot.lot_id, sent, rejected });
+  await emitDeliveryMetrics(runState, scope);
+  await alertOnRunState(runState, scope);
 
   return { recipients: tokenRecords.length, sent, rejected };
+}
+
+/**
+ * Selects recipients on the backend from the lot's installer and stage
+ * assignments, then sends and persists Expo push tickets.
+ */
+export async function sendProjectUpdate({ lotId, actorUserId = null }) {
+  const lot = await prisma.lot.findFirst({
+    where: {
+      OR: [{ id: lotId }, { lot_id: lotId }],
+      is_deleted: false,
+    },
+    select: {
+      lot_id: true,
+      installer_id: true,
+      stages: {
+        select: {
+          assigned_to: {
+            select: { employee_id: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!lot) {
+    throw new Error(`Cannot send project update: lot ${lotId} was not found`);
+  }
+
+  const employeeIds = new Set();
+  if (lot.installer_id) employeeIds.add(lot.installer_id);
+  for (const stage of lot.stages) {
+    for (const assignment of stage.assigned_to) {
+      employeeIds.add(assignment.employee_id);
+    }
+  }
+
+  if (employeeIds.size === 0) {
+    return { recipients: 0, sent: 0, rejected: 0 };
+  }
+
+  const result = await sendPushToUsers({
+    userWhere: {
+      is_active: true,
+      employee_id: { in: [...employeeIds] },
+      ...(actorUserId ? { id: { not: actorUserId } } : {}),
+    },
+    title: "Project updated",
+    body: "An assigned project has new information.",
+    channelId: "project-updates",
+    data: { screen: "projects" },
+    lotId: lot.lot_id,
+    auditEntityId: lot.lot_id,
+    scope: "send",
+  });
+
+  await recordSendAudit({
+    actorUserId,
+    lotId: lot.lot_id,
+    sent: result.sent,
+    rejected: result.rejected,
+  });
+
+  return result;
 }
 
 /**

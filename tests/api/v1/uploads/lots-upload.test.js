@@ -106,7 +106,7 @@ describe("POST /api/v1/uploads/lots/[...path]", () => {
           expect(await res.json()).toEqual({
             status: false,
             message:
-              "Path must be /api/uploads/[project_id]/[lot_id]/[tabkind]/[filename?]",
+              "Path must be /api/v1/uploads/[project_id]/[lot_id]/[tabkind]/[filename?]",
           });
           expect(uploadFile).not.toHaveBeenCalled();
         },

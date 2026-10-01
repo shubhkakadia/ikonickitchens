@@ -84,7 +84,6 @@ describe("POST /api/v1/signin", () => {
             username: "ann",
             user_type: "manager",
             is_active: true,
-            is_verified: true,
             employee_id: "emp-1",
           },
           token: expect.stringMatching(/^[0-9a-f]{64}$/),

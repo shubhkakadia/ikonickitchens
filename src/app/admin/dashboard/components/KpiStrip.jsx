@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Target,
 } from "lucide-react";
+import { formatQty } from "../lib/format";
 
 // Always-on scale counts: how much work is in flight, regardless of whether
 // anything is wrong. The attention strip below answers the separate question
@@ -39,7 +40,7 @@ export default function KpiStrip({ kpis, permissions }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-2xl font-semibold text-primary leading-none tabular-nums">
-                {Number(kpis[card.key]).toLocaleString()}
+                {formatQty(kpis[card.key])}
               </p>
               <p className="text-xs font-semibold text-slate-600 mt-1.5 leading-tight">
                 {card.label}

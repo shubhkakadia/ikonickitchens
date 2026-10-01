@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["supplier_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const supplier = await prisma.supplier.findFirst({
@@ -48,7 +50,9 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["supplier_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const { name, email, phone, address, notes, website, abn_number } =
@@ -102,7 +106,9 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["supplier_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
 

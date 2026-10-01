@@ -2,7 +2,7 @@
 
 import { GitBranch } from "lucide-react";
 import SectionCard, { EmptyState } from "./SectionCard";
-import { STATUS_COLORS, titleCase } from "../lib/format";
+import { BADGE, BADGE_TONES, STATUS_COLORS, titleCase } from "../lib/format";
 
 // Single-series magnitude bars: one hue, identity carried by the text label.
 export default function PipelinePanel({ pipeline }) {
@@ -48,7 +48,7 @@ export default function PipelinePanel({ pipeline }) {
           {Object.entries(lotStatus).map(([status, count]) => (
             <span
               key={status}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[status] ?? "bg-slate-100 text-slate-800"}`}
+              className={`${BADGE} ${STATUS_COLORS[status] ?? BADGE_TONES.neutral}`}
             >
               {titleCase(status)}
               <span className="font-semibold tabular-nums">{count}</span>

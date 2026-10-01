@@ -14,6 +14,11 @@ import {
   formatClockPunchAction,
   summarizeClockPunchDay,
 } from "@/lib/clockPunchSequence";
+import {
+  actionStyles,
+  breakStyles,
+  workingStyles,
+} from "@/app/admin/employees/punches/lib/punchStyles";
 import ClockPunchView from "./ClockPunchView";
 
 const CLOCK_PUNCH_TIME_ZONE = "Australia/Adelaide";
@@ -201,13 +206,14 @@ export default function ClockPunchCard() {
         ? "Clocked out"
         : "Working";
 
+  // Shared with the clock-punch pages so "Working" is the same colour here.
   const statusStyles = summary.isEmpty
-    ? "border-slate-200 bg-slate-50 text-slate-600"
+    ? workingStyles.NOT_WORKING
     : isOnBreak
-      ? "border-amber-200 bg-amber-100 text-amber-800"
+      ? breakStyles.ON_BREAK
       : summary.isComplete
-        ? "border-slate-200 bg-slate-100 text-slate-800"
-        : "border-green-200 bg-green-100 text-green-800";
+        ? actionStyles.CLOCK_OUT
+        : workingStyles.WORKING;
 
   const accent = summary.isEmpty
     ? "border-slate-200"
@@ -215,7 +221,7 @@ export default function ClockPunchCard() {
       ? "border-amber-300"
       : summary.isComplete
         ? "border-slate-200"
-        : "border-green-300";
+        : "border-blue-300";
 
   return (
     <ClockPunchView

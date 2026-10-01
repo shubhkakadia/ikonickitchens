@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  validateAdminAuth,
+  ALL_ROLES,
+  authorizeRequest,
+  canAccessLot,
   processDateTimeField,
+  requireAuth,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
@@ -11,8 +14,12 @@ import { getUserFromToken } from "@/lib/validators/authFromToken";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    // Site photos also reads lots; employees are limited to their own below
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+      modules: ["project_details", "site_photos"],
+    });
+    if (error) return error;
     const { id } = await params;
     const lot = await prisma.lot.findFirst({
       where: {
@@ -67,7 +74,7 @@ export async function GET(request, { params }) {
       },
     });
 
-    if (!lot) {
+    if (!lot || !canAccessLot(auth, lot)) {
       return NextResponse.json(
         { status: false, message: "Lot not found" },
         { status: 404 },
@@ -89,7 +96,9 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "lotatglance"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const {
@@ -247,7 +256,9 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
 

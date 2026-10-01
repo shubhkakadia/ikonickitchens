@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: [
+        "config",
+        "add_employees",
+        "employee_details",
+        "add_items",
+        "item_details",
+        "project_details",
+        "materialstoorder",
+        "purchaseorder",
+        "supplier_details",
+      ],
+    });
     if (authError) return authError;
 
     const { category, value } = await request.json();

@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
-  validateAdminAuth,
+  requireAuth,
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { formatProjectId, getNextProjectSequence } from "@/lib/projectId";
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["add_projects", "client_details"],
+    });
     if (authError) return authError;
-    const { name, project_id, client_id, startDate, lots } =
+    const { name, project_id, client_id, startDate, lots, sync_all_lots } =
       await request.json();
     // Normalize client_id - handle empty string, null, or undefined
     const normalizedClientId =
@@ -96,6 +98,7 @@ export async function POST(request) {
             name,
             project_id: String(generatedProjectId).toLowerCase(),
             client_id: normalizedClientId,
+            sync_all_lots: sync_all_lots === true,
           },
         });
 

@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  validateAdminAuth,
-  getUserFromToken,
-} from "@/lib/validators/authFromToken";
+import { requireAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -75,7 +72,7 @@ const employeeName = (e) =>
 
 export async function GET(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["dashboard"] });
     if (authError) return authError;
 
     const session = await getUserFromToken(request);

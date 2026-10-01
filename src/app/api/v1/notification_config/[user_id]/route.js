@@ -1,28 +1,26 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  validateAdminAuth,
-  getUserFromToken,
-} from "@/lib/validators/authFromToken";
+import { ALL_ROLES, authorizeRequest } from "@/lib/validators/authFromToken";
 
-// Helper function to check if user is admin/master-admin or accessing their own config
-async function canAccessNotificationConfig(request, userId) {
-  const session = await getUserFromToken(request);
-  if (!session) return false;
-  const userType = session.user_type?.toLowerCase();
-  if (userType === "admin" || userType === "master-admin") return true;
-  return String(session.user_id) === String(userId);
+// Admins and master-admins may manage anyone's config; others only their own
+function canAccessNotificationConfig(auth, userId) {
+  if (auth.userType === "admin" || auth.userType === "master-admin") {
+    return true;
+  }
+  return String(auth.user.id) === String(userId);
 }
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+    });
+    if (error) return error;
 
     const { user_id } = await params;
 
     // Additional check: Only admin/master-admin or the user can access notification config
-    if (!(await canAccessNotificationConfig(request, user_id))) {
+    if (!canAccessNotificationConfig(auth, user_id)) {
       return NextResponse.json(
         {
           status: false,
@@ -88,13 +86,15 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+    });
+    if (error) return error;
 
     const { user_id } = await params;
 
     // Additional check: Only admin/master-admin or the user can update notification config
-    if (!(await canAccessNotificationConfig(request, user_id))) {
+    if (!canAccessNotificationConfig(auth, user_id)) {
       return NextResponse.json(
         {
           status: false,

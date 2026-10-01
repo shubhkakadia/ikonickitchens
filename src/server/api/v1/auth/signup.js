@@ -4,18 +4,57 @@ import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { apiError } from "@/lib/api/response";
+import {
+  MASTER_ADMIN_ONLY,
+  USER_TYPES,
+  requireAuth,
+} from "@/lib/validators/authFromToken";
+import { pickModuleFlags, validatePassword } from "@/lib/userAccounts";
 import { withLogging } from "@/lib/withLogging";
+
+// Never return the password hash to the client
+const USER_PUBLIC_SELECT = {
+  id: true,
+  username: true,
+  user_type: true,
+  is_active: true,
+  employee_id: true,
+  createdAt: true,
+  updatedAt: true,
+};
 
 export async function signup(request) {
   try {
-    const {
-      username,
-      password,
-      user_type,
-      is_active,
-      employee_id,
-      module_access,
-    } = await request.json();
+    const authError = await requireAuth(request, { roles: MASTER_ADMIN_ONLY });
+    if (authError) return authError;
+
+    const body = await request.json();
+    const { password, user_type, employee_id, module_access } = body;
+    const username =
+      typeof body.username === "string" ? body.username.trim() : "";
+    const is_active = body.is_active === true || body.is_active === "true";
+
+    if (!username) {
+      return apiError("Username is required", 400);
+    }
+
+    const passwordError = validatePassword(password, username);
+    if (passwordError) {
+      return apiError(passwordError, 400);
+    }
+
+    if (!USER_TYPES.includes(user_type)) {
+      return apiError("Invalid user type", 400);
+    }
+
+    if (
+      employee_id !== undefined &&
+      employee_id !== null &&
+      typeof employee_id !== "string"
+    ) {
+      return apiError("Invalid employee ID", 400);
+    }
 
     const existingUser = await prisma.users.findUnique({
       where: { username },
@@ -77,41 +116,13 @@ export async function signup(request) {
             employee_id:
               employee_id && employee_id.trim() !== "" ? employee_id : null,
           },
+          select: USER_PUBLIC_SELECT,
         });
 
         moduleAccess = await tx.module_access.create({
           data: {
             user_id: newUser.id,
-            all_clients: module_access.all_clients,
-            add_clients: module_access.add_clients,
-            client_details: module_access.client_details,
-            dashboard: module_access.dashboard,
-            delete_media: module_access.delete_media,
-            all_employees: module_access.all_employees,
-            add_employees: module_access.add_employees,
-            employee_details: module_access.employee_details,
-            all_projects: module_access.all_projects,
-            add_projects: module_access.add_projects,
-            project_details: module_access.project_details,
-            all_suppliers: module_access.all_suppliers,
-            add_suppliers: module_access.add_suppliers,
-            supplier_details: module_access.supplier_details,
-            all_items: module_access.all_items,
-            add_items: module_access.add_items,
-            item_details: module_access.item_details,
-            usedmaterial: module_access.usedmaterial,
-            logs: module_access.logs,
-            lotatglance: module_access.lotatglance,
-            materialstoorder: module_access.materialstoorder,
-            purchaseorder: module_access.purchaseorder,
-            statements: module_access.statements,
-            site_photos: module_access.site_photos,
-            site_measurements: module_access.site_measurements,
-            config: module_access.config,
-            calendar: module_access.calendar,
-            add_clock_punch: module_access.add_clock_punch ?? false,
-            clock_punch_details: module_access.clock_punch_details ?? false,
-            all_clock_punches: module_access.all_clock_punches ?? false,
+            ...pickModuleFlags(module_access),
           },
         });
       });

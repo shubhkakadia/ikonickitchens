@@ -60,6 +60,12 @@ export default function EmployeeDetailPage() {
   const [error, setError] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  // Full values fetched via the master-admin reveal endpoint, cached by field
+  // name so hiding and re-revealing never calls the API again.
+  const [revealedValues, setRevealedValues] = useState({});
+  // Which cached fields are currently shown unmasked
+  const [visibleFields, setVisibleFields] = useState({});
+  const [revealingFields, setRevealingFields] = useState({});
   const [editData, setEditData] = useState({});
   const [showUserModal, setShowUserModal] = useState(false);
   const [isEditingUser, setIsEditingUser] = useState(false);
@@ -265,6 +271,8 @@ export default function EmployeeDetailPage() {
   const fetchEmployee = async () => {
     try {
       setLoading(true);
+      setRevealedValues({});
+      setVisibleFields({});
       const sessionToken = getToken();
 
       if (!sessionToken) {
@@ -334,6 +342,63 @@ export default function EmployeeDetailPage() {
       hour12: true,
     });
   };
+
+  const toggleReveal = async (field) => {
+    if (visibleFields[field]) {
+      setVisibleFields((prev) => ({ ...prev, [field]: false }));
+      return;
+    }
+    // Already fetched on this page load: show the cached value, no API call
+    if (revealedValues[field] !== undefined) {
+      setVisibleFields((prev) => ({ ...prev, [field]: true }));
+      return;
+    }
+    if (revealingFields[field]) return;
+    setRevealingFields((prev) => ({ ...prev, [field]: true }));
+    try {
+      const response = await axios.get(
+        `/api/v1/employee/${id}/reveal?field=${field}`,
+        { headers: { Authorization: `Bearer ${getToken()}` } },
+      );
+      if (response.data.status) {
+        setRevealedValues((prev) => ({
+          ...prev,
+          [field]: response.data.data.value ?? "-",
+        }));
+        setVisibleFields((prev) => ({ ...prev, [field]: true }));
+      }
+    } catch (error) {
+      console.error("Error revealing field:", error);
+      toast.error(error.response?.data?.message || "Failed to reveal value");
+    } finally {
+      setRevealingFields((prev) => ({ ...prev, [field]: false }));
+    }
+  };
+
+  const renderMaskedNumber = (field) => (
+    <div className="flex items-center gap-2">
+      <p className="text-sm text-slate-700 font-mono">
+        {visibleFields[field]
+          ? revealedValues[field]
+          : formatValue(employee[field])}
+      </p>
+      {isMasterAdmin() && employee[field] && (
+        <button
+          type="button"
+          onClick={() => toggleReveal(field)}
+          title={visibleFields[field] ? "Hide" : "Reveal"}
+          aria-label={visibleFields[field] ? "Hide value" : "Reveal value"}
+          className="cursor-pointer text-slate-500 hover:text-primary transition-colors"
+        >
+          {visibleFields[field] ? (
+            <EyeOff className="w-4 h-4" />
+          ) : (
+            <Eye className="w-4 h-4" />
+          )}
+        </button>
+      )}
+    </div>
+  );
 
   const formatValue = (value) => {
     if (
@@ -570,11 +635,12 @@ export default function EmployeeDetailPage() {
         emergency_contact_name: employee.emergency_contact_name || "",
         emergency_contact_phone: employee.emergency_contact_phone || "",
         bank_account_name: employee.bank_account_name || "",
-        bank_account_number: employee.bank_account_number || "",
+        // Masked by the API; leave blank to keep the stored value
+        bank_account_number: "",
         bank_account_bsb: employee.bank_account_bsb || "",
         supper_account_name: employee.supper_account_name || "",
-        supper_account_number: employee.supper_account_number || "",
-        tfn_number: employee.tfn_number || "",
+        supper_account_number: "",
+        tfn_number: "",
         abn_number: employee.abn_number || "",
         education: employee.education || "",
         availability: formattedAvailability,
@@ -1753,9 +1819,7 @@ export default function EmployeeDetailPage() {
                             className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
-                          <p className="text-sm text-slate-700 font-mono">
-                            {formatValue(employee.tfn_number)}
-                          </p>
+                          renderMaskedNumber("tfn_number")
                         )}
                       </div>
                       <div>
@@ -2052,9 +2116,7 @@ export default function EmployeeDetailPage() {
                             className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
-                          <p className="text-sm text-slate-700 font-mono">
-                            {formatValue(employee.bank_account_number)}
-                          </p>
+                          renderMaskedNumber("bank_account_number")
                         )}
                       </div>
                       <div>
@@ -2147,9 +2209,7 @@ export default function EmployeeDetailPage() {
                             className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
-                          <p className="text-sm text-slate-700 font-mono">
-                            {formatValue(employee.supper_account_number)}
-                          </p>
+                          renderMaskedNumber("supper_account_number")
                         )}
                       </div>
                     </div>

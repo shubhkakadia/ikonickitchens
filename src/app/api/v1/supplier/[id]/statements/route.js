@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import {
   uploadFile,
   validateMultipartRequest,
   getFileFromFormData,
   deleteFileByRelativePath,
+  MAX_DOCUMENT_BODY,
+  MAX_DOCUMENT_SIZE,
+  uploadLimitResponse,
 } from "@/lib/fileHandler";
 import path from "path";
 import { withLogging } from "@/lib/withLogging";
@@ -13,7 +16,9 @@ import { sendNotification } from "@/lib/notification";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["statements", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -68,7 +73,9 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["statements", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -86,7 +93,7 @@ export async function POST(request, { params }) {
     }
 
     // Validate and parse multipart/form-data
-    const formData = await validateMultipartRequest(request);
+    const formData = await validateMultipartRequest(request, MAX_DOCUMENT_BODY);
     const file = getFileFromFormData(formData, "file");
     const month_year = formData.get("month_year");
     const due_date = formData.get("due_date");
@@ -129,6 +136,8 @@ export async function POST(request, { params }) {
       uploadDir: "mediauploads",
       subDir: `suppliers/${id}/statements`,
       filenameStrategy: "id-based",
+      allowedGroups: ["pdf", "image"],
+      maxSize: MAX_DOCUMENT_SIZE,
       idPrefix: `${id}_statement_${sanitizedMonthYear}`,
     });
 
@@ -248,6 +257,9 @@ export async function POST(request, { params }) {
       { status: 201 },
     );
   } catch (error) {
+    const tooLarge = uploadLimitResponse(error);
+    if (tooLarge) return tooLarge;
+
     console.error("Error uploading statement:", error);
     return NextResponse.json(
       {

@@ -1,17 +1,24 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  validateAdminAuth,
+  requireAuth,
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 import { sendProjectUpdate } from "@/lib/pushNotifications";
 import { getUserFromToken } from "@/lib/validators/authFromToken";
+import {
+  getSyncTargets,
+  syncStageUpsert,
+  syncStageDelete,
+} from "@/lib/stageSync";
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "lotatglance", "site_measurements"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const { name, status, notes, startDate, endDate, assigned_to } =
@@ -64,6 +71,7 @@ export async function PATCH(request, { params }) {
     }
 
     // Use transaction to ensure atomicity - all operations succeed or all fail
+    let syncResult = null;
     const stage = await prisma.$transaction(async (tx) => {
       // Update the stage basic information
       const updatedStage = await tx.stage.update({
@@ -98,6 +106,24 @@ export async function PATCH(request, { params }) {
             employee_id: employee_id,
           })),
           skipDuplicates: true, // Safety check, though should be unnecessary after delete
+        });
+      }
+
+      // Mirror onto the other lots when the project has sync_all_lots enabled.
+      // Siblings are matched by the stage's previous name so renames propagate.
+      const siblings = await getSyncTargets(tx, existingStage.lot_id);
+      if (siblings.length > 0) {
+        syncResult = await syncStageUpsert(tx, {
+          siblings,
+          matchName: existingStage.name,
+          name,
+          // Use the stored result so a partial update (e.g. notes only) still
+          // gives newly created sibling stages a valid status
+          status: updatedStage.status,
+          notes: updatedStage.notes,
+          startDate,
+          endDate,
+          assigned_to,
         });
       }
 
@@ -139,7 +165,11 @@ export async function PATCH(request, { params }) {
       "stage",
       id,
       "UPDATE",
-      `Stage updated successfully: ${updatedStage.name} for lot: ${updatedStage.lot_id} and project: ${updatedStage.lot?.project?.name}`,
+      `Stage updated successfully: ${updatedStage.name} for lot: ${updatedStage.lot_id} and project: ${updatedStage.lot?.project?.name}${
+        syncResult
+          ? ` (synced to ${syncResult.syncedLots.length} other lot(s))`
+          : ""
+      }`,
     );
 
     // Send notification if stage is completed
@@ -190,6 +220,7 @@ export async function PATCH(request, { params }) {
         status: true,
         message: "Stage updated successfully",
         data: updatedStage,
+        ...(syncResult ? { sync: syncResult } : {}),
         ...(logged
           ? {}
           : { warning: "Note: Update succeeded but logging failed" }),
@@ -207,25 +238,44 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
-    const stage = await prisma.stage.delete({
-      where: { stage_id: id },
-      include: {
-        lot: {
-          select: {
-            project: { select: { project_id: true, name: true } },
+    let syncResult = null;
+    const stage = await prisma.$transaction(async (tx) => {
+      const deleted = await tx.stage.delete({
+        where: { stage_id: id },
+        include: {
+          lot: {
+            select: {
+              project: { select: { project_id: true, name: true } },
+            },
           },
         },
-      },
+      });
+
+      // Mirror the delete onto the other lots when sync_all_lots is enabled
+      const siblings = await getSyncTargets(tx, deleted.lot_id);
+      if (siblings.length > 0) {
+        syncResult = await syncStageDelete(tx, {
+          siblings,
+          name: deleted.name,
+        });
+      }
+      return deleted;
     });
     const logged = await withLogging(
       request,
       "stage",
       id,
       "DELETE",
-      `Stage deleted successfully: ${stage.name} for lot: ${stage.lot_id} and project: ${stage.lot?.project?.name}`,
+      `Stage deleted successfully: ${stage.name} for lot: ${stage.lot_id} and project: ${stage.lot?.project?.name}${
+        syncResult
+          ? ` (also removed from ${syncResult.syncedLots.length} other lot(s))`
+          : ""
+      }`,
     );
     if (!logged) {
       console.error(`Failed to log stage deletion: ${id} - ${stage.name}`);
@@ -234,13 +284,19 @@ export async function DELETE(request, { params }) {
           status: true,
           message: "Stage deleted successfully",
           data: stage,
+          ...(syncResult ? { sync: syncResult } : {}),
           warning: "Note: Deletion succeeded but logging failed",
         },
         { status: 200 },
       );
     }
     return NextResponse.json(
-      { status: true, message: "Stage deleted successfully", data: stage },
+      {
+        status: true,
+        message: "Stage deleted successfully",
+        data: stage,
+        ...(syncResult ? { sync: syncResult } : {}),
+      },
       { status: 200 },
     );
   } catch (error) {

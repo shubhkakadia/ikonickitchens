@@ -16,6 +16,7 @@ export default function DeleteConfirmation({
   title = null, // defaults to "Delete {heading}"
   confirmButtonText = null, // defaults to "Delete {heading}"
   confirmingText = "Deleting...",
+  warningHeading = null, // overrides the bold line in the warning box
 }) {
   const [confirmationInput, setConfirmationInput] = useState("");
 
@@ -88,9 +89,10 @@ export default function DeleteConfirmation({
               <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-red-800">
-                  {deleteWithInput
-                    ? "This action will permanently delete the item"
-                    : "This action will delete the item"}
+                  {warningHeading ||
+                    (deleteWithInput
+                      ? "This action will permanently delete the item"
+                      : "This action will delete the item")}
                 </h3>
                 <div className="text-sm text-red-700 mt-1">{message}</div>
                 {associatedData.length > 0 && (

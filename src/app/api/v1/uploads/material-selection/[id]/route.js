@@ -1,17 +1,23 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import {
   uploadMultipleFiles,
   validateMultipartRequest,
   getFileFromFormData,
+  MAX_LOT_BODY,
+  MAX_LOT_FILE_SIZE,
+  uploadLimitResponse,
+  MAX_FILES_PER_REQUEST,
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 
 // Upload media files to Material Selection
 export async function POST(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -37,8 +43,18 @@ export async function POST(request, { params }) {
     }
 
     // Handle multipart/form-data
-    const formData = await validateMultipartRequest(request);
+    const formData = await validateMultipartRequest(request, MAX_LOT_BODY);
     const files = getFileFromFormData(formData, "files", true); // getAll = true
+
+    if (files.length > MAX_FILES_PER_REQUEST) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: `Too many files: at most ${MAX_FILES_PER_REQUEST} per request`,
+        },
+        { status: 400 },
+      );
+    }
 
     if (!files || files.length === 0) {
       return NextResponse.json(
@@ -52,6 +68,7 @@ export async function POST(request, { params }) {
       uploadDir: "mediauploads",
       subDir: `material_selection/${materialSelection.project_id || "general"}`,
       filenameStrategy: "original",
+      maxSize: MAX_LOT_FILE_SIZE,
     });
 
     if (uploadResults.successful.length === 0) {
@@ -110,6 +127,9 @@ export async function POST(request, { params }) {
       { status: 201 },
     );
   } catch (error) {
+    const tooLarge = uploadLimitResponse(error);
+    if (tooLarge) return tooLarge;
+
     console.error("Error in media upload:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
@@ -121,7 +141,9 @@ export async function POST(request, { params }) {
 // Delete media file from Material Selection
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;

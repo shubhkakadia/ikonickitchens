@@ -1,10 +1,22 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: [
+        "config",
+        "add_employees",
+        "employee_details",
+        "add_items",
+        "item_details",
+        "project_details",
+        "materialstoorder",
+        "purchaseorder",
+        "supplier_details",
+      ],
+    });
     if (authError) return authError;
 
     // Get category from request body

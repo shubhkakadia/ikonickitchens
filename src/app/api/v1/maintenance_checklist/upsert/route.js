@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
     const {
       lot_file_id,

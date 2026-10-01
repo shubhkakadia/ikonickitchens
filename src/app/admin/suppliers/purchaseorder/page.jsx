@@ -809,7 +809,7 @@ export default function page() {
       );
 
       if (response.data.status) {
-        toast.success("Purchase order deleted successfully", {
+        toast.success("Purchase order cancelled and moved to Cancelled", {
           position: "top-right",
           autoClose: 3000,
         });
@@ -3004,10 +3004,10 @@ export default function page() {
         onConfirm={handlePODeleteConfirm}
         deleteWithInput={true}
         heading="Purchase Order"
-        message="This will permanently delete the purchase order and all its associated data. This action cannot be undone."
+        warningHeading="This will cancel the purchase order"
+        message="The purchase order is not erased. It moves to the Cancelled list and stays on record, and whatever it ordered goes back onto its Materials to Order list. A purchase order that has already received stock can't be deleted; cancel it instead."
         comparingName={poPendingDelete?.order_no || ""}
         isDeleting={deletingPOId !== null}
-        entityType="purchase_order"
       />
 
       {showCreatePOModal && (

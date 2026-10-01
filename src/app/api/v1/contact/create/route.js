@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["client_details", "supplier_details"],
+    });
     if (authError) return authError;
     const {
       // id will be auto-generated on the server

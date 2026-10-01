@@ -14,6 +14,7 @@ export default function AddProjectPage() {
     project_id: "",
     client_id: "",
     startDate: "",
+    sync_all_lots: false,
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -221,6 +222,7 @@ export default function AddProjectPage() {
         client_id: clientIdToSend,
         startDate: formData.startDate || null,
         lots: lotsToSend,
+        sync_all_lots: formData.sync_all_lots,
       };
 
       const config = {
@@ -259,6 +261,7 @@ export default function AddProjectPage() {
         project_id: "",
         client_id: "",
         startDate: "",
+        sync_all_lots: false,
       });
       setClientSearchTerm("");
       setNumberOfLots("");
@@ -498,6 +501,28 @@ export default function AddProjectPage() {
                       />
                     </div>
                   </div>
+                  <label className="mt-4 flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.sync_all_lots}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          sync_all_lots: e.target.checked,
+                        }))
+                      }
+                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 accent-primary"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-slate-700">
+                        Sync stages across all lots
+                      </span>
+                      <span className="block text-xs text-slate-500">
+                        A stage change on one lot is automatically applied to
+                        (or created on) every other lot in this project.
+                      </span>
+                    </span>
+                  </label>
                 </div>
               </div>
 

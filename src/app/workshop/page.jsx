@@ -1,5 +1,5 @@
 import MarketingShell from "@/components/marketing/MarketingShell";
-import { WorkshopPage } from "@/components/marketing/MarketingPages";
+import { WorkshopPage } from "@/components/marketing/MarketingStaticPages";
 
 export const metadata = {
   title: "The Workshop | Ikonic Kitchens & Cabinets",

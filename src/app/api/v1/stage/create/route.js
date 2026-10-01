@@ -1,15 +1,18 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  validateAdminAuth,
+  requireAuth,
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { getSyncTargets, syncStageUpsert } from "@/lib/stageSync";
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "lotatglance", "site_measurements"],
+    });
     if (authError) return authError;
     const { lot_id, name, status, notes, startDate, endDate, assigned_to } =
       await request.json();
@@ -47,6 +50,7 @@ export async function POST(request) {
     }
 
     // Use transaction to ensure atomicity - stage creation and employee assignments succeed or fail together
+    let syncResult = null;
     const stageId = await prisma.$transaction(async (tx) => {
       // Create the stage
       const newStage = await tx.stage.create({
@@ -75,6 +79,21 @@ export async function POST(request) {
             employee_id: employee_id,
           })),
           skipDuplicates: true, // Skip if the relationship already exists
+        });
+      }
+
+      // Mirror onto the other lots when the project has sync_all_lots enabled
+      const siblings = await getSyncTargets(tx, lot_id.toLowerCase());
+      if (siblings.length > 0) {
+        syncResult = await syncStageUpsert(tx, {
+          siblings,
+          matchName: name.toLowerCase(),
+          name,
+          status,
+          notes,
+          startDate,
+          endDate,
+          assigned_to,
         });
       }
 
@@ -117,7 +136,11 @@ export async function POST(request) {
       "stage",
       stage.stage_id,
       "CREATE",
-      `Stage created successfully: ${stage.name} for lot: ${stage.lot_id} and project: ${stage.lot?.project?.name}`,
+      `Stage created successfully: ${stage.name} for lot: ${stage.lot_id} and project: ${stage.lot?.project?.name}${
+        syncResult
+          ? ` (synced to ${syncResult.syncedLots.length} other lot(s))`
+          : ""
+      }`,
     );
 
     // Send notification if stage is completed
@@ -154,13 +177,19 @@ export async function POST(request) {
           status: true,
           message: "Stage created successfully",
           data: stage,
+          ...(syncResult ? { sync: syncResult } : {}),
           warning: "Note: Creation succeeded but logging failed",
         },
         { status: 201 },
       );
     }
     return NextResponse.json(
-      { status: true, message: "Stage created successfully", data: stage },
+      {
+        status: true,
+        message: "Stage created successfully",
+        data: stage,
+        ...(syncResult ? { sync: syncResult } : {}),
+      },
       { status: 201 },
     );
   } catch (error) {

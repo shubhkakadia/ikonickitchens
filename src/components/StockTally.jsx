@@ -378,6 +378,13 @@ export default function StockTally({
             autoClose: 3000,
           },
         );
+        const skipped = response.data.data.summary.error_count;
+        if (skipped > 0) {
+          toast.warning(
+            `${skipped} item(s) were not updated because stock changed or the item was not found. Export a fresh sheet and count them again.`,
+            { position: "top-right", autoClose: 8000 },
+          );
+        }
         handleCloseStockTally();
       } else {
         toast.error(response.data.message || "Failed to update stock.", {

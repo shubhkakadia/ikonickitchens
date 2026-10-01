@@ -29,6 +29,9 @@ model users {
   meetingParticipants      meeting[]
   clock_punches            clock_punch[]             @relation("ClockPunchUser")
   reviewed_clock_punches   clock_punch[]             @relation("ClockPunchReviewer")
+  todos_created            todo[]                    @relation("TodoCreator")
+  todos_completed          todo[]                    @relation("TodoCompleter")
+  todos_tagged             todo[]                    @relation("TodoTagged")
 
   @@index([employee_id])
 }
@@ -171,7 +174,7 @@ model employees {
   abn_number              String?
   is_active               Boolean          @default(true)
   is_deleted              Boolean          @default(false)
-  image                   media?           @relation(fields: [image_id], references: [id], onDelete: Cascade)
+  image                   media?           @relation(fields: [image_id], references: [id], onDelete: SetNull)
   stages                  stage_employee[]
   user                    users?
   lot                     lot[]
@@ -255,6 +258,7 @@ model project {
   project_id         String               @unique
   client_id          String?
   is_deleted         Boolean              @default(false)
+  sync_all_lots      Boolean              @default(false)
   lots               lot[]
   material_selection material_selection[]
   materials_to_order materials_to_order[]
@@ -677,6 +681,7 @@ model materials_to_order {
   updatedAt               DateTime                  @updatedAt
   media_id                String?
   used_material_completed Boolean                   @default(false)
+  is_deleted              Boolean                   @default(false)
   lots                    lot[]
   createdBy               users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id], onDelete: SetNull)
   project                 project?                  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
@@ -687,6 +692,7 @@ model materials_to_order {
 
   @@index([project_id])
   @@index([status])
+  @@index([is_deleted])
   @@index([createdBy_id], map: "materials_to_order_createdBy_id_fkey")
 }
 
@@ -925,6 +931,28 @@ model meeting {
   remainder_1d_sent Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+}
+
+model todo {
+  id              String    @id @default(uuid())
+  title           String
+  notes           String?   @db.LongText
+  due_date        DateTime?
+  is_completed    Boolean   @default(false)
+  completed_at    DateTime?
+  completed_by_id String?
+  created_by_id   String?
+  is_deleted      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  created_by      users?    @relation("TodoCreator", fields: [created_by_id], references: [id], onDelete: SetNull)
+  completed_by    users?    @relation("TodoCompleter", fields: [completed_by_id], references: [id], onDelete: SetNull)
+  tagged_users    users[]   @relation("TodoTagged")
+
+  @@index([created_by_id])
+  @@index([completed_by_id])
+  @@index([is_completed, is_deleted])
+  @@index([due_date])
 }
 
 enum LogAction {

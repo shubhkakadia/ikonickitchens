@@ -5,6 +5,8 @@ import {
   CLOCK_PUNCH_MINIMUM_BREAK_MINUTES,
   formatClockPunchAction,
 } from "@/lib/clockPunchSequence";
+import { BADGE } from "@/app/admin/employees/punches/lib/punchStyles";
+import { CHART_COLORS } from "../lib/format";
 
 // Pure presentation for the time clock. ClockPunchCard owns the data; this owns
 // the markup, so both the live card and the preview harness render identically.
@@ -83,10 +85,10 @@ export default function ClockPunchView({
         <div className="px-4 py-4 lg:w-60 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200">
           <div className="flex items-center gap-2">
             <Timer className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-            <h2 className="text-sm font-semibold text-slate-800">Time Clock</h2>
+            <h2 className="text-sm font-semibold text-slate-800">Time clock</h2>
           </div>
           <span
-            className={`inline-flex mt-2 rounded-full border px-2.5 py-1 text-xs font-semibold ${statusStyles}`}
+            className={`${BADGE} mt-2 ${statusStyles}`}
           >
             {statusLabel}
           </span>
@@ -129,7 +131,7 @@ export default function ClockPunchView({
                 <div
                   className="relative w-14 h-14 shrink-0 rounded-full"
                   style={{
-                    background: `conic-gradient(${isBreakOutLocked ? "#F59E0B" : "#059669"} ${breakProgress * 360}deg, #F1F5F9 0deg)`,
+                    background: `conic-gradient(${isBreakOutLocked ? CHART_COLORS.ringWarn : CHART_COLORS.ringOk} ${breakProgress * 360}deg, ${CHART_COLORS.ringTrack} 0deg)`,
                   }}
                   role="img"
                   aria-label={`${Math.round(breakProgress * 100)} percent of the minimum break elapsed`}

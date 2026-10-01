@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 
 export async function GET(request) {
   try {
     // Verify authentication
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["usedmaterial"] });
     if (authError) return authError;
 
     // Fetch completed MTOs with their items and ordered items
     const completedMTOs = await prisma.materials_to_order.findMany({
+      where: { is_deleted: false },
       include: {
         items: {
           include: {

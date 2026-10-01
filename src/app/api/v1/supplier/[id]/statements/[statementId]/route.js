@@ -1,17 +1,23 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import {
   uploadFile,
   deleteFileByRelativePath,
   getFileFromFormData,
+  MAX_DOCUMENT_BODY,
+  MAX_DOCUMENT_SIZE,
+  readFormData,
+  uploadLimitResponse,
 } from "@/lib/fileHandler";
 import path from "path";
 import { withLogging } from "@/lib/withLogging";
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["statements", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id, statementId } = await params;
@@ -47,7 +53,7 @@ export async function PATCH(request, { params }) {
     let month_year, due_date, amount, payment_status, notes, file;
 
     if (isFormData) {
-      const formData = await request.formData();
+      const formData = await readFormData(request, MAX_DOCUMENT_BODY);
       file = getFileFromFormData(formData, "file");
       month_year = formData.get("month_year");
       due_date = formData.get("due_date");
@@ -97,6 +103,8 @@ export async function PATCH(request, { params }) {
         uploadDir: "mediauploads",
         subDir: `suppliers/${id}/statements`,
         filenameStrategy: "id-based",
+        allowedGroups: ["pdf", "image"],
+        maxSize: MAX_DOCUMENT_SIZE,
         idPrefix: `${id}_statement_${sanitizedMonthYear}`,
       });
 
@@ -192,6 +200,9 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
+    const tooLarge = uploadLimitResponse(error);
+    if (tooLarge) return tooLarge;
+
     console.error("Error updating statement:", error);
     return NextResponse.json(
       {
@@ -205,7 +216,9 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["statements", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id, statementId } = await params;

@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
 import { normalizeClientSlug, isValidClientSlug } from "@/lib/clientSlug";
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["add_clients"] });
     if (authError) return authError;
     const {
       client_type,

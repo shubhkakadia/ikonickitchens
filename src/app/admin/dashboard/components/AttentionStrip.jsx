@@ -10,7 +10,7 @@ import {
   Timer,
   Truck,
 } from "lucide-react";
-import { formatCurrency } from "../lib/format";
+import { formatCurrency, formatQty } from "../lib/format";
 
 // Order matters: most time-critical first.
 const TILES = [
@@ -140,7 +140,7 @@ export default function AttentionStrip({ attention }) {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className={`text-2xl font-semibold leading-none ${tone.value}`}>
-                  {tile.count.toLocaleString()}
+                  {formatQty(tile.count)}
                 </p>
                 <p className="text-xs font-semibold text-slate-600 mt-1.5 leading-tight">
                   {resolve(config.label, tile)}

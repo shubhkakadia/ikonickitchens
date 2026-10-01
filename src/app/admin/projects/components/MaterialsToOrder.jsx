@@ -1088,6 +1088,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
             const quantity = parseInt(row.quantity);
             if (quantity > 0) {
               items.push({
+                id: row.mtoItemId,
                 item_id: row.item.item_id,
                 quantity: quantity,
                 notes: row.notes || null,

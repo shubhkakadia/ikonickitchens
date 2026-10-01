@@ -1,5 +1,5 @@
 import MarketingShell from "@/components/marketing/MarketingShell";
-import { BlogIndexPage } from "@/components/marketing/MarketingPages";
+import { BlogIndexPage } from "@/components/marketing/MarketingStaticPages";
 
 export const metadata = {
   title: "Journal | Ikonic Kitchens & Cabinets",

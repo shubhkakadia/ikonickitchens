@@ -152,12 +152,12 @@ export default function ProjectsPage() {
 
       if (selectedClientType.length > 0) {
         const projectClientType = project.client?.client_type;
-        if (
-          !projectClientType ||
-          !selectedClientType.includes(projectClientType)
-        ) {
-          return false;
-        }
+        const matchesUnassigned =
+          selectedClientType.includes("Unassigned") && !projectClientType;
+        const matchesClientType =
+          !!projectClientType && selectedClientType.includes(projectClientType);
+
+        if (!matchesUnassigned && !matchesClientType) return false;
       }
 
       return true;
@@ -298,6 +298,12 @@ export default function ProjectsPage() {
 
         if (hasUnassignedProjects) {
           names.push("Unassigned");
+        }
+
+        if (
+          response.data.data.some((project) => !project.client?.client_type)
+        ) {
+          types.push("Unassigned");
         }
 
         setDistinctClientName(names);

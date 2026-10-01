@@ -1,16 +1,28 @@
 import { NextResponse } from "next/server";
 import {
-  validateAdminAuth,
+  ALL_ROLES,
+  authorizeRequest,
+  hasModule,
   processDateTimeField,
+  requireAuth,
 } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import {
   uploadFile,
   deleteFileByRelativePath,
   getFileFromFormData,
+  MAX_IMAGE_BODY,
+  MAX_IMAGE_SIZE,
+  readFormData,
+  uploadLimitResponse,
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
+import {
+  employeeQueryArgs,
+  presentEmployee,
+  sanitizeSensitiveInput,
+} from "@/lib/employeeData";
 
 const formatPhone = (phone) => (phone ? formatPhoneToNational(phone) : phone);
 
@@ -29,37 +41,69 @@ function buildPartialUpdate(body, fieldMap) {
   return result;
 }
 
-async function detachAndDeleteMedia(tx, { employeeId, mediaId, mediaUrl }) {
+// Photos are soft deleted: the media row is flagged and the file stays on disk
+// (the deleted-media screen purges it), so a mistaken click or a failed
+// replacement never destroys something a user uploaded.
+async function detachAndSoftDeleteMedia(tx, { employeeId, mediaId }) {
   await tx.employees.update({
     where: { id: employeeId },
     data: { image_id: null },
   });
-  await tx.media.delete({ where: { id: mediaId } });
-  // File deletion happens outside the transaction since it's not a DB op,
-  // and there's nothing meaningful to roll back if this specific step fails.
-  await deleteFileByRelativePath(mediaUrl);
+  await tx.media.update({
+    where: { id: mediaId },
+    data: { is_deleted: true },
+  });
+}
+
+// Never expose the password hash
+const USER_SELECT = {
+  select: {
+    id: true,
+    username: true,
+    user_type: true,
+    is_active: true,
+    employee_id: true,
+    createdAt: true,
+    updatedAt: true,
+    module_access: true,
+  },
+};
+
+function withUser(args) {
+  return args.select
+    ? { select: { ...args.select, user: USER_SELECT } }
+    : { include: { ...args.include, user: USER_SELECT } };
 }
 
 // Fetch a single employee for the employee detail page.
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+    });
+    if (error) return error;
 
     const { id } = await params;
+
+    // Anyone may read their own record; other records need employee_details
+    const isSelf =
+      Boolean(auth.user.employee_id) && auth.user.employee_id === id;
+    if (
+      !isSelf &&
+      (auth.userType === "employee" || !hasModule(auth, "employee_details"))
+    ) {
+      return NextResponse.json(
+        { status: false, message: "Insufficient permissions" },
+        { status: 403 },
+      );
+    }
+
     const employee = await prisma.employees.findFirst({
       where: {
         employee_id: id,
         is_deleted: false,
       },
-      include: {
-        image: true,
-        user: {
-          include: {
-            module_access: true,
-          },
-        },
-      },
+      ...withUser(employeeQueryArgs(auth)),
     });
 
     if (!employee) {
@@ -73,7 +117,7 @@ export async function GET(request, { params }) {
       {
         status: true,
         message: "Employee fetched successfully",
-        data: employee,
+        data: presentEmployee(employee, auth),
       },
       { status: 200 },
     );
@@ -88,7 +132,9 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const { error: authError, auth } = await authorizeRequest(request, {
+      modules: ["employee_details"],
+    });
     if (authError) return authError;
 
     // Handle both FormData and JSON requests
@@ -100,7 +146,7 @@ export async function PATCH(request, { params }) {
     if (contentType && contentType.includes("application/json")) {
       body = await request.json();
     } else {
-      const formData = await request.formData();
+      const formData = await readFormData(request, MAX_IMAGE_BODY);
       imageFile = getFileFromFormData(formData, "image");
       const removeImageValue = formData.get("remove_image");
       removeImage = removeImageValue === "true" || removeImageValue === true;
@@ -202,7 +248,7 @@ export async function PATCH(request, { params }) {
     // Update employee first (without touching image_id)
     const employee = await prisma.employees.update({
       where: { employee_id: id },
-      data: updateData,
+      data: sanitizeSensitiveInput(updateData, auth),
     });
 
     let imageWarning = null;
@@ -216,10 +262,9 @@ export async function PATCH(request, { params }) {
     ) {
       try {
         await prisma.$transaction((tx) =>
-          detachAndDeleteMedia(tx, {
+          detachAndSoftDeleteMedia(tx, {
             employeeId: employee.id,
             mediaId: currentEmployee.image_id,
-            mediaUrl: currentEmployee.image.url,
           }),
         );
       } catch (error) {
@@ -230,27 +275,23 @@ export async function PATCH(request, { params }) {
     }
     // Handle image upload if a new image is provided
     else if (imageFile && imageFile instanceof File) {
+      let uploadedPath;
       try {
-        // Delete old image file and media record if one exists
-        if (currentEmployee.image_id && currentEmployee.image) {
-          await prisma.$transaction((tx) =>
-            detachAndDeleteMedia(tx, {
-              employeeId: employee.id,
-              mediaId: currentEmployee.image_id,
-              mediaUrl: currentEmployee.image.url,
-            }),
-          );
-        }
-
-        // Upload new image
+        // Upload the new image FIRST: if this fails, the current photo is
+        // untouched. The "unique" strategy gives every upload its own path, so
+        // the cleanup below can only ever remove this request's file.
         const uploadResult = await uploadFile(imageFile, {
           uploadDir: "mediauploads",
           subDir: "employees",
-          filenameStrategy: "id-based",
+          filenameStrategy: "unique",
+          allowedGroups: ["image"],
+          maxSize: MAX_IMAGE_SIZE,
           idPrefix: id,
         });
+        uploadedPath = uploadResult.relativePath;
 
-        // Create media record + link it to the employee atomically
+        // Create the media record, link it, and soft delete the old photo
+        // together, so the employee never ends up without a photo (or with two)
         await prisma.$transaction(async (tx) => {
           const media = await tx.media.create({
             data: {
@@ -268,9 +309,20 @@ export async function PATCH(request, { params }) {
             where: { id: employee.id },
             data: { image_id: media.id },
           });
+
+          if (currentEmployee.image_id && currentEmployee.image) {
+            await tx.media.update({
+              where: { id: currentEmployee.image_id },
+              data: { is_deleted: true },
+            });
+          }
         });
       } catch (error) {
         console.error("Error handling image upload:", error);
+        // Nothing was linked, so don't leave the new file behind
+        if (uploadedPath) {
+          await deleteFileByRelativePath(uploadedPath).catch(() => {});
+        }
         imageWarning = "Employee updated, but image upload failed";
       }
     }
@@ -279,7 +331,7 @@ export async function PATCH(request, { params }) {
     // to avoid pulling the linked user's password hash into the response)
     const updatedEmployee = await prisma.employees.findUnique({
       where: { id: employee.id },
-      include: { image: true },
+      ...employeeQueryArgs(auth),
     });
 
     const logged = await withLogging(
@@ -299,7 +351,7 @@ export async function PATCH(request, { params }) {
       {
         status: true,
         message: "Employee updated successfully",
-        data: updatedEmployee,
+        data: presentEmployee(updatedEmployee, auth),
         ...(logged
           ? {}
           : { warning: "Note: Update succeeded but logging failed" }),
@@ -308,6 +360,9 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
+    const tooLarge = uploadLimitResponse(error);
+    if (tooLarge) return tooLarge;
+
     console.error("Error in PATCH /api/v1/employee/[id]:", error);
 
     if (error.code === "P2025") {
@@ -327,7 +382,9 @@ export async function PATCH(request, { params }) {
 // Soft-delete an employee and its linked profile image.
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const { error: authError, auth } = await authorizeRequest(request, {
+      modules: ["employee_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -379,7 +436,7 @@ export async function DELETE(request, { params }) {
       {
         status: true,
         message: "Employee deleted successfully",
-        data: employee,
+        data: presentEmployee(employee, auth),
         ...(logged
           ? {}
           : { warning: "Note: Deletion succeeded but logging failed" }),

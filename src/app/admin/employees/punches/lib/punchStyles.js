@@ -39,7 +39,7 @@ export const workingStyles = {
 // Shared badge chrome, so a pill is the same shape on all three pages
 // (DESIGN.md 9.6): rounded-full, px-2.5 py-1, text-xs font-medium.
 export const BADGE =
-  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium";
+  "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium";
 
 export function formatLabel(value) {
   return String(value || "")

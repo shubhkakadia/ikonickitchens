@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 
 const ITEM_CATEGORIES = [
   "SHEET",
@@ -12,7 +12,7 @@ const ITEM_CATEGORIES = [
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request);
     if (authError) return authError;
     const { search } = await request.json();
 

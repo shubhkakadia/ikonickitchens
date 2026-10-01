@@ -1,13 +1,26 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import {
+  ALL_ROLES,
+  authorizeRequest,
+  canAccessLotFile,
+} from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+      modules: ["project_details", "site_photos"],
+    });
+    if (error) return error;
     const { id } = await params;
+    if (!(await canAccessLotFile(auth, id))) {
+      return NextResponse.json(
+        { status: false, message: "Lot file not found" },
+        { status: 404 },
+      );
+    }
     const { notes } = await request.json();
     const lotFile = await prisma.lot_file.update({
       where: { id },

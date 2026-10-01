@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import {
   uploadFile,
   validateMultipartRequest,
   getFileFromFormData,
+  MAX_IMAGE_BODY,
+  MAX_IMAGE_SIZE,
+  uploadLimitResponse,
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 
@@ -12,11 +15,19 @@ const CATEGORIES = ["sheet", "handle", "hardware", "accessory", "edging_tape"];
 
 export async function POST(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: [
+        "add_items",
+        "purchaseorder",
+        "supplier_details",
+        "materialstoorder",
+        "project_details",
+      ],
+    });
     if (authError) return authError;
 
     // Validate and parse multipart/form-data
-    const formData = await validateMultipartRequest(request);
+    const formData = await validateMultipartRequest(request, MAX_IMAGE_BODY);
 
     const description = formData.get("description");
     const price = formData.get("price");
@@ -199,6 +210,8 @@ export async function POST(request, { params }) {
           uploadDir: "mediauploads",
           subDir: `items/${category}`,
           filenameStrategy: "id-based",
+          allowedGroups: ["image"],
+          maxSize: MAX_IMAGE_SIZE,
           idPrefix: createdItem.item_id,
         });
 
@@ -293,6 +306,9 @@ export async function POST(request, { params }) {
       { status: 201 },
     );
   } catch (error) {
+    const tooLarge = uploadLimitResponse(error);
+    if (tooLarge) return tooLarge;
+
     console.error("Create item error:", error);
     return NextResponse.json(
       {

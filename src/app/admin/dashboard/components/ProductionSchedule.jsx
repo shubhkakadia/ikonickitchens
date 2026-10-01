@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarRange, HardHat } from "lucide-react";
 import SectionCard, { EmptyState } from "./SectionCard";
-import { daysLeftBadge, formatDate } from "../lib/format";
+import { BADGE, daysLeftBadge, formatDate } from "../lib/format";
 
 // Buckets are derived from daysLeft, which the API computes against the
 // Adelaide day boundary.
@@ -96,7 +96,7 @@ export default function ProductionSchedule({ schedule }) {
                           {formatDate(row.installationDueDate)}
                         </p>
                         <span
-                          className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${badge.className}`}
+                          className={`${BADGE} mt-1 ${badge.className}`}
                         >
                           {badge.label}
                         </span>

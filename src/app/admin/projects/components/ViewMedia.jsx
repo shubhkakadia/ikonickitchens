@@ -267,16 +267,18 @@ export default function ViewMedia({
             onClick={(e) => e.stopPropagation()}
           >
             {selectedFile.type?.includes("image") ? (
-              <div className="transition-transform duration-200 ease-out">
+              <div
+                className="relative w-full h-full transition-transform duration-300 ease-out"
+                style={{
+                  transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
+                }}
+              >
                 <Image
-                  width={1920}
-                  height={1080}
+                  fill
+                  sizes="100vw"
                   src={imageSrc}
                   alt={selectedFile.name}
-                  style={{
-                    transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
-                  }}
-                  className="max-w-screen max-h-screen object-contain p-6"
+                  className="object-contain p-6"
                   draggable={false}
                   priority
                 />
@@ -341,8 +343,12 @@ export default function ViewMedia({
                   handlePrevious();
                 }}
                 disabled={!canNavigatePrevious}
-                className={`absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/60 transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 ${
-                  showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+                className={`absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
+                  !showControls
+                    ? "opacity-0 pointer-events-none"
+                    : canNavigatePrevious
+                      ? "opacity-100"
+                      : "opacity-30"
                 }`}
                 title="Previous (←)"
               >
@@ -354,8 +360,12 @@ export default function ViewMedia({
                   handleNext();
                 }}
                 disabled={!canNavigateNext}
-                className={`absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/60 transition-colors duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 ${
-                  showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+                className={`absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
+                  !showControls
+                    ? "opacity-0 pointer-events-none"
+                    : canNavigateNext
+                      ? "opacity-100"
+                      : "opacity-30"
                 }`}
                 title="Next (→)"
               >
@@ -374,11 +384,11 @@ export default function ViewMedia({
             <div className="p-3 sm:p-4 sm:px-6">
               <div className="flex items-center justify-between max-w-7xl mx-auto pointer-events-auto gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                  <div className="text-white font-medium truncate max-w-[200px] sm:max-w-md text-sm sm:text-base bg-black/50 rounded-lg px-2 sm:px-4 backdrop-blur-md border border-white/10 min-h-11 flex items-center">
+                  <div className="text-white font-medium truncate max-w-50 sm:max-w-md text-sm sm:text-base bg-black/50 rounded-lg px-2 sm:px-4 backdrop-blur-md border border-white/10 min-h-11 flex items-center">
                     {selectedFile.name}
                   </div>
                   {allFiles.length > 0 && (
-                    <div className="text-white font-medium truncate max-w-[200px] sm:max-w-md text-sm sm:text-base bg-black/50 rounded-lg px-2 sm:px-4 backdrop-blur-md border border-white/10 min-h-11 flex items-center">
+                    <div className="text-white font-medium truncate max-w-50 sm:max-w-md text-sm sm:text-base bg-black/50 rounded-lg px-2 sm:px-4 backdrop-blur-md border border-white/10 min-h-11 flex items-center">
                       {currentFileIndex + 1} / {allFiles.length}
                     </div>
                   )}

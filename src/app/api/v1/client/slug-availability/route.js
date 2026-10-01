@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { normalizeClientSlug, isValidClientSlug } from "@/lib/clientSlug";
 
 export async function GET(request) {
-  const authError = await validateAdminAuth(request);
+  const authError = await requireAuth(request, {
+    modules: ["add_clients", "client_details"],
+  });
   if (authError) return authError;
 
   const { searchParams } = new URL(request.url);

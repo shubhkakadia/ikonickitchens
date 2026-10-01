@@ -1,5 +1,5 @@
 import MarketingShell from "@/components/marketing/MarketingShell";
-import { ProcessPage } from "@/components/marketing/MarketingPages";
+import { ProcessPage } from "@/components/marketing/MarketingStaticPages";
 
 export const metadata = {
   title: "Our Process | Ikonic Kitchens & Cabinets",

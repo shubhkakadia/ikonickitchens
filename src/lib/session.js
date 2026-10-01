@@ -29,10 +29,18 @@ export async function validateSession(sessionToken) {
       where: {
         id: session.user_id,
       },
+      select: {
+        id: true,
+        username: true,
+        user_type: true,
+        is_active: true,
+        employee_id: true,
+      },
     });
 
-    // Delete the session if the user account is no longer active.
-    if (!user.is_active) {
+    // Check if user still exists and is active
+    if (!user || !user.is_active) {
+      // Delete the session if user no longer exists or is inactive
       await prisma.sessions.delete({
         where: { id: session.id },
       });
@@ -42,9 +50,10 @@ export async function validateSession(sessionToken) {
     return {
       sessionId: session.id,
       userId: session.user_id,
-      userType: session.user_type,
+      // Use the live user type so role changes take effect immediately
+      userType: user.user_type.toLowerCase(),
       expiresAt: session.expires_at,
-      user: session.users,
+      user,
     };
   } catch (error) {
     console.error("Session validation error:", error);

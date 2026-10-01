@@ -1018,7 +1018,6 @@ export default function page() {
 
       const editFormData = {
         description: item.description || "",
-        quantity: item.quantity || "",
         measurement_unit: item.measurement_unit || "",
       };
       // Initialize measuring unit search term
@@ -2223,36 +2222,46 @@ export default function page() {
                               </p>
                             )}
                           </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div>
-                            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                              Description
-                            </label>
-                            {isEditing ? (
-                              <textarea
-                                value={formData.description || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "description",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={formatValue(item.description)}
-                                rows={3}
-                                className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                            ) : (
-                              <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
-                                {formatValue(item.description)}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Category-Specific Details Section - Moved from sidebar */}
-                          <div className="col-span-2 pt-3 border-t border-slate-200">
-                            <div className="grid grid-cols-3 gap-4">
-                              {renderCategorySpecificFields()}
+                          <div className="flex-1">
+                            <div className="grid grid-cols-2 gap-4 mb-3">
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h2 className="text-lg font-bold text-slate-800">
+                                    {getItemTitle()}
+                                  </h2>
+                                  <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
+                                    {item.category
+                                      .toLowerCase()
+                                      .charAt(0)
+                                      .toUpperCase() +
+                                      item.category.toLowerCase().slice(1)}
+                                  </span>
+                                  {item.category.toLowerCase() === "sheet" &&
+                                    item.sheet?.is_sunmica && (
+                                      <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
+                                        Sunmica
+                                      </span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                  ID: {item.item_id}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-2xl font-bold text-emerald-600">
+                                  {formatValue(item.quantity)}
+                                  {item.measurement_unit && (
+                                    <span className="ml-1 text-sm font-normal">
+                                      {item.measurement_unit}
+                                    </span>
+                                  )}
+                                </p>
+                                {isEditing && (
+                                  <p className="text-xs text-slate-500">
+                                    Adjust stock via Stock Tally
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </div>
 

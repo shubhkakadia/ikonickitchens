@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["supplier_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const pos = await prisma.purchase_order.findMany({
@@ -36,7 +38,9 @@ export async function GET(request, { params }) {
           },
         },
         orderedBy: {
-          include: {
+          select: {
+            id: true,
+            username: true,
             employee: {
               select: {
                 employee_id: true,

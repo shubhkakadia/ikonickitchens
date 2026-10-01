@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendProjectUpdate } from "@/lib/pushNotifications";
 import { getUserFromToken } from "@/lib/validators/authFromToken";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const project = await prisma.project.findFirst({
@@ -23,6 +25,9 @@ export async function GET(request, { params }) {
           },
         },
         materials_to_order: {
+          where: {
+            is_deleted: false,
+          },
           include: {
             lots: {
               where: {
@@ -71,10 +76,12 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
-    const { name, client_id } = await request.json();
+    const { name, client_id, sync_all_lots } = await request.json();
 
     const existingProject = await prisma.project.findUnique({
       where: { project_id: id },
@@ -109,6 +116,10 @@ export async function PATCH(request, { params }) {
 
     if (name !== undefined) {
       updateData.name = name;
+    }
+
+    if (sync_all_lots !== undefined) {
+      updateData.sync_all_lots = Boolean(sync_all_lots);
     }
 
     updateData.client_id = existingClient?.client_id || null;
@@ -176,7 +187,9 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
 

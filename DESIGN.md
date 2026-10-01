@@ -75,11 +75,11 @@ primitive. That file is already 2,900+ lines and most of it is per-page override
 | **Primary (all UI)** | `var(--font-archivo)` | Archivo    | Everything — admin, public site, headings, body |
 | Monospace            | `font-mono`           | Geist Mono | IDs, codes, SKUs, timestamps, numeric tables    |
 
-- Archivo is loaded in [layout.jsx](src/app/layout.jsx) via `next/font/google` and is the
+- Archivo is loaded in [layout.jsx](src/app/layout.jsx) via `next/font/local` and is the
   de-facto family across the app. It is the **only** UI typeface.
-- **Deprecated**: Montserrat and Source Sans Pro. They are `@import`ed at the top of
-  `globals.css` and exposed as `--font-montserrat` / `--font-source-sans`, but nothing
-  uses them. Do not use them; delete the import when convenient.
+- Fonts are **self-hosted** from [src/fonts](src/fonts/README.md) (latin subset). Do not
+  reintroduce `next/font/google` or a Google Fonts `@import`.
+- **Removed**: Montserrat and Source Sans Pro were never used. Do not add them back.
 - **Deprecated**: `font-geist` / Geist Sans for UI text. Keep Geist Mono only.
 
 **Applying the font**: it should be inherited from `<body>`. Do **not** copy the
@@ -721,9 +721,9 @@ them should be fixed opportunistically.
 | #   | Issue                                                                                                                                                                                                                                     | Fix                                                                                                                                 |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **No shared `<Button>` component.** Button classes are copy-pasted hundreds of times with drift.                                                                                                                                          | Build `src/components/ui/Button.jsx` with `variant` and `size` props; migrate.                                                      |
-| 2   | `font-bold` (700) is used ~136 times but weight 700 is not loaded for Archivo — it is synthesised. Admin page titles (`<h1 className="text-xl font-bold text-slate-700">`) are the biggest offender.                                      | Add `"700"` in [layout.jsx](src/app/layout.jsx:17) or migrate to `font-semibold text-slate-800`.                                    |
+| 2   | `font-bold` (700) is used ~136 times but weight 700 is not loaded for Archivo — it is synthesised. Admin page titles (`<h1 className="text-xl font-bold text-slate-700">`) are the biggest offender.                                      | Re-download Archivo as `wght@300..700` into `src/fonts` and widen `weight` in [layout.jsx](src/app/layout.jsx:22), or migrate to `font-semibold text-slate-800`.                                    |
 | 3   | Two near-identical reds ship: the `secondary` token is `#b82f34`; `#b92f34` is hardcoded ~53 times (login, settings, `Navbar`, `footer`, `Carousel`, `gallerypage`), in the scrollbar thumb, and is also the marketing site's `--mk-red`. | Pick one value, set it in both `--color-secondary` and `--mk-red`, replace all hardcoded hex.                                       |
-| 4   | Montserrat and Source Sans Pro are downloaded on every page load and never used.                                                                                                                                                          | Delete the `@import` at the top of `globals.css`.                                                                                   |
+| 4   | ~~Montserrat and Source Sans Pro are downloaded on every page load and never used.~~ **Fixed.** The Google `@import` and the `--font-montserrat` / `--font-source-sans` theme tokens are gone. | — |
 | 5   | `font-family: var(--font-archivo)` is redeclared ~30 times in `globals.css`.                                                                                                                                                              | Declare once on `body`; delete the rest.                                                                                            |
 | 6   | Two primary-button styles coexist: `bg-primary` and `bg-primary/80 hover:bg-primary`.                                                                                                                                                     | Standardise on `bg-primary hover:bg-primary/90`.                                                                                    |
 | 7   | Six different `<th>` class strings across admin tables.                                                                                                                                                                                   | Standardise on §9.5; extract a `<DataTable>` when the shared Button lands.                                                          |

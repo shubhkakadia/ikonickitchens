@@ -1,20 +1,26 @@
-import { Archivo, Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = Geist({
+// Fonts are self-hosted (latin subset, variable) from src/fonts — see the README there.
+const geistSans = localFont({
+  src: "../fonts/Geist-latin.woff2",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  weight: "100 900",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "../fonts/GeistMono-latin.woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: "100 900",
+  display: "swap",
 });
 
-const archivo = Archivo({
+const archivo = localFont({
+  src: "../fonts/Archivo-latin.woff2",
   variable: "--font-archivo",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: "300 600",
+  display: "swap",
 });
 
 export const metadata = {

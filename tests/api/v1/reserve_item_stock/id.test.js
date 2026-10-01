@@ -1,23 +1,7 @@
 // Tests for src/app/api/v1/reserve_item_stock/[id]/route.js
-//
-// KNOWN BUG: GET and PATCH treat the result of requireAuth() like an object
-// with an `authenticated` flag (`authResult.authenticated`). requireAuth()
-// actually returns `null` when the caller is allowed and a ready-made error
-// response otherwise, so:
-//   - every authorised call throws a TypeError and returns 500, and
-//   - every auth failure (401 or 403) hits NextResponse.json(undefined), which
-//     throws, so it also returns 500.
-// Net effect: GET and PATCH always return 500.
-// DELETE uses requireAuth() correctly.
-//
-// The "current behaviour" tests below pin the broken behaviour. The tests
-// wrapped in `whenFixed` describe the intended behaviour; they are marked
-// `it.fails`, so they pass today and start failing as soon as the routes are
-// fixed. At that point, change `whenFixed` to `it`, and replace the
-// "current behaviour" tests with the standard authorization matrix.
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { prismaMock } from "../../../helpers/prismaMock";
-import { mockAuthorizedUser, mockMasterAdmin } from "../../../helpers/auth";
+import { mockMasterAdmin } from "../../../helpers/auth";
 import { buildRequest, routeContext } from "../../../helpers/request";
 import { describeAuthorization } from "../../../helpers/authCases";
 
@@ -31,8 +15,6 @@ const ID = "res-1";
 const URL = `/api/v1/reserve_item_stock/${ID}`;
 const ctx = () => routeContext({ id: ID });
 
-const whenFixed = it.fails;
-
 const storedReservation = (overrides = {}) => ({
   id: ID,
   item_id: "ITEM-A",
@@ -45,54 +27,24 @@ const storedReservation = (overrides = {}) => ({
 describe("GET /api/v1/reserve_item_stock/[id]", () => {
   const get = (options) => GET(buildRequest(URL, options), ctx());
 
-  beforeEach(() => {
+  const mockGet = () =>
     prismaMock.reserve_item_stock.findUnique.mockResolvedValue(
       storedReservation(),
     );
+
+  describeAuthorization(get, {
+    modules: "materialstoorder",
+    setup: mockGet,
+    untouched: () => [prismaMock.reserve_item_stock.findUnique],
   });
 
-  describe("current behaviour (bug)", () => {
-    it("returns 500 for an authorised user", async () => {
-      mockMasterAdmin();
-
-      const res = await get();
-
-      expect(res.status).toBe(500);
-      expect(await res.json()).toEqual({
-        status: false,
-        message: "Internal server error",
-      });
-      expect(prismaMock.reserve_item_stock.findUnique).not.toHaveBeenCalled();
-    });
-
-    it.each([
-      ["no token", { token: null }, null],
-      [
-        "a user without the module",
-        undefined,
-        { userType: "manager", modules: [] },
-      ],
-      [
-        "a disallowed role",
-        undefined,
-        { userType: "employee", modules: ["materialstoorder"] },
-      ],
-    ])("returns 500 instead of 401/403 for %s", async (_, options, user) => {
-      if (user) mockAuthorizedUser(user);
-
-      const res = await get(options);
-
-      expect(res.status).toBe(500);
-      expect(prismaMock.reserve_item_stock.findUnique).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("intended behaviour", () => {
+  describe("handler", () => {
     beforeEach(() => {
       mockMasterAdmin();
+      mockGet();
     });
 
-    whenFixed("returns the reservation with its item details", async () => {
+    it("returns the reservation with its item details", async () => {
       const res = await get();
 
       expect(res.status).toBe(200);
@@ -112,7 +64,7 @@ describe("GET /api/v1/reserve_item_stock/[id]", () => {
       });
     });
 
-    whenFixed("returns 404 when the reservation does not exist", async () => {
+    it("returns 404 when the reservation does not exist", async () => {
       prismaMock.reserve_item_stock.findUnique.mockResolvedValue(null);
 
       const res = await get();
@@ -124,25 +76,14 @@ describe("GET /api/v1/reserve_item_stock/[id]", () => {
       });
     });
 
-    whenFixed(
-      "returns 403 for a manager without the materialstoorder module",
-      async () => {
-        mockAuthorizedUser({ userType: "manager", modules: [] });
+    it("returns 500 when the lookup fails", async () => {
+      prismaMock.reserve_item_stock.findUnique.mockRejectedValue(
+        new Error("DB down"),
+      );
 
-        const res = await get();
+      const res = await get();
 
-        expect(res.status).toBe(403);
-      },
-    );
-
-    whenFixed("returns 401 when no token is sent", async () => {
-      const res = await get({ token: null });
-
-      expect(res.status).toBe(401);
-      expect(await res.json()).toEqual({
-        status: false,
-        message: "Unauthorized",
-      });
+      expect(res.status).toBe(500);
     });
   });
 });
@@ -151,106 +92,124 @@ describe("PATCH /api/v1/reserve_item_stock/[id]", () => {
   const patch = (body = { quantity: 8 }, options = {}) =>
     PATCH(buildRequest(URL, { method: "PATCH", body, ...options }), ctx());
 
+  // `stock` is what a failed conditional decrement reports as available;
+  // `takes` is whether the conditional decrement succeeds; `written` is
+  // whether the guarded reservation write still matches the row.
   function mockUpdate({
     existing = storedReservation(),
     stock = 10,
-    mto = { id: "mi-2" },
+    takes = true,
+    written = true,
+    mto = { id: "mi-2", item_id: "ITEM-A", quantity: 10 },
+    others = 0,
   } = {}) {
-    prismaMock.reserve_item_stock.findUnique.mockResolvedValue(existing);
+    prismaMock.reserve_item_stock.findUnique.mockImplementation(async () =>
+      existing
+        ? {
+            ...existing,
+            ...(prismaMock.reserve_item_stock.updateMany.mock.calls.length
+              ? prismaMock.reserve_item_stock.updateMany.mock.calls.at(-1)[0]
+                  .data
+              : {}),
+          }
+        : null,
+    );
     prismaMock.item.findUnique.mockResolvedValue({
       item_id: "ITEM-A",
       quantity: stock,
     });
     prismaMock.materials_to_order_item.findUnique.mockResolvedValue(mto);
-    prismaMock.reserve_item_stock.update.mockImplementation(
-      async ({ data }) => ({
-        ...storedReservation(),
-        ...data,
-      }),
-    );
+    prismaMock.reserve_item_stock.aggregate.mockResolvedValue({
+      _sum: { quantity: others || null },
+    });
+    prismaMock.reserve_item_stock.updateMany.mockResolvedValue({
+      count: written ? 1 : 0,
+    });
+    prismaMock.item.updateMany.mockResolvedValue({ count: takes ? 1 : 0 });
     prismaMock.item.update.mockResolvedValue({});
     prismaMock.logs.create.mockResolvedValue({});
   }
 
-  beforeEach(() => {
-    mockUpdate();
+  describeAuthorization((options) => patch(undefined, options), {
+    modules: "materialstoorder",
+    setup: () => mockUpdate(),
+    untouched: () => [
+      prismaMock.reserve_item_stock.updateMany,
+      prismaMock.$transaction,
+    ],
   });
 
-  describe("current behaviour (bug)", () => {
-    it("returns 500 for an authorised user", async () => {
-      mockMasterAdmin();
-
-      const res = await patch();
-
-      expect(res.status).toBe(500);
-      expect(await res.json()).toEqual({
-        status: false,
-        message: "Internal server error",
-      });
-      expect(prismaMock.reserve_item_stock.update).not.toHaveBeenCalled();
-      expect(prismaMock.item.update).not.toHaveBeenCalled();
-    });
-
-    it("returns 500 instead of 401 for an unauthenticated caller", async () => {
-      const res = await patch(undefined, { token: null });
-
-      expect(res.status).toBe(500);
-      expect(prismaMock.reserve_item_stock.update).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("intended behaviour", () => {
+  describe("handler", () => {
     beforeEach(() => {
       mockMasterAdmin();
+      mockUpdate();
     });
 
-    whenFixed(
-      "increasing the quantity reserves more stock and logs",
-      async () => {
-        const res = await patch({ quantity: 8 });
+    it("increasing the quantity reserves more stock atomically and logs", async () => {
+      const res = await patch({ quantity: 8 });
 
-        expect(res.status).toBe(200);
-        expect(await res.json()).toEqual({
-          status: true,
-          message: "Stock reservation updated successfully",
-          data: storedReservation({ quantity: 8 }),
-        });
-        expect(prismaMock.reserve_item_stock.update).toHaveBeenCalledWith({
-          where: { id: ID },
-          data: { quantity: 8 },
-        });
-        expect(prismaMock.item.update).toHaveBeenCalledWith({
-          where: { item_id: "ITEM-A" },
-          data: { quantity: { increment: -3 } },
-        });
-        expect(prismaMock.logs.create).toHaveBeenCalledWith({
-          data: expect.objectContaining({
-            entity_type: "reserve_item_stock",
-            entity_id: ID,
-            action: "UPDATE",
-          }),
-        });
-      },
-    );
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        status: true,
+        message: "Stock reservation updated successfully",
+        data: storedReservation({ quantity: 8 }),
+      });
+      expect(prismaMock.reserve_item_stock.updateMany).toHaveBeenCalledWith({
+        where: { id: ID, quantity: 5, used_quantity: 0 },
+        data: { quantity: 8 },
+      });
+      expect(prismaMock.item.updateMany).toHaveBeenCalledWith({
+        where: {
+          item_id: "ITEM-A",
+          is_deleted: false,
+          quantity: { gte: 3 },
+        },
+        data: { quantity: { decrement: 3 } },
+      });
+      expect(prismaMock.logs.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          entity_type: "reserve_item_stock",
+          entity_id: ID,
+          action: "UPDATE",
+        }),
+      });
+    });
 
-    whenFixed("decreasing the quantity returns stock to the item", async () => {
+    it("locks the MTO line inside the transaction before changing anything", async () => {
+      await patch({ quantity: 8 });
+
+      expect(prismaMock.$transaction).toHaveBeenCalledOnce();
+      expect(prismaMock.$queryRaw).toHaveBeenCalledOnce();
+      const [strings, ...values] = prismaMock.$queryRaw.mock.calls[0];
+      expect(strings.join("?")).toMatch(
+        /FROM materials_to_order_item[\s\S]*FOR UPDATE/,
+      );
+      expect(values).toEqual(["mi-1"]);
+      expect(prismaMock.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+        prismaMock.reserve_item_stock.updateMany.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("decreasing the quantity returns stock to the item", async () => {
       await patch({ quantity: 2 });
 
       expect(prismaMock.item.update).toHaveBeenCalledWith({
         where: { item_id: "ITEM-A" },
         data: { quantity: { increment: 3 } },
       });
+      expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
     });
 
-    whenFixed("leaves stock alone when the quantity is unchanged", async () => {
+    it("leaves stock alone when the quantity is unchanged", async () => {
       const res = await patch({ quantity: 5 });
 
       expect(res.status).toBe(200);
       expect(prismaMock.item.update).not.toHaveBeenCalled();
+      expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
     });
 
-    whenFixed("rejects an increase beyond the available stock", async () => {
-      mockUpdate({ stock: 2 });
+    it("rejects an increase beyond the available stock", async () => {
+      mockUpdate({ stock: 2, takes: false });
 
       const res = await patch({ quantity: 8 });
 
@@ -260,65 +219,157 @@ describe("PATCH /api/v1/reserve_item_stock/[id]", () => {
         message: "Not enough stock available for this increase",
         data: { available: 2, requested: 3, shortage: 1 },
       });
-      expect(prismaMock.reserve_item_stock.update).not.toHaveBeenCalled();
+      expect(prismaMock.logs.create).not.toHaveBeenCalled();
     });
 
-    whenFixed(
-      "rejects a quantity below what has already been used",
-      async () => {
-        mockUpdate({ existing: storedReservation({ used_quantity: 4 }) });
+    it("rejects an increase that would exceed the MTO quantity", async () => {
+      mockUpdate({
+        mto: { id: "mi-1", item_id: "ITEM-A", quantity: 10 },
+        others: 4,
+      });
 
-        const res = await patch({ quantity: 3 });
+      const res = await patch({ quantity: 8 });
 
-        expect(res.status).toBe(400);
-        expect(await res.json()).toEqual({
-          status: false,
-          message: "Quantity cannot be less than the already used quantity (4)",
-          data: { used_quantity: 4 },
-        });
-      },
-    );
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        status: false,
+        message:
+          "Reservation would exceed the quantity required by the materials to order item",
+        data: { required: 10, already_reserved: 4, requested: 8 },
+      });
+      expect(prismaMock.reserve_item_stock.aggregate).toHaveBeenCalledWith({
+        where: { mto_id: "mi-1", id: { not: ID } },
+        _sum: { quantity: true },
+      });
+      expect(prismaMock.reserve_item_stock.updateMany).not.toHaveBeenCalled();
+      expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
+    });
 
-    whenFixed("rejects a quantity of zero or less", async () => {
-      const res = await patch({ quantity: 0 });
+    it("always lets a reservation shrink, even if the MTO quantity dropped", async () => {
+      mockUpdate({
+        mto: { id: "mi-1", item_id: "ITEM-A", quantity: 3 },
+        others: 4,
+      });
+
+      const res = await patch({ quantity: 4 });
+
+      expect(res.status).toBe(200);
+      expect(prismaMock.reserve_item_stock.aggregate).not.toHaveBeenCalled();
+    });
+
+    it("returns 409 when the reservation changed since it was read", async () => {
+      mockUpdate({ written: false });
+
+      const res = await patch({ quantity: 8 });
+
+      expect(res.status).toBe(409);
+      expect((await res.json()).message).toMatch(/changed by someone else/);
+      expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
+      expect(prismaMock.logs.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a quantity below what has already been used", async () => {
+      mockUpdate({ existing: storedReservation({ used_quantity: 4 }) });
+
+      const res = await patch({ quantity: 3 });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        status: false,
+        message: "Quantity cannot be less than the already used quantity (4)",
+        data: { used_quantity: 4 },
+      });
+      expect(prismaMock.reserve_item_stock.updateMany).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["zero", 0],
+      ["negative", -2],
+      ["not a number", "abc"],
+    ])("rejects a quantity that is %s", async (_, quantity) => {
+      const res = await patch({ quantity });
 
       expect(res.status).toBe(400);
       expect(await res.json()).toEqual({
         status: false,
         message: "Quantity must be greater than 0",
       });
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
     });
 
-    whenFixed(
-      "moves the reservation to another MTO item without touching stock",
-      async () => {
-        const res = await patch({ mto_id: "mi-2" });
+    it("rejects a fractional quantity instead of truncating it", async () => {
+      const res = await patch({ quantity: 7.5 });
 
-        expect(res.status).toBe(200);
-        expect(prismaMock.reserve_item_stock.update).toHaveBeenCalledWith({
-          where: { id: ID },
-          data: { mto_id: "mi-2" },
-        });
-        expect(prismaMock.item.update).not.toHaveBeenCalled();
-      },
-    );
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        status: false,
+        message: "Quantity must be a whole number",
+      });
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    });
 
-    whenFixed(
-      "returns 404 when the target MTO item does not exist",
-      async () => {
-        mockUpdate({ mto: null });
+    it("moves the reservation to another MTO line without touching stock", async () => {
+      const res = await patch({ mto_id: "mi-2" });
 
-        const res = await patch({ mto_id: "ghost" });
+      expect(res.status).toBe(200);
+      expect(prismaMock.reserve_item_stock.updateMany).toHaveBeenCalledWith({
+        where: { id: ID, quantity: 5, used_quantity: 0 },
+        data: { quantity: 5, mto_id: "mi-2" },
+      });
+      expect(prismaMock.item.update).not.toHaveBeenCalled();
+      expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
+    });
 
-        expect(res.status).toBe(404);
-        expect(await res.json()).toEqual({
-          status: false,
-          message: "Materials to order item not found",
-        });
-      },
-    );
+    it("locks both MTO lines, in a fixed order, when moving", async () => {
+      await patch({ mto_id: "mi-0" });
 
-    whenFixed("returns 404 when the reservation does not exist", async () => {
+      const locked = prismaMock.$queryRaw.mock.calls.map((c) => c[1]);
+      expect(locked).toEqual(["mi-0", "mi-1"]);
+    });
+
+    it("refuses to move onto a line that cannot hold the reservation", async () => {
+      mockUpdate({
+        mto: { id: "mi-2", item_id: "ITEM-A", quantity: 6 },
+        others: 3,
+      });
+
+      const res = await patch({ mto_id: "mi-2" });
+
+      expect(res.status).toBe(400);
+      expect((await res.json()).data).toEqual({
+        required: 6,
+        already_reserved: 3,
+        requested: 5,
+      });
+      expect(prismaMock.reserve_item_stock.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when the target MTO line is for a different item", async () => {
+      mockUpdate({ mto: { id: "mi-2", item_id: "ITEM-OTHER", quantity: 10 } });
+
+      const res = await patch({ mto_id: "mi-2" });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        status: false,
+        message: "Item does not match the materials to order item",
+      });
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("returns 404 when the target MTO item does not exist", async () => {
+      mockUpdate({ mto: null });
+
+      const res = await patch({ mto_id: "ghost" });
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({
+        status: false,
+        message: "Materials to order item not found",
+      });
+    });
+
+    it("returns 404 when the reservation does not exist", async () => {
       mockUpdate({ existing: null });
 
       const res = await patch();
@@ -327,6 +378,20 @@ describe("PATCH /api/v1/reserve_item_stock/[id]", () => {
       expect(await res.json()).toEqual({
         status: false,
         message: "Stock reservation not found",
+      });
+    });
+
+    it("returns 500 when the transaction fails", async () => {
+      prismaMock.reserve_item_stock.updateMany.mockRejectedValue(
+        new Error("DB down"),
+      );
+
+      const res = await patch();
+
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({
+        status: false,
+        message: "Internal server error",
       });
     });
   });
@@ -400,6 +465,20 @@ describe("DELETE /api/v1/reserve_item_stock/[id]", () => {
       await del();
 
       expect(prismaMock.$transaction).toHaveBeenCalledOnce();
+    });
+
+    it("locks the MTO line first, like stock usage and the other reservation routes", async () => {
+      await del();
+
+      expect(prismaMock.$queryRaw).toHaveBeenCalledOnce();
+      const [strings, ...values] = prismaMock.$queryRaw.mock.calls[0];
+      expect(strings.join("?")).toMatch(
+        /FROM materials_to_order_item[\s\S]*FOR UPDATE/,
+      );
+      expect(values).toEqual(["mi-1"]);
+      expect(prismaMock.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+        prismaMock.reserve_item_stock.delete.mock.invocationCallOrder[0],
+      );
     });
 
     it("only returns the unused part of the reservation", async () => {
@@ -524,6 +603,28 @@ describe("DELETE /api/v1/reserve_item_stock/[id]", () => {
       expect(res.status).toBe(200);
       expect(await res.json()).not.toHaveProperty("warning");
       expect(checkAndUpdateMTOStatus).toHaveBeenCalledWith("mi-1");
+    });
+
+    it("returns 404, not 500, when the reservation was removed after the lookup", async () => {
+      // e.g. a stock usage consumed the whole reservation in between; Prisma
+      // reports a delete of a missing row as P2025
+      prismaMock.reserve_item_stock.delete.mockRejectedValue(
+        Object.assign(new Error("Record to delete does not exist."), {
+          code: "P2025",
+        }),
+      );
+
+      const res = await del();
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({
+        status: false,
+        message: "Stock reservation not found",
+      });
+      // nothing is returned to stock, logged, or re-checked
+      expect(prismaMock.item.update).not.toHaveBeenCalled();
+      expect(prismaMock.logs.create).not.toHaveBeenCalled();
+      expect(checkAndUpdateMTOStatus).not.toHaveBeenCalled();
     });
 
     it("returns 500 when the delete fails", async () => {

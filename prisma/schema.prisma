@@ -29,6 +29,9 @@ model users {
   meetingParticipants      meeting[]
   clock_punches            clock_punch[]             @relation("ClockPunchUser")
   reviewed_clock_punches   clock_punch[]             @relation("ClockPunchReviewer")
+  todos_created            todo[]                    @relation("TodoCreator")
+  todos_completed          todo[]                    @relation("TodoCompleter")
+  todos_tagged             todo[]                    @relation("TodoTagged")
 
   @@index([employee_id])
 }
@@ -255,6 +258,7 @@ model project {
   project_id         String               @unique
   client_id          String?
   is_deleted         Boolean              @default(false)
+  sync_all_lots      Boolean              @default(false)
   lots               lot[]
   material_selection material_selection[]
   materials_to_order materials_to_order[]
@@ -927,6 +931,28 @@ model meeting {
   remainder_1d_sent Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+}
+
+model todo {
+  id              String    @id @default(uuid())
+  title           String
+  notes           String?   @db.LongText
+  due_date        DateTime?
+  is_completed    Boolean   @default(false)
+  completed_at    DateTime?
+  completed_by_id String?
+  created_by_id   String?
+  is_deleted      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  created_by      users?    @relation("TodoCreator", fields: [created_by_id], references: [id], onDelete: SetNull)
+  completed_by    users?    @relation("TodoCompleter", fields: [completed_by_id], references: [id], onDelete: SetNull)
+  tagged_users    users[]   @relation("TodoTagged")
+
+  @@index([created_by_id])
+  @@index([completed_by_id])
+  @@index([is_completed, is_deleted])
+  @@index([due_date])
 }
 
 enum LogAction {

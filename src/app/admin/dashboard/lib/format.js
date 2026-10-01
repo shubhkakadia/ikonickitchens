@@ -1,6 +1,30 @@
 // Shared dashboard formatters. Kept here so panels don't each re-declare them
 // the way the previous single-file dashboard did.
 
+import { BADGE } from "@/app/admin/employees/punches/lib/punchStyles";
+
+// Badge chrome (shape, padding, type) is shared with the clock-punch pages so a
+// pill is the same 24px shape everywhere (DESIGN.md 9.6). Colour comes from a
+// tone below or one of the maps built on them.
+export { BADGE };
+
+// The 9.6 variants: hue -100 fill, -800 ink, -200 border. Every status, action
+// and severity map is built from these, never from hand-typed class strings.
+export const BADGE_TONES = {
+  success: "bg-green-100 text-green-800 border-green-200",
+  info: "bg-blue-100 text-blue-800 border-blue-200",
+  warning: "bg-amber-100 text-amber-800 border-amber-200",
+  danger: "bg-red-100 text-red-800 border-red-200",
+  neutral: "bg-slate-100 text-slate-800 border-slate-200",
+  muted: "bg-slate-100 text-slate-600 border-slate-200",
+  violet: "bg-violet-100 text-violet-800 border-violet-200",
+  indigo: "bg-indigo-100 text-indigo-800 border-indigo-200",
+};
+
+// Counts on tabs and nav items (DESIGN.md 9.6, "Count").
+export const COUNT_BADGE =
+  "bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full";
+
 const AUD = new Intl.NumberFormat("en-AU", {
   style: "currency",
   currency: "AUD",
@@ -16,10 +40,11 @@ export const formatCompactCurrency = (value) => {
   return `$${Math.round(n)}`;
 };
 
+const NUMBER = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 });
+
 export const formatQty = (value, unit) => {
-  const n = Number(value) || 0;
-  const rounded = Number.isInteger(n) ? n : Math.round(n * 100) / 100;
-  return unit ? `${rounded.toLocaleString()} ${unit}` : rounded.toLocaleString();
+  const text = NUMBER.format(Number(value) || 0);
+  return unit ? `${text} ${unit}` : text;
 };
 
 export const formatDate = (value) =>
@@ -66,17 +91,20 @@ export const formatTimeAgo = (value) => {
 // Severity ramp on the sanctioned semantic hues (DESIGN.md 5.3).
 export const daysLeftBadge = (days) => {
   if (days == null || Number.isNaN(days))
-    return { label: "No date", className: "bg-slate-100 text-slate-600" };
+    return { label: "No date", className: BADGE_TONES.muted };
   if (days < 0)
     return {
       label: `${Math.abs(days)}d overdue`,
-      className: "bg-red-100 text-red-800",
+      className: BADGE_TONES.danger,
     };
   if (days === 0)
-    return { label: "Due today", className: "bg-amber-100 text-amber-800" };
+    return { label: "Due today", className: BADGE_TONES.warning };
   if (days <= 7)
-    return { label: `${days}d left`, className: "bg-amber-50 text-amber-800" };
-  return { label: `${days}d left`, className: "bg-green-100 text-green-800" };
+    return {
+      label: `${days}d left`,
+      className: "bg-amber-50 text-amber-800 border-amber-200",
+    };
+  return { label: `${days}d left`, className: BADGE_TONES.success };
 };
 
 export const daysUntil = (value) => {
@@ -90,13 +118,13 @@ export const daysUntil = (value) => {
 // matching semantic hue; ASSIGN/UPLOAD are purely categorical and use the
 // extended hues (DESIGN.md 5.5). Formula is -100 background / -800 text.
 export const ACTION_COLORS = {
-  CREATE: "bg-green-100 text-green-800",
-  UPDATE: "bg-blue-100 text-blue-800",
-  DELETE: "bg-red-100 text-red-800",
-  STATUS_CHANGE: "bg-amber-100 text-amber-800",
-  ASSIGN: "bg-violet-100 text-violet-800",
-  UPLOAD: "bg-indigo-100 text-indigo-800",
-  OTHER: "bg-slate-100 text-slate-800",
+  CREATE: BADGE_TONES.success,
+  UPDATE: BADGE_TONES.info,
+  DELETE: BADGE_TONES.danger,
+  STATUS_CHANGE: BADGE_TONES.warning,
+  ASSIGN: BADGE_TONES.violet,
+  UPLOAD: BADGE_TONES.indigo,
+  OTHER: BADGE_TONES.neutral,
 };
 
 // Status -> colour mapping from DESIGN.md 5.4. Kept identical to the mapping
@@ -104,24 +132,24 @@ export const ACTION_COLORS = {
 // the dashboard and the page it links to.
 export const STATUS_COLORS = {
   // Green - finished successfully
-  DONE: "bg-green-100 text-green-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  FULLY_ORDERED: "bg-green-100 text-green-800",
-  FULLY_RECEIVED: "bg-green-100 text-green-800",
+  DONE: BADGE_TONES.success,
+  COMPLETED: BADGE_TONES.success,
+  FULLY_ORDERED: BADGE_TONES.success,
+  FULLY_RECEIVED: BADGE_TONES.success,
   // Blue - in flight
-  IN_PROGRESS: "bg-blue-100 text-blue-800",
-  ACTIVE: "bg-blue-100 text-blue-800",
-  ORDERED: "bg-blue-100 text-blue-800",
-  PARTIALLY_ORDERED: "bg-blue-100 text-blue-800",
-  PARTIALLY_RECEIVED: "bg-blue-100 text-blue-800",
+  IN_PROGRESS: BADGE_TONES.info,
+  ACTIVE: BADGE_TONES.info,
+  ORDERED: BADGE_TONES.info,
+  PARTIALLY_ORDERED: BADGE_TONES.info,
+  PARTIALLY_RECEIVED: BADGE_TONES.info,
   // Amber - not yet committed
-  DRAFT: "bg-amber-100 text-amber-800",
+  DRAFT: BADGE_TONES.warning,
   // Red - stopped
-  CANCELLED: "bg-red-100 text-red-800",
+  CANCELLED: BADGE_TONES.danger,
   // Slate - inert
-  NOT_STARTED: "bg-slate-100 text-slate-800",
-  CLOSED: "bg-slate-100 text-slate-800",
-  NA: "bg-slate-100 text-slate-600",
+  NOT_STARTED: BADGE_TONES.neutral,
+  CLOSED: BADGE_TONES.neutral,
+  NA: BADGE_TONES.muted,
 };
 
 // Data-viz series colours. Chart.js takes colour strings, not Tailwind
@@ -129,6 +157,17 @@ export const STATUS_COLORS = {
 // (DESIGN.md 5.6). These mirror --color-series-* in globals.css.
 export const SERIES_1 = "#3d4fb5";
 export const SERIES_2 = "#b82f34";
+
+// Chart chrome and ring colours, as slate / semantic stops (DESIGN.md 5.2, 5.3).
+export const CHART_COLORS = {
+  tooltip: "#1e293b", // slate-800
+  legend: "#475569", // slate-600
+  tick: "#94a3b8", // slate-400
+  grid: "#f1f5f9", // slate-100
+  ringTrack: "#f1f5f9", // slate-100
+  ringWarn: "#f59e0b", // amber-500
+  ringOk: "#059669", // emerald-600
+};
 
 export const titleCase = (value) =>
   (value || "")

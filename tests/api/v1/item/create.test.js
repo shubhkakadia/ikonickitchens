@@ -386,6 +386,8 @@ describe("POST /api/v1/item/create", () => {
           uploadDir: "mediauploads",
           subDir: "items/sheet",
           filenameStrategy: "id-based",
+          allowedGroups: ["image"],
+          maxSize: 10 * 1024 * 1024,
           idPrefix: "item-1",
         });
         expect(prismaMock.media.create).toHaveBeenCalledWith({

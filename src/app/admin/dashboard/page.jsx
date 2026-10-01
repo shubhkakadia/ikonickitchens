@@ -11,6 +11,7 @@ import KpiStrip from "./components/KpiStrip";
 import AttentionStrip from "./components/AttentionStrip";
 import ProductionSchedule from "./components/ProductionSchedule";
 import { MyMeetings, MyStages } from "./components/MyDayPanel";
+import TodoPanel from "./components/TodoPanel";
 import PipelinePanel from "./components/PipelinePanel";
 import ProcurementPanel from "./components/ProcurementPanel";
 import InventoryPanel from "./components/InventoryPanel";
@@ -162,7 +163,7 @@ export default function page() {
         <div className="shrink-0 px-4 pt-4 pb-3">
           <div className="bg-white rounded-lg border border-slate-200 px-4 py-3 flex flex-col lg:flex-row lg:items-center gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold text-slate-800 truncate">
+              <h1 className="text-xl font-semibold text-slate-800 truncate">
                 {greeting()}
                 {data?.viewer?.name ? `, ${data.viewer.name}` : ""}
               </h1>
@@ -214,7 +215,7 @@ export default function page() {
                   onClick={fetchDashboard}
                   className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
                 >
-                  Try Again
+                  Try again
                 </button>
               </div>
             </div>
@@ -251,6 +252,7 @@ export default function page() {
                   )}
                 </div>
                 <div className="space-y-4 min-w-0">
+                  <TodoPanel />
                   <MyStages stages={data.myDay?.stages} />
                   <MyMeetings meetings={data.myDay?.meetings} />
                 </div>

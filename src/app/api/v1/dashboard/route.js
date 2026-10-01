@@ -76,190 +76,21 @@ export async function GET(request) {
     if (authError) return authError;
 
     const session = await getUserFromToken(request);
-    const currentUserId = session?.user_id;
-
-    // Build date range filter for DateTime fields
-    const dateRangeFilter = buildDateRangeFilter(year, month);
-
-    const dashboardData = {
-      activeProjects: 0,
-      activeLots: 0,
-      activeMTOs: 0,
-      activePurchaseOrders: 0,
-      totalSpent: 0,
-      lotsByStage: {},
-      MTOsByStatus: {},
-      purchaseOrdersByStatus: {},
-      top10items: {},
-      top10itemsCount: {},
-      topstagesDue: {},
-      projectsCompletedThisMonth: 0,
-      averageProjectDuration: 0,
-      upcomingMeetings: [],
-      recentLogs: [],
-    };
-
-    // Build all where clauses first (no database calls yet)
-    const activeProjectsWhere = {
-      lots: {
-        some: {
-          status: "ACTIVE",
-          ...(dateRangeFilter &&
-            Object.keys(dateRangeFilter).length > 0 && {
-              OR: [
-                { startDate: dateRangeFilter },
-                { createdAt: dateRangeFilter },
-              ],
-            }),
-        },
-      },
-    };
-
-    const activeLotsWhere = {
-      status: "ACTIVE",
-      ...(dateRangeFilter &&
-        Object.keys(dateRangeFilter).length > 0 && {
-          OR: [{ startDate: dateRangeFilter }, { createdAt: dateRangeFilter }],
-        }),
-    };
-
-    const activeMTOsWhere = {
-      is_deleted: false,
-      status: {
-        in: ["DRAFT", "PARTIALLY_ORDERED"],
-      },
-      ...(dateRangeFilter &&
-        Object.keys(dateRangeFilter).length > 0 && {
-          createdAt: dateRangeFilter,
-        }),
-    };
-
-    const activePurchaseOrdersWhere = {
-      status: {
-        in: ["DRAFT", "ORDERED", "PARTIALLY_RECEIVED"],
-      },
-      ...(dateRangeFilter &&
-        Object.keys(dateRangeFilter).length > 0 && {
-          OR: [{ createdAt: dateRangeFilter }, { ordered_at: dateRangeFilter }],
-        }),
-    };
-
-    // Filter supplier statements based on month and year
-    const monthYearFilter = buildMonthYearFilter(year, month);
-    const isYearAll = !year || year.toString().toLowerCase() === "all";
-    const normalizedMonth = normalizeMonth(month);
-    const isMonthAll = !normalizedMonth;
-
-    let totalSpentWhere = {};
-
-    // Special case: year is "all" but month is specific
-    if (isYearAll && !isMonthAll) {
-      // Use endsWith to match all years with the specific month
-      totalSpentWhere = {
-        month_year: {
-          endsWith: `-${normalizedMonth}`,
-        },
-      };
-    } else if (monthYearFilter && monthYearFilter.length > 0) {
-      // Use "in" operator for specific month-year combinations
-      totalSpentWhere = {
-        month_year: {
-          in: monthYearFilter,
-        },
-      };
+    if (!session) {
+      return NextResponse.json(
+        { status: false, message: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
     const userId = session.user_id;
     const userType = (session.user_type || "").toLowerCase();
     const isMaster = userType === "master-admin";
 
-    const mtosByStatusWhere = {
-      is_deleted: false,
-      ...(dateRangeFilter &&
-        Object.keys(dateRangeFilter).length > 0 && {
-          createdAt: dateRangeFilter,
-        }),
-    };
-
-    const posByStatusWhere = {
-      ...(dateRangeFilter &&
-        Object.keys(dateRangeFilter).length > 0 && {
-          OR: [{ createdAt: dateRangeFilter }, { ordered_at: dateRangeFilter }],
-        }),
-    };
-
-    const stockTransactionsWhere = {
-      ...(dateRangeFilter &&
-        Object.keys(dateRangeFilter).length > 0 && {
-          createdAt: dateRangeFilter,
-        }),
-    };
-
-    const topstagesDueWhere = {
-      status: "IN_PROGRESS",
-      lot: {
-        status: "ACTIVE",
-      },
-      ...(dateRangeFilter &&
-        Object.keys(dateRangeFilter).length > 0 && {
-          endDate: dateRangeFilter,
-        }),
-    };
-
-    // Projects Completed This Month - projects with at least one completed lot this month
-    const currentMonthStart = new Date();
-    currentMonthStart.setDate(1);
-    currentMonthStart.setHours(0, 0, 0, 0);
-    const currentMonthEnd = new Date();
-    currentMonthEnd.setMonth(currentMonthEnd.getMonth() + 1);
-    currentMonthEnd.setDate(0);
-    currentMonthEnd.setHours(23, 59, 59, 999);
-
-    const projectsCompletedThisMonthWhere = {
-      lots: {
-        some: {
-          status: "COMPLETED",
-          updatedAt: {
-            gte: currentMonthStart,
-            lte: currentMonthEnd,
-          },
-        },
-      },
-    };
-
-    // Average Project Duration - calculate average duration for completed projects
-    // Duration = time from first lot startDate to last lot completion
-    const completedProjectsWhere = {
-      lots: {
-        some: {
-          status: "COMPLETED",
-        },
-      },
-    };
-
-    // Execute all independent queries in parallel
-    const [
-      activeProjects,
-      activeLots,
-      activeMTOs,
-      activePurchaseOrders,
-      totalSpent,
-      lotsByStage,
-      MTOsByStatus,
-      purchaseOrdersByStatus,
-      allItemsCount,
-      topstagesDue,
-      projectsCompletedThisMonth,
-      completedProjects,
-      upcomingMeetings,
-      recentLogs,
-    ] = await Promise.all([
-      prisma.project.count({ where: activeProjectsWhere }),
-      prisma.lot.count({ where: activeLotsWhere }),
-      prisma.materials_to_order.count({ where: activeMTOsWhere }),
-      prisma.purchase_order.count({ where: activePurchaseOrdersWhere }),
-      prisma.supplier_statement.findMany({
-        where: totalSpentWhere,
+    const [access, viewer] = await Promise.all([
+      prisma.module_access.findUnique({ where: { user_id: userId } }),
+      prisma.users.findUnique({
+        where: { id: userId },
         select: {
           employee_id: true,
           username: true,

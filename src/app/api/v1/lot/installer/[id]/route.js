@@ -20,7 +20,6 @@ export async function GET(request, { params }) {
     }
 
     const isAdminUser = userType === "master-admin" || userType === "admin";
-f
     // Non-admins only ever see their own installer lots, regardless of the
     // id in the URL
     if (!isAdminUser && !auth.user.employee_id) {

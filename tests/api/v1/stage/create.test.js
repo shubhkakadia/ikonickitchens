@@ -155,10 +155,13 @@ describe("POST /api/v1/stage/create", () => {
         });
       });
 
-      it("does not look up the lot when no dates are sent", async () => {
+      it("does not run the date-range lookup when no dates are sent", async () => {
         await post();
 
-        expect(prismaMock.lot.findUnique).not.toHaveBeenCalled();
+        expect(prismaMock.lot.findUnique).not.toHaveBeenCalledWith({
+          where: { lot_id: "btto-001-l1" },
+          select: { startDate: true, installationDueDate: true },
+        });
       });
 
       it("accepts dates exactly on the lot's boundaries", async () => {
@@ -253,6 +256,158 @@ describe("POST /api/v1/stage/create", () => {
         const res = await post();
 
         expect(res.status).toBe(500);
+      });
+    });
+
+    describe("sync_all_lots", () => {
+      const sibling = (lot_id, overrides = {}) => ({
+        lot_id,
+        name: lot_id,
+        ...datedLot(),
+        ...overrides,
+      });
+
+      // Project lookup returns the sync flag; the date-range lookup keeps
+      // returning the (dated) source lot.
+      function mockSync({ sync = true, siblings = [], existing = {} } = {}) {
+        prismaMock.lot.findUnique.mockImplementation(async (args) =>
+          args?.select?.project
+            ? { project: { project_id: "btto-001", sync_all_lots: sync } }
+            : datedLot(),
+        );
+        prismaMock.lot.findMany.mockResolvedValue(siblings);
+        prismaMock.stage.findFirst.mockImplementation(async ({ where }) =>
+          existing[where.lot_id]
+            ? { stage_id: existing[where.lot_id] }
+            : null,
+        );
+      }
+
+      it("does nothing extra when the project does not sync", async () => {
+        mockSync({ sync: false });
+
+        const res = await post();
+
+        expect(prismaMock.lot.findMany).not.toHaveBeenCalled();
+        expect(prismaMock.stage.create).toHaveBeenCalledTimes(1);
+        expect((await res.json()).sync).toBeUndefined();
+      });
+
+      it("looks up the other non-deleted lots of the project", async () => {
+        mockSync({ siblings: [sibling("btto-001-l2")] });
+
+        await post();
+
+        expect(prismaMock.lot.findMany).toHaveBeenCalledWith({
+          where: {
+            project_id: "btto-001",
+            is_deleted: false,
+            lot_id: { not: "btto-001-l1" },
+          },
+          select: {
+            lot_id: true,
+            name: true,
+            startDate: true,
+            installationDueDate: true,
+          },
+        });
+      });
+
+      it("creates the stage on lots that do not have it yet", async () => {
+        mockSync({
+          siblings: [sibling("btto-001-l2"), sibling("btto-001-l3")],
+        });
+
+        const res = await post(
+          validBody({
+            status: "IN_PROGRESS",
+            notes: "n",
+            startDate: "2026-03-05",
+            endDate: "2026-03-20",
+            assigned_to: ["emp-1"],
+          }),
+        );
+
+        // source lot + two siblings
+        expect(prismaMock.stage.create).toHaveBeenCalledTimes(3);
+        expect(prismaMock.stage.create.mock.calls[1][0].data).toEqual({
+          lot_id: "btto-001-l2",
+          name: "drafting",
+          status: "IN_PROGRESS",
+          notes: "n",
+          startDate: new Date("2026-03-05"),
+          endDate: new Date("2026-03-20"),
+        });
+        expect(prismaMock.stage_employee.createMany).toHaveBeenCalledTimes(3);
+        expect((await res.json()).sync).toEqual({
+          syncedLots: ["btto-001-l2", "btto-001-l3"],
+          skippedLots: [],
+        });
+      });
+
+      it("updates the same-named stage on lots that already have it", async () => {
+        mockSync({
+          siblings: [sibling("btto-001-l2")],
+          existing: { "btto-001-l2": "stage-l2" },
+        });
+
+        await post(validBody({ status: "DONE", assigned_to: ["emp-1"] }));
+
+        expect(prismaMock.stage.findFirst).toHaveBeenCalledWith({
+          where: { lot_id: "btto-001-l2", name: "drafting" },
+          select: { stage_id: true },
+        });
+        expect(prismaMock.stage.update).toHaveBeenCalledWith({
+          where: { stage_id: "stage-l2" },
+          data: expect.objectContaining({ name: "drafting", status: "DONE" }),
+        });
+        expect(prismaMock.stage_employee.deleteMany).toHaveBeenCalledWith({
+          where: { stage_id: "stage-l2" },
+        });
+        // only the source lot is created
+        expect(prismaMock.stage.create).toHaveBeenCalledTimes(1);
+      });
+
+      it("skips lots whose date range cannot hold the stage dates", async () => {
+        mockSync({
+          siblings: [
+            sibling("btto-001-l2", {
+              startDate: new Date("2026-03-10T00:00:00.000Z"),
+            }),
+            sibling("btto-001-l3", { startDate: null }),
+            sibling("btto-001-l4"),
+          ],
+        });
+
+        const res = await post(
+          validBody({ startDate: "2026-03-05", endDate: "2026-03-20" }),
+        );
+
+        expect(res.status).toBe(201);
+        expect((await res.json()).sync).toEqual({
+          syncedLots: ["btto-001-l4"],
+          skippedLots: ["btto-001-l2", "btto-001-l3"],
+        });
+      });
+
+      it("syncs an undated stage to lots that have no dates", async () => {
+        mockSync({
+          siblings: [sibling("btto-001-l2", { startDate: null })],
+        });
+
+        const res = await post();
+
+        expect((await res.json()).sync.syncedLots).toEqual(["btto-001-l2"]);
+      });
+
+      it("notes the synced lot count in the log entry", async () => {
+        mockSync({ siblings: [sibling("btto-001-l2")] });
+
+        await post();
+
+        expect(prismaMock.logs.create.mock.calls[0][0].data.description).toBe(
+          "Stage created successfully: drafting for lot: btto-001-l1 and project: Smith House (synced to 1 other lot(s))",
+        );
       });
     });
 

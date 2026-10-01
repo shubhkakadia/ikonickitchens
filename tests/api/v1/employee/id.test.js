@@ -228,6 +228,7 @@ describe("PATCH /api/v1/employee/[id]", () => {
       ...data,
     }));
     prismaMock.media.delete.mockResolvedValue({});
+    prismaMock.media.update.mockResolvedValue({});
     prismaMock.media.create.mockResolvedValue({ id: "new-media" });
     prismaMock.logs.create.mockResolvedValue({});
     uploadFile.mockResolvedValue(UPLOAD_RESULT);
@@ -467,16 +468,19 @@ describe("PATCH /api/v1/employee/[id]", () => {
     });
 
     describe("photo", () => {
-      it("uploads a new photo and links it when there was none", async () => {
+      it("uploads a new photo under a unique name and links it when there was none", async () => {
         const res = await patchForm({ image: testFile("new.jpg") });
 
         expect(res.status).toBe(200);
         expect((await res.json()).imageWarning).toBeUndefined();
         expect(prismaMock.media.delete).not.toHaveBeenCalled();
+        expect(prismaMock.media.update).not.toHaveBeenCalled();
         expect(uploadFile).toHaveBeenCalledWith(expect.any(File), {
           uploadDir: "mediauploads",
           subDir: "employees",
-          filenameStrategy: "id-based",
+          filenameStrategy: "unique",
+          allowedGroups: ["image"],
+          maxSize: 10 * 1024 * 1024,
           idPrefix: ID,
         });
         expect(prismaMock.media.create).toHaveBeenCalledWith({
@@ -496,42 +500,41 @@ describe("PATCH /api/v1/employee/[id]", () => {
         });
       });
 
-      it("replaces an existing photo: removes the old one, then uploads", async () => {
+      it("uploads the new photo first, then swaps and soft deletes the old one in one transaction", async () => {
         mockUpdate(withPhoto());
         const order = [];
-        prismaMock.media.delete.mockImplementation(async () =>
-          order.push("delete old row"),
-        );
-        deleteFileByRelativePath.mockImplementation(async () =>
-          order.push("delete old file"),
-        );
         uploadFile.mockImplementation(async () => {
           order.push("upload new");
           return UPLOAD_RESULT;
         });
+        prismaMock.media.create.mockImplementation(async () => {
+          order.push("create new row");
+          return { id: "new-media" };
+        });
+        prismaMock.media.update.mockImplementation(async () => {
+          order.push("soft delete old row");
+          return {};
+        });
 
         await patchForm({ image: testFile("new.jpg") });
 
-        expect(prismaMock.employees.update).toHaveBeenCalledWith({
-          where: { id: "emp-uuid" },
-          data: { image_id: null },
-        });
-        expect(prismaMock.media.delete).toHaveBeenCalledWith({
-          where: { id: "old-media" },
-        });
-        expect(deleteFileByRelativePath).toHaveBeenCalledWith(
-          "mediauploads/employees/EMP-7-old.webp",
-        );
         expect(order).toEqual([
-          "delete old row",
-          "delete old file",
           "upload new",
+          "create new row",
+          "soft delete old row",
         ]);
+        expect(prismaMock.media.update).toHaveBeenCalledWith({
+          where: { id: "old-media" },
+          data: { is_deleted: true },
+        });
+        // soft delete only: the old row and file are kept
+        expect(prismaMock.media.delete).not.toHaveBeenCalled();
+        expect(deleteFileByRelativePath).not.toHaveBeenCalled();
+        // the swap is atomic: the photo update and soft delete share a transaction
+        expect(prismaMock.$transaction).toHaveBeenCalledOnce();
       });
 
-      // Current behaviour (data loss): the old photo is deleted before the
-      // new upload is attempted, so a failed upload leaves no photo at all.
-      it("loses the old photo when the new upload fails", async () => {
+      it("keeps the old photo when the new upload fails", async () => {
         mockUpdate(withPhoto());
         uploadFile.mockRejectedValue(new Error("virus detected"));
 
@@ -541,31 +544,54 @@ describe("PATCH /api/v1/employee/[id]", () => {
         expect((await res.json()).imageWarning).toBe(
           "Employee updated, but image upload failed",
         );
-        expect(prismaMock.media.delete).toHaveBeenCalledWith({
-          where: { id: "old-media" },
-        });
-        expect(deleteFileByRelativePath).toHaveBeenCalled();
+        // nothing about the existing photo was touched
+        expect(prismaMock.media.update).not.toHaveBeenCalled();
+        expect(prismaMock.media.delete).not.toHaveBeenCalled();
+        expect(deleteFileByRelativePath).not.toHaveBeenCalled();
+        expect(prismaMock.employees.update).toHaveBeenCalledTimes(1);
       });
 
-      it("removes the photo when remove_image is 'true'", async () => {
+      it("keeps the old photo and removes the new file when linking it fails", async () => {
+        mockUpdate(withPhoto());
+        prismaMock.media.create.mockRejectedValue(new Error("DB down"));
+
+        const res = await patchForm({ image: testFile() });
+
+        expect(res.status).toBe(200);
+        expect((await res.json()).imageWarning).toBe(
+          "Employee updated, but image upload failed",
+        );
+        expect(prismaMock.media.update).not.toHaveBeenCalled();
+        expect(deleteFileByRelativePath).toHaveBeenCalledWith(
+          UPLOAD_RESULT.relativePath,
+        );
+      });
+
+      it("soft deletes the photo when remove_image is 'true'", async () => {
         mockUpdate(withPhoto());
 
         const res = await patchForm({ remove_image: "true" });
 
         expect(res.status).toBe(200);
         expect((await res.json()).imageWarning).toBeUndefined();
-        expect(prismaMock.media.delete).toHaveBeenCalledWith({
-          where: { id: "old-media" },
+        expect(prismaMock.employees.update).toHaveBeenCalledWith({
+          where: { id: "emp-uuid" },
+          data: { image_id: null },
         });
-        expect(deleteFileByRelativePath).toHaveBeenCalledWith(
-          "mediauploads/employees/EMP-7-old.webp",
-        );
+        expect(prismaMock.media.update).toHaveBeenCalledWith({
+          where: { id: "old-media" },
+          data: { is_deleted: true },
+        });
+        expect(prismaMock.media.delete).not.toHaveBeenCalled();
+        // the file stays on disk for the deleted-media screen
+        expect(deleteFileByRelativePath).not.toHaveBeenCalled();
         expect(uploadFile).not.toHaveBeenCalled();
       });
 
       it("does nothing for remove_image when there is no photo", async () => {
         await patchForm({ remove_image: "true" });
 
+        expect(prismaMock.media.update).not.toHaveBeenCalled();
         expect(prismaMock.media.delete).not.toHaveBeenCalled();
         expect(deleteFileByRelativePath).not.toHaveBeenCalled();
       });
@@ -581,7 +607,7 @@ describe("PATCH /api/v1/employee/[id]", () => {
 
       it("warns when the photo cannot be removed", async () => {
         mockUpdate(withPhoto());
-        deleteFileByRelativePath.mockRejectedValue(new Error("EPERM"));
+        prismaMock.media.update.mockRejectedValue(new Error("DB down"));
 
         const res = await patchForm({ remove_image: "true" });
 

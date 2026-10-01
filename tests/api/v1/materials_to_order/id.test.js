@@ -110,13 +110,22 @@ describe("PATCH /api/v1/materials_to_order/[id]", () => {
   });
 
   // prev = what the transaction reads first; mto = what update/refetch return
-  function mockPatch({ prev = {}, mto = storedMto(), existing = [] } = {}) {
+  // claims = whether the atomic false -> true claim of the completion flag wins
+  function mockPatch({
+    prev = {},
+    mto = storedMto(),
+    existing = [],
+    claims = true,
+  } = {}) {
     prismaMock.materials_to_order.findUnique.mockImplementation(async (args) =>
       args?.select
         ? { used_material_completed: false, is_deleted: false, ...prev }
         : mto,
     );
     prismaMock.materials_to_order.update.mockResolvedValue(mto);
+    prismaMock.materials_to_order.updateMany.mockResolvedValue({
+      count: claims ? 1 : 0,
+    });
     prismaMock.materials_to_order_item.findMany.mockResolvedValue(existing);
     prismaMock.materials_to_order_item.update.mockResolvedValue({});
     prismaMock.materials_to_order_item.createMany.mockResolvedValue({});
@@ -281,6 +290,61 @@ describe("PATCH /api/v1/materials_to_order/[id]", () => {
           message: "Materials to order not found",
         });
         expect(prismaMock.materials_to_order.update).not.toHaveBeenCalled();
+      });
+
+      it.each(["DRAFT", "PARTIALLY_ORDERED", "FULLY_ORDERED", "CLOSED"])(
+        "accepts the MTO status %s",
+        async (status) => {
+          const res = await patch({ status });
+
+          expect(res.status).toBe(200);
+          expect(
+            prismaMock.materials_to_order.update.mock.calls[0][0].data.status,
+          ).toBe(status);
+        },
+      );
+
+      it.each(["SHIPPED", "draft", "", 3, null, { $set: "x" }])(
+        "returns 400 for a status that is not an MTO status (%j)",
+        async (status) => {
+          const res = await patch({ status });
+
+          expect(res.status).toBe(400);
+          expect(await res.json()).toEqual({
+            status: false,
+            message:
+              "status must be one of: DRAFT, PARTIALLY_ORDERED, FULLY_ORDERED, CLOSED",
+          });
+          expect(prismaMock.$transaction).not.toHaveBeenCalled();
+          expect(prismaMock.materials_to_order.update).not.toHaveBeenCalled();
+        },
+      );
+
+      it.each(["true", 1, "yes", null])(
+        "returns 400 when used_material_completed is not a boolean (%j)",
+        async (value) => {
+          const res = await patch({ used_material_completed: value });
+
+          expect(res.status).toBe(400);
+          expect(await res.json()).toEqual({
+            status: false,
+            message: "used_material_completed must be true or false",
+          });
+          expect(prismaMock.$transaction).not.toHaveBeenCalled();
+          expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
+        },
+      );
+
+      it("takes the row locks for an item edit as well", async () => {
+        await patch({ items: [{ item_id: "ITEM-A", quantity: 5 }] });
+
+        expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+      });
+
+      it("takes no row locks for a plain notes update", async () => {
+        await patch({ notes: "x" });
+
+        expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
       });
 
       it("refuses to revert used_material_completed", async () => {
@@ -605,9 +669,10 @@ describe("PATCH /api/v1/materials_to_order/[id]", () => {
         const res = await patch({ used_material_completed: true });
 
         expect(res.status).toBe(200);
+        // the flag is set by the atomic claim, not by the general update
         expect(
           prismaMock.materials_to_order.update.mock.calls[0][0].data,
-        ).toEqual({ used_material_completed: true });
+        ).toEqual({});
         expect(prismaMock.item.updateMany).toHaveBeenCalledTimes(1);
         expect(prismaMock.item.updateMany).toHaveBeenCalledWith({
           where: { item_id: "ITEM-A", quantity: { gte: 3 } },
@@ -658,6 +723,273 @@ describe("PATCH /api/v1/materials_to_order/[id]", () => {
         expect(res.status).toBe(200);
         expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
         expect(prismaMock.stock_transaction.create).not.toHaveBeenCalled();
+        expect(prismaMock.materials_to_order.updateMany).not.toHaveBeenCalled();
+      });
+
+      describe("claiming the completion (double clicks and retries)", () => {
+        it("claims the flag with an atomic false -> true update", async () => {
+          await patch({ used_material_completed: true });
+
+          expect(prismaMock.materials_to_order.updateMany).toHaveBeenCalledWith(
+            {
+              where: { id: ID, used_material_completed: false },
+              data: { used_material_completed: true },
+            },
+          );
+        });
+
+        it("claims before it touches any stock", async () => {
+          await patch({ used_material_completed: true });
+
+          expect(
+            prismaMock.materials_to_order.updateMany.mock
+              .invocationCallOrder[0],
+          ).toBeLessThan(
+            prismaMock.item.updateMany.mock.invocationCallOrder[0],
+          );
+        });
+
+        it("consumes nothing when another request already claimed it", async () => {
+          // this request read `false`, but the claim finds the flag already set
+          mockPatch({ claims: false });
+          prismaMock.materials_to_order_item.findMany.mockResolvedValue(
+            mtoItems(),
+          );
+
+          const res = await patch({ used_material_completed: true });
+
+          expect(res.status).toBe(200);
+          expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
+          expect(
+            prismaMock.materials_to_order_item.update,
+          ).not.toHaveBeenCalled();
+          expect(prismaMock.stock_transaction.create).not.toHaveBeenCalled();
+        });
+
+        it("decrements stock once when the same request arrives twice at once", async () => {
+          // A stateful stand-in for the flag: the first claim wins, every
+          // later one finds it set, as the database's conditional update does.
+          let completed = false;
+          prismaMock.materials_to_order.updateMany.mockImplementation(
+            async ({ where }) => {
+              if (where.used_material_completed === false && !completed) {
+                completed = true;
+                return { count: 1 };
+              }
+              return { count: 0 };
+            },
+          );
+
+          const [a, b] = await Promise.all([
+            patch({ used_material_completed: true }),
+            patch({ used_material_completed: true }),
+          ]);
+
+          expect([a.status, b.status]).toEqual([200, 200]);
+          expect(prismaMock.item.updateMany).toHaveBeenCalledTimes(1);
+          expect(prismaMock.stock_transaction.create).toHaveBeenCalledTimes(1);
+        });
+
+        it("locks the lines and then the MTO row before reading the flag", async () => {
+          await patch({ used_material_completed: true });
+
+          expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+          const [lines, mtoRow] = prismaMock.$queryRaw.mock.calls;
+          expect(lines[0].join("?")).toMatch(
+            /FROM materials_to_order_item[\s\S]*ORDER BY id[\s\S]*FOR UPDATE/,
+          );
+          expect(lines.slice(1)).toEqual([ID]);
+          expect(mtoRow[0].join("?")).toMatch(
+            /FROM materials_to_order\s[\s\S]*FOR UPDATE/,
+          );
+          expect(mtoRow.slice(1)).toEqual([ID]);
+
+          const flagRead =
+            prismaMock.materials_to_order.findUnique.mock
+              .invocationCallOrder[0];
+          expect(prismaMock.$queryRaw.mock.invocationCallOrder[1]).toBeLessThan(
+            flagRead,
+          );
+        });
+      });
+
+      describe("reserved stock", () => {
+        // Line mi-1 (ITEM-A) still needs 3 (5 required, 2 used); line mi-2
+        // (ITEM-B) is fully used. `byLine` maps an MTO line id to its
+        // reservations.
+        const reservation = (overrides = {}) => ({
+          id: "r1",
+          item_id: "ITEM-A",
+          mto_id: "mi-1",
+          quantity: 2,
+          used_quantity: 0,
+          ...overrides,
+        });
+        const withReservations = (byLine) =>
+          prismaMock.reserve_item_stock.findMany.mockImplementation(
+            async ({ where }) => byLine[where.mto_id] ?? [],
+          );
+
+        const ledgerRows = () =>
+          prismaMock.stock_transaction.create.mock.calls.map(
+            (c) => c[0].data.quantity,
+          );
+
+        it("reads each line's own reservations, oldest first", async () => {
+          withReservations({});
+
+          await patch({ used_material_completed: true });
+
+          expect(prismaMock.reserve_item_stock.findMany).toHaveBeenCalledWith({
+            where: { item_id: "ITEM-A", mto_id: "mi-1" },
+            orderBy: { createdAt: "asc" },
+          });
+          expect(prismaMock.reserve_item_stock.findMany).toHaveBeenCalledWith({
+            where: { item_id: "ITEM-B", mto_id: "mi-2" },
+            orderBy: { createdAt: "asc" },
+          });
+        });
+
+        it("uses reserved units first and takes only the rest from stock", async () => {
+          // needs 3, 2 are reserved (already out of stock): take 1 from stock
+          withReservations({ "mi-1": [reservation({ quantity: 2 })] });
+
+          const res = await patch({ used_material_completed: true });
+
+          expect(res.status).toBe(200);
+          expect(prismaMock.item.updateMany).toHaveBeenCalledTimes(1);
+          expect(prismaMock.item.updateMany).toHaveBeenCalledWith({
+            where: { item_id: "ITEM-A", quantity: { gte: 1 } },
+            data: { quantity: { decrement: 1 } },
+          });
+          // the ledger still records everything that was used
+          expect(ledgerRows()).toEqual([3]);
+        });
+
+        it("takes nothing from stock when the reservations cover the whole need", async () => {
+          withReservations({ "mi-1": [reservation({ quantity: 3 })] });
+
+          await patch({ used_material_completed: true });
+
+          expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
+          expect(prismaMock.item.update).not.toHaveBeenCalled();
+          expect(ledgerRows()).toEqual([3]);
+        });
+
+        it("removes every reservation on the line, so none is left behind", async () => {
+          withReservations({
+            "mi-1": [
+              reservation({ id: "r1", quantity: 2 }),
+              reservation({ id: "r2", quantity: 1 }),
+            ],
+          });
+
+          await patch({ used_material_completed: true });
+
+          expect(
+            prismaMock.reserve_item_stock.delete.mock.calls.map(
+              (c) => c[0].where.id,
+            ),
+          ).toEqual(["r1", "r2"]);
+        });
+
+        it("returns reserved units that turn out not to be needed to stock", async () => {
+          // needs 3, but 5 are reserved: 2 go back
+          withReservations({ "mi-1": [reservation({ quantity: 5 })] });
+
+          await patch({ used_material_completed: true });
+
+          expect(prismaMock.item.update).toHaveBeenCalledWith({
+            where: { item_id: "ITEM-A" },
+            data: { quantity: { increment: 2 } },
+          });
+          expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
+          expect(prismaMock.reserve_item_stock.delete).toHaveBeenCalledWith({
+            where: { id: "r1" },
+          });
+        });
+
+        it("counts only the unused part of a partly used reservation", async () => {
+          // 5 reserved but 3 already used (and counted in quantity_used):
+          // 2 left; needs 3, so 1 comes from stock
+          withReservations({
+            "mi-1": [reservation({ quantity: 5, used_quantity: 3 })],
+          });
+
+          await patch({ used_material_completed: true });
+
+          expect(prismaMock.item.updateMany).toHaveBeenCalledWith({
+            where: { item_id: "ITEM-A", quantity: { gte: 1 } },
+            data: { quantity: { decrement: 1 } },
+          });
+          expect(prismaMock.item.update).not.toHaveBeenCalled();
+        });
+
+        it("spreads the need over several reservations, oldest first", async () => {
+          // needs 3: r1 gives 2, r2 gives 1 and has 4 left over
+          withReservations({
+            "mi-1": [
+              reservation({ id: "r1", quantity: 2 }),
+              reservation({ id: "r2", quantity: 5 }),
+            ],
+          });
+
+          await patch({ used_material_completed: true });
+
+          expect(prismaMock.item.update).toHaveBeenCalledTimes(1);
+          expect(prismaMock.item.update).toHaveBeenCalledWith({
+            where: { item_id: "ITEM-A" },
+            data: { quantity: { increment: 4 } },
+          });
+          expect(prismaMock.item.updateMany).not.toHaveBeenCalled();
+        });
+
+        it("releases reservations on a line that was already fully used", async () => {
+          withReservations({
+            "mi-2": [
+              reservation({ id: "r9", item_id: "ITEM-B", mto_id: "mi-2" }),
+            ],
+          });
+
+          await patch({ used_material_completed: true });
+
+          expect(prismaMock.item.update).toHaveBeenCalledWith({
+            where: { item_id: "ITEM-B" },
+            data: { quantity: { increment: 2 } },
+          });
+          expect(prismaMock.reserve_item_stock.delete).toHaveBeenCalledWith({
+            where: { id: "r9" },
+          });
+          // nothing was used on that line, so nothing is recorded for it
+          expect(ledgerRows()).toEqual([3]);
+        });
+
+        it("reports the shortfall that stock has to cover, not the reserved part", async () => {
+          withReservations({ "mi-1": [reservation({ quantity: 2 })] });
+          prismaMock.item.updateMany.mockResolvedValue({ count: 0 });
+          prismaMock.item.findUnique.mockResolvedValue({ quantity: 0 });
+
+          const res = await patch({ used_material_completed: true });
+
+          expect(res.status).toBe(400);
+          expect((await res.json()).message).toBe(
+            "Not enough quantity in inventory. Available: 0, Requested: 1",
+          );
+          expect(prismaMock.logs.create).not.toHaveBeenCalled();
+        });
+
+        it("makes no reservation changes when the completion was already claimed", async () => {
+          mockPatch({ claims: false });
+          prismaMock.materials_to_order_item.findMany.mockResolvedValue(
+            mtoItems(),
+          );
+          withReservations({ "mi-1": [reservation()] });
+
+          await patch({ used_material_completed: true });
+
+          expect(prismaMock.reserve_item_stock.delete).not.toHaveBeenCalled();
+          expect(prismaMock.item.update).not.toHaveBeenCalled();
+        });
       });
 
       it("returns 400 when inventory is too low", async () => {

@@ -22,7 +22,6 @@ const MIME_TYPES = {
   ".jpeg": "image/jpeg",
   ".webp": "image/webp",
   ".gif": "image/gif",
-  ".svg": "image/svg+xml",
   ".pdf": "application/pdf",
   ".mp4": "video/mp4",
   ".webm": "video/webm",
@@ -31,6 +30,22 @@ const MIME_TYPES = {
   ".avi": "video/x-msvideo",
   ".mkv": "video/x-matroska",
 };
+
+// Only these types may render inline on our origin. Everything else (including
+// legacy SVG/HTML uploads, which can run script) is forced to download.
+const INLINE_SAFE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "video/mp4",
+  "video/webm",
+  "video/ogg",
+  "video/quicktime",
+  "video/x-msvideo",
+  "video/x-matroska",
+]);
 
 function getMimeType(filePath) {
   return (
@@ -138,15 +153,22 @@ export async function serveMediaFile(request, segments) {
   if (!stat.isFile()) return notFound();
 
   const fileSize = stat.size;
+  const mimeType = getMimeType(absolutePath);
   const headers = {
-    "Content-Type": getMimeType(absolutePath),
+    "Content-Type": mimeType,
     "Cache-Control": CACHE_CONTROL,
     "Accept-Ranges": "bytes",
     "X-Content-Type-Options": "nosniff",
   };
+  // Chrome's PDF viewer doesn't work under a sandboxed CSP, and PDFs can't run
+  // script on our origin, so they are the one exception.
+  if (mimeType !== "application/pdf") {
+    headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
+  }
 
   const forceDownload =
-    new URL(request.url).searchParams.get("download") === "true";
+    new URL(request.url).searchParams.get("download") === "true" ||
+    !INLINE_SAFE_TYPES.has(mimeType);
   if (forceDownload) {
     const filename = path.basename(absolutePath).replace(/["\\\r\n]/g, "_");
     headers["Content-Disposition"] = `attachment; filename="${filename}"`;

@@ -162,6 +162,25 @@ describe("PATCH /api/v1/project/[id]", () => {
       expect(updateData()).toEqual({ client_id: "client-2" });
     });
 
+    it.each([
+      [true, true],
+      [false, false],
+    ])("sets sync_all_lots to %j on its own", async (input, stored) => {
+      const res = await patch({ sync_all_lots: input });
+
+      expect(res.status).toBe(200);
+      expect(updateData()).toEqual({
+        client_id: "client-1",
+        sync_all_lots: stored,
+      });
+    });
+
+    it("leaves sync_all_lots alone when it is not sent", async () => {
+      await patch({ name: "Renamed" });
+
+      expect(updateData()).not.toHaveProperty("sync_all_lots");
+    });
+
     it("moves the project to another client, lowercasing the id for the lookup", async () => {
       await patch({ client_id: "CLIENT-2" });
 

@@ -8,6 +8,9 @@ import {
   uploadFile,
   validateMultipartRequest,
   getFileFromFormData,
+  MAX_IMAGE_BODY,
+  MAX_IMAGE_SIZE,
+  uploadLimitResponse,
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
@@ -28,7 +31,7 @@ export async function POST(request) {
     });
     if (authError) return authError;
 
-    const formData = await validateMultipartRequest(request);
+    const formData = await validateMultipartRequest(request, MAX_IMAGE_BODY);
     const body = Object.fromEntries(formData.entries());
     const imageFile = getFileFromFormData(formData, "image");
 
@@ -66,6 +69,17 @@ export async function POST(request) {
         {
           status: false,
           message: `Missing required fields: ${missingFields.join(", ")}`,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!/^[A-Za-z0-9_-]{1,100}$/.test(String(employee_id).trim())) {
+      return NextResponse.json(
+        {
+          status: false,
+          message:
+            "employee_id may only contain letters, numbers, hyphens and underscores",
         },
         { status: 400 },
       );
@@ -146,6 +160,8 @@ export async function POST(request) {
           uploadDir: "mediauploads",
           subDir: "employees",
           filenameStrategy: "id-based",
+          allowedGroups: ["image"],
+          maxSize: MAX_IMAGE_SIZE,
           idPrefix: employee_id,
         });
 
@@ -204,6 +220,9 @@ export async function POST(request) {
       { status: 201 },
     );
   } catch (error) {
+    const tooLarge = uploadLimitResponse(error);
+    if (tooLarge) return tooLarge;
+
     console.error("Error in POST /api/v1/employee/create:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },

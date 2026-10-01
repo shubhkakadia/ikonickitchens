@@ -1,6 +1,8 @@
 import crypto from "crypto";
 
 // Fields only a master-admin may read or write through the employee API.
+// The numbers in MASKED_FIELDS are the exception on reads: every staff user
+// sees them masked, and only master-admin can reveal the full value.
 export const SENSITIVE_EMPLOYEE_FIELDS = [
   "dob",
   "address",
@@ -13,9 +15,20 @@ export const SENSITIVE_EMPLOYEE_FIELDS = [
   "abn_number",
 ];
 
-// Encrypted at rest (AES-256-GCM); shown masked even to master-admin.
-const ENCRYPTED_FIELDS = ["tfn_number", "bank_account_number"];
+// Encrypted at rest (AES-256-GCM).
+const ENCRYPTED_FIELDS = [
+  "tfn_number",
+  "bank_account_number",
+  "supper_account_number",
+];
+// Always returned masked (***1234), for every role.
 const MASKED_FIELDS = [
+  "tfn_number",
+  "bank_account_number",
+  "supper_account_number",
+];
+// Fields master-admin may reveal in full via the reveal endpoint.
+export const REVEALABLE_FIELDS = [
   "tfn_number",
   "bank_account_number",
   "supper_account_number",
@@ -43,9 +56,12 @@ const NON_SENSITIVE_SCALARS = [
   "is_deleted",
 ];
 
-// Shared select for every caller below master-admin: no financial/PII fields.
+// Shared select for every caller below master-admin: no financial/PII fields
+// except the masked numbers (masked again in presentEmployee).
 export const EMPLOYEE_PUBLIC_SELECT = {
-  ...Object.fromEntries(NON_SENSITIVE_SCALARS.map((f) => [f, true])),
+  ...Object.fromEntries(
+    [...NON_SENSITIVE_SCALARS, ...MASKED_FIELDS].map((f) => [f, true]),
+  ),
   image: true,
 };
 
@@ -118,14 +134,15 @@ export const isMaskedValue = (value) =>
   typeof value === "string" && value.startsWith("***");
 
 // Response shape for one employee row. Non-master rows were already
-// restricted by the select; this also strips them defensively and masks
-// the number fields for master-admin.
+// restricted by the select; this also strips the hidden fields defensively.
+// The number fields are masked for every role.
 export function presentEmployee(employee, auth) {
   if (!employee) return employee;
   const out = { ...employee };
   if (!isMasterAdmin(auth)) {
-    for (const f of SENSITIVE_EMPLOYEE_FIELDS) delete out[f];
-    return out;
+    for (const f of SENSITIVE_EMPLOYEE_FIELDS) {
+      if (!MASKED_FIELDS.includes(f)) delete out[f];
+    }
   }
   for (const f of MASKED_FIELDS) {
     if (out[f]) out[f] = maskTail(decryptValue(out[f]));

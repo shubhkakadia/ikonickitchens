@@ -219,6 +219,17 @@ describe("POST /api/v1/employee/create", () => {
         },
       );
 
+      it.each(["../../public/x", "a/b", "a\b", "EMP 7", "x".repeat(101)])(
+        "returns 400 when employee_id is unsafe (%s)",
+        async (employee_id) => {
+          const res = await post(validFields({ employee_id }));
+
+          expect(res.status).toBe(400);
+          expect(uploadFile).not.toHaveBeenCalled();
+          expect(prismaMock.employees.create).not.toHaveBeenCalled();
+        },
+      );
+
       it("rejects whitespace-only values", async () => {
         const res = await post(validFields({ first_name: "   " }));
 
@@ -291,6 +302,8 @@ describe("POST /api/v1/employee/create", () => {
           uploadDir: "mediauploads",
           subDir: "employees",
           filenameStrategy: "id-based",
+          allowedGroups: ["image"],
+          maxSize: 10 * 1024 * 1024,
           idPrefix: "EMP-7",
         });
         expect(uploadFile.mock.calls[0][0].name).toBe("photo.jpg");

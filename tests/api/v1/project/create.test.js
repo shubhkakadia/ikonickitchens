@@ -60,6 +60,7 @@ describe("POST /api/v1/project/create", () => {
             name: "Smith House",
             project_id: "ikc-btto-0001",
             client_id: "client-1",
+            sync_all_lots: false,
             lots: [],
           },
         });
@@ -165,7 +166,20 @@ describe("POST /api/v1/project/create", () => {
           name: "Standalone",
           project_id: "abc-123",
           client_id: null,
+          sync_all_lots: false,
         });
+      });
+
+      it.each([
+        [true, true],
+        [false, false],
+        ["true", false],
+        [1, false],
+        [undefined, false],
+      ])("stores sync_all_lots %j as %j", async (input, stored) => {
+        await post(validBody({ sync_all_lots: input }));
+
+        expect(projectData().sync_all_lots).toBe(stored);
       });
 
       it.each([

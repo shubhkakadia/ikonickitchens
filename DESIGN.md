@@ -5,6 +5,16 @@
 > Where the codebase disagrees with itself, this document picks the winner and marks the
 > loser as **deprecated**. New code follows this document; old code migrates opportunistically.
 
+**This project has two design languages. Do not mix them.**
+
+| Surface                   | Where it lives                                                    | Character                                                                                                 | Sections |
+| ------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- |
+| **Admin dashboard**       | `src/app/admin/**`, `src/components/*`                            | Dense, flat, navy, slate neutrals, rounded corners, Tailwind utilities                                    | §1–§15   |
+| **Public marketing site** | Pages wrapped in `<MarketingShell>` (`src/components/marketing/`) | Editorial, warm paper and ink, brand red, square corners, generous whitespace, `.marketing-*` CSS classes | §16      |
+
+Section numbers are stable — code comments cite them (e.g. `DESIGN.md 5.3`). Add new
+sections at the end; never renumber.
+
 **Rule of thumb**: If you are about to invent a value (a font size, a radius, a padding, a
 colour), stop and pick the nearest one from this document instead.
 
@@ -26,13 +36,15 @@ colour), stop and pick the nearest one from this document instead.
 12. [Dark Mode](#12-dark-mode)
 13. [Accessibility Rules](#13-accessibility-rules)
 14. [Known Debt](#14-known-debt)
+15. [UI/UX Rules (Admin)](#15-uiux-rules-admin)
+16. [Public Marketing Site](#16-public-marketing-site)
 
 ---
 
 ## 1. Foundations
 
-| Concern      | Decision                                                                 |
-| ------------ | ------------------------------------------------------------------------ |
+| Concern      | Decision                                                                  |
+| ------------ | ------------------------------------------------------------------------- |
 | Styling      | Tailwind CSS v4 utility classes in JSX. No CSS modules for new work.      |
 | Theme source | `src/app/globals.css` — the `@theme inline` block and the `:root` block.  |
 | Base unit    | **4px**. Every spacing, size and radius value is a multiple of 4 (or 2).  |
@@ -43,7 +55,7 @@ Do **not** add new CSS to `globals.css` unless it is a token or a genuinely glob
 primitive. That file is already 2,900+ lines and most of it is per-page overrides.
 
 > ⚠️ **Adding a theme token: keep namespaces grouped.** Inside the `@theme inline` block,
-> a `--color-*` declaration placed *after* the `--font-*` declarations is silently ignored —
+> a `--color-*` declaration placed _after_ the `--font-*` declarations is silently ignored —
 > the utility is never generated and the class resolves to nothing, with no build error.
 > Add new colours alongside the existing `--color-*` entries, fonts alongside `--font-*`.
 > After adding one, confirm the utility actually exists before relying on it:
@@ -58,10 +70,10 @@ primitive. That file is already 2,900+ lines and most of it is per-page override
 
 ### 2.1 Font families
 
-| Role                | Token                 | Family                     | Use for                                     |
-| ------------------- | --------------------- | -------------------------- | ------------------------------------------- |
-| **Primary (all UI)**| `var(--font-archivo)` | Archivo                    | Everything — admin, public site, headings, body |
-| Monospace           | `font-mono`           | Geist Mono                 | IDs, codes, SKUs, timestamps, numeric tables |
+| Role                 | Token                 | Family     | Use for                                         |
+| -------------------- | --------------------- | ---------- | ----------------------------------------------- |
+| **Primary (all UI)** | `var(--font-archivo)` | Archivo    | Everything — admin, public site, headings, body |
+| Monospace            | `font-mono`           | Geist Mono | IDs, codes, SKUs, timestamps, numeric tables    |
 
 - Archivo is loaded in [layout.jsx](src/app/layout.jsx) via `next/font/google` and is the
   de-facto family across the app. It is the **only** UI typeface.
@@ -77,17 +89,18 @@ that line already appears ~30 times in `globals.css` and is pure duplication.
 ### 2.2 Type scale
 
 Use only these steps. `text-sm` is the **default body size** for the admin — not `text-base`.
+This is the **admin** scale. The public site has its own scale in §16.3.
 
-| Class       | Size      | Line height | Use for                                                    |
-| ----------- | --------- | ----------- | ---------------------------------------------------------- |
-| `text-xs`   | 12px      | 16px        | Table headers, badges, helper text, timestamps, metadata    |
-| `text-sm`   | 14px      | 20px        | **Default.** Body copy, labels, inputs, buttons, table cells |
-| `text-base` | 16px      | 24px        | Public-site body copy only                                  |
-| `text-lg`   | 18px      | 28px        | Card titles, modal titles, section headings                 |
-| `text-xl`   | 20px      | 28px        | Page titles (admin)                                         |
-| `text-2xl`  | 24px      | 32px        | Major page titles, dashboard stat numbers                   |
-| `text-3xl`  | 30px      | 36px        | Public-site section headings                                |
-| `text-4xl`+ | 36px+     | —           | Public-site hero headlines only. Never in the admin.        |
+| Class       | Size  | Line height | Use for                                                                                                     |
+| ----------- | ----- | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| `text-xs`   | 12px  | 16px        | Table headers, badges, helper text, timestamps, metadata                                                    |
+| `text-sm`   | 14px  | 20px        | **Default.** Body copy, labels, inputs, buttons, table cells                                                |
+| `text-base` | 16px  | 24px        | Rare. Long-form read-only text (notes, rich-text output)                                                    |
+| `text-lg`   | 18px  | 28px        | Card titles, modal titles, section headings                                                                 |
+| `text-xl`   | 20px  | 28px        | Page titles (admin)                                                                                         |
+| `text-2xl`  | 24px  | 32px        | Major page titles, dashboard stat numbers                                                                   |
+| `text-3xl`  | 30px  | 36px        | Only for a single live hero figure (the clock-punch timer) and the login heading. Pair with `tabular-nums`. |
+| `text-4xl`+ | 36px+ | —           | **Never in the admin.**                                                                                     |
 
 Avoid arbitrary sizes (`text-[10px]`, `text-[13px]`). If something must be smaller than
 `text-xs`, it is probably not important enough to show.
@@ -96,19 +109,20 @@ Avoid arbitrary sizes (`text-[10px]`, `text-[13px]`). If something must be small
 
 Archivo is loaded with weights **300, 400, 500, 600** only.
 
-| Class           | Weight | Use for                                              |
-| --------------- | ------ | ---------------------------------------------------- |
-| `font-normal`   | 400    | Body copy, table cell values                          |
+| Class           | Weight | Use for                                                  |
+| --------------- | ------ | -------------------------------------------------------- |
+| `font-normal`   | 400    | Body copy, table cell values                             |
 | `font-medium`   | 500    | **Default for UI chrome** — labels, buttons, nav, badges |
-| `font-semibold` | 600    | Card titles, modal titles, emphasised values          |
-| `font-bold`     | 700    | ⚠️ Not loaded — see below                            |
+| `font-semibold` | 600    | Card titles, modal titles, emphasised values             |
+| `font-bold`     | 700    | ⚠️ Not loaded — see below                                |
 
 > ⚠️ **`font-bold` is synthesised.** 700 is not in the Archivo weight list, so the browser
 > fakes it. It renders inconsistently across platforms. **Use `font-semibold` for headings
 > instead.** If real 700 is wanted, add `"700"` to the `weight` array in
 > [layout.jsx](src/app/layout.jsx:17) — do that once, globally, rather than working around it.
 
-`font-light` (300) is reserved for large public-site display text. Never below `text-lg`.
+`font-light` (300) is never used in the admin. On the public site, 300 is the body weight
+and 400 is the display weight (§16.3) — the opposite of the admin.
 
 ### 2.4 Heading conventions (admin)
 
@@ -133,14 +147,14 @@ Archivo is loaded with weights **300, 400, 500, 600** only.
 
 Neutral text is always **slate**, never `gray`/`zinc`/`neutral`.
 
-| Class             | Use for                                       |
-| ----------------- | --------------------------------------------- |
-| `text-slate-900`  | Highest-emphasis headings (sparingly)          |
-| `text-slate-800`  | Page and card titles                           |
-| `text-slate-700`  | **Default body text**, labels                  |
-| `text-slate-600`  | Secondary text, table headers                  |
-| `text-slate-500`  | Tertiary text, hints, placeholders             |
-| `text-slate-400`  | Disabled text, empty-state text, muted icons   |
+| Class            | Use for                                      |
+| ---------------- | -------------------------------------------- |
+| `text-slate-900` | Highest-emphasis headings (sparingly)        |
+| `text-slate-800` | Page and card titles                         |
+| `text-slate-700` | **Default body text**, labels                |
+| `text-slate-600` | Secondary text, table headers                |
+| `text-slate-500` | Tertiary text, hints, placeholders           |
+| `text-slate-400` | Disabled text, empty-state text, muted icons |
 
 ---
 
@@ -148,8 +162,8 @@ Neutral text is always **slate**, never `gray`/`zinc`/`neutral`.
 
 Base unit **4px**. Approved steps only:
 
-| Class step | px  | Typical use                                          |
-| ---------- | --- | ---------------------------------------------------- |
+| Class step | px  | Typical use                                           |
+| ---------- | --- | ----------------------------------------------------- |
 | `0.5`      | 2   | Micro-nudges inside badges                            |
 | `1`        | 4   | Icon-to-text in tight chips                           |
 | `1.5`      | 6   | Icon button padding                                   |
@@ -159,26 +173,26 @@ Base unit **4px**. Approved steps only:
 | `4`        | 16  | **Default padding.** Card padding, form field spacing |
 | `6`        | 24  | Roomy card padding, gaps between sections             |
 | `8`        | 32  | Section separation                                    |
-| `12`       | 48  | Public-site section separation                        |
+| `12`       | 48  | Large empty states only (public-site spacing: §16.5)  |
 
 Avoid `3.5`, `5`, `7`, `9`, `10`, `11` and arbitrary values like `p-[13px]`.
 
 ### 3.1 Standard spacing recipes
 
-| Context                        | Classes                          |
-| ------------------------------ | -------------------------------- |
-| Button padding (default)       | `px-4 py-2`                       |
-| Button padding (compact)       | `px-3 py-1.5`                     |
-| Input padding                  | `px-4 py-3` (form) / `px-3 py-2` (inline/filter) |
-| Card padding                   | `p-4` (dense) / `p-6` (roomy)     |
-| Modal body padding             | `p-6`                             |
-| Table cell padding             | `px-4 py-2` (header) / `px-4 py-3` (row) |
-| Icon-to-label gap              | `gap-2`                           |
-| Between form fields            | `space-y-4`                       |
-| Between form sections          | `space-y-6`                       |
-| Between toolbar controls       | `gap-3`                           |
-| Label to input                 | `mb-1.5`                          |
-| Heading to content             | `mb-4`                            |
+| Context                  | Classes                                          |
+| ------------------------ | ------------------------------------------------ |
+| Button padding (default) | `px-4 py-2`                                      |
+| Button padding (compact) | `px-3 py-1.5`                                    |
+| Input padding            | `px-4 py-3` (form) / `px-3 py-2` (inline/filter) |
+| Card padding             | `p-4` (dense) / `p-6` (roomy)                    |
+| Modal body padding       | `p-6`                                            |
+| Table cell padding       | `px-4 py-2` (header) / `px-4 py-3` (row)         |
+| Icon-to-label gap        | `gap-2`                                          |
+| Between form fields      | `space-y-4`                                      |
+| Between form sections    | `space-y-6`                                      |
+| Between toolbar controls | `gap-3`                                          |
+| Label to input           | `mb-1.5`                                         |
+| Heading to content       | `mb-4`                                           |
 
 ---
 
@@ -189,15 +203,15 @@ Avoid `3.5`, `5`, `7`, `9`, `10`, `11` and arbitrary values like `p-[13px]`.
 > `--radius-sm/md/lg/xl` from `--radius: 0.625rem` (10px). The `rounded-*` classes
 > therefore resolve to different values than stock Tailwind.
 
-| Class          | Actual value  | Use for                                                          |
-| -------------- | ------------- | ---------------------------------------------------------------- |
-| `rounded`      | 4px           | Micro-elements only (colour swatches, tiny tags). Avoid.          |
-| `rounded-sm`   | **6px**       | Inline chips, tight nested elements                               |
-| `rounded-md`   | **8px**       | Compact/secondary buttons, dropdown items, small controls         |
-| `rounded-lg`   | **10px**      | **DEFAULT.** Buttons, inputs, cards, panels, dropdown menus       |
-| `rounded-xl`   | **14px**      | Modals, hero cards, large surfaces                                |
-| `rounded-2xl`  | 16px          | Public-site feature cards only                                    |
-| `rounded-full` | pill          | Badges, status pills, avatars, toggles, circular icon buttons     |
+| Class          | Actual value | Use for                                                                  |
+| -------------- | ------------ | ------------------------------------------------------------------------ |
+| `rounded`      | 4px          | Micro-elements only (colour swatches, tiny tags). Avoid.                 |
+| `rounded-sm`   | **6px**      | Inline chips, tight nested elements                                      |
+| `rounded-md`   | **8px**      | Compact/secondary buttons, dropdown items, small controls                |
+| `rounded-lg`   | **10px**     | **DEFAULT.** Buttons, inputs, cards, panels, dropdown menus              |
+| `rounded-xl`   | **14px**     | Modals, hero cards, large surfaces                                       |
+| `rounded-2xl`  | 16px         | Avoid. Not part of the admin scale. (The public site is square — §16.4.) |
+| `rounded-full` | pill         | Badges, status pills, avatars, toggles, circular icon buttons            |
 
 ### 4.1 The rule
 
@@ -221,42 +235,42 @@ components.
 
 ### 5.1 Brand tokens
 
-| Token                | Value     | Name       | Use for                                       |
-| -------------------- | --------- | ---------- | --------------------------------------------- |
-| `primary`            | `#000080` | Navy       | Primary actions, focus rings, active nav, links |
-| `secondary`          | `#b82f34` | Ikonic Red | Brand accents, public-site CTAs, highlights     |
-| `tertiary`           | `#f4f5f6` | Off-white  | Subtle page/section backgrounds                 |
+| Token       | Value     | Name       | Use for                                                    |
+| ----------- | --------- | ---------- | ---------------------------------------------------------- |
+| `primary`   | `#000080` | Navy       | Primary actions, focus rings, links, toggles, count badges |
+| `secondary` | `#b82f34` | Ikonic Red | Brand accents, public-site CTAs, highlights                |
+| `tertiary`  | `#f4f5f6` | Off-white  | Subtle page/section backgrounds                            |
 
 Use them as `bg-primary`, `text-primary`, `border-primary`, `focus:ring-primary`, and with
 opacity as `bg-primary/10`, `hover:bg-primary/90`.
 
 > ⚠️ **Never hardcode brand hex values in JSX.** `#b92f34` is hardcoded 61 times and is
-> *one digit off* the actual `secondary` token `#b82f34`. Always use the token.
+> _one digit off_ the actual `secondary` token `#b82f34`. Always use the token.
 
 ### 5.2 Neutrals
 
 **Slate is the only neutral ramp.** Do not introduce `gray-*`, `zinc-*` or `neutral-*`.
 
-| Class            | Use for                                            |
-| ---------------- | -------------------------------------------------- |
-| `bg-white`       | Cards, modals, table surfaces, inputs               |
-| `bg-slate-50`    | Page background, table header rows, read-only inputs |
-| `bg-slate-100`   | Hover states, inactive tabs, subtle fills           |
-| `bg-slate-200`   | Dividers-as-fills, disabled toggles                 |
-| `border-slate-200` | **Default border** on cards and panels            |
-| `border-slate-300` | **Default border** on inputs and outlined buttons |
+| Class              | Use for                                            |
+| ------------------ | -------------------------------------------------- |
+| `bg-white`         | Cards, modals, table surfaces, inputs              |
+| `bg-slate-50`      | Table header rows, nested blocks, read-only inputs |
+| `bg-slate-100`     | Hover states, inactive tabs, subtle fills          |
+| `bg-slate-200`     | Dividers-as-fills, disabled toggles                |
+| `border-slate-200` | **Default border** on cards and panels             |
+| `border-slate-300` | **Default border** on inputs and outlined buttons  |
 
 ### 5.3 Semantic colours
 
 Use the `-50/-100` background + `-800` text + `-200` border formula for badges and banners.
 
-| Meaning              | Background       | Text             | Border             |
-| -------------------- | ---------------- | ---------------- | ------------------ |
-| Success / Done       | `bg-green-100`   | `text-green-800` | `border-green-200` |
-| Info / In progress   | `bg-blue-100`    | `text-blue-800`  | `border-blue-200`  |
-| Warning / Pending    | `bg-amber-100`   | `text-amber-800` | `border-amber-200` |
-| Error / Destructive  | `bg-red-100`     | `text-red-800`   | `border-red-200`   |
-| Neutral / Not started| `bg-slate-100`   | `text-slate-800` | `border-slate-200` |
+| Meaning               | Background     | Text             | Border             |
+| --------------------- | -------------- | ---------------- | ------------------ |
+| Success / Done        | `bg-green-100` | `text-green-800` | `border-green-200` |
+| Info / In progress    | `bg-blue-100`  | `text-blue-800`  | `border-blue-200`  |
+| Warning / Pending     | `bg-amber-100` | `text-amber-800` | `border-amber-200` |
+| Error / Destructive   | `bg-red-100`   | `text-red-800`   | `border-red-200`   |
+| Neutral / Not started | `bg-slate-100` | `text-slate-800` | `border-slate-200` |
 
 Solid destructive actions use `bg-red-600 hover:bg-red-700 text-white`.
 
@@ -264,19 +278,19 @@ Solid destructive actions use `bg-red-600 hover:bg-red-700 text-white`.
 
 Keep these consistent everywhere a status is rendered:
 
-| Enum value                              | Colour  |
-| --------------------------------------- | ------- |
-| `DONE`, `COMPLETED`, `FULLY_RECEIVED`, `FULLY_ORDERED` | green   |
-| `IN_PROGRESS`, `ACTIVE`, `ORDERED`, `PARTIALLY_RECEIVED`, `PARTIALLY_ORDERED` | blue |
-| `DRAFT`                                 | amber   |
-| `CANCELLED`                             | red     |
-| `NOT_STARTED`, `NA`, `CLOSED`           | slate   |
+| Enum value                                                                    | Colour |
+| ----------------------------------------------------------------------------- | ------ |
+| `DONE`, `COMPLETED`, `FULLY_RECEIVED`, `FULLY_ORDERED`                        | green  |
+| `IN_PROGRESS`, `ACTIVE`, `ORDERED`, `PARTIALLY_RECEIVED`, `PARTIALLY_ORDERED` | blue   |
+| `DRAFT`                                                                       | amber  |
+| `CANCELLED`                                                                   | red    |
+| `NOT_STARTED`, `NA`, `CLOSED`                                                 | slate  |
 
 Never encode status by colour alone — always include the label text.
 
 ### 5.5 Extended categorical hues
 
-The five semantic hues above cover *meaning*. A few places need to tell apart items
+The five semantic hues above cover _meaning_. A few places need to tell apart items
 that carry no meaning — log action types, chart series. For those, and only those,
 `violet` and `indigo` are also sanctioned, using the same `-100`/`-800` formula.
 
@@ -287,10 +301,10 @@ Never use violet or indigo to mean success, failure, warning or progress.
 Chart libraries (Chart.js, Recharts) take colour strings, not Tailwind classes, so series
 colours live as **named constants** — never inline hex literals scattered through JSX.
 
-| Constant     | Theme token       | Value     | Use for                                 |
-| ------------ | ----------------- | --------- | --------------------------------------- |
-| `SERIES_1`   | `bg-series-1`     | `#3d4fb5` | Primary/single-series bars and sparklines |
-| `SERIES_2`   | `bg-series-2`     | `#b82f34` | Second series when two are compared      |
+| Constant   | Theme token   | Value     | Use for                                   |
+| ---------- | ------------- | --------- | ----------------------------------------- |
+| `SERIES_1` | `bg-series-1` | `#3d4fb5` | Primary/single-series bars and sparklines |
+| `SERIES_2` | `bg-series-2` | `#b82f34` | Second series when two are compared       |
 
 - A single-series magnitude bar is **one hue**; identity is carried by its text label.
 - Bars use `rounded-r` (4px) on the growing end only. Sparkline bars use `rounded-t`.
@@ -307,14 +321,14 @@ colours live as **named constants** — never inline hex literals scattered thro
 banned, including on hover. Separation between surfaces is carried entirely by
 **borders and background tone**.
 
-| Surface                     | Treatment                                          |
-| --------------------------- | -------------------------------------------------- |
-| Page background             | `bg-slate-50`                                       |
-| Card / panel                | `bg-white` + `border border-slate-200`              |
-| Nested / inset block        | `bg-slate-50` + `border border-slate-200`           |
-| Dropdown, popover, menu     | `bg-white` + `border border-slate-300`              |
-| Modal panel                 | `bg-white` + `border border-slate-200` + `bg-black/50` backdrop |
-| Divider                     | `border-t border-slate-200` / `divide-slate-200`    |
+| Surface                 | Treatment                                                                    |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| Page background         | `bg-tertiary` (#f4f5f6) — set once by `AdminShell`; don't re-set it per page |
+| Card / panel            | `bg-white` + `border border-slate-200`                                       |
+| Nested / inset block    | `bg-slate-50` + `border border-slate-200`                                    |
+| Dropdown, popover, menu | `bg-white` + `border border-slate-300`                                       |
+| Modal panel             | `bg-white` + `border border-slate-200` + `bg-black/50` backdrop              |
+| Divider                 | `border-t border-slate-200` / `divide-slate-200`                             |
 
 Rules:
 
@@ -325,7 +339,7 @@ Rules:
 - **Hover is a background or border change, never elevation.** Use `hover:bg-slate-50` for
   rows, `hover:border-primary/25` for clickable tiles.
 - **Borders are 1px on surfaces.** No `border-2` on a card, panel, modal or row. When a
-  surface needs to carry state, use its border *colour* — plus a text label, per §5.3.
+  surface needs to carry state, use its border _colour_ — plus a text label, per §5.3.
   `border-2` is reserved for three things that are not surfaces:
   - a **cut-out ring** on overlapping elements (stacked avatars, a status dot on an icon),
     where `border-2 border-white` masks the shape from what it overlaps;
@@ -353,8 +367,8 @@ The `.card-hover` helper in `globals.css` (`hover:-translate-y-2 hover:shadow-2x
 - Use `transition-colors` for hover/active states. Reach for `transition-all` only when
   more than one property genuinely animates — it currently appears 411 times and most of
   those should be `transition-colors`.
-- `hover:scale-105` and similar transforms are for the **public site only**. The admin does
-  not bounce.
+- `hover:scale-*` and similar transforms are **never** used in the admin. The admin does
+  not bounce. The public site has its own, restrained motion rules — see §16.7.
 - Never animate `width`/`height`/`top`/`left`. Use `transform` and `opacity`.
 - Respect `prefers-reduced-motion` for anything decorative.
 
@@ -364,14 +378,14 @@ The `.card-hover` helper in `globals.css` (`hover:-translate-y-2 hover:shadow-2x
 
 Use only these steps:
 
-| Class    | Layer                                                    |
-| -------- | -------------------------------------------------------- |
-| `z-10`   | Sticky table headers, in-flow overlays                    |
-| `z-20`   | Sticky toolbars, floating action controls                 |
-| `z-30`   | Sidebar, app chrome                                       |
-| `z-40`   | Dropdowns and popovers anchored to chrome                 |
-| `z-50`   | **Modals, dialogs, and their backdrops**                  |
-| `z-[60]` | Toasts (must sit above modals)                            |
+| Class    | Layer                                     |
+| -------- | ----------------------------------------- |
+| `z-10`   | Sticky table headers, in-flow overlays    |
+| `z-20`   | Sticky toolbars, floating action controls |
+| `z-30`   | Sidebar, app chrome                       |
+| `z-40`   | Dropdowns and popovers anchored to chrome |
+| `z-50`   | **Modals, dialogs, and their backdrops**  |
+| `z-[60]` | Toasts (must sit above modals)            |
 
 > ⚠️ `z-100` and `z-9999` exist in the codebase. Both are escape hatches for a stacking
 > context bug, not a solution. Do not add more — fix the stacking context instead.
@@ -390,33 +404,42 @@ All buttons: `rounded-lg`, `text-sm font-medium`, `cursor-pointer`,
 `transition-colors duration-200`, and `disabled:opacity-50 disabled:cursor-not-allowed`.
 
 **Primary**
+
 ```jsx
 <button className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
 ```
 
 **Secondary / outlined**
+
 ```jsx
 <button className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
 ```
 
 **Ghost / tertiary**
+
 ```jsx
 <button className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200">
 ```
 
 **Destructive**
+
 ```jsx
 <button className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
 ```
 
 **Icon-only**
+
 ```jsx
-<button className="cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200" aria-label="Edit">
+<button
+  className="cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+  aria-label="Edit"
+>
   <Pencil className="w-4 h-4" />
 </button>
 ```
 
 Rules:
+
 - Every clickable `<button>` gets `cursor-pointer` — this codebase relies on it explicitly.
 - Icon-only buttons **must** have `aria-label` or a `title`.
 - Loading state: disable the button and swap the leading icon for a spinner. Do not change
@@ -424,11 +447,15 @@ Rules:
 - **Deprecated**: `bg-primary/80 hover:bg-primary`. Primary buttons are full-opacity at rest
   and darken on hover (`hover:bg-primary/90`), never the reverse.
 - **Deprecated**: the `.btn-primary` / `.btn-secondary` `@apply` classes in `globals.css`.
-  They use the hardcoded `#B92F34` and `hover:scale-105`. Public-site legacy only.
+  They use the hardcoded `#B92F34`, `hover:scale-105` and `shadow-lg` — a red, bouncing,
+  elevated button that breaks §5, §6 and §7 at once. They still appear on ~12 admin list
+  pages (e.g. the "Add" button on Clients). Replace with the Primary recipe above when
+  touching those files. The public site uses `.marketing-btn` instead (§16.6).
 
 ### 9.2 Inputs, selects, textareas
 
 **Form field (default)**
+
 ```jsx
 <label className="block text-sm font-medium text-slate-700 mb-1.5">Supplier</label>
 <input
@@ -437,6 +464,7 @@ Rules:
 ```
 
 **Inline / filter field (compact)**
+
 ```jsx
 <input className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
 ```
@@ -461,13 +489,18 @@ No shadow — see §6.
 ### 9.4 Modals
 
 ```jsx
-{/* Backdrop */}
+{
+  /* Backdrop */
+}
 <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4">
   {/* Panel */}
   <div className="bg-white rounded-xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col">
     <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
       <h2 className="text-lg font-semibold text-slate-800">Title</h2>
-      <button className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg" aria-label="Close">
+      <button
+        className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg"
+        aria-label="Close"
+      >
         <X className="w-5 h-5" />
       </button>
     </div>
@@ -476,7 +509,7 @@ No shadow — see §6.
       {/* Cancel (secondary) then Confirm (primary) — primary always rightmost */}
     </div>
   </div>
-</div>
+</div>;
 ```
 
 Standard widths: `max-w-md` (confirm), `max-w-lg` (compact form — a handful of fields),
@@ -512,13 +545,76 @@ require an explicit button.
 
 ### 9.6 Badges & status pills
 
+A badge is a **read-only label for a state or category**. It is never clickable. If it
+needs to be clickable, it is a filter chip or a button, not a badge.
+
+**Anatomy (fixed — do not vary)**
+
+| Property   | Value                                            |
+| ---------- | ------------------------------------------------ |
+| Shape      | `rounded-full`                                   |
+| Padding    | `px-2.5 py-1`                                    |
+| Type       | `text-xs font-medium`                            |
+| Layout     | `inline-flex items-center gap-1`                 |
+| Border     | `border` (1px) in the hue's `-200`               |
+| Fill / ink | hue `-100` background, hue `-800` text           |
+| Icon       | optional, leading, `w-3 h-3`                     |
+| Height     | 24px (results from the above — do not set `h-*`) |
+
 ```jsx
 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
   Done
 </span>
 ```
 
-Count badges on tabs/nav: `bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full`.
+**Variants**
+
+| Variant  | Classes                                                                | Use for                                               |
+| -------- | ---------------------------------------------------------------------- | ----------------------------------------------------- |
+| Success  | `bg-green-100 text-green-800 border-green-200`                         | Done, completed, approved, received                   |
+| Info     | `bg-blue-100 text-blue-800 border-blue-200`                            | In progress, active, ordered, working                 |
+| Warning  | `bg-amber-100 text-amber-800 border-amber-200`                         | Draft, pending, due soon, on break                    |
+| Danger   | `bg-red-100 text-red-800 border-red-200`                               | Cancelled, rejected, overdue, deleted                 |
+| Neutral  | `bg-slate-100 text-slate-800 border-slate-200`                         | Not started, closed, N/A                              |
+| Muted    | `bg-slate-100 text-slate-600 border-slate-200`                         | "Nothing here" states: No break, Not working, No date |
+| Category | `bg-violet-100 text-violet-800` / `bg-indigo-100 text-indigo-800`      | Meaningless categories only (§5.5)                    |
+| Count    | `bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full` | Counts on tabs and nav items                          |
+
+**Use the shared maps — never declare a local colour map.** A status declared in two
+places ends up two colours. These already exist:
+
+| Import                                                                                 | From                                            | Covers                                                    |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------- |
+| `STATUS_COLORS`                                                                        | `@/app/admin/dashboard/lib/format`              | Every lot / stage / MTO / PO status enum (§5.4)           |
+| `ACTION_COLORS`                                                                        | `@/app/admin/dashboard/lib/format`              | `LogAction` values                                        |
+| `BADGE`, `BADGE_TONES`, `COUNT_BADGE`                                                  | `@/app/admin/dashboard/lib/format`              | Badge chrome, the §9.6 tone strings, and the tab-count pill |
+| `daysLeftBadge(days)`                                                                  | `@/app/admin/dashboard/lib/format`              | Due-date severity → `{ label, className }`                |
+| `BADGE`, `actionStyles`, `reviewStyles`, `breakStyles`, `workingStyles`, `formatLabel` | `@/app/admin/employees/punches/lib/punchStyles` | Clock-punch pages; `BADGE` is the canonical chrome string |
+
+```jsx
+import {
+  BADGE,
+  formatLabel,
+} from "@/app/admin/employees/punches/lib/punchStyles";
+import { STATUS_COLORS } from "@/app/admin/dashboard/lib/format";
+
+// STATUS_COLORS / ACTION_COLORS / daysLeftBadge carry their own -200 border,
+// so BADGE + the map is the whole badge.
+<span className={`${BADGE} ${STATUS_COLORS[lot.status]}`}>
+  {formatLabel(lot.status)}
+</span>;
+```
+
+Rules:
+
+- **Label text is title-cased from the enum** (`PARTIALLY_RECEIVED` → "Partially Received")
+  via `formatLabel` / `titleCase`. Never render a raw enum.
+- **One badge per fact.** Do not stack three badges where one sentence would do.
+- **Badges don't wrap.** Add `whitespace-nowrap`; truncate the surrounding cell instead.
+- **Date-severity ramp** (`daysLeftBadge`): overdue → red, due today → amber-100,
+  ≤ 7 days → amber-50, later → green, no date → muted slate.
+- **Status dot** (for very dense rows where a pill won't fit): `w-2 h-2 rounded-full` in the
+  hue's `-500`, always followed by the text label. A dot alone is not allowed (§13.4).
 
 ### 9.7 Toggles
 
@@ -555,12 +651,12 @@ first/last children. Cap height at `max-h-60` / `max-h-96` and scroll.
 
 **Toasts** (`react-toastify`) are the standard mechanism for the outcome of an action.
 
-| Call             | Use for                                                      |
-| ---------------- | ------------------------------------------------------------ |
-| `toast.success`  | A write succeeded. Short: "Purchase order created."           |
-| `toast.error`    | A write failed or a request errored. Say what to do next.     |
-| `toast.warn`     | The action succeeded with a caveat.                           |
-| `toast.info`     | Rare. Prefer inline text.                                     |
+| Call            | Use for                                                   |
+| --------------- | --------------------------------------------------------- |
+| `toast.success` | A write succeeded. Short: "Purchase order created."       |
+| `toast.error`   | A write failed or a request errored. Say what to do next. |
+| `toast.warn`    | The action succeeded with a caveat.                       |
+| `toast.info`    | Rare. Prefer inline text.                                 |
 
 - Never toast on a successful read.
 - Validation errors belong **inline on the field**, not in a toast.
@@ -581,21 +677,21 @@ the great majority of admin surfaces are light-only. The variant is class-based
 
 **Current rule for new work**: design light-first and correct. Add `dark:` variants only if
 you are working inside a component tree that already has them, and then add them
-consistently to *every* colour in that tree — a half-converted component is worse than an
+consistently to _every_ colour in that tree — a half-converted component is worse than an
 unconverted one.
 
 Pairings, when you do add them:
 
-| Light                | Dark                        |
-| -------------------- | --------------------------- |
-| `bg-white`           | `dark:bg-slate-900`         |
-| `bg-slate-50`        | `dark:bg-slate-900/50`      |
-| `bg-slate-100`       | `dark:bg-slate-800`         |
-| `border-slate-200`   | `dark:border-slate-700`     |
-| `border-slate-300`   | `dark:border-slate-600`     |
-| `text-slate-800`     | `dark:text-slate-100`       |
-| `text-slate-700`     | `dark:text-slate-200`       |
-| `text-slate-500`     | `dark:text-slate-400`       |
+| Light              | Dark                    |
+| ------------------ | ----------------------- |
+| `bg-white`         | `dark:bg-slate-900`     |
+| `bg-slate-50`      | `dark:bg-slate-900/50`  |
+| `bg-slate-100`     | `dark:bg-slate-800`     |
+| `border-slate-200` | `dark:border-slate-700` |
+| `border-slate-300` | `dark:border-slate-600` |
+| `text-slate-800`   | `dark:text-slate-100`   |
+| `text-slate-700`   | `dark:text-slate-200`   |
+| `text-slate-500`   | `dark:text-slate-400`   |
 
 ---
 
@@ -622,23 +718,348 @@ Non-negotiable:
 Tracked here so it is not re-litigated in every review. None of these block new work; all of
 them should be fixed opportunistically.
 
-| # | Issue                                                                                                | Fix                                                                          |
-| - | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| 1 | **No shared `<Button>` component.** Button classes are copy-pasted hundreds of times with drift.       | Build `src/components/ui/Button.jsx` with `variant` and `size` props; migrate. |
-| 2 | `font-bold` (700) is used 217 times but weight 700 is not loaded for Archivo — it is synthesised.       | Add `"700"` in [layout.jsx](src/app/layout.jsx:17) or migrate to `font-semibold`. |
-| 3 | `#b92f34` hardcoded 61 times; the `secondary` token is `#b82f34`. Two near-identical reds ship today.  | Pick one, put it in the token, replace all hardcoded hex.                      |
-| 4 | Montserrat and Source Sans Pro are downloaded on every page load and never used.                        | Delete the `@import` at the top of `globals.css`.                              |
-| 5 | `font-family: var(--font-archivo)` is redeclared ~30 times in `globals.css`.                            | Declare once on `body`; delete the rest.                                      |
-| 6 | Two primary-button styles coexist: `bg-primary` and `bg-primary/80 hover:bg-primary`.                   | Standardise on `bg-primary hover:bg-primary/90`.                              |
-| 7 | Six different `<th>` class strings across admin tables.                                                 | Standardise on §9.5; extract a `<DataTable>` when the shared Button lands.     |
-| 8 | `z-100` and `z-9999` escape hatches.                                                                    | Fix the underlying stacking contexts; use the §8 scale.                       |
-| 9 | `transition-all` used 411 times where `transition-colors` would do.                                     | Replace as files are touched.                                                 |
-| 10| Shadows are still on ~290 elements across the admin (pre-flat-UI code).                                | Strip `shadow-*` page by page; replace hover elevation with border/background changes. |
-| 11| Dark mode is ~15% implemented.                                                                          | Decide: finish it or remove the `dark:` variants. Half-done is the worst state.|
+| #   | Issue                                                                                                                                                                                                                                     | Fix                                                                                                                                 |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **No shared `<Button>` component.** Button classes are copy-pasted hundreds of times with drift.                                                                                                                                          | Build `src/components/ui/Button.jsx` with `variant` and `size` props; migrate.                                                      |
+| 2   | `font-bold` (700) is used ~136 times but weight 700 is not loaded for Archivo — it is synthesised. Admin page titles (`<h1 className="text-xl font-bold text-slate-700">`) are the biggest offender.                                      | Add `"700"` in [layout.jsx](src/app/layout.jsx:17) or migrate to `font-semibold text-slate-800`.                                    |
+| 3   | Two near-identical reds ship: the `secondary` token is `#b82f34`; `#b92f34` is hardcoded ~53 times (login, settings, `Navbar`, `footer`, `Carousel`, `gallerypage`), in the scrollbar thumb, and is also the marketing site's `--mk-red`. | Pick one value, set it in both `--color-secondary` and `--mk-red`, replace all hardcoded hex.                                       |
+| 4   | Montserrat and Source Sans Pro are downloaded on every page load and never used.                                                                                                                                                          | Delete the `@import` at the top of `globals.css`.                                                                                   |
+| 5   | `font-family: var(--font-archivo)` is redeclared ~30 times in `globals.css`.                                                                                                                                                              | Declare once on `body`; delete the rest.                                                                                            |
+| 6   | Two primary-button styles coexist: `bg-primary` and `bg-primary/80 hover:bg-primary`.                                                                                                                                                     | Standardise on `bg-primary hover:bg-primary/90`.                                                                                    |
+| 7   | Six different `<th>` class strings across admin tables.                                                                                                                                                                                   | Standardise on §9.5; extract a `<DataTable>` when the shared Button lands.                                                          |
+| 8   | `z-100` and `z-9999` escape hatches.                                                                                                                                                                                                      | Fix the underlying stacking contexts; use the §8 scale.                                                                             |
+| 9   | `transition-all` used 411 times where `transition-colors` would do.                                                                                                                                                                       | Replace as files are touched.                                                                                                       |
+| 10  | Shadows are still on ~210 elements across the admin (pre-flat-UI code).                                                                                                                                                                   | Strip `shadow-*` page by page; replace hover elevation with border/background changes.                                              |
+| 11  | Dark mode is ~15% implemented.                                                                                                                                                                                                            | Decide: finish it or remove the `dark:` variants. Half-done is the worst state.                                                     |
+| 12  | ~~`STATUS_COLORS`, `ACTION_COLORS` and `daysLeftBadge` omit the `-200` border.~~ **Fixed.** They are now built from `BADGE_TONES`, which carries the `-200` border, so `BADGE` + the map is the whole badge. | — |
+| 13  | `.btn-primary` (red, `hover:scale-105`, `shadow-lg`) is still the "Add" button on ~12 admin list pages.                                                                                                                                   | Swap for the §9.1 Primary recipe; then delete `.btn-primary`, `.btn-secondary`, `.card-hover`, `.text-gradient` from `globals.css`. |
+| 14  | The marketing image-modal close button carries the site's only `box-shadow` and a `scale(1.05)` hover.                                                                                                                                    | Remove the shadow; keep the white fill + border.                                                                                    |
+| 15  | `src/styles/_variables.scss` holds a separate TipTap token set (`--tt-*`, a purple brand ramp, its own radii). It is scoped to the editor and is **not** part of this system.                                                             | Leave it inside the editor. Never use `--tt-*` tokens outside `TextEditor/`.                                                        |
+
+---
+
+## 15. UI/UX Rules (Admin)
+
+The admin is a work tool used all day by the people who run the workshop. Optimise for
+**speed, scanability and not losing work**, not for delight.
+
+### 15.1 Core principles
+
+1. **Data first.** Every pixel of chrome competes with the table. Prefer fewer, smaller
+   controls over more, larger ones.
+2. **One primary action per view.** Exactly one `bg-primary` button is visible per page,
+   per modal, per card. Everything else is secondary or ghost.
+3. **Same thing, same look, everywhere.** A status, a button, a date must look identical on
+   every page. If you need a colour map or formatter, import the shared one (§9.6, §15.7).
+4. **Never lose user input.** Forms keep their values on a failed save; a modal with a
+   dirty form does not close on backdrop click.
+5. **Show state, always.** Every async region is visibly loading, empty, errored or filled
+   — never blank.
+6. **Permissions shape the UI.** Users should not see actions they cannot perform (§15.8).
+
+### 15.2 Page layout
+
+Every admin page follows the same skeleton inside `<AdminShell>`:
+
+```
+┌ Sidebar ┬──────────────────────────────────────────────────────────┐
+│         │ Header row:  [h1 Page title]          [secondary] [PRIMARY]│
+│         │ Toolbar:     [search] [filters…]                [view opts]│
+│         │ ┌──────────────────────────────────────────────────────────┐│
+│         │ │ Content card (table / grid / form)                       ││
+│         │ │                                                          ││
+│         │ └──────────────────────────────────────────────────────────┘│
+│         │ PaginationFooter                                           │
+└─────────┴────────────────────────────────────────────────────────────┘
+```
+
+- **Page title** top-left (`text-xl font-semibold text-slate-800`). Primary action
+  top-right. Optional count badge next to the title.
+- **Toolbar** sits directly above the content it filters, `gap-3` between controls.
+- **Content** sits in a single white card (§9.3). Don't nest cards more than one level.
+- Page padding `p-4` (dense) or `p-6`; the page scrolls inside the shell, not the window.
+- **Detail pages** (`/[id]`): back link + record name as title, status badge beside it,
+  record actions top-right, tabs (`tabscontroller`) below the header.
+
+### 15.3 Forms
+
+- **Single column** for forms under ~8 fields; two columns (`grid grid-cols-1 md:grid-cols-2 gap-4`)
+  only for short, related pairs (first/last name, start/end date).
+- **Label above input**, always (§9.2). No placeholder-as-label. Placeholders show an
+  example value, not instructions.
+- **Mark required** fields with a red `*`; don't mark optional ones.
+- **Validate on submit, then on change.** Don't shout at a field the user hasn't left yet.
+  Errors appear inline under the field (`text-xs text-red-600 mt-1`) and focus moves to the
+  first invalid field.
+- **Button order:** `Cancel` (secondary) then `Save` (primary), right-aligned, primary last.
+  Button labels are verbs that say what happens: "Create purchase order", not "Submit".
+- **While saving:** disable the primary button and show a spinner in it; keep its width.
+  Prevent double-submit.
+- **On success:** `toast.success`, then close the modal or navigate. **On failure:** keep the
+  form open with all values intact, `toast.error` with the server message.
+- **Selects** use `<CustomDropdown>` (pass `searchable` when there are more than ~10 options),
+  not a native `<select>`.
+
+### 15.4 Tables & lists
+
+- Default page size comes from `<PaginationFooter>` (options 25 / 50 / 100 / All). Always
+  paginate lists that can grow (see CLAUDE.md → Performance Considerations).
+- **Search** is debounced (300ms) and resets to page 1. Filters reset to page 1.
+- **Sort** indicator on the active column header only; clicking toggles asc/desc.
+- **Row click** opens the record. Row-level actions (edit, delete) are icon-only buttons in
+  a right-aligned actions column, and `stopPropagation` so they don't also open the row.
+- **Truncate, don't wrap,** long text in cells (`truncate max-w-*`) and expose the full value
+  in a `title` attribute.
+- **Numbers and money** right-aligned, `font-mono` or `tabular-nums`, formatted (§15.7).
+- **Empty state** distinguishes "no records yet" (show a create button) from "no results for
+  this filter" (show a "Clear filters" action).
+
+### 15.5 Destructive & irreversible actions
+
+- Use `<DeleteConfirmation>`. Name the record ("Delete purchase order PO-0142?"), and say
+  what else is affected ("3 line items will also be removed").
+- Destructive buttons are `bg-red-600`, and are **never** the default-focused button.
+- Deletes are soft deletes (`is_deleted`) — the copy should say "Delete", not "Permanently
+  delete", unless it really is permanent.
+- Bulk destructive actions state the count: "Delete 12 items".
+
+### 15.6 Navigation & wayfinding
+
+- The sidebar is the one **dark** surface in the admin (slate-900 family). Items:
+  `text-sm font-medium text-slate-300`, `w-4 h-4` icon, `rounded-lg border border-transparent`;
+  hover `bg-slate-800/60 border-slate-700`; active `bg-slate-800 text-white border-slate-600`.
+  Exactly one active item. Collapsed mode shows icons only, with the label in `title`.
+- Prefer real links (`<Link>`) for navigation so middle-click / new-tab works; use buttons
+  for actions. (The sidebar currently navigates with `router.push` buttons — migrate when
+  touched.)
+- Preserve list state (search, filters, page) when the user goes into a record and comes
+  back.
+- Tabs inside a record reflect in the URL when practical so a tab can be linked/refreshed.
+
+### 15.7 Content, copy & formatting
+
+- **Locale is Australian.** Dates, currency and spelling (colour, organisation) follow
+  `en-AU`. Currency is AUD.
+- Use the shared formatters in `@/app/admin/dashboard/lib/format`: `formatCurrency`,
+  `formatCompactCurrency`, `formatQty`, `formatDate`, `formatTime`, `formatTimeAgo`,
+  `titleCase`. Don't hand-roll `toLocaleString` calls.
+- Missing values render as an em dash `—`, never `null`, `undefined`, `N/A` or empty.
+- **Sentence case** for titles, buttons and labels ("Add supplier", not "Add Supplier").
+  Enum labels are the exception — they are title-cased by `formatLabel`.
+- Toast and error copy says what happened and what to do next: "Couldn't save the
+  supplier. Check your connection and try again."
+- Relative times ("5m ago") for activity feeds; absolute dates for records and documents.
+
+### 15.8 Permissions in the UI
+
+- **Hide** navigation and actions for modules the user has no access to (`module_access`).
+- **Disable** (with a `title` explaining why) only when the user has access but the action
+  isn't valid _right now_ — e.g. "Receive" on a PO that is still a draft.
+- `MASTER` users see everything. Never rely on hiding alone — the API enforces it too.
+
+### 15.9 Responsive behaviour
+
+- The admin is **desktop-first** (≥ 1024px is the primary target) but must be usable at
+  tablet width (768px) for workshop use.
+- Below `lg`, two-column forms collapse to one, toolbars wrap, and wide tables scroll
+  horizontally inside their card (`overflow-x-auto`) — the page itself never scrolls sideways.
+- Touch targets in workshop-facing screens (clock-punch, stage updates) are at least 44×44px.
+
+### 15.10 Building a new admin screen — checklist
+
+1. Wrap in `<AdminShell>` / the right `ProtectedRoute` variant.
+2. Lay out header → toolbar → content card → pagination (§15.2).
+3. Use the recipes in §9 verbatim for buttons, inputs, cards, modals, tables, badges.
+4. Import shared maps and formatters; add to them rather than declaring local copies.
+5. Build all four states: loading, empty, error, filled.
+6. Check keyboard: Tab order, visible focus ring, Escape closes modals, Enter submits forms.
+7. Check it at 768px and 1280px.
+8. Grep your diff for `shadow-`, `font-bold`, `gray-`, `#`, `transition-all`, `hover:scale` —
+   each one should be justified or removed.
+
+---
+
+## 16. Public Marketing Site
+
+The public site (home, services, process, workshop, portfolio, kitchens, bathrooms,
+wardrobes, laundry, blogs, inquiries, legal pages) is a **separate, editorial design
+language**. It is built with plain CSS classes prefixed `.marketing-*` in
+[globals.css](src/app/globals.css), scoped under the `.marketing-site` root that
+`<MarketingShell>` renders. None of the admin rules about navy, slate or rounded corners
+apply here.
+
+### 16.1 Principles
+
+1. **Architectural, not app-like.** Think printed lookbook: hairline rules, generous
+   whitespace, big quiet type, full-bleed photography.
+2. **Square.** No rounded corners anywhere.
+3. **Flat.** No shadows. Separation is 1px rules and tone changes (paper ↔ ink sections).
+4. **Photography carries the colour.** The UI is paper, ink and one red.
+5. **Restrained motion.** Slow, eased, small. Nothing bounces.
+
+### 16.2 Colour palette
+
+Defined as custom properties on `.marketing-site`. Always reference the variable; never
+the hex.
+
+| Token            | Value     | Role                                                             |
+| ---------------- | --------- | ---------------------------------------------------------------- |
+| `--mk-paper`     | `#f4f1eb` | Page background; text on dark sections; light button fill        |
+| `--mk-ink`       | `#12100e` | Primary text; dark sections, header, footer; dark button fill    |
+| `--mk-red`       | `#b92f34` | Brand accent: eyebrows, labels, links, CTA band, focus underline |
+| `--mk-red-dark`  | `#96252a` | Hover on red surfaces                                            |
+| `--mk-red-light` | `#e09b99` | Red accent **on ink** backgrounds (kickers, footer labels)       |
+| `--mk-copy`      | `#4a443c` | Body copy on paper                                               |
+| `--mk-muted`     | `#6e665c` | Secondary copy, captions, notes                                  |
+| `--mk-faint`     | `#8a8074` | Tertiary metadata (card types, locations)                        |
+| `--mk-line`      | `#dbd4c7` | Hairline rules on paper                                          |
+| `--mk-line-dark` | `#2e2a24` | Hairline rules on ink                                            |
+
+Supporting tints used in place (candidates to tokenise): image placeholder `#e7e1d6`,
+input/filter borders `#c9c0b0`, hover wash `rgba(185, 47, 52, 0.04–0.06)`.
+
+**Rules**
+
+- Red is an **accent**, not a fill — the only red surface is the closing CTA band.
+- On ink sections, swap `--mk-red` → `--mk-red-light` and `--mk-line` → `--mk-line-dark`.
+- Text selection is red on paper (already set globally).
+
+### 16.3 Typography
+
+One family — **Archivo** — with an inverted weight logic: **300 for body, 400 for display,
+500 for small uppercase labels.** Never 600+ on the public site.
+
+| Role                 | Class                                    | Size                       | Weight  | Line height | Tracking               |
+| -------------------- | ---------------------------------------- | -------------------------- | ------- | ----------- | ---------------------- |
+| Hero headline        | `.marketing-hero h1`                     | `clamp(48px, 6.4vw, 94px)` | 400     | 0.96        | −0.025em               |
+| Display (page title) | `.marketing-display`                     | `clamp(42px, 5.6vw, 80px)` | 400     | 0.98        | −0.025em               |
+| Section title        | `.marketing-section-title`               | `clamp(34px, 4.2vw, 58px)` | 400     | 1.05        | −0.02em                |
+| Sub-heading          | row / card `h2`/`h3`                     | 22–34px                    | 400     | 1.1–1.3     | −0.01em                |
+| Card title           | `.marketing-card__title`                 | 17–18px                    | 400     | 1.3         | —                      |
+| Lede                 | `.marketing-hero__lede`                  | 19px (17px mobile)         | 300     | 1.6         | —                      |
+| Body                 | `.marketing-page-intro`, row `p`         | 16–17px                    | 300     | 1.7         | —                      |
+| Small body           | captions, notes                          | 12.5–14px                  | 300–400 | 1.5         | —                      |
+| Eyebrow / label      | `.marketing-eyebrow`, `__label`          | 10.5–11px                  | 500     | 1           | 0.16–0.2em, UPPERCASE  |
+| Button / link label  | `.marketing-btn`, `.marketing-text-link` | 11.5–12px                  | 500     | 1           | 0.08–0.14em, UPPERCASE |
+
+**Rules**
+
+- Big type is **light and tight**: weight 400, negative tracking, line-height ≤ 1.1.
+- Small type is **heavier and wide**: weight 500, uppercase, tracking ≥ 0.06em.
+- Body copy is capped at a readable measure: `max-width: 38–66ch`.
+- Use `clamp()` for anything ≥ 30px so headlines scale with the viewport.
+- Inputs are 16px minimum on mobile (prevents iOS zoom).
+
+### 16.4 Corner radius & shadows
+
+- **Radius: 0 everywhere.** Buttons, inputs, chips, cards, images, modals. Buttons are
+  explicitly reset to `border-radius: 0`. Do not add Tailwind `rounded-*` inside
+  `.marketing-site`.
+- **Shadows: none.** (One legacy exception on the image-modal close button — Known Debt #14.)
+- **Borders: 1px** hairlines in `--mk-line` / `--mk-line-dark`. A rule above a block
+  (`border-top`) is the main structural device — use it to open sections, card meta and
+  list rows.
+
+### 16.5 Layout & spacing
+
+| Concern         | Value                                                           |
+| --------------- | --------------------------------------------------------------- |
+| Container       | `.marketing-container` — max 1240px, centred                    |
+| Side gutter     | 40px → 28px (≤1023) → 20px (≤767) → 18px (≤479)                 |
+| Header height   | 76px (68px ≤820)                                                |
+| Section padding | 88–112px vertical desktop → 64–76px mobile                      |
+| Grid gaps       | 20–22px image grids; 48–80px between text columns               |
+| Split heading   | 280px label column + fluid content (`.marketing-split-heading`) |
+
+**Breakpoints** (CSS max-width, not Tailwind): `1023px`, `820px` (nav collapses to the
+full-screen menu), `767px` (single column), `479px` (stacked buttons, full-width CTAs).
+
+**Image aspect ratios:** featured cards 4:5, work cards 4:3, workshop feature 1:1,
+detail portrait 3:4, gallery 4:3. Images always `object-fit: cover` inside
+`.marketing-image-frame`, which supplies the placeholder tone while loading.
+
+### 16.6 Components
+
+**Buttons — `.marketing-btn` + one modifier**
+
+| Modifier        | Rest                          | Hover                        | Use on                            |
+| --------------- | ----------------------------- | ---------------------------- | --------------------------------- |
+| `--dark`        | ink fill, paper text          | red fill                     | Paper backgrounds (primary)       |
+| `--light`       | paper fill, ink text          | red fill, paper text         | Ink / photo backgrounds (primary) |
+| `--ghost-light` | transparent, paper border 55% | solid paper border, 12% wash | Secondary on ink / photo          |
+
+Anatomy: min-height 46px, padding 16×26px, 12px / 500 / 0.08em uppercase, square,
+`translateY(-2px)` on hover. Disabled: `opacity: .62`, `cursor: wait`, no lift.
+
+**Text link** — `.marketing-text-link`: red uppercase 11.5px, letter-spacing widens on hover.
+Used for "View all work →"-style links.
+
+**Filter chip** — `.marketing-filter` / `.marketing-form__chip`: 1px `#c9c0b0` border,
+uppercase 11.5px. Selected state uses `aria-pressed="true"` → ink fill, paper text.
+44px minimum height on mobile; the row scrolls horizontally instead of wrapping.
+
+**Form fields** — underline inputs (bottom border only), boxed textarea, red uppercase
+labels above. Focus turns the border red. Success/error is a bordered notice block
+(`.marketing-form__notice`), not a toast.
+
+**Cards** — image on top, then a `border-top` rule and a meta row (title left, type/location
+right, uppercase faint). No card background, no border box.
+
+**Rows** — services/process/FAQ are numbered rows separated by `border-top`; hover adds a
+4–5% red wash and a 14px left indent.
+
+**Header** — ink bar with blur; transparent when over the hero
+(`--over-hero`), turning solid on scroll (`--solid`). Nav links 13.5px paper; one CTA in
+paper fill.
+
+**CTA band** — `.marketing-cta`: the single red surface; darkens on hover.
+
+**Image modal** — near-black backdrop (`rgba(9,8,7,.97)`), contained image, 44px close
+button top-right, Escape to close.
+
+### 16.7 Motion
+
+| Use                          | Duration                | Easing                           |
+| ---------------------------- | ----------------------- | -------------------------------- |
+| Colour / border changes      | 0.25–0.3s               | `ease`                           |
+| Lifts, indents, menu slide   | 0.3–0.35s               | `cubic-bezier(0.2, 0.7, 0.2, 1)` |
+| Image zoom on hover          | 0.8s, `scale(1.06)` max | `cubic-bezier(0.2, 0.7, 0.2, 1)` |
+| Page entrance (`mk-rise-in`) | 0.5s, 16px rise + fade  | `cubic-bezier(0.2, 0.7, 0.2, 1)` |
+| Hero slide                   | 1.05s                   | `cubic-bezier(0.65, 0, 0.35, 1)` |
+
+- Allowed transforms: button lift (−2px max), filter lift (−1px), image zoom (≤ 1.06).
+  Nothing else moves on hover.
+- Everything is disabled under `prefers-reduced-motion` (already wired at the bottom of
+  `globals.css` — keep new animations inside `.marketing-site` so they inherit it).
+- Indent-on-hover is turned off on mobile (no hover there).
+
+### 16.8 Public-site UX rules
+
+1. **One clear next step per section** — usually "Start a project" (to `/inquiries`) or
+   "View the work". Never two equal-weight CTAs side by side; pair `--light` with
+   `--ghost-light`.
+2. **Photography is the company's own completed work.** Every image has meaningful `alt`
+   text describing the room and material.
+3. **Images use `next/image`** with explicit sizes; only the first hero slide is
+   `priority`, everything else lazy-loads.
+4. **Copy is calm and specific.** Short sentences, concrete materials and numbers ("Built in
+   our Adelaide workshop"), no exclamation marks, no "amazing/stunning".
+5. **Forms ask only what's needed** to start a conversation; chips for project type, one
+   free-text field. Show a clear confirmation in place after submit.
+6. **The mobile menu is a full-screen sheet** with 58px rows; body scroll is locked while
+   it's open (see `MarketingNavbar`).
+7. **Accessibility applies here too:** visible `:focus-visible` outlines (2px paper/ink,
+   4px offset), `aria-current="page"` on the active nav link, `aria-pressed` on chips,
+   contrast ≥ 4.5:1 (`--mk-faint` is for metadata only, never body copy).
+8. **Don't import admin styles.** No `bg-primary`, slate classes, `rounded-lg` or toasts
+   on public pages. If a new block is needed, add a `.marketing-*` class beside its siblings
+   in `globals.css` and give it the responsive overrides in the matching media blocks.
 
 ---
 
 ## Quick Reference Card
+
+### Admin
 
 ```
 FONT        Archivo everywhere · Geist Mono for codes/numbers
@@ -666,10 +1087,27 @@ FOCUS       focus:outline-none focus:ring-2 focus:ring-primary
 SHADOW      none, anywhere — separation is borders + background tone
 MOTION      duration-200 · transition-colors
 ICONS       lucide-react · w-4 h-4 default · gap-2 from label
+BADGE       rounded-full px-2.5 py-1 text-xs font-medium border
+            hue-100 bg · hue-800 text · hue-200 border
+            import STATUS_COLORS / BADGE — never a local map
+```
+
+### Public site (inside `.marketing-site`)
+
+```
+COLOUR      paper #f4f1eb · ink #12100e · red #b92f34 (accent only)
+            always var(--mk-*), never hex
+TYPE        Archivo · body 300 @16–17px/1.7 · display 400, clamp(), tight tracking
+            labels 500 · 10.5–12px · UPPERCASE · 0.08–0.2em tracking
+RADIUS      0 — everything is square
+SHADOW      none — 1px hairline rules (--mk-line / --mk-line-dark)
+BUTTON      .marketing-btn + --dark | --light | --ghost-light
+LAYOUT      1240px container · 40/28/20/18px gutters · 88–112px sections
+MOTION      cubic-bezier(0.2,0.7,0.2,1) · 0.25–0.35s · lift ≤ 2px · zoom ≤ 1.06
 ```
 
 ---
 
-**Last Updated**: 2026-09-10
+**Last Updated**: 2026-10-01
 **Owner**: Frontend
 **Related**: [CLAUDE.md](CLAUDE.md) · [ADMIN_REPEATING_CODE_ANALYSIS.md](ADMIN_REPEATING_CODE_ANALYSIS.md)

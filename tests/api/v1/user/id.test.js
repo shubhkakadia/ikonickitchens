@@ -759,23 +759,29 @@ describe("DELETE /api/v1/user/[id]", () => {
   const del = (id = OTHER_ID, options) =>
     DELETE(buildRequest(url(id), { method: "DELETE", ...options }), ctx(id));
 
-  const deleted = (id = OTHER_ID) => ({
+  const stored = (id = OTHER_ID, overrides = {}) => ({
     id,
     username: "bob",
+    is_active: true,
+    employee_id: "EMP-2",
     employee: { first_name: "Bob", last_name: "Ray" },
+    ...overrides,
   });
 
-  function mockDelete() {
-    prismaMock.users.delete.mockImplementation(async ({ where }) =>
-      deleted(where.id),
-    );
+  function mockDelete(existing = stored()) {
+    prismaMock.users.findUnique.mockResolvedValue(existing);
+    prismaMock.users.update.mockImplementation(async ({ where, data }) => ({
+      ...(existing ?? stored(where.id)),
+      ...data,
+    }));
+    prismaMock.sessions.deleteMany.mockResolvedValue({ count: 2 });
     prismaMock.logs.create.mockResolvedValue({});
   }
 
   describeAuthorization((options) => del(OTHER_ID, options), {
     roles: ["master-admin"],
-    setup: mockDelete,
-    untouched: () => [prismaMock.users.delete],
+    setup: () => mockDelete(),
+    untouched: () => [prismaMock.users.update, prismaMock.users.delete],
   });
 
   describe("handler", () => {
@@ -784,25 +790,25 @@ describe("DELETE /api/v1/user/[id]", () => {
       mockDelete();
     });
 
-    // Current behaviour: a hard delete (sessions, module access and logs
-    // cascade), unlike the soft-deleted business records.
-    it("deletes the user, never selecting the password, and logs it", async () => {
+    it("deactivates the user instead of deleting it, and logs it", async () => {
       const res = await del();
 
       expect(res.status).toBe(200);
       const json = await res.json();
-      expect(json).toEqual({
-        status: true,
-        message: "User deleted successfully",
-        data: deleted(),
+      expect(json.status).toBe(true);
+      expect(json.message).toBe("User deleted successfully");
+      expect(json.data).toMatchObject({
+        id: OTHER_ID,
+        is_active: false,
+        employee_id: null,
       });
       expect(json.warning).toBeUndefined();
-      expect(prismaMock.users.delete).toHaveBeenCalledWith({
+      // the row stays: every log entry points at it
+      expect(prismaMock.users.delete).not.toHaveBeenCalled();
+      expect(prismaMock.users.update).toHaveBeenCalledWith({
         where: { id: OTHER_ID },
+        data: { is_active: false, employee_id: null },
         omit: { password: true },
-        include: {
-          employee: { select: { first_name: true, last_name: true } },
-        },
       });
       expect(prismaMock.logs.create).toHaveBeenCalledWith({
         data: {
@@ -810,16 +816,91 @@ describe("DELETE /api/v1/user/[id]", () => {
           entity_type: "user",
           entity_id: OTHER_ID,
           action: "DELETE",
-          description: "User deleted successfully: Bob Ray",
+          description:
+            "User deleted (deactivated, kept for the audit trail): Bob Ray",
         },
       });
     });
 
-    // Current behaviour: nothing stops a master-admin deleting their own account.
-    it("lets a master-admin delete themselves", async () => {
+    it("never selects the password hash", async () => {
+      await del();
+
+      expect(prismaMock.users.findUnique).toHaveBeenCalledWith({
+        where: { id: OTHER_ID },
+        omit: { password: true },
+        include: {
+          employee: { select: { first_name: true, last_name: true } },
+        },
+      });
+    });
+
+    it("revokes every session of the user, in the same transaction", async () => {
+      await del();
+
+      expect(prismaMock.$transaction).toHaveBeenCalledOnce();
+      expect(prismaMock.sessions.deleteMany).toHaveBeenCalledWith({
+        where: { user_id: OTHER_ID },
+      });
+      expect(
+        prismaMock.sessions.deleteMany.mock.invocationCallOrder[0],
+      ).toBeLessThan(prismaMock.users.update.mock.invocationCallOrder[0]);
+    });
+
+    it("releases the employee link so a new account can be created for them", async () => {
+      await del();
+
+      expect(
+        prismaMock.users.update.mock.calls[0][0].data.employee_id,
+      ).toBeNull();
+    });
+
+    it("keeps the signed-in session when removing your own account", async () => {
+      mockDelete(stored(SELF_ID));
+
       const res = await del(SELF_ID);
 
       expect(res.status).toBe(200);
+      expect(prismaMock.sessions.deleteMany).toHaveBeenCalledWith({
+        where: { user_id: SELF_ID, NOT: { id: "session-1" } },
+      });
+      // so the log entry can still be attributed
+      expect(prismaMock.logs.create).toHaveBeenCalled();
+    });
+
+    it("is a no-op when the account was already removed", async () => {
+      mockDelete(stored(OTHER_ID, { is_active: false, employee_id: null }));
+
+      const res = await del();
+
+      expect(res.status).toBe(200);
+      expect((await res.json()).message).toBe(
+        "User account is already removed",
+      );
+      expect(prismaMock.users.update).not.toHaveBeenCalled();
+      expect(prismaMock.sessions.deleteMany).not.toHaveBeenCalled();
+      expect(prismaMock.logs.create).not.toHaveBeenCalled();
+    });
+
+    it("also removes an inactive account that is still linked to an employee", async () => {
+      mockDelete(stored(OTHER_ID, { is_active: false }));
+
+      await del();
+
+      expect(prismaMock.users.update).toHaveBeenCalledOnce();
+    });
+
+    it("returns 404 when the user does not exist", async () => {
+      prismaMock.users.findUnique.mockResolvedValue(null);
+
+      const res = await del();
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({
+        status: false,
+        message: "User not found",
+      });
+      expect(prismaMock.users.update).not.toHaveBeenCalled();
+      expect(prismaMock.logs.create).not.toHaveBeenCalled();
     });
 
     it("returns 200 with a warning when the log cannot be written", async () => {
@@ -833,13 +914,8 @@ describe("DELETE /api/v1/user/[id]", () => {
       );
     });
 
-    // Current behaviour: a missing user (Prisma P2025) is a 500, not a 404.
-    it("returns 500 when the user does not exist", async () => {
-      prismaMock.users.delete.mockRejectedValue(
-        Object.assign(new Error("Record to delete does not exist."), {
-          code: "P2025",
-        }),
-      );
+    it("returns 500 when the update fails", async () => {
+      prismaMock.users.update.mockRejectedValue(new Error("DB down"));
 
       const res = await del();
 

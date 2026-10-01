@@ -47,7 +47,7 @@ import { useUploadProgress } from "@/hooks/useUploadProgress";
 export default function EmployeeDetailPage() {
   const router = useRouter();
   const { id } = useParams();
-  const { getToken, isMasterAdmin } = useAuth();
+  const { getToken, isAdmin, isMasterAdmin } = useAuth();
   const {
     showProgressToast,
     completeUpload,
@@ -60,6 +60,12 @@ export default function EmployeeDetailPage() {
   const [error, setError] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  // Full values fetched via the master-admin reveal endpoint, cached by field
+  // name so hiding and re-revealing never calls the API again.
+  const [revealedValues, setRevealedValues] = useState({});
+  // Which cached fields are currently shown unmasked
+  const [visibleFields, setVisibleFields] = useState({});
+  const [revealingFields, setRevealingFields] = useState({});
   const [editData, setEditData] = useState({});
   const [showUserModal, setShowUserModal] = useState(false);
   const [isEditingUser, setIsEditingUser] = useState(false);
@@ -265,6 +271,8 @@ export default function EmployeeDetailPage() {
   const fetchEmployee = async () => {
     try {
       setLoading(true);
+      setRevealedValues({});
+      setVisibleFields({});
       const sessionToken = getToken();
 
       if (!sessionToken) {
@@ -334,6 +342,63 @@ export default function EmployeeDetailPage() {
       hour12: true,
     });
   };
+
+  const toggleReveal = async (field) => {
+    if (visibleFields[field]) {
+      setVisibleFields((prev) => ({ ...prev, [field]: false }));
+      return;
+    }
+    // Already fetched on this page load: show the cached value, no API call
+    if (revealedValues[field] !== undefined) {
+      setVisibleFields((prev) => ({ ...prev, [field]: true }));
+      return;
+    }
+    if (revealingFields[field]) return;
+    setRevealingFields((prev) => ({ ...prev, [field]: true }));
+    try {
+      const response = await axios.get(
+        `/api/v1/employee/${id}/reveal?field=${field}`,
+        { headers: { Authorization: `Bearer ${getToken()}` } },
+      );
+      if (response.data.status) {
+        setRevealedValues((prev) => ({
+          ...prev,
+          [field]: response.data.data.value ?? "-",
+        }));
+        setVisibleFields((prev) => ({ ...prev, [field]: true }));
+      }
+    } catch (error) {
+      console.error("Error revealing field:", error);
+      toast.error(error.response?.data?.message || "Failed to reveal value");
+    } finally {
+      setRevealingFields((prev) => ({ ...prev, [field]: false }));
+    }
+  };
+
+  const renderMaskedNumber = (field) => (
+    <div className="flex items-center gap-2">
+      <p className="text-sm text-slate-700 font-mono">
+        {visibleFields[field]
+          ? revealedValues[field]
+          : formatValue(employee[field])}
+      </p>
+      {isMasterAdmin() && employee[field] && (
+        <button
+          type="button"
+          onClick={() => toggleReveal(field)}
+          title={visibleFields[field] ? "Hide" : "Reveal"}
+          aria-label={visibleFields[field] ? "Hide value" : "Reveal value"}
+          className="cursor-pointer text-slate-500 hover:text-primary transition-colors"
+        >
+          {visibleFields[field] ? (
+            <EyeOff className="w-4 h-4" />
+          ) : (
+            <Eye className="w-4 h-4" />
+          )}
+        </button>
+      )}
+    </div>
+  );
 
   const formatValue = (value) => {
     if (
@@ -957,7 +1022,7 @@ export default function EmployeeDetailPage() {
       }
     } catch (error) {
       console.error("Error creating user:", error);
-      toast.error(error.response?.data?.message || "Failed to create user");
+      toast.error("Failed to create user");
     } finally {
       setIsUpdating(false);
     }
@@ -1166,147 +1231,22 @@ export default function EmployeeDetailPage() {
                       <span>More Actions</span>
                     </button>
 
-                        {showDropdown && (
-                          <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                            <div className="py-1">
-                              <button
-                                onClick={() => {
-                                  handleEdit();
-                                  setShowDropdown(false);
-                                }}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                              >
-                                <Edit className="w-4 h-4" />
-                                Edit Employee Details
-                              </button>
-                              {isMasterAdmin() && (
-                                <>
-                                  {user && Object.keys(user).length > 0 ? (
-                                    <button
-                                      onClick={() => {
-                                        handleViewUser();
-                                        setShowDropdown(false);
-                                      }}
-                                      className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                      View User Details
-                                    </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        handleCreateUser();
-                                        setShowDropdown(false);
-                                      }}
-                                      className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
-                                    >
-                                      <User className="w-4 h-4" />
-                                      Create User
-                                    </button>
-                                  )}
-                                </>
-                              )}
-                              <button
-                                onClick={() => {
-                                  setShowDeleteEmployeeModal(true);
-                                  setShowDropdown(false);
-                                }}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete Employee
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          onClick={handleSave}
-                          disabled={isUpdating}
-                          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Edit className="w-4 h-4" />
-                          {isUpdating ? "Saving..." : "Save"}
-                        </button>
-                        <button
-                          onClick={handleCancel}
-                          className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  {/* Left Column - Main Info */}
-                  <div className="col-span-2 space-y-4">
-                    {/* Profile Card */}
-                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                      <div className="flex items-start gap-4">
-                        {isEditing ? (
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="relative group">
-                              <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                onChange={handleImageChange}
-                                className="hidden"
-                                id="image-upload-edit"
-                              />
-
-                              {imagePreview ? (
-                                <div className="relative">
-                                  <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-primary shadow-lg">
-                                    <Image
-                                      loading="lazy"
-                                      src={imagePreview}
-                                      alt="Preview"
-                                      className="w-full h-full object-cover"
-                                      width={64}
-                                      height={64}
-                                    />
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={handleRemoveImage}
-                                    className="absolute top-1 right-1 bg-secondary text-white rounded-full p-1.5 shadow-lg hover:bg-secondary transition-all duration-200 transform hover:scale-110 cursor-pointer"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      fileInputRef.current?.click()
-                                    }
-                                    className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white rounded-full px-3 py-1 text-xs shadow-lg hover:scale-110 transition-all duration-200 cursor-pointer"
-                                  >
-                                    Change
-                                  </button>
-                                </div>
-                              ) : (
-                                <label
-                                  htmlFor="image-upload-edit"
-                                  className="w-16 h-16 rounded-full border-4 border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-blue-50 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group-hover:shadow-lg"
-                                >
-                                  <Upload className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors mb-1" />
-                                  <span className="text-xs text-slate-500 group-hover:text-primary font-medium">
-                                    Upload
-                                  </span>
-                                </label>
-                              )}
-                            </div>
-                            <div className="flex flex-col items-center gap-1">
-                              <p className="text-xs text-slate-500 text-center">
-                                {imagePreview
-                                  ? "Click X to remove"
-                                  : "Click to upload photo"}
-                              </p>
-                              {employee?.image && !imagePreview && (
+                    {showDropdown && (
+                      <div className="absolute right-0 mt-1 w-56 bg-white border border-slate-300 rounded-lg z-40">
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              handleEdit();
+                              setShowDropdown(false);
+                            }}
+                            className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Edit Employee Details
+                          </button>
+                          {isAdmin() && (
+                            <>
+                              {user && Object.keys(user).length > 0 ? (
                                 <button
                                   onClick={() => {
                                     handleViewUser();
@@ -1879,9 +1819,7 @@ export default function EmployeeDetailPage() {
                             className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
-                          <p className="text-sm text-slate-700 font-mono">
-                            {formatValue(employee.tfn_number)}
-                          </p>
+                          renderMaskedNumber("tfn_number")
                         )}
                       </div>
                       <div>
@@ -2178,9 +2116,7 @@ export default function EmployeeDetailPage() {
                             className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
-                          <p className="text-sm text-slate-700 font-mono">
-                            {formatValue(employee.bank_account_number)}
-                          </p>
+                          renderMaskedNumber("bank_account_number")
                         )}
                       </div>
                       <div>
@@ -2273,9 +2209,7 @@ export default function EmployeeDetailPage() {
                             className="w-full text-sm text-slate-800 font-mono px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                           />
                         ) : (
-                          <p className="text-sm text-slate-700 font-mono">
-                            {formatValue(employee.supper_account_number)}
-                          </p>
+                          renderMaskedNumber("supper_account_number")
                         )}
                       </div>
                     </div>

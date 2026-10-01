@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { TransactionError } from "@/lib/transactionError";
+import {
+  fetchReceivedPurchaseOrder,
+  normalizeReceiveItems,
+  receivePurchaseOrderItems,
+} from "@/lib/receivePurchaseOrder";
 
 /**
  * Handle USED transaction (from Materials To Order)
@@ -11,7 +17,17 @@ import { sendNotification } from "@/lib/notification";
  * Creates stock_transaction with type USED
  */
 async function handleUsedTransaction(data) {
-  const { item_id, quantity, materials_to_order_id, notes } = data;
+  const { item_id, materials_to_order_id, notes } = data;
+
+  // quantity_used and the ledger quantity are integer columns
+  const quantity = Number(data.quantity);
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return {
+      status: false,
+      message: "quantity must be a positive whole number",
+      statusCode: 400,
+    };
+  }
 
   // Find the materials_to_order_item by mto_id and item_id
   const mtoItem = await prisma.materials_to_order_item.findFirst({
@@ -47,24 +63,52 @@ async function handleUsedTransaction(data) {
     };
   }
 
-  // Calculate new quantity_used (increment by quantity)
-  const currentUsed = mtoItem.quantity_used || 0;
-  const newQuantityUsed = currentUsed + quantity;
-  const totalQuantity = mtoItem.quantity || 0;
-
-  // Prevent quantity_used from exceeding total required quantity
-  if (newQuantityUsed > totalQuantity) {
-    return {
-      status: false,
-      message: `Used quantity cannot exceed total quantity. Total: ${totalQuantity}, Current used: ${currentUsed}, Requested: ${quantity}`,
-      statusCode: 400,
-    };
-  }
-
   // Wrap all database writes in a transaction to ensure atomicity
   let updatedMtoItem;
   try {
     await prisma.$transaction(async (tx) => {
+      // Serialise everything that touches this MTO line (usage, reservations)
+      // so the checks below can't go stale before we write.
+      await tx.$queryRaw`
+        SELECT id FROM materials_to_order_item
+        WHERE id = ${mtoItem.id}
+        FOR UPDATE
+      `;
+
+      const line = await tx.materials_to_order_item.findUnique({
+        where: { id: mtoItem.id },
+        select: { quantity: true, quantity_used: true },
+      });
+      if (!line) {
+        throw new TransactionError("Materials to order item not found", 404);
+      }
+      const currentUsed = line.quantity_used || 0;
+      const totalQuantity = line.quantity || 0;
+
+      // Prevent quantity_used from exceeding total required quantity
+      if (currentUsed + quantity > totalQuantity) {
+        throw new TransactionError(
+          `Used quantity cannot exceed total quantity. Total: ${totalQuantity}, Current used: ${currentUsed}, Requested: ${quantity}`,
+          400,
+        );
+      }
+
+      // Claim the usage atomically: the write only applies while there is
+      // still room, and increments rather than overwriting.
+      const claimed = await tx.materials_to_order_item.updateMany({
+        where: {
+          id: mtoItem.id,
+          quantity_used: { lte: totalQuantity - quantity },
+        },
+        data: { quantity_used: { increment: quantity } },
+      });
+      if (claimed.count === 0) {
+        throw new TransactionError(
+          "Used quantity was changed by someone else. Reload and try again.",
+          409,
+        );
+      }
+
       let remainingQuantity = quantity;
 
       // Check if there are any reservations for this item from this specific MTO
@@ -140,18 +184,16 @@ async function handleUsedTransaction(data) {
             select: { quantity: true },
           });
           const available = current?.quantity ?? 0;
-          throw new Error(
-            `INSUFFICIENT_INVENTORY:${item_id}:${remainingQuantity}:${available}`,
+          throw new TransactionError(
+            `Not enough quantity in inventory. Available: ${available}, Requested: ${remainingQuantity}`,
+            400,
           );
         }
       }
 
-      // Update materials_to_order_item's quantity_used
-      updatedMtoItem = await tx.materials_to_order_item.update({
+      // Re-read the line (quantity_used was incremented above) for the response
+      updatedMtoItem = await tx.materials_to_order_item.findUnique({
         where: { id: mtoItem.id },
-        data: {
-          quantity_used: newQuantityUsed,
-        },
         include: {
           item: true,
           mto: true,
@@ -200,14 +242,8 @@ async function handleUsedTransaction(data) {
       }
     });
   } catch (err) {
-    const msg = err?.message || "";
-    if (msg.startsWith("INSUFFICIENT_INVENTORY:")) {
-      const [, requested, available] = msg.split(":");
-      return {
-        status: false,
-        message: `Not enough quantity in inventory. Available: ${available}, Requested: ${requested}`,
-        statusCode: 400,
-      };
+    if (err instanceof TransactionError) {
+      return { status: false, message: err.message, statusCode: err.status };
     }
     console.error("Error in handleUsedTransaction:", err);
     return {
@@ -227,155 +263,35 @@ async function handleUsedTransaction(data) {
 
 /**
  * Handle ADDED transaction (from Purchase Order)
- * Updates purchase_order_item's quantity_received
- * Increases item inventory quantity
- * Creates stock_transaction with type ADDED
+ * Goes through the same locked logic as POST /purchase_order/received_items:
+ * the PO must be ORDERED or PARTIALLY_RECEIVED, the line can't be received
+ * past its ordered quantity, and quantity_received is claimed under a lock.
+ * Increases item inventory quantity and creates a stock_transaction (ADDED)
  */
 async function handleAddedTransaction(data) {
   const { item_id, quantity, purchase_order_id, notes } = data;
 
-  // Find the purchase_order_item by order_id and item_id
-  const poItem = await prisma.purchase_order_item.findFirst({
-    where: {
-      order_id: purchase_order_id,
-      item_id: item_id,
-    },
-    include: {
-      order: true,
-      item: true,
-    },
-  });
-
-  if (!poItem) {
-    return {
-      status: false,
-      message: "Purchase order item not found",
-      statusCode: 404,
-    };
+  const normalized = normalizeReceiveItems([{ item_id, quantity, notes }]);
+  if (normalized.error) {
+    return { status: false, message: normalized.error, statusCode: 400 };
   }
 
-  // Verify item exists
-  const itemExists = await prisma.item.findUnique({
-    where: { item_id: item_id },
-    select: { item_id: true },
-  });
-
-  if (!itemExists) {
-    return {
-      status: false,
-      message: "Item not found",
-      statusCode: 404,
-    };
-  }
-
-  // Calculate new quantity_received (increment by quantity)
-  const currentReceived = poItem.quantity_received || 0;
-  const newQuantityReceived = currentReceived + quantity;
-
-  // Wrap all database writes in a transaction to ensure atomicity
-  await prisma.$transaction(async (tx) => {
-    // Update purchase_order_item's quantity_received
-    await tx.purchase_order_item.update({
-      where: { id: poItem.id },
-      data: {
-        quantity_received: newQuantityReceived,
-      },
-    });
-
-    // Atomically increase item inventory quantity
-    await tx.item.update({
-      where: { item_id: item_id },
-      data: {
-        quantity: {
-          increment: quantity,
-        },
-      },
-    });
-
-    // Create stock transaction
-    await tx.stock_transaction.create({
-      data: {
-        item_id: item_id,
-        quantity: quantity,
-        type: "ADDED",
-        purchase_order_id: purchase_order_id,
-        notes: notes || `Received from PO ${purchase_order_id}`,
-      },
-    });
-
-    // Check if all items are fully received to update PO status
-    const updatedPO = await tx.purchase_order.findUnique({
-      where: { id: purchase_order_id },
-      include: {
-        items: true,
-      },
-    });
-
-    const allItemsReceived = updatedPO.items.every(
-      (item) => (item.quantity_received || 0) >= item.quantity,
-    );
-    const someItemsReceived = updatedPO.items.some(
-      (item) => (item.quantity_received || 0) > 0,
-    );
-
-    let newStatus = updatedPO.status;
-    if (allItemsReceived && updatedPO.status !== "CANCELLED") {
-      newStatus = "FULLY_RECEIVED";
-    } else if (
-      someItemsReceived &&
-      !allItemsReceived &&
-      updatedPO.status !== "CANCELLED"
-    ) {
-      newStatus = "PARTIALLY_RECEIVED";
-    }
-
-    // Apply status update if needed
-    if (newStatus !== updatedPO.status) {
-      await tx.purchase_order.update({
-        where: { id: purchase_order_id },
-        data: { status: newStatus },
+  try {
+    await prisma.$transaction(async (tx) => {
+      await receivePurchaseOrderItems(tx, {
+        purchase_order_id,
+        items: normalized.items,
       });
+    });
+  } catch (err) {
+    if (err instanceof TransactionError) {
+      return { status: false, message: err.message, statusCode: err.status };
     }
-  });
+    throw err;
+  }
 
   // Fetch updated PO with all relations for return (after transaction commits)
-  // Status was already updated inside the transaction, so it will be correct here
-  const finalPO = await prisma.purchase_order.findUnique({
-    where: { id: purchase_order_id },
-    include: {
-      supplier: true,
-      items: {
-        include: {
-          item: {
-            include: {
-              sheet: true,
-              handle: true,
-              hardware: true,
-              accessory: true,
-            },
-          },
-        },
-      },
-      orderedBy: {
-        select: {
-          employee: {
-            select: {
-              employee_id: true,
-              first_name: true,
-              last_name: true,
-            },
-          },
-        },
-      },
-      invoice_url: true,
-      mto: {
-        select: {
-          project: { select: { project_id: true, name: true } },
-          status: true,
-        },
-      },
-    },
-  });
+  const finalPO = await fetchReceivedPurchaseOrder(purchase_order_id);
 
   return {
     status: true,

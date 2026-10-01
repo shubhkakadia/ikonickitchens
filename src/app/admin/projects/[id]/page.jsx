@@ -616,6 +616,39 @@ export default function ProjectDetailPage() {
     }
   };
 
+  // Toggles stage syncing across lots straight from the Overview tab (no edit mode)
+  const handleToggleSyncAllLots = async (checked) => {
+    const previous = !!project?.sync_all_lots;
+    setProject((prev) => ({ ...prev, sync_all_lots: checked }));
+    try {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        throw new Error("No valid session found. Please login again.");
+      }
+      const response = await axios.patch(
+        `/api/v1/project/${id}`,
+        { sync_all_lots: checked },
+        { headers: { Authorization: `Bearer ${sessionToken}` } },
+      );
+      if (!response.data.status) {
+        throw new Error(response.data.message || "Failed to update project");
+      }
+      toast.success(
+        checked
+          ? "Stage sync enabled for all lots"
+          : "Stage sync disabled",
+      );
+    } catch (error) {
+      console.error("Error updating sync setting:", error);
+      setProject((prev) => ({ ...prev, sync_all_lots: previous }));
+      toast.error(
+        error?.response?.data?.message ||
+          error.message ||
+          "Failed to update sync setting",
+      );
+    }
+  };
+
   const handleSave = async () => {
     try {
       setIsUpdating(true);
@@ -1667,9 +1700,27 @@ export default function ProjectDetailPage() {
                 !project.lots ||
                 project.lots.length === 0) && (
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-800 mb-4">
-                    Project Overview
-                  </h2>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800">
+                      Project Overview
+                    </h2>
+                    <label
+                      className="flex items-center gap-2 cursor-pointer"
+                      title="A stage change on one lot is applied to (or created on) every other lot in this project"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!project.sync_all_lots}
+                        onChange={(e) =>
+                          handleToggleSyncAllLots(e.target.checked)
+                        }
+                        className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-primary"
+                      />
+                      <span className="text-sm font-medium text-slate-700">
+                        Sync stages across all lots
+                      </span>
+                    </label>
+                  </div>
 
                   {project.lots && project.lots.length > 0 ? (
                     selectedLot && selectedLotData ? (

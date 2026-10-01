@@ -11,6 +11,10 @@ import {
   uploadFile,
   deleteFileByRelativePath,
   getFileFromFormData,
+  MAX_IMAGE_BODY,
+  MAX_IMAGE_SIZE,
+  readFormData,
+  uploadLimitResponse,
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
@@ -37,15 +41,18 @@ function buildPartialUpdate(body, fieldMap) {
   return result;
 }
 
-async function detachAndDeleteMedia(tx, { employeeId, mediaId, mediaUrl }) {
+// Photos are soft deleted: the media row is flagged and the file stays on disk
+// (the deleted-media screen purges it), so a mistaken click or a failed
+// replacement never destroys something a user uploaded.
+async function detachAndSoftDeleteMedia(tx, { employeeId, mediaId }) {
   await tx.employees.update({
     where: { id: employeeId },
     data: { image_id: null },
   });
-  await tx.media.delete({ where: { id: mediaId } });
-  // File deletion happens outside the transaction since it's not a DB op,
-  // and there's nothing meaningful to roll back if this specific step fails.
-  await deleteFileByRelativePath(mediaUrl);
+  await tx.media.update({
+    where: { id: mediaId },
+    data: { is_deleted: true },
+  });
 }
 
 // Never expose the password hash
@@ -139,7 +146,7 @@ export async function PATCH(request, { params }) {
     if (contentType && contentType.includes("application/json")) {
       body = await request.json();
     } else {
-      const formData = await request.formData();
+      const formData = await readFormData(request, MAX_IMAGE_BODY);
       imageFile = getFileFromFormData(formData, "image");
       const removeImageValue = formData.get("remove_image");
       removeImage = removeImageValue === "true" || removeImageValue === true;
@@ -255,10 +262,9 @@ export async function PATCH(request, { params }) {
     ) {
       try {
         await prisma.$transaction((tx) =>
-          detachAndDeleteMedia(tx, {
+          detachAndSoftDeleteMedia(tx, {
             employeeId: employee.id,
             mediaId: currentEmployee.image_id,
-            mediaUrl: currentEmployee.image.url,
           }),
         );
       } catch (error) {
@@ -269,27 +275,23 @@ export async function PATCH(request, { params }) {
     }
     // Handle image upload if a new image is provided
     else if (imageFile && imageFile instanceof File) {
+      let uploadedPath;
       try {
-        // Delete old image file and media record if one exists
-        if (currentEmployee.image_id && currentEmployee.image) {
-          await prisma.$transaction((tx) =>
-            detachAndDeleteMedia(tx, {
-              employeeId: employee.id,
-              mediaId: currentEmployee.image_id,
-              mediaUrl: currentEmployee.image.url,
-            }),
-          );
-        }
-
-        // Upload new image
+        // Upload the new image FIRST: if this fails, the current photo is
+        // untouched. The "unique" strategy gives every upload its own path, so
+        // the cleanup below can only ever remove this request's file.
         const uploadResult = await uploadFile(imageFile, {
           uploadDir: "mediauploads",
           subDir: "employees",
-          filenameStrategy: "id-based",
+          filenameStrategy: "unique",
+          allowedGroups: ["image"],
+          maxSize: MAX_IMAGE_SIZE,
           idPrefix: id,
         });
+        uploadedPath = uploadResult.relativePath;
 
-        // Create media record + link it to the employee atomically
+        // Create the media record, link it, and soft delete the old photo
+        // together, so the employee never ends up without a photo (or with two)
         await prisma.$transaction(async (tx) => {
           const media = await tx.media.create({
             data: {
@@ -307,9 +309,20 @@ export async function PATCH(request, { params }) {
             where: { id: employee.id },
             data: { image_id: media.id },
           });
+
+          if (currentEmployee.image_id && currentEmployee.image) {
+            await tx.media.update({
+              where: { id: currentEmployee.image_id },
+              data: { is_deleted: true },
+            });
+          }
         });
       } catch (error) {
         console.error("Error handling image upload:", error);
+        // Nothing was linked, so don't leave the new file behind
+        if (uploadedPath) {
+          await deleteFileByRelativePath(uploadedPath).catch(() => {});
+        }
         imageWarning = "Employee updated, but image upload failed";
       }
     }
@@ -347,6 +360,9 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
+    const tooLarge = uploadLimitResponse(error);
+    if (tooLarge) return tooLarge;
+
     console.error("Error in PATCH /api/v1/employee/[id]:", error);
 
     if (error.code === "P2025") {

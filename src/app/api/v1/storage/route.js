@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
-import {
-  validateAdminAuth,
-  getUserFromToken,
-} from "@/lib/validators/authFromToken";
+import { requireAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -52,7 +49,9 @@ async function directorySize(root) {
 
 export async function GET(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      roles: ["master-admin", "admin"],
+    });
     if (authError) return authError;
 
     const session = await getUserFromToken(request);
@@ -91,7 +90,12 @@ export async function GET(request) {
     }
 
     const uploadRoot = path.join(process.cwd(), UPLOAD_ROOT);
-    const months6Ago = dayjs().tz(TZ).subtract(5, "month").startOf("month").utc().toDate();
+    const months6Ago = dayjs()
+      .tz(TZ)
+      .subtract(5, "month")
+      .startOf("month")
+      .utc()
+      .toDate();
 
     const [files, disk, dbTables, mediaRows, lotFileRows, supplierFileRows] =
       await Promise.all([
@@ -125,12 +129,16 @@ export async function GET(request) {
     // Growth is derived from recorded file sizes, which is the only history
     // this schema keeps. It tracks uploads, not database growth.
     const monthKeys = Array.from({ length: 6 }, (_, i) =>
-      dayjs().tz(TZ).subtract(5 - i, "month").format("YYYY-MM"),
+      dayjs()
+        .tz(TZ)
+        .subtract(5 - i, "month")
+        .format("YYYY-MM"),
     );
     const growth = new Map(monthKeys.map((k) => [k, 0]));
     for (const row of [...mediaRows, ...lotFileRows, ...supplierFileRows]) {
       const key = dayjs(row.createdAt).tz(TZ).format("YYYY-MM");
-      if (growth.has(key)) growth.set(key, growth.get(key) + Number(row.size ?? 0));
+      if (growth.has(key))
+        growth.set(key, growth.get(key) + Number(row.size ?? 0));
     }
     const growthByMonth = monthKeys.map((month) => ({
       month,
@@ -140,7 +148,9 @@ export async function GET(request) {
     // Average over completed months only; the current month is partial.
     const completed = growthByMonth.slice(0, -1);
     const avgMonthlyBytes = completed.length
-      ? Math.round(completed.reduce((s, m) => s + m.bytes, 0) / completed.length)
+      ? Math.round(
+          completed.reduce((s, m) => s + m.bytes, 0) / completed.length,
+        )
       : 0;
 
     // An explicit plan quota beats raw disk size when the host sells capacity.
@@ -159,7 +169,9 @@ export async function GET(request) {
           ? (Number(disk.blocks) - Number(disk.bfree)) * Number(disk.bsize)
           : totalBytes;
 
-    const freeBytes = limitBytes ? Math.max(0, limitBytes - usedAgainstLimit) : null;
+    const freeBytes = limitBytes
+      ? Math.max(0, limitBytes - usedAgainstLimit)
+      : null;
     const percentUsed = limitBytes
       ? Math.round((usedAgainstLimit / limitBytes) * 1000) / 10
       : null;
@@ -200,7 +212,11 @@ export async function GET(request) {
     cache = { at: Date.now(), payload };
 
     return NextResponse.json(
-      { status: true, message: "Storage usage fetched successfully", data: payload },
+      {
+        status: true,
+        message: "Storage usage fetched successfully",
+        data: payload,
+      },
       { status: 200 },
     );
   } catch (error) {

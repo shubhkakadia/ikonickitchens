@@ -81,7 +81,7 @@ export default function InventoryPanel({ inventory }) {
                   className="rounded-lg bg-slate-50 px-2 py-3 text-center"
                 >
                   <p className={`text-lg font-semibold tabular-nums ${stat.tone}`}>
-                    {Number(stat.value).toLocaleString()}
+                    {formatQty(stat.value)}
                   </p>
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     {stat.label}

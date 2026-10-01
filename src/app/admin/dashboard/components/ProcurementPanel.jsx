@@ -13,6 +13,7 @@ import { Bar } from "react-chartjs-2";
 import { Building2, Layers3, TrendingDown, Wallet } from "lucide-react";
 import SectionCard, { EmptyState } from "./SectionCard";
 import {
+  CHART_COLORS,
   SERIES_1,
   SERIES_2,
   formatCompactCurrency,
@@ -52,11 +53,11 @@ const chartOptions = {
         usePointStyle: true,
         pointStyle: "circle",
         font: { size: 11 },
-        color: "#475569",
+        color: CHART_COLORS.legend,
       },
     },
     tooltip: {
-      backgroundColor: "#1e293b",
+      backgroundColor: CHART_COLORS.tooltip,
       padding: 10,
       cornerRadius: 8,
       titleFont: { size: 12 },
@@ -71,17 +72,17 @@ const chartOptions = {
     y: {
       beginAtZero: true,
       border: { display: false },
-      grid: { color: "#f1f5f9" },
+      grid: { color: CHART_COLORS.grid },
       ticks: {
         font: { size: 10 },
-        color: "#94a3b8",
+        color: CHART_COLORS.tick,
         callback: (value) => formatCompactCurrency(value),
       },
     },
     x: {
       border: { display: false },
       grid: { display: false },
-      ticks: { font: { size: 10 }, color: "#94a3b8" },
+      ticks: { font: { size: 10 }, color: CHART_COLORS.tick },
     },
   },
 };

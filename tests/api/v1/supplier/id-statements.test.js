@@ -203,6 +203,8 @@ describe("POST /api/v1/supplier/[id]/statements", () => {
         uploadDir: "mediauploads",
         subDir: "suppliers/SUP-1/statements",
         filenameStrategy: "id-based",
+        allowedGroups: ["pdf", "image"],
+        maxSize: 25 * 1024 * 1024,
         idPrefix: "SUP-1_statement_March___2026_",
       });
     });

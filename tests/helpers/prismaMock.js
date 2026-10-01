@@ -35,7 +35,7 @@ export function createPrismaMock() {
       $queryRaw: vi.fn(),
     },
     {
-      get(target, prop) {f
+      get(target, prop) {
         if (prop in target) return target[prop];
         if (typeof prop === "symbol" || prop === "then") return undefined;
         models[prop] ??= mockModel();

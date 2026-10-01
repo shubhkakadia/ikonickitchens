@@ -76,6 +76,7 @@ export default function page() {
     name: "",
     project_id: "",
     startDate: "",
+    sync_all_lots: false,
   });
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [activeTab, setActiveTab] = useState("ACTIVE");
@@ -635,6 +636,7 @@ export default function page() {
         client_id: clientIdToSend,
         startDate: newProject.startDate || null,
         lots: lotsToSend,
+        sync_all_lots: newProject.sync_all_lots,
       };
 
       const response = await axios.post("/api/v1/project/create", data, {
@@ -663,6 +665,7 @@ export default function page() {
         name: "",
         project_id: "",
         startDate: "",
+        sync_all_lots: false,
       });
       setNumberOfLots("");
       setLots([]);
@@ -1472,6 +1475,7 @@ export default function page() {
                     name: "",
                     project_id: "",
                     startDate: "",
+                    sync_all_lots: false,
                   });
                   setNumberOfLots("");
                   setLots([]);
@@ -1555,6 +1559,28 @@ export default function page() {
                       />
                     </div>
                   </div>
+                  <label className="mt-4 flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newProject.sync_all_lots}
+                      onChange={(e) =>
+                        setNewProject({
+                          ...newProject,
+                          sync_all_lots: e.target.checked,
+                        })
+                      }
+                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 accent-primary"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-slate-700">
+                        Sync stages across all lots
+                      </span>
+                      <span className="block text-xs text-slate-500">
+                        A stage change on one lot is automatically applied to
+                        (or created on) every other lot in this project.
+                      </span>
+                    </span>
+                  </label>
                 </div>
 
                 {/* Lots Section */}
@@ -1675,6 +1701,7 @@ export default function page() {
                     name: "",
                     project_id: "",
                     startDate: "",
+                    sync_all_lots: false,
                   });
                   setNumberOfLots("");
                   setLots([]);

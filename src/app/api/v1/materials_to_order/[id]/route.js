@@ -5,6 +5,9 @@ import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
+// Values of the MTOStatus enum (prisma/schema.prisma)
+const MTO_STATUSES = ["DRAFT", "PARTIALLY_ORDERED", "FULLY_ORDERED", "CLOSED"];
+
 // Errors thrown inside the transaction that should reach the client as a 400
 function mtoEditError(message) {
   return Object.assign(new Error(message), { isClientError: true });
@@ -240,13 +243,34 @@ export async function PATCH(request, { params }) {
     const data = await request.json();
     const { status, notes, items, used_material_completed } = data;
 
-    // Build the update data object
+    // Only real MTO statuses and a real boolean reach the database
+    if (status !== undefined && !MTO_STATUSES.includes(status)) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: `status must be one of: ${MTO_STATUSES.join(", ")}`,
+        },
+        { status: 400 },
+      );
+    }
+    if (
+      used_material_completed !== undefined &&
+      typeof used_material_completed !== "boolean"
+    ) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: "used_material_completed must be true or false",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Build the update data object. used_material_completed is not part of
+    // it: completion is claimed atomically inside the transaction below.
     const updateData = {};
     if (status !== undefined) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
-    if (used_material_completed !== undefined) {
-      updateData.used_material_completed = used_material_completed;
-    }
 
     // Validate items; they are applied by diffing inside the transaction below
     let normalizedItems;
@@ -324,6 +348,25 @@ export async function PATCH(request, { params }) {
 
     let mto;
     await prisma.$transaction(async (tx) => {
+      // Completion consumes stock for every unused line, and item edits
+      // rewrite lines, so serialise them against each other and against stock
+      // usage and reservations. The lines are locked first and then the MTO
+      // row, the same order those routes take their locks in. The state is
+      // read only after the locks are held, so it can't be a stale snapshot.
+      if (normalizedItems !== undefined || used_material_completed === true) {
+        await tx.$queryRaw`
+          SELECT id FROM materials_to_order_item
+          WHERE mto_id = ${id}
+          ORDER BY id
+          FOR UPDATE
+        `;
+        await tx.$queryRaw`
+          SELECT id FROM materials_to_order
+          WHERE id = ${id}
+          FOR UPDATE
+        `;
+      }
+
       const prev = await tx.materials_to_order.findUnique({
         where: { id },
         select: { used_material_completed: true, is_deleted: true },
@@ -345,15 +388,24 @@ export async function PATCH(request, { params }) {
         });
       }
 
+      // Claim the completion. Only the request that flips the flag from false
+      // to true goes on to consume stock; any other (a double click, a retry)
+      // finds it already claimed and does nothing more.
+      let turningCompleted = false;
+      if (used_material_completed === true && !prev.used_material_completed) {
+        const claimed = await tx.materials_to_order.updateMany({
+          where: { id, used_material_completed: false },
+          data: { used_material_completed: true },
+        });
+        turningCompleted = claimed.count === 1;
+      }
+
       // Update MTO
       mto = await tx.materials_to_order.update({
         where: { id },
         data: updateData,
         include: includeMto,
       });
-
-      const turningCompleted =
-        used_material_completed === true && !prev.used_material_completed;
 
       // When marking completed, create USED stock transactions for remaining qty
       if (turningCompleted) {
@@ -370,27 +422,62 @@ export async function PATCH(request, { params }) {
         for (const it of mtoItems) {
           const used = it.quantity_used || 0;
           const total = it.quantity || 0;
-          const remaining = total - used;
+          const remaining = Math.max(total - used, 0);
+
+          // Reserved units already left stock when they were reserved, so
+          // they are used first (oldest reservation first), exactly as stock
+          // usage does. Only what they don't cover comes out of stock now.
+          // Every reservation on the line ends here: the part that is used is
+          // spent, the rest goes back to stock, and none is left behind on a
+          // completed MTO.
+          const reservations = await tx.reserve_item_stock.findMany({
+            where: { item_id: it.item_id, mto_id: it.id },
+            orderBy: { createdAt: "asc" },
+          });
+          let needFromStock = remaining;
+          for (const reservation of reservations) {
+            const reservedLeft = Math.max(
+              reservation.quantity - (reservation.used_quantity || 0),
+              0,
+            );
+            const fromReservation = Math.min(reservedLeft, needFromStock);
+            needFromStock -= fromReservation;
+
+            const surplus = reservedLeft - fromReservation;
+            if (surplus > 0) {
+              await tx.item.update({
+                where: { item_id: it.item_id },
+                data: { quantity: { increment: surplus } },
+              });
+            }
+            await tx.reserve_item_stock.delete({
+              where: { id: reservation.id },
+            });
+          }
+
           if (remaining <= 0) continue;
 
-          // Decrement inventory for remaining qty (guard against negative)
-          const dec = await tx.item.updateMany({
-            where: {
-              item_id: it.item_id,
-              quantity: { gte: remaining },
-            },
-            data: { quantity: { decrement: remaining } },
-          });
-
-          if (dec.count === 0) {
-            const current = await tx.item.findUnique({
-              where: { item_id: it.item_id },
-              select: { quantity: true },
+          // Decrement inventory for what the reservations didn't cover
+          // (guard against negative)
+          if (needFromStock > 0) {
+            const dec = await tx.item.updateMany({
+              where: {
+                item_id: it.item_id,
+                quantity: { gte: needFromStock },
+              },
+              data: { quantity: { decrement: needFromStock } },
             });
-            const available = current?.quantity ?? 0;
-            throw new Error(
-              `INSUFFICIENT_INVENTORY:${it.item_id}:${remaining}:${available}`,
-            );
+
+            if (dec.count === 0) {
+              const current = await tx.item.findUnique({
+                where: { item_id: it.item_id },
+                select: { quantity: true },
+              });
+              const available = current?.quantity ?? 0;
+              throw new Error(
+                `INSUFFICIENT_INVENTORY:${it.item_id}:${needFromStock}:${available}`,
+              );
+            }
           }
 
           // Mark item fully used

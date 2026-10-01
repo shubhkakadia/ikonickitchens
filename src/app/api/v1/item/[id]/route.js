@@ -5,8 +5,13 @@ import {
   uploadFile,
   deleteFileByRelativePath,
   getFileFromFormData,
+  MAX_IMAGE_BODY,
+  MAX_IMAGE_SIZE,
+  readFormData,
+  uploadLimitResponse,
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
+import { parseMoney } from "@/lib/money";
 
 export async function GET(request, { params }) {
   try {
@@ -127,14 +132,39 @@ export async function GET(request, { params }) {
   }
 }
 
+// The supplier links the form sends: one entry per supplier, each with a
+// supplier_id and an optional non-negative price.
+function validateSuppliers(suppliers) {
+  if (!Array.isArray(suppliers)) {
+    return "Invalid suppliers format - must be valid JSON array";
+  }
+  const seen = new Set();
+  for (const s of suppliers) {
+    if (!s || typeof s.supplier_id !== "string" || !s.supplier_id) {
+      return "Each supplier must have a supplier_id";
+    }
+    if (seen.has(s.supplier_id)) {
+      return "A supplier can only be listed once per item";
+    }
+    seen.add(s.supplier_id);
+    if (s.price && parseMoney(s.price) === null) {
+      return "Supplier price must be a non-negative amount";
+    }
+  }
+  return null;
+}
+
 export async function PATCH(request, { params }) {
   try {
     const authError = await requireAuth(request, { modules: ["item_details"] });
     if (authError) return authError;
     let formData;
     try {
-      formData = await request.formData();
+      formData = await readFormData(request, MAX_IMAGE_BODY);
     } catch (parseError) {
+      const tooLarge = uploadLimitResponse(parseError);
+      if (tooLarge) return tooLarge;
+
       console.error("FormData parse error:", parseError);
       return NextResponse.json(
         {
@@ -148,7 +178,6 @@ export async function PATCH(request, { params }) {
     const { id } = await params;
 
     const description = formData.get("description");
-    const price = formData.get("price");
     // quantity is intentionally not read here: stock only changes through
     // stock_transaction / stock_tally so the ledger stays consistent.
     const imageFile = getFileFromFormData(formData, "image");
@@ -175,6 +204,15 @@ export async function PATCH(request, { params }) {
             status: false,
             message: "Invalid suppliers format - must be valid JSON array",
           },
+          { status: 400 },
+        );
+      }
+
+      // Checked before anything is changed
+      const supplierError = validateSuppliers(suppliers);
+      if (supplierError) {
+        return NextResponse.json(
+          { status: false, message: supplierError },
           { status: 400 },
         );
       }
@@ -240,8 +278,6 @@ export async function PATCH(request, { params }) {
     const updateData = {};
     if (description !== null && description !== undefined)
       updateData.description = description;
-    if (price !== null && price !== undefined)
-      updateData.price = parseFloat(price);
     if (measurement_unit !== null && measurement_unit !== undefined)
       updateData.measurement_unit = measurement_unit;
 
@@ -251,54 +287,70 @@ export async function PATCH(request, { params }) {
       data: updateData,
     });
 
-    // Handle itemSuppliers update if suppliers array is provided
+    // Handle itemSuppliers update if suppliers array is provided. The links are
+    // updated in place (matched by supplier) rather than deleted and recreated,
+    // so a link that stays keeps its row; only suppliers that were taken off
+    // the item are removed.
     if (suppliers !== null) {
-      // Delete all existing item_suppliers and create new ones
       await prisma.$transaction(async (tx) => {
-        // Delete existing
-        await tx.item_suppliers.deleteMany({
+        const existingLinks = await tx.item_suppliers.findMany({
           where: { item_id: id },
         });
+        const linkBySupplier = new Map();
+        for (const link of existingLinks) {
+          if (!linkBySupplier.has(link.supplier_id)) {
+            linkBySupplier.set(link.supplier_id, link);
+          }
+        }
 
-        // Create new ones if any
-        if (suppliers.length > 0) {
-          for (const s of suppliers) {
-            // Create new item_suppliers entry
+        const keptIds = new Set();
+        for (const s of suppliers) {
+          const data = {
+            supplier_reference: s.supplier_reference || null,
+            supplier_product_link: s.supplier_product_link || null,
+            price: s.price ? parseFloat(s.price) : null,
+          };
+          const link = linkBySupplier.get(s.supplier_id);
+          if (link) {
+            keptIds.add(link.id);
+            await tx.item_suppliers.update({
+              where: { id: link.id },
+              data,
+            });
+          } else {
             await tx.item_suppliers.create({
-              data: {
-                item_id: id,
-                supplier_id: s.supplier_id,
-                supplier_reference: s.supplier_reference || null,
-                supplier_product_link: s.supplier_product_link || null,
-                price: s.price ? parseFloat(s.price) : null,
-              },
+              data: { item_id: id, supplier_id: s.supplier_id, ...data },
             });
           }
+        }
+
+        const removedIds = existingLinks
+          .filter((link) => !keptIds.has(link.id))
+          .map((link) => link.id);
+        if (removedIds.length > 0) {
+          await tx.item_suppliers.deleteMany({
+            where: { id: { in: removedIds } },
+          });
         }
       });
     }
 
+    // Photos are soft deleted: the media row is flagged and the file stays on
+    // disk (the deleted-media screen purges it).
     // Handle image removal if imageFile is empty string
     if (imageFile === "") {
       try {
         if (existingItem.image_id && existingItem.image) {
-          // Store the image URL and ID before removing the reference
-          const imageUrl = existingItem.image.url;
-          const imageId = existingItem.image_id;
-
-          // First, update item to remove image_id (remove foreign key reference)
-          await prisma.item.update({
-            where: { item_id: id },
-            data: { image_id: null },
+          await prisma.$transaction(async (tx) => {
+            await tx.item.update({
+              where: { item_id: id },
+              data: { image_id: null },
+            });
+            await tx.media.update({
+              where: { id: existingItem.image_id },
+              data: { is_deleted: true },
+            });
           });
-
-          // Now safe to delete the media record (no foreign key constraint)
-          await prisma.media.delete({
-            where: { id: imageId },
-          });
-
-          // Finally, delete the file from disk
-          await deleteFileByRelativePath(imageUrl);
         }
       } catch (error) {
         console.error("Error handling image removal:", error);
@@ -307,59 +359,48 @@ export async function PATCH(request, { params }) {
     }
     // Handle file upload if image is provided
     else if (imageFile && imageFile instanceof File) {
+      let uploadedPath;
       try {
-        // Store old image info before processing new image
-        const oldImageUrl =
-          existingItem.image_id && existingItem.image
-            ? existingItem.image.url
-            : null;
-        const oldImageId = existingItem.image_id || null;
-
-        // Upload new image FIRST (before deleting old one)
+        // Upload the new image FIRST: if this fails the current photo is
+        // untouched. The "unique" strategy gives every upload its own path, so
+        // the cleanup below can only ever remove this request's file.
         const uploadResult = await uploadFile(imageFile, {
           uploadDir: "mediauploads",
           subDir: `items/${existingItem.category.toLowerCase()}`,
-          filenameStrategy: "id-based",
+          filenameStrategy: "unique",
+          allowedGroups: ["image"],
+          maxSize: MAX_IMAGE_SIZE,
           idPrefix: id,
         });
+        uploadedPath = uploadResult.relativePath;
 
-        // Create new media record
-        const media = await prisma.media.create({
-          data: {
-            url: uploadResult.relativePath,
-            filename: uploadResult.originalFilename,
-            file_type: uploadResult.fileType,
-            mime_type: uploadResult.mimeType,
-            extension: uploadResult.extension,
-            size: uploadResult.size,
-            item_id: id,
-          },
-        });
+        // Create the media record, link it, and soft delete the old photo
+        // together, so the item never ends up without a photo (or with two)
+        await prisma.$transaction(async (tx) => {
+          const media = await tx.media.create({
+            data: {
+              url: uploadResult.relativePath,
+              filename: uploadResult.originalFilename,
+              file_type: uploadResult.fileType,
+              mime_type: uploadResult.mimeType,
+              extension: uploadResult.extension,
+              size: uploadResult.size,
+              item_id: id,
+            },
+          });
 
-        // Update item with new image_id (now we have the new image linked)
-        await prisma.item.update({
-          where: { item_id: id },
-          data: { image_id: media.id },
-        });
+          await tx.item.update({
+            where: { item_id: id },
+            data: { image_id: media.id },
+          });
 
-        // NOW delete old image file and media record (only after new image is successfully linked)
-        if (oldImageId && oldImageUrl) {
-          try {
-            // Delete the old media record (safe now since item points to new image)
-            await prisma.media.delete({
-              where: { id: oldImageId },
+          if (existingItem.image_id && existingItem.image) {
+            await tx.media.update({
+              where: { id: existingItem.image_id },
+              data: { is_deleted: true },
             });
-
-            // Delete the old file from disk
-            await deleteFileByRelativePath(oldImageUrl);
-          } catch (deleteError) {
-            // Log but don't fail the entire operation if old image deletion fails
-            console.error(
-              "Error deleting old image (non-critical):",
-              deleteError,
-            );
           }
-        }
+        });
       } catch (error) {
         console.error("Error handling image upload:", error);
         console.error("Upload error details:", {
@@ -373,6 +414,10 @@ export async function PATCH(request, { params }) {
               }
             : null,
         });
+        // Nothing was linked, so don't leave the new file behind
+        if (uploadedPath) {
+          await deleteFileByRelativePath(uploadedPath).catch(() => {});
+        }
         // Return error instead of silently failing
         return NextResponse.json(
           {

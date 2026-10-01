@@ -5,6 +5,10 @@ import {
   uploadMultipleFiles,
   validateMultipartRequest,
   getFileFromFormData,
+  MAX_LOT_BODY,
+  MAX_LOT_FILE_SIZE,
+  uploadLimitResponse,
+  MAX_FILES_PER_REQUEST,
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 
@@ -31,8 +35,18 @@ export async function POST(request, { params }) {
     }
 
     // Handle multipart/form-data
-    const formData = await validateMultipartRequest(request);
+    const formData = await validateMultipartRequest(request, MAX_LOT_BODY);
     const files = getFileFromFormData(formData, "files", true); // getAll = true
+
+    if (files.length > MAX_FILES_PER_REQUEST) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: `Too many files: at most ${MAX_FILES_PER_REQUEST} per request`,
+        },
+        { status: 400 },
+      );
+    }
 
     if (!files || files.length === 0) {
       return NextResponse.json(
@@ -46,6 +60,7 @@ export async function POST(request, { params }) {
       uploadDir: "mediauploads",
       subDir: `materials_to_order/${mto.project_id}`,
       filenameStrategy: "original",
+      maxSize: MAX_LOT_FILE_SIZE,
     });
 
     if (uploadResults.successful.length === 0) {
@@ -102,6 +117,9 @@ export async function POST(request, { params }) {
       { status: 201 },
     );
   } catch (error) {
+    const tooLarge = uploadLimitResponse(error);
+    if (tooLarge) return tooLarge;
+
     console.error("Error in media upload:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },

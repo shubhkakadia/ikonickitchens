@@ -5,6 +5,21 @@ import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
+// Suppliers live on item_suppliers (item.supplier was dropped); keep the
+// select in one place so every include stays consistent.
+const itemSuppliersInclude = {
+  itemSuppliers: {
+    include: {
+      supplier: {
+        select: {
+          supplier_id: true,
+          name: true,
+        },
+      },
+    },
+  },
+};
+
 export async function PATCH(request, { params }) {
   try {
     const authError = await requireAuth(request, {
@@ -43,50 +58,11 @@ export async function PATCH(request, { params }) {
     const mtoItem = await prisma.materials_to_order_item.findUnique({
       where: { id },
       include: {
-        item: {
-          include: {
-            supplier: {
-              select: {
-                supplier_id: true,
-                name: true,
-              },
-            },
-            itemSuppliers: {
-              include: {
-                supplier: {
-                  select: {
-                    supplier_id: true,
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-        },
         mto: {
           include: {
             items: {
               include: {
-                item: {
-                  include: {
-                    supplier: {
-                      select: {
-                        supplier_id: true,
-                        name: true,
-                      },
-                    },
-                    itemSuppliers: {
-                      include: {
-                        supplier: {
-                          select: {
-                            supplier_id: true,
-                            name: true,
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
+                item: { include: itemSuppliersInclude },
               },
             },
           },
@@ -117,16 +93,7 @@ export async function PATCH(request, { params }) {
             username: true,
           },
         },
-        item: {
-          include: {
-            supplier: {
-              select: {
-                supplier_id: true,
-                name: true,
-              },
-            },
-          },
-        },
+        item: { include: itemSuppliersInclude },
         mto: {
           include: {
             project: {
@@ -142,16 +109,7 @@ export async function PATCH(request, { params }) {
             },
             items: {
               include: {
-                item: {
-                  include: {
-                    supplier: {
-                      select: {
-                        supplier_id: true,
-                        name: true,
-                      },
-                    },
-                  },
-                },
+                item: { include: itemSuppliersInclude },
               },
             },
           },
@@ -170,43 +128,29 @@ export async function PATCH(request, { params }) {
       console.error(`Failed to log materials_to_order_item update: ${id}`);
     }
 
-    // Check if all items from this supplier are ordered (only send notification on transition)
-    // In multi-supplier world, this is ambiguous for manual updates. We try to find a relevant supplier.
-    const itemSuppliers = updated.item?.itemSuppliers || [];
-    const legacySupplierId = updated.item?.supplier?.supplier_id;
-
-    // Determine which supplier ID to group by. Priority: Legacy -> First in list -> undefined
-    const supplierId =
-      legacySupplierId ||
-      (itemSuppliers.length > 0
-        ? itemSuppliers[0].supplier?.supplier_id
-        : undefined);
+    // Check if all items from this supplier are ordered (only send notification on transition).
+    // An item can have several suppliers, so a manual update is ambiguous; group by
+    // the edited item's first supplier.
+    const supplier = updated.item?.itemSuppliers?.[0]?.supplier;
+    const supplierId = supplier?.supplier_id;
 
     if (supplierId && updated.mto) {
-      // Get all items from this MTO that belong to the same supplier (checking both legacy and new structure)
-      const supplierItems = updated.mto.items.filter((item) => {
-        const iSuppliers = item.item?.itemSuppliers || [];
-        const iLegacyId = item.item?.supplier?.supplier_id;
-
-        // Match if legacy ID matches OR if any of the item's suppliers match
-        return (
-          iLegacyId === supplierId ||
-          iSuppliers.some((is) => is.supplier?.supplier_id === supplierId)
+      const hasSupplier = (line) =>
+        (line.item?.itemSuppliers || []).some(
+          (is) => is.supplier?.supplier_id === supplierId,
         );
-      });
+
+      // All items from this MTO that can be supplied by the same supplier
+      const supplierItems = updated.mto.items.filter(hasSupplier);
 
       // Check current state: if all items from this supplier are fully ordered
       const allOrderedNow = supplierItems.every(
         (item) => (item.quantity_ordered || 0) >= (item.quantity || 0),
       );
 
-      // Check previous state: were all items already ordered before this update?
-      // We need to check the previous state by looking at the old data
-      const previousSupplierItems = mtoItem.mto.items.filter(
-        (item) => item.item?.supplier?.supplier_id === supplierId,
-      );
+      // Check previous state: use the stored quantity for the edited line, current for others
+      const previousSupplierItems = mtoItem.mto.items.filter(hasSupplier);
       const allOrderedBefore = previousSupplierItems.every((item) => {
-        // Use the updated quantity for the current item, previous for others
         const qtyOrdered =
           item.id === id ? previousQuantityOrdered : item.quantity_ordered || 0;
         return qtyOrdered >= (item.quantity || 0);
@@ -216,7 +160,7 @@ export async function PATCH(request, { params }) {
       if (allOrderedNow && !allOrderedBefore && supplierItems.length > 0) {
         // Send notification for ordered status
         try {
-          const supplierName = updated.item.supplier.name || "Unknown Supplier";
+          const supplierName = supplier.name || "Unknown Supplier";
           const lotNames =
             updated.mto.lots && updated.mto.lots.length > 0
               ? updated.mto.lots.length === 1

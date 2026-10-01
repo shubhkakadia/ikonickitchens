@@ -236,6 +236,8 @@ describe("PATCH /api/v1/supplier/[id]/statements/[statementId]", () => {
           uploadDir: "mediauploads",
           subDir: "suppliers/SUP-1/statements",
           filenameStrategy: "id-based",
+          allowedGroups: ["pdf", "image"],
+          maxSize: 25 * 1024 * 1024,
           idPrefix: "SUP-1_statement_April_2026",
         });
         expect(prismaMock.supplier_file.update).toHaveBeenCalledWith({

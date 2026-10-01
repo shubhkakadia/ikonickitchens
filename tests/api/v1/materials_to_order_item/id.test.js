@@ -1,11 +1,5 @@
 // Tests for src/app/api/v1/materials_to_order_item/[id]/route.js
 //
-// NOTE: the route still includes/reads a legacy `item.supplier` relation that
-// no longer exists in prisma/schema.prisma (only `itemSuppliers` does). Prisma
-// would reject that include, so against a real database every request would
-// return 500. These tests use the in-memory Prisma mock, which cannot catch
-// that; the fixtures below supply `item.supplier` to exercise the route logic
-// as written.
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { prismaMock } from "../../../helpers/prismaMock";
 import { mockMasterAdmin } from "../../../helpers/auth";
@@ -31,12 +25,11 @@ const SUPPLIER = { supplier_id: "SUP-1", name: "Alpha" };
 
 const catalogItem = (overrides = {}) => ({
   item_id: "ITEM-1",
-  supplier: SUPPLIER,
-  itemSuppliers: [],
+  itemSuppliers: [{ supplier: SUPPLIER }],
   ...overrides,
 });
 
-// An MTO line; `item` defaults to a legacy-supplier item
+// An MTO line; `item` defaults to an item supplied by SUPPLIER
 const line = (id, overrides = {}) => ({
   id,
   quantity: 5,
@@ -311,7 +304,9 @@ describe("PATCH /api/v1/materials_to_order_item/[id]", () => {
           quantity_ordered: 0,
           item: catalogItem({
             item_id: "ITEM-3",
-            supplier: { supplier_id: "SUP-2", name: "Beta" },
+            itemSuppliers: [
+              { supplier: { supplier_id: "SUP-2", name: "Beta" } },
+            ],
           }),
         });
         mockPatch({
@@ -392,7 +387,7 @@ describe("PATCH /api/v1/materials_to_order_item/[id]", () => {
       it("is skipped when the item has no supplier at all", async () => {
         const noSupplier = () => [
           line(ID, {
-            item: catalogItem({ supplier: null, itemSuppliers: [] }),
+            item: catalogItem({ itemSuppliers: [] }),
           }),
         ];
         mockPatch({ before: noSupplier(), after: noSupplier() });
@@ -400,7 +395,7 @@ describe("PATCH /api/v1/materials_to_order_item/[id]", () => {
           async () => ({
             id: ID,
             mto_id: "mto-1",
-            item: catalogItem({ supplier: null, itemSuppliers: [] }),
+            item: catalogItem({ itemSuppliers: [] }),
             mto: mtoOf(noSupplier()),
           }),
         );
@@ -411,43 +406,29 @@ describe("PATCH /api/v1/materials_to_order_item/[id]", () => {
         expect(sendNotification).not.toHaveBeenCalled();
       });
 
-      // Current behaviour (bug): the "before" state only recognises the legacy
-      // item.supplier, so for items that only have itemSuppliers it is treated
-      // as already fully ordered and the notification never fires.
-      it("never fires for items that only use itemSuppliers", async () => {
+      it("fires for items supplied through itemSuppliers", async () => {
         const viaJoin = (ordered) => [
-          line(ID, {
-            quantity: 5,
-            quantity_ordered: ordered,
-            item: catalogItem({
-              supplier: null,
-              itemSuppliers: [{ supplier: SUPPLIER }],
-            }),
-          }),
+          line(ID, { quantity: 5, quantity_ordered: ordered }),
         ];
-        prismaMock.materials_to_order_item.findUnique.mockResolvedValue({
-          id: ID,
-          mto_id: "mto-1",
-          item_id: "ITEM-1",
-          quantity_ordered: 0,
-          mto: mtoOf(viaJoin(0)),
-        });
-        prismaMock.materials_to_order_item.update.mockImplementation(
-          async () => ({
-            id: ID,
-            mto_id: "mto-1",
-            item: catalogItem({
-              supplier: null,
-              itemSuppliers: [{ supplier: SUPPLIER }],
-            }),
-            mto: mtoOf(viaJoin(5)),
-          }),
-        );
+        mockPatch({ before: viaJoin(0), after: viaJoin(5) });
 
         const res = await patch({ quantity_ordered: 5 });
 
         expect(res.status).toBe(200);
-        expect(sendNotification).not.toHaveBeenCalled();
+        expect(sendNotification).toHaveBeenCalledTimes(1);
+      });
+
+      it("never asks Prisma for the dropped item.supplier relation", async () => {
+        await patch();
+
+        const includes = [
+          prismaMock.materials_to_order_item.findUnique.mock.calls[0][0],
+          prismaMock.materials_to_order_item.update.mock.calls[0][0],
+        ].map((c) => JSON.stringify(c.include));
+        for (const inc of includes) {
+          expect(inc).not.toMatch(/"item":\{"include":\{"supplier"/);
+          expect(inc).toContain("itemSuppliers");
+        }
       });
     });
 

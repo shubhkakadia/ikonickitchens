@@ -47,7 +47,17 @@ export async function POST(request) {
           { status: 400 },
         );
       }
-      if (item.new_quantity < 0) {
+      const parsed = Number(item.new_quantity);
+      if (!Number.isFinite(parsed) || String(item.new_quantity).trim() === "") {
+        return NextResponse.json(
+          {
+            status: false,
+            message: "new_quantity must be a number",
+          },
+          { status: 400 },
+        );
+      }
+      if (parsed < 0) {
         return NextResponse.json(
           {
             status: false,
@@ -58,108 +68,128 @@ export async function POST(request) {
       }
     }
 
+    // Quantities are Decimal(10,2); the ledger (stock_transaction.quantity) is
+    // an integer, so the exact old -> new values go in its notes.
+    const round2 = (n) => Math.round(n * 100) / 100;
+    const seen = new Set();
+    for (const item of items) {
+      if (seen.has(item.item_id)) {
+        return NextResponse.json(
+          {
+            status: false,
+            message: `Duplicate item_id in request: ${item.item_id}`,
+          },
+          { status: 400 },
+        );
+      }
+      seen.add(item.item_id);
+    }
+
     const results = [];
     const errors = [];
 
-    // Process each item
-    for (const itemData of items) {
-      const { item_id, new_quantity, current_quantity } = itemData;
-
-      try {
-        // Use transaction to ensure atomicity - read and write must happen atomically
-        // This prevents race conditions where another transaction modifies the item
-        // between our read and write operations
-        const result = await prisma.$transaction(async (tx) => {
-          // Get current item within transaction to lock it
-          const currentItem = await tx.item.findUnique({
-            where: { item_id: item_id },
-            select: {
-              quantity: true,
-              supplier_reference: true,
-              itemSuppliers: {
-                include: {
-                  supplier: {
-                    select: { name: true },
-                  },
-                },
-              },
+    // One transaction for the whole tally: one read for every item, a guarded
+    // write per changed item, and one batched ledger insert. A row that lost a
+    // race is reported as a conflict and skipped; any unexpected database
+    // error rolls everything back.
+    await prisma.$transaction(
+      async (tx) => {
+        const current = await tx.item.findMany({
+          where: { item_id: { in: items.map((i) => i.item_id) } },
+          select: {
+            item_id: true,
+            quantity: true,
+            is_deleted: true,
+            itemSuppliers: {
+              include: { supplier: { select: { name: true } } },
             },
-          });
+          },
+        });
+        const byId = new Map(current.map((c) => [c.item_id, c]));
+        const ledger = [];
 
-          if (!currentItem) {
-            return { error: "Item not found" };
+        for (const { item_id, new_quantity, current_quantity } of items) {
+          const stored = byId.get(item_id);
+          if (!stored || stored.is_deleted) {
+            errors.push({ item_id, error: "Item not found" });
+            continue;
           }
 
-          const oldQuantity = currentItem.quantity ?? 0; // Fixed nullish coalescing
-          const newQty = Math.floor(parseFloat(new_quantity));
-          const difference = newQty - oldQuantity;
+          const oldQuantity = Number(stored.quantity ?? 0);
+          const newQty = round2(Number(new_quantity));
+          const difference = round2(newQty - oldQuantity);
 
-          // Construct supplier reference string from multiple suppliers
-          const performSupplierRef =
-            currentItem.itemSuppliers?.length > 0
-              ? currentItem.itemSuppliers
+          // The count was made against an exported sheet; if stock has moved
+          // since, the delta would be wrong, so ask for a fresh export.
+          if (
+            current_quantity !== undefined &&
+            current_quantity !== null &&
+            Math.abs(oldQuantity - Number(current_quantity)) >= 1
+          ) {
+            errors.push({
+              item_id,
+              conflict: true,
+              error: `Stock changed since the sheet was exported (sheet: ${current_quantity}, now: ${oldQuantity}). Export a fresh sheet and count again.`,
+            });
+            continue;
+          }
+
+          if (difference === 0) continue;
+
+          // Only write if nobody changed the quantity since we read it
+          const { count } = await tx.item.updateMany({
+            where: { item_id, quantity: stored.quantity },
+            data: { quantity: newQty },
+          });
+          if (count === 0) {
+            errors.push({
+              item_id,
+              conflict: true,
+              error:
+                "Stock was changed by someone else during the tally. Try again.",
+            });
+            continue;
+          }
+
+          const transactionType = difference > 0 ? "ADDED" : "WASTED";
+          ledger.push({
+            item_id,
+            quantity: Math.max(1, Math.round(Math.abs(difference))),
+            type: transactionType,
+            notes: `Stock tally adjustment: ${oldQuantity} → ${newQty}`,
+          });
+
+          const supplierRef =
+            stored.itemSuppliers?.length > 0
+              ? stored.itemSuppliers
                   .map(
                     (is) =>
                       `${is.supplier?.name || "Unassigned"}: ${is.supplier_reference || "N/A"}`,
                   )
                   .join(", ")
-              : currentItem.supplier_reference;
-
-          // Skip if no change
-          if (difference === 0) {
-            return { skipped: true };
-          }
-
-          // Determine transaction type
-          const transactionType = difference > 0 ? "ADDED" : "WASTED";
-          const quantityChange = Math.abs(difference);
-
-          // Update item quantity and create stock transaction atomically
-          await Promise.all([
-            tx.item.update({
-              where: { item_id: item_id },
-              data: {
-                quantity: newQty,
-              },
-            }),
-            tx.stock_transaction.create({
-              data: {
-                item_id: item_id,
-                quantity: quantityChange,
-                type: transactionType,
-                notes: `Stock tally adjustment: ${oldQuantity} → ${newQty}`,
-              },
-            }),
-          ]);
-
-          return {
+              : null;
+          results.push({
             item_id,
-            item_id,
-            supplier_reference: performSupplierRef,
+            supplier_reference: supplierRef,
             old_quantity: oldQuantity,
             new_quantity: newQty,
-            difference: difference,
+            difference,
             type: transactionType,
-          };
-        });
-
-        // Handle transaction result
-        if (result.error) {
-          errors.push({
-            item_id,
-            error: result.error,
           });
-        } else if (!result.skipped) {
-          results.push(result);
         }
-      } catch (itemError) {
-        console.error(`Error processing item ${item_id}:`, itemError);
-        errors.push({
-          item_id,
-          error: itemError.message,
-        });
-      }
-    }
+
+        if (ledger.length > 0) {
+          await tx.stock_transaction.createMany({ data: ledger });
+        }
+      },
+      { timeout: 30000 },
+    );
+
+    const summary = {
+      total_items: items.length,
+      updated_count: results.length,
+      error_count: errors.length,
+    };
 
     // Log the stock tally operation
     // Use timestamp-based ID since this is a bulk operation without a single entity ID
@@ -172,24 +202,31 @@ export async function POST(request) {
       `Stock tally completed: ${results.length} items updated, ${errors.length} errors`,
     );
 
+    // Nothing changed and something went wrong: don't report success
+    const noneApplied = results.length === 0 && errors.length > 0;
+    if (noneApplied) {
+      const allConflicts = errors.every((e) => e.conflict);
+      return NextResponse.json(
+        {
+          status: false,
+          message: allConflicts
+            ? "Stock changed since the sheet was exported. Export a fresh sheet and count again."
+            : "Stock tally failed: no items were updated",
+          data: { updated: [], errors, summary },
+        },
+        { status: allConflicts ? 409 : 422 },
+      );
+    }
+
     return NextResponse.json(
       {
         status: true,
         message: `Stock tally completed: ${results.length} items updated`,
-        data: {
-          updated: results,
-          errors: errors,
-          summary: {
-            total_items: items.length,
-            updated_count: results.length,
-            error_count: errors.length,
-          },
-        },
+        data: { updated: results, errors, summary },
       },
       { status: 200 },
     );
   } catch (error) {
-    console.error("Stock tally error:", error);
     console.error("Error in POST /api/v1/stock_tally:", error);
     return NextResponse.json(
       {

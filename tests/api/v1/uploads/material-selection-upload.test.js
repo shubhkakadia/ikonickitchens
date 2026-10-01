@@ -117,6 +117,7 @@ describe("POST /api/v1/uploads/material-selection/[id]", () => {
         uploadDir: "mediauploads",
         subDir: "material_selection/proj-1",
         filenameStrategy: "original",
+        maxSize: 200 * 1024 * 1024,
       });
     });
 

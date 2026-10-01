@@ -198,6 +198,20 @@ export default function StageTable({
     };
   };
 
+  // Warn when sync_all_lots could not copy a stage to some lots (their dates
+  // don't fit the stage dates)
+  const warnSkippedLots = (response) => {
+    const skipped = response?.data?.sync?.skippedLots;
+    if (skipped?.length > 0) {
+      toast.warning(
+        `Not synced to ${skipped.length} lot(s) because the stage dates are outside their date range: ${skipped
+          .map((lotId) => lotId.toUpperCase())
+          .join(", ")}`,
+        { autoClose: 8000 },
+      );
+    }
+  };
+
   // Centralized function to create a stage
   const createStage = async (stageData, stageIdentifier) => {
     try {
@@ -214,6 +228,7 @@ export default function StageTable({
       });
 
       if (response.data.status && response.data.data) {
+        warnSkippedLots(response);
         const newStage = response.data.data;
 
         // Preserve assigned_to from the stageData we sent (API creates relationships but doesn't return them)
@@ -307,6 +322,7 @@ export default function StageTable({
       );
 
       if (response.data.status && response.data.data) {
+        warnSkippedLots(response);
         const updatedStage = response.data.data;
         updateStageInLocalState(stageIdentifier, updatedStage);
         updateParentLotData(updatedStage);

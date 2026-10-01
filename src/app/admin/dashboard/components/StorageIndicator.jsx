@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Database, HardDrive, TrendingUp } from "lucide-react";
+import { BADGE, BADGE_TONES, formatQty } from "../lib/format";
 
 const formatBytes = (bytes) => {
   const n = Number(bytes) || 0;
@@ -22,12 +23,12 @@ const monthLabel = (key) => {
 // The upgrade call, stated plainly rather than left to the reader.
 function verdict(percentUsed, monthsRemaining) {
   if (percentUsed == null)
-    return { label: "Capacity unknown", dot: "bg-slate-300", chip: "bg-slate-100 text-slate-600", bar: "bg-slate-300", advice: "No capacity limit could be determined." };
+    return { label: "Capacity unknown", dot: "bg-slate-300", chip: BADGE_TONES.muted, bar: "bg-slate-300", advice: "No capacity limit could be determined." };
   if (percentUsed >= 90 || (monthsRemaining != null && monthsRemaining < 2))
-    return { label: "Upgrade now", dot: "bg-red-500", chip: "bg-red-100 text-red-800", bar: "bg-red-500", advice: "Capacity is nearly exhausted." };
+    return { label: "Upgrade now", dot: "bg-red-500", chip: BADGE_TONES.danger, bar: "bg-red-500", advice: "Capacity is nearly exhausted." };
   if (percentUsed >= 75 || (monthsRemaining != null && monthsRemaining < 6))
-    return { label: "Plan an upgrade", dot: "bg-amber-500", chip: "bg-amber-100 text-amber-800", bar: "bg-amber-500", advice: "Headroom is shrinking. Budget for more space." };
-  return { label: "Healthy", dot: "bg-green-500", chip: "bg-green-100 text-green-800", bar: "bg-green-500", advice: "Plenty of headroom at the current rate." };
+    return { label: "Plan an upgrade", dot: "bg-amber-500", chip: BADGE_TONES.warning, bar: "bg-amber-500", advice: "Headroom is shrinking. Budget for more space." };
+  return { label: "Healthy", dot: "bg-green-500", chip: BADGE_TONES.success, bar: "bg-green-500", advice: "Plenty of headroom at the current rate." };
 }
 
 export default function StorageIndicator({
@@ -131,7 +132,7 @@ export default function StorageIndicator({
               </p>
 
               <div className="flex items-center gap-2 mb-3">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${v.chip}`}>
+                <span className={`${BADGE} ${v.chip}`}>
                   {v.label}
                 </span>
                 <span className="text-xs text-slate-500 leading-tight">
@@ -185,7 +186,7 @@ export default function StorageIndicator({
                     {formatBytes(storage.files?.bytes)}
                     <span className="text-slate-500 font-normal">
                       {" "}
-                      · {(storage.files?.count ?? 0).toLocaleString()} files
+                      · {formatQty(storage.files?.count)} files
                     </span>
                   </span>
                 </div>

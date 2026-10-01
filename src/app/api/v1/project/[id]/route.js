@@ -81,7 +81,7 @@ export async function PATCH(request, { params }) {
     });
     if (authError) return authError;
     const { id } = await params;
-    const { name, client_id } = await request.json();
+    const { name, client_id, sync_all_lots } = await request.json();
 
     const existingProject = await prisma.project.findUnique({
       where: { project_id: id },
@@ -116,6 +116,10 @@ export async function PATCH(request, { params }) {
 
     if (name !== undefined) {
       updateData.name = name;
+    }
+
+    if (sync_all_lots !== undefined) {
+      updateData.sync_all_lots = Boolean(sync_all_lots);
     }
 
     updateData.client_id = existingClient?.client_id || null;

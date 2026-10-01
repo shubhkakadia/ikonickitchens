@@ -172,6 +172,83 @@ describe("POST /api/v1/uploads/lots/[...path]", () => {
       });
     });
 
+    describe("size limits", () => {
+      it("returns 413 before parsing when Content-Length is over the limit", async () => {
+        mockUpload();
+
+        const res = await post(undefined, {
+          headers: { "content-length": String(500 * 1024 * 1024) },
+        });
+
+        expect(res.status).toBe(413);
+        expect(await res.json()).toEqual({
+          status: false,
+          message: "Request body exceeds the maximum of 210 MB",
+        });
+        expect(prismaMock.lot.findUnique).not.toHaveBeenCalled();
+        expect(uploadFile).not.toHaveBeenCalled();
+      });
+
+      it("returns 400 when more than 10 files are sent", async () => {
+        mockUpload();
+        const files = Object.fromEntries(
+          Array.from({ length: 11 }, (_, i) => [
+            `f${i}`,
+            testFile(`p${i}.pdf`, "application/pdf"),
+          ]),
+        );
+
+        const res = await post(files);
+
+        expect(res.status).toBe(400);
+        expect(await res.json()).toEqual({
+          status: false,
+          message: "Too many files: at most 10 per request",
+        });
+        expect(uploadFile).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("project path segment", () => {
+      it.each(["proj-2", "../../public", "proj-1/../x"])(
+        "returns 404 and stores nothing when the lot is not in project %s",
+        async (projectId) => {
+          mockUpload();
+
+          const res = await post(undefined, {}, [
+            projectId,
+            "lot-1",
+            "architecture_drawings",
+          ]);
+
+          expect(res.status).toBe(404);
+          expect(uploadFile).not.toHaveBeenCalled();
+          expect(prismaMock.lot_tab.create).not.toHaveBeenCalled();
+          expect(prismaMock.lot_file.create).not.toHaveBeenCalled();
+        },
+      );
+
+      it("builds the folder from the stored project and lot ids", async () => {
+        mockUpload({
+          lot: storedLot({
+            lot_id: "Lot-1",
+            project: { project_id: "Proj-1", name: "Smith House" },
+          }),
+        });
+
+        const res = await post();
+
+        expect(res.status).toBe(201);
+        expect(uploadFile.mock.calls[0][1].subDir).toBe(
+          "Proj-1/Lot-1/architecture_drawings",
+        );
+        expect(await res.json()).toMatchObject({
+          projectId: "Proj-1",
+          lotId: "Lot-1",
+        });
+      });
+    });
+
     describe("storing files", () => {
       it("uploads the file, records it under the lot's tab and logs", async () => {
         const res = await post();
@@ -198,6 +275,8 @@ describe("POST /api/v1/uploads/lots/[...path]", () => {
           uploadDir: "mediauploads",
           subDir: "proj-1/lot-1/architecture_drawings",
           filenameStrategy: "original",
+          allowedGroups: ["image", "pdf", "video", "office", "cad"],
+          maxSize: 200 * 1024 * 1024,
         });
         expect(prismaMock.lot_file.create).toHaveBeenCalledWith({
           data: {
@@ -381,18 +460,15 @@ describe("POST /api/v1/uploads/lots/[...path]", () => {
     });
 
     describe("failures", () => {
-      // Current behaviour (bug): the "log failed" branch reads `tab.id`, but
-      // no variable named `tab` exists, so it throws a ReferenceError. The
-      // files are already saved, but the caller gets a 500.
-      it("returns 500 after saving the files when a log cannot be written", async () => {
+      it("returns 201 with a warning when a log cannot be written", async () => {
         prismaMock.logs.create.mockRejectedValue(new Error("log table down"));
 
         const res = await post();
 
-        expect(res.status).toBe(500);
-        expect(await res.json()).toEqual({
-          status: false,
-          message: "Internal server error",
+        expect(res.status).toBe(201);
+        expect(await res.json()).toMatchObject({
+          status: true,
+          warning: "Note: Upload succeeded but some logging failed",
         });
         expect(prismaMock.lot_file.create).toHaveBeenCalledOnce();
       });

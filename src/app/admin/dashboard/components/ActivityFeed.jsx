@@ -2,7 +2,12 @@
 
 import { History } from "lucide-react";
 import SectionCard, { EmptyState } from "./SectionCard";
-import { ACTION_COLORS, formatTimeAgo, titleCase } from "../lib/format";
+import {
+  ACTION_COLORS,
+  BADGE,
+  formatTimeAgo,
+  titleCase,
+} from "../lib/format";
 
 export default function ActivityFeed({ activity }) {
   return (
@@ -19,7 +24,7 @@ export default function ActivityFeed({ activity }) {
           {activity.map((log) => (
             <div key={log.id} className="px-4 py-2 flex items-start gap-3">
               <span
-                className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 mt-0.5 ${ACTION_COLORS[log.action] ?? ACTION_COLORS.OTHER}`}
+                className={`${BADGE} shrink-0 mt-0.5 ${ACTION_COLORS[log.action] ?? ACTION_COLORS.OTHER}`}
               >
                 {titleCase(log.action)}
               </span>

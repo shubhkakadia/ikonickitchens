@@ -1,3 +1,8 @@
+import {
+  MAX_IMAGE_BODY,
+  readFormData,
+  uploadLimitResponse,
+} from "@/lib/fileHandler";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
@@ -70,7 +75,7 @@ export async function PATCH(request, { params }) {
     if (contentType && contentType.includes("application/json")) {
       body = await request.json();
     } else {
-      const formData = await request.formData();
+      const formData = await readFormData(request, MAX_IMAGE_BODY);
       body = Object.fromEntries(formData.entries());
     }
     const { user_type, is_active, password, old_password } = body;
@@ -234,6 +239,9 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
+    const tooLarge = uploadLimitResponse(error);
+    if (tooLarge) return tooLarge;
+
     console.error("Error in PATCH /api/v1/user/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
@@ -242,13 +250,22 @@ export async function PATCH(request, { params }) {
   }
 }
 
+// "Deleting" a user deactivates the account instead of erasing it. The row has
+// to stay: every audit log entry points at it (logs.user_id is SET NULL on
+// delete), so removing it would strip the author from everything the user did.
+// The account can no longer sign in, its sessions are revoked, and its link to
+// the employee is released so a new account can be created for that employee.
 export async function DELETE(request, { params }) {
   try {
-    const authError = await requireAuth(request, { roles: MASTER_ADMIN_ONLY });
-    if (authError) return authError;
+    const { error, auth } = await authorizeRequest(request, {
+      roles: MASTER_ADMIN_ONLY,
+    });
+    if (error) return error;
     const { id } = await params;
-    const user = await prisma.users.delete({
-      where: { id: id },
+    const isSelf = auth.user.id === id;
+
+    const existing = await prisma.users.findUnique({
+      where: { id },
       omit: { password: true },
       include: {
         employee: {
@@ -259,17 +276,53 @@ export async function DELETE(request, { params }) {
         },
       },
     });
+    if (!existing) {
+      return NextResponse.json(
+        { status: false, message: "User not found" },
+        { status: 404 },
+      );
+    }
+
+    // Repeating the request (a double click) changes nothing
+    if (!existing.is_active && !existing.employee_id) {
+      return NextResponse.json(
+        {
+          status: true,
+          message: "User account is already removed",
+          data: existing,
+        },
+        { status: 200 },
+      );
+    }
+
+    const user = await prisma.$transaction(async (tx) => {
+      // Everyone is logged out; when removing yourself the current session is
+      // kept for the rest of this request (the account is inactive anyway, so
+      // it can't be used again)
+      await tx.sessions.deleteMany({
+        where: {
+          user_id: id,
+          ...(isSelf ? { NOT: { id: auth.session.id } } : {}),
+        },
+      });
+      return tx.users.update({
+        where: { id },
+        data: { is_active: false, employee_id: null },
+        omit: { password: true },
+      });
+    });
+
+    // The employee link was just released, so the name comes from before
+    const person = `${existing.employee?.first_name} ${existing.employee?.last_name}`;
     const logged = await withLogging(
       request,
       "user",
       id,
       "DELETE",
-      `User deleted successfully: ${user.employee?.first_name} ${user.employee?.last_name}`,
+      `User deleted (deactivated, kept for the audit trail): ${person}`,
     );
     if (!logged) {
-      console.error(
-        `Failed to log user deletion: ${id} - ${user.employee?.first_name} ${user.employee?.last_name}`,
-      );
+      console.error(`Failed to log user deletion: ${id} - ${person}`);
       return NextResponse.json(
         {
           status: true,

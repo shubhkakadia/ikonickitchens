@@ -157,7 +157,8 @@ describe("PATCH /api/v1/item/[id]", () => {
     size: 999,
   };
 
-  function mockPatch(existing = storedItem()) {
+  // `links` = the item_suppliers rows the item has before the edit
+  function mockPatch(existing = storedItem(), links = []) {
     // The first lookup (no hardware include) is the existence check; the
     // last one (full include) builds the response.
     prismaMock.item.findUnique.mockImplementation(async ({ include }) =>
@@ -175,9 +176,12 @@ describe("PATCH /api/v1/item/[id]", () => {
     ]) {
       prismaMock[model].update.mockResolvedValue({});
     }
+    prismaMock.item_suppliers.findMany.mockResolvedValue(links);
+    prismaMock.item_suppliers.update.mockResolvedValue({});
     prismaMock.item_suppliers.deleteMany.mockResolvedValue({ count: 0 });
     prismaMock.item_suppliers.create.mockResolvedValue({});
     prismaMock.media.create.mockResolvedValue({ id: "new-media" });
+    prismaMock.media.update.mockResolvedValue({});
     prismaMock.media.delete.mockResolvedValue({});
     prismaMock.logs.create.mockResolvedValue({});
     uploadFile.mockResolvedValue(UPLOAD_RESULT);
@@ -246,13 +250,12 @@ describe("PATCH /api/v1/item/[id]", () => {
       expect(prismaMock.sheet.update).toHaveBeenCalled();
     });
 
-    // Current behaviour (latent bug): item has no price column, so any
-    // client that sends `price` makes Prisma reject the update (500). The
-    // admin UI does not send it today.
-    it("writes a top-level price onto the item", async () => {
-      await patch({ price: "12.5" });
+    // item has no price column (price lives on item_suppliers), so a stray
+    // `price` field must not reach the item update.
+    it("ignores a top-level price", async () => {
+      await patch({ price: "12.5", description: "x" });
 
-      expect(itemUpdateData()).toEqual({ price: 12.5 });
+      expect(itemUpdateData()).toEqual({ description: "x" });
     });
 
     describe("category-specific fields", () => {
@@ -402,13 +405,24 @@ describe("PATCH /api/v1/item/[id]", () => {
     });
 
     describe("suppliers", () => {
+      const link = (id, supplier_id, overrides = {}) => ({
+        id,
+        item_id: ID,
+        supplier_id,
+        supplier_reference: "OLD",
+        supplier_product_link: null,
+        price: 5,
+        ...overrides,
+      });
+
       it("leaves supplier links untouched when suppliers is omitted", async () => {
         await patch({ description: "x" });
 
+        expect(prismaMock.item_suppliers.findMany).not.toHaveBeenCalled();
         expect(prismaMock.item_suppliers.deleteMany).not.toHaveBeenCalled();
       });
 
-      it("replaces all supplier links inside a transaction", async () => {
+      it("creates links for new suppliers inside a transaction", async () => {
         await patch({
           suppliers: JSON.stringify([
             { supplier_id: "s1", supplier_reference: "R1", price: "9.99" },
@@ -417,9 +431,7 @@ describe("PATCH /api/v1/item/[id]", () => {
         });
 
         expect(prismaMock.$transaction).toHaveBeenCalled();
-        expect(prismaMock.item_suppliers.deleteMany).toHaveBeenCalledWith({
-          where: { item_id: ID },
-        });
+        expect(prismaMock.item_suppliers.deleteMany).not.toHaveBeenCalled();
         expect(prismaMock.item_suppliers.create).toHaveBeenNthCalledWith(1, {
           data: {
             item_id: ID,
@@ -440,10 +452,59 @@ describe("PATCH /api/v1/item/[id]", () => {
         });
       });
 
+      it("updates a link that stays in place instead of deleting and recreating it", async () => {
+        mockPatch(storedItem(), [link("l1", "s1")]);
+
+        await patch({
+          suppliers: JSON.stringify([
+            { supplier_id: "s1", supplier_reference: "NEW", price: "7.5" },
+          ]),
+        });
+
+        expect(prismaMock.item_suppliers.update).toHaveBeenCalledWith({
+          where: { id: "l1" },
+          data: {
+            supplier_reference: "NEW",
+            supplier_product_link: null,
+            price: 7.5,
+          },
+        });
+        expect(prismaMock.item_suppliers.create).not.toHaveBeenCalled();
+        expect(prismaMock.item_suppliers.deleteMany).not.toHaveBeenCalled();
+      });
+
+      it("removes only the suppliers that were taken off the item", async () => {
+        mockPatch(storedItem(), [link("l1", "s1"), link("l2", "s2")]);
+
+        await patch({ suppliers: JSON.stringify([{ supplier_id: "s1" }]) });
+
+        expect(prismaMock.item_suppliers.update).toHaveBeenCalledTimes(1);
+        expect(prismaMock.item_suppliers.deleteMany).toHaveBeenCalledWith({
+          where: { id: { in: ["l2"] } },
+        });
+      });
+
+      it("cleans up a duplicate link row for the same supplier", async () => {
+        mockPatch(storedItem(), [link("l1", "s1"), link("l1-dup", "s1")]);
+
+        await patch({ suppliers: JSON.stringify([{ supplier_id: "s1" }]) });
+
+        expect(prismaMock.item_suppliers.update).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { id: "l1" } }),
+        );
+        expect(prismaMock.item_suppliers.deleteMany).toHaveBeenCalledWith({
+          where: { id: { in: ["l1-dup"] } },
+        });
+      });
+
       it("removes every supplier link when suppliers is an empty array", async () => {
+        mockPatch(storedItem(), [link("l1", "s1"), link("l2", "s2")]);
+
         await patch({ suppliers: "[]" });
 
-        expect(prismaMock.item_suppliers.deleteMany).toHaveBeenCalled();
+        expect(prismaMock.item_suppliers.deleteMany).toHaveBeenCalledWith({
+          where: { id: { in: ["l1", "l2"] } },
+        });
         expect(prismaMock.item_suppliers.create).not.toHaveBeenCalled();
       });
 
@@ -458,10 +519,48 @@ describe("PATCH /api/v1/item/[id]", () => {
         expect(prismaMock.item.findUnique).not.toHaveBeenCalled();
         expect(prismaMock.item.update).not.toHaveBeenCalled();
       });
+
+      it.each([
+        [
+          "not an array",
+          JSON.stringify({ supplier_id: "s1" }),
+          "Invalid suppliers format - must be valid JSON array",
+        ],
+        [
+          "missing a supplier_id",
+          JSON.stringify([{ price: "1" }]),
+          "Each supplier must have a supplier_id",
+        ],
+        [
+          "listing a supplier twice",
+          JSON.stringify([{ supplier_id: "s1" }, { supplier_id: "s1" }]),
+          "A supplier can only be listed once per item",
+        ],
+        [
+          "carrying a bad price",
+          JSON.stringify([{ supplier_id: "s1", price: "abc" }]),
+          "Supplier price must be a non-negative amount",
+        ],
+        [
+          "carrying a negative price",
+          JSON.stringify([{ supplier_id: "s1", price: "-3" }]),
+          "Supplier price must be a non-negative amount",
+        ],
+      ])(
+        "returns 400 before changing anything when suppliers is %s",
+        async (_, suppliers, message) => {
+          const res = await patch({ suppliers, description: "x" });
+
+          expect(res.status).toBe(400);
+          expect((await res.json()).message).toBe(message);
+          expect(prismaMock.item.update).not.toHaveBeenCalled();
+          expect(prismaMock.item_suppliers.create).not.toHaveBeenCalled();
+        },
+      );
     });
 
     describe("photo", () => {
-      it("removes the photo when image is sent as an empty string", async () => {
+      it("soft deletes the photo when image is sent as an empty string", async () => {
         mockPatch(withPhoto());
 
         const res = await patch({ image: "" });
@@ -471,17 +570,19 @@ describe("PATCH /api/v1/item/[id]", () => {
           where: { item_id: ID },
           data: { image_id: null },
         });
-        expect(prismaMock.media.delete).toHaveBeenCalledWith({
+        expect(prismaMock.media.update).toHaveBeenCalledWith({
           where: { id: "old-media" },
+          data: { is_deleted: true },
         });
-        expect(deleteFileByRelativePath).toHaveBeenCalledWith(
-          "mediauploads/items/sheet/item-1-old.webp",
-        );
+        // the row and the file stay for the deleted-media screen
+        expect(prismaMock.media.delete).not.toHaveBeenCalled();
+        expect(deleteFileByRelativePath).not.toHaveBeenCalled();
       });
 
       it("does nothing for an empty image when there is no photo", async () => {
         await patch({ image: "" });
 
+        expect(prismaMock.media.update).not.toHaveBeenCalled();
         expect(prismaMock.media.delete).not.toHaveBeenCalled();
         expect(deleteFileByRelativePath).not.toHaveBeenCalled();
       });
@@ -489,7 +590,7 @@ describe("PATCH /api/v1/item/[id]", () => {
       // Current behaviour: a failed removal is swallowed with no warning.
       it("still returns 200 (no warning) when removing the photo fails", async () => {
         mockPatch(withPhoto());
-        prismaMock.media.delete.mockRejectedValue(new Error("DB down"));
+        prismaMock.media.update.mockRejectedValue(new Error("DB down"));
 
         const res = await patch({ image: "" });
 
@@ -499,7 +600,7 @@ describe("PATCH /api/v1/item/[id]", () => {
         expect(json).not.toHaveProperty("imageWarning");
       });
 
-      it("uploads a new photo before removing the old one", async () => {
+      it("uploads the new photo first, then swaps and soft deletes the old one in one transaction", async () => {
         mockPatch(withPhoto());
         const order = [];
         uploadFile.mockImplementation(async () => {
@@ -510,12 +611,10 @@ describe("PATCH /api/v1/item/[id]", () => {
           order.push("create media");
           return { id: "new-media" };
         });
-        prismaMock.media.delete.mockImplementation(async () =>
-          order.push("delete old row"),
-        );
-        deleteFileByRelativePath.mockImplementation(async () =>
-          order.push("delete old file"),
-        );
+        prismaMock.media.update.mockImplementation(async () => {
+          order.push("soft delete old row");
+          return {};
+        });
 
         const res = await patch({ image: testFile("new.jpg") });
 
@@ -523,48 +622,54 @@ describe("PATCH /api/v1/item/[id]", () => {
         expect(order).toEqual([
           "upload new",
           "create media",
-          "delete old row",
-          "delete old file",
+          "soft delete old row",
         ]);
         expect(uploadFile).toHaveBeenCalledWith(expect.any(File), {
           uploadDir: "mediauploads",
           subDir: "items/sheet",
-          filenameStrategy: "id-based",
+          filenameStrategy: "unique",
+          allowedGroups: ["image"],
+          maxSize: 10 * 1024 * 1024,
           idPrefix: ID,
         });
         expect(prismaMock.item.update).toHaveBeenCalledWith({
           where: { item_id: ID },
           data: { image_id: "new-media" },
         });
-        expect(prismaMock.media.delete).toHaveBeenCalledWith({
+        expect(prismaMock.media.update).toHaveBeenCalledWith({
           where: { id: "old-media" },
+          data: { is_deleted: true },
         });
+        expect(prismaMock.media.delete).not.toHaveBeenCalled();
+        expect(deleteFileByRelativePath).not.toHaveBeenCalled();
+        expect(prismaMock.$transaction).toHaveBeenCalled();
       });
 
-      it("does not delete anything when adding a first photo", async () => {
+      it("does not soft delete anything when adding a first photo", async () => {
         await patch({ image: testFile() });
 
         expect(prismaMock.media.create).toHaveBeenCalled();
+        expect(prismaMock.media.update).not.toHaveBeenCalled();
         expect(prismaMock.media.delete).not.toHaveBeenCalled();
         expect(deleteFileByRelativePath).not.toHaveBeenCalled();
       });
 
-      it("keeps the new photo when deleting the old one fails", async () => {
+      it("keeps the old photo and removes the new file when linking fails", async () => {
         mockPatch(withPhoto());
-        deleteFileByRelativePath.mockRejectedValue(new Error("EPERM"));
+        prismaMock.media.create.mockRejectedValue(new Error("DB down"));
 
         const res = await patch({ image: testFile() });
 
-        expect(res.status).toBe(200);
-        expect(prismaMock.item.update).toHaveBeenCalledWith({
-          where: { item_id: ID },
-          data: { image_id: "new-media" },
-        });
+        expect(res.status).toBe(500);
+        expect(prismaMock.media.update).not.toHaveBeenCalled();
+        expect(deleteFileByRelativePath).toHaveBeenCalledWith(
+          UPLOAD_RESULT.relativePath,
+        );
       });
 
       // Current behaviour: the field and supplier changes are already saved
       // when the upload fails, but the response is a 500.
-      it("returns 500 after saving the other changes when the upload fails", async () => {
+      it("returns 500 after saving the other changes when the upload fails, keeping the old photo", async () => {
         mockPatch(withPhoto());
         uploadFile.mockRejectedValue(new Error("virus detected"));
 
@@ -583,7 +688,9 @@ describe("PATCH /api/v1/item/[id]", () => {
           where: { item_id: ID },
           data: { description: "Saved anyway" },
         });
+        expect(prismaMock.media.update).not.toHaveBeenCalled();
         expect(prismaMock.media.delete).not.toHaveBeenCalled();
+        expect(deleteFileByRelativePath).not.toHaveBeenCalled();
       });
     });
 

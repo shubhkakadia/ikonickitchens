@@ -23,6 +23,8 @@ const post = (body, options = {}) =>
     }),
   );
 
+const receive = (items) => post({ purchase_order_id: PO_ID, items });
+
 const poItem = (overrides = {}) => ({
   id: "poi-a",
   order_id: PO_ID,
@@ -32,23 +34,27 @@ const poItem = (overrides = {}) => ({
   ...overrides,
 });
 
-// `before` = PO items as first read; `after` = PO items after the increments
+// `before` = PO items as first read; `after` = PO items after the updates;
+// `claims` = whether the guarded line updates still apply
 function mockReceive({
   status = "ORDERED",
   before = [poItem()],
   after,
   missingPo = false,
   missingInventory = false,
+  claims = true,
 } = {}) {
   const final = { id: PO_ID, status: "FINAL", items: [] };
   prismaMock.purchase_order.findUnique.mockImplementation(async (args) => {
     if (args.include?.supplier) return final; // post-transaction fetch
     return missingPo ? null : { id: PO_ID, status, items: before };
   });
-  prismaMock.item.findUnique.mockResolvedValue(
-    missingInventory ? null : { item_id: "ITEM-A" },
+  prismaMock.item.findUnique.mockImplementation(async ({ where }) =>
+    missingInventory ? null : { item_id: where.item_id },
   );
-  prismaMock.purchase_order_item.update.mockResolvedValue({});
+  prismaMock.purchase_order_item.updateMany.mockResolvedValue({
+    count: claims ? 1 : 0,
+  });
   prismaMock.item.update.mockResolvedValue({});
   prismaMock.stock_transaction.create.mockResolvedValue({});
   prismaMock.purchase_order_item.findMany.mockResolvedValue(after ?? before);
@@ -114,31 +120,35 @@ describe("POST /api/v1/purchase_order/received_items", () => {
         expect(prismaMock.$transaction).not.toHaveBeenCalled();
       });
 
-      it("returns 400 for a negative quantity", async () => {
-        const res = await post({
-          purchase_order_id: PO_ID,
-          items: [{ item_id: "ITEM-A", quantity: -1 }],
-        });
+      it.each([
+        ["negative", -1],
+        ["zero", 0],
+        ["a fraction", 2.5],
+        ["not a number", "abc"],
+        ["Infinity", "Infinity"],
+      ])("returns 400 when a quantity is %s", async (_, quantity) => {
+        const res = await receive([{ item_id: "ITEM-A", quantity }]);
 
         expect(res.status).toBe(400);
         expect(await res.json()).toEqual({
           status: false,
-          message: "Quantity must be non-negative for item ITEM-A",
+          message: "Quantity must be a positive whole number for item ITEM-A",
         });
+        expect(prismaMock.$transaction).not.toHaveBeenCalled();
       });
 
-      it("accepts a quantity of zero", async () => {
-        const res = await post({
-          purchase_order_id: PO_ID,
-          items: [{ item_id: "ITEM-A", quantity: 0 }],
-        });
+      it("accepts a whole number sent as a string", async () => {
+        const res = await receive([{ item_id: "ITEM-A", quantity: "3" }]);
 
         expect(res.status).toBe(200);
+        expect(
+          prismaMock.purchase_order_item.updateMany.mock.calls[0][0].data,
+        ).toEqual({ quantity_received: { increment: 3 } });
       });
     });
 
     describe("receiving stock", () => {
-      it("locks the PO row, then records the receipt and returns the PO", async () => {
+      it("locks the PO row first, then records the receipt and returns the PO", async () => {
         const final = mockReceive();
 
         const res = await post();
@@ -149,20 +159,22 @@ describe("POST /api/v1/purchase_order/received_items", () => {
           message: "Successfully received 1 item(s)",
           data: final,
         });
-        expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
-        // tagged template: first arg is the strings array, then the id
-        expect(prismaMock.$executeRaw.mock.calls[0][1]).toBe(PO_ID);
+        expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(1);
+        const [strings, ...values] = prismaMock.$queryRaw.mock.calls[0];
+        expect(strings.join("?")).toMatch(/FROM purchase_order[\s\S]*FOR UPDATE/);
+        expect(values).toEqual([PO_ID]);
         expect(prismaMock.$transaction).toHaveBeenCalledOnce();
+        expect(prismaMock.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+          prismaMock.purchase_order_item.updateMany.mock.invocationCallOrder[0],
+        );
       });
 
-      it("increments the PO line, the stock, and writes an ADDED transaction", async () => {
-        await post({
-          purchase_order_id: PO_ID,
-          items: [{ item_id: "ITEM-A", quantity: 3, notes: "Pallet 1" }],
-        });
+      it("claims the PO line with a guarded increment, raises stock, and writes an ADDED transaction", async () => {
+        await receive([{ item_id: "ITEM-A", quantity: 3, notes: "Pallet 1" }]);
 
-        expect(prismaMock.purchase_order_item.update).toHaveBeenCalledWith({
-          where: { id: "poi-a" },
+        // only applies while the line still has room: 10 ordered - 3 = 7
+        expect(prismaMock.purchase_order_item.updateMany).toHaveBeenCalledWith({
+          where: { id: "poi-a", quantity_received: { lte: 7 } },
           data: { quantity_received: { increment: 3 } },
         });
         expect(prismaMock.item.update).toHaveBeenCalledWith({
@@ -195,23 +207,19 @@ describe("POST /api/v1/purchase_order/received_items", () => {
             poItem({ id: "poi-b", item_id: "ITEM-B", quantity: 5 }),
           ],
         });
-        prismaMock.item.findUnique.mockImplementation(async ({ where }) => ({
-          item_id: where.item_id,
-        }));
 
-        const res = await post({
-          purchase_order_id: PO_ID,
-          items: [
-            { item_id: "ITEM-A", quantity: 2 },
-            { item_id: "ITEM-B", quantity: 5 },
-          ],
-        });
+        const res = await receive([
+          { item_id: "ITEM-A", quantity: 2 },
+          { item_id: "ITEM-B", quantity: 5 },
+        ]);
 
         expect(res.status).toBe(200);
         expect((await res.json()).message).toBe(
           "Successfully received 2 item(s)",
         );
-        expect(prismaMock.purchase_order_item.update).toHaveBeenCalledTimes(2);
+        expect(prismaMock.purchase_order_item.updateMany).toHaveBeenCalledTimes(
+          2,
+        );
         expect(prismaMock.item.update).toHaveBeenCalledTimes(2);
         expect(prismaMock.stock_transaction.create).toHaveBeenCalledTimes(2);
       });
@@ -221,12 +229,14 @@ describe("POST /api/v1/purchase_order/received_items", () => {
           before: [poItem({ quantity: 5, quantity_received: null })],
         });
 
-        const res = await post({
-          purchase_order_id: PO_ID,
-          items: [{ item_id: "ITEM-A", quantity: 5 }],
-        });
+        const res = await receive([{ item_id: "ITEM-A", quantity: 5 }]);
 
         expect(res.status).toBe(200);
+        // an increment on NULL stays NULL, so the first receipt is set directly
+        expect(prismaMock.purchase_order_item.updateMany).toHaveBeenCalledWith({
+          where: { id: "poi-a", quantity_received: null },
+          data: { quantity_received: 5 },
+        });
       });
 
       it("allows receiving up to exactly the ordered quantity", async () => {
@@ -234,28 +244,153 @@ describe("POST /api/v1/purchase_order/received_items", () => {
           before: [poItem({ quantity: 10, quantity_received: 7 })],
         });
 
-        const res = await post({
-          purchase_order_id: PO_ID,
-          items: [{ item_id: "ITEM-A", quantity: 3 }],
-        });
+        const res = await receive([{ item_id: "ITEM-A", quantity: 3 }]);
 
         expect(res.status).toBe(200);
       });
     });
 
-    describe("PO status", () => {
-      const receive = (qty = 3) =>
-        post({
-          purchase_order_id: PO_ID,
-          items: [{ item_id: "ITEM-A", quantity: qty }],
+    describe("duplicate entries for the same item", () => {
+      // The audit's example: two entries of 10 against a line of 10 used to
+      // record 20 received and add 20 to stock.
+      it("adds duplicate entries together before the over-receive check", async () => {
+        const res = await receive([
+          { item_id: "ITEM-A", quantity: 10 },
+          { item_id: "ITEM-A", quantity: 10 },
+        ]);
+
+        expect(res.status).toBe(400);
+        expect(await res.json()).toEqual({
+          status: false,
+          message:
+            "Cannot receive more than ordered quantity for item ITEM-A. Ordered: 10, Already received: 0, Requested: 20, Remaining: 10",
+        });
+        expect(prismaMock.purchase_order_item.updateMany).not.toHaveBeenCalled();
+        expect(prismaMock.item.update).not.toHaveBeenCalled();
+        expect(prismaMock.stock_transaction.create).not.toHaveBeenCalled();
+      });
+
+      it("accepts duplicates that together fit, raising stock once and keeping one ledger row each", async () => {
+        const res = await receive([
+          { item_id: "ITEM-A", quantity: 4, notes: "first" },
+          { item_id: "ITEM-A", quantity: 6, notes: "second" },
+        ]);
+
+        expect(res.status).toBe(200);
+        expect(prismaMock.purchase_order_item.updateMany).toHaveBeenCalledTimes(
+          1,
+        );
+        expect(prismaMock.purchase_order_item.updateMany).toHaveBeenCalledWith({
+          where: { id: "poi-a", quantity_received: { lte: 0 } },
+          data: { quantity_received: { increment: 10 } },
+        });
+        expect(prismaMock.item.update).toHaveBeenCalledTimes(1);
+        expect(prismaMock.item.update).toHaveBeenCalledWith({
+          where: { item_id: "ITEM-A" },
+          data: { quantity: { increment: 10 } },
+        });
+        expect(prismaMock.stock_transaction.create).toHaveBeenCalledTimes(2);
+        expect(
+          prismaMock.stock_transaction.create.mock.calls.map(
+            (c) => c[0].data.notes,
+          ),
+        ).toEqual(["first", "second"]);
+      });
+
+      it("spreads a delivery over several PO lines for the same item, oldest first", async () => {
+        mockReceive({
+          before: [
+            poItem({ id: "poi-1", quantity: 5, createdAt: "2026-01-01" }),
+            poItem({ id: "poi-2", quantity: 5, createdAt: "2026-01-02" }),
+          ],
         });
 
+        const res = await receive([{ item_id: "ITEM-A", quantity: 7 }]);
+
+        expect(res.status).toBe(200);
+        expect(
+          prismaMock.purchase_order_item.updateMany.mock.calls.map((c) => [
+            c[0].where.id,
+            c[0].data.quantity_received.increment,
+          ]),
+        ).toEqual([
+          ["poi-1", 5],
+          ["poi-2", 2],
+        ]);
+        // stock still goes up once, by the whole 7
+        expect(prismaMock.item.update).toHaveBeenCalledTimes(1);
+        expect(prismaMock.item.update.mock.calls[0][0].data).toEqual({
+          quantity: { increment: 7 },
+        });
+      });
+
+      it("refuses more than all lines for the item can take", async () => {
+        mockReceive({
+          before: [
+            poItem({ id: "poi-1", quantity: 5, quantity_received: 3 }),
+            poItem({ id: "poi-2", quantity: 5, quantity_received: 5 }),
+          ],
+        });
+
+        const res = await receive([{ item_id: "ITEM-A", quantity: 3 }]);
+
+        expect(res.status).toBe(400);
+        expect((await res.json()).message).toBe(
+          "Cannot receive more than ordered quantity for item ITEM-A. Ordered: 10, Already received: 8, Requested: 3, Remaining: 2",
+        );
+      });
+    });
+
+    describe("purchase order status", () => {
+      it.each(["DRAFT", "CANCELLED"])(
+        "refuses to receive against a %s purchase order",
+        async (status) => {
+          mockReceive({ status });
+
+          const res = await post();
+
+          expect(res.status).toBe(400);
+          expect((await res.json()).message).toMatch(
+            new RegExp(`${status} purchase order`),
+          );
+          expect(prismaMock.purchase_order_item.updateMany).not.toHaveBeenCalled();
+          expect(prismaMock.item.update).not.toHaveBeenCalled();
+          expect(prismaMock.stock_transaction.create).not.toHaveBeenCalled();
+          expect(prismaMock.purchase_order.update).not.toHaveBeenCalled();
+        },
+      );
+
+      it.each(["ORDERED", "PARTIALLY_RECEIVED"])(
+        "accepts deliveries against a %s purchase order",
+        async (status) => {
+          mockReceive({ status });
+
+          const res = await post();
+
+          expect(res.status).toBe(200);
+        },
+      );
+
+      it("still answers a FULLY_RECEIVED order precisely: nothing left to receive", async () => {
+        mockReceive({
+          status: "FULLY_RECEIVED",
+          before: [poItem({ quantity: 10, quantity_received: 10 })],
+        });
+
+        const res = await post();
+
+        expect(res.status).toBe(400);
+        expect((await res.json()).message).toMatch(/Remaining: 0/);
+      });
+    });
+
+    describe("PO status recalculation", () => {
       it("becomes FULLY_RECEIVED when every line is complete", async () => {
         mockReceive({
           after: [poItem({ quantity: 10, quantity_received: 10 })],
         });
 
-        await receive(10);
+        await receive([{ item_id: "ITEM-A", quantity: 10 }]);
 
         expect(prismaMock.purchase_order.update).toHaveBeenCalledWith({
           where: { id: PO_ID },
@@ -268,7 +403,7 @@ describe("POST /api/v1/purchase_order/received_items", () => {
           after: [poItem({ quantity: 10, quantity_received: 3 })],
         });
 
-        await receive();
+        await post();
 
         expect(prismaMock.purchase_order.update).toHaveBeenCalledWith({
           where: { id: PO_ID },
@@ -289,7 +424,7 @@ describe("POST /api/v1/purchase_order/received_items", () => {
           ],
         });
 
-        await receive(10);
+        await receive([{ item_id: "ITEM-A", quantity: 10 }]);
 
         expect(prismaMock.purchase_order.update).toHaveBeenCalledWith({
           where: { id: PO_ID },
@@ -303,35 +438,13 @@ describe("POST /api/v1/purchase_order/received_items", () => {
           after: [poItem({ quantity: 10, quantity_received: 6 })],
         });
 
-        await receive();
+        await post();
 
-        expect(prismaMock.purchase_order.update).not.toHaveBeenCalled();
-      });
-
-      it("keeps the status when nothing has been received (zero quantity)", async () => {
-        mockReceive({
-          after: [poItem({ quantity: 10, quantity_received: 0 })],
-        });
-
-        await receive(0);
-
-        expect(prismaMock.purchase_order.update).not.toHaveBeenCalled();
-      });
-
-      it("never changes a CANCELLED purchase order", async () => {
-        mockReceive({
-          status: "CANCELLED",
-          after: [poItem({ quantity: 10, quantity_received: 10 })],
-        });
-
-        const res = await receive(10);
-
-        expect(res.status).toBe(200);
         expect(prismaMock.purchase_order.update).not.toHaveBeenCalled();
       });
 
       it("reads the updated lines scoped to this PO", async () => {
-        await receive();
+        await post();
 
         expect(prismaMock.purchase_order_item.findMany).toHaveBeenCalledWith({
           where: { order_id: PO_ID },
@@ -350,14 +463,11 @@ describe("POST /api/v1/purchase_order/received_items", () => {
           status: false,
           message: `Purchase order not found: ${PO_ID}`,
         });
-        expect(prismaMock.purchase_order_item.update).not.toHaveBeenCalled();
+        expect(prismaMock.purchase_order_item.updateMany).not.toHaveBeenCalled();
       });
 
       it("returns 404 when the item is not on this purchase order", async () => {
-        const res = await post({
-          purchase_order_id: PO_ID,
-          items: [{ item_id: "ITEM-Z", quantity: 1 }],
-        });
+        const res = await receive([{ item_id: "ITEM-Z", quantity: 1 }]);
 
         expect(res.status).toBe(404);
         expect(await res.json()).toEqual({
@@ -366,8 +476,10 @@ describe("POST /api/v1/purchase_order/received_items", () => {
         });
       });
 
-      it("returns 404 when the inventory item no longer exists", async () => {
-        mockReceive({ missingInventory: true });
+      it.each([
+        ["no longer exists", { missingInventory: true }],
+      ])("returns 404 when the inventory item %s", async (_, opts) => {
+        mockReceive(opts);
 
         const res = await post();
 
@@ -379,15 +491,24 @@ describe("POST /api/v1/purchase_order/received_items", () => {
         expect(prismaMock.item.update).not.toHaveBeenCalled();
       });
 
+      it("returns 404 when the inventory item is soft deleted", async () => {
+        prismaMock.item.findUnique.mockResolvedValue({
+          item_id: "ITEM-A",
+          is_deleted: true,
+        });
+
+        const res = await post();
+
+        expect(res.status).toBe(404);
+        expect(prismaMock.item.update).not.toHaveBeenCalled();
+      });
+
       it("returns 400 when receiving more than was ordered", async () => {
         mockReceive({
           before: [poItem({ quantity: 10, quantity_received: 8 })],
         });
 
-        const res = await post({
-          purchase_order_id: PO_ID,
-          items: [{ item_id: "ITEM-A", quantity: 3 }],
-        });
+        const res = await receive([{ item_id: "ITEM-A", quantity: 3 }]);
 
         expect(res.status).toBe(400);
         expect(await res.json()).toEqual({
@@ -395,7 +516,7 @@ describe("POST /api/v1/purchase_order/received_items", () => {
           message:
             "Cannot receive more than ordered quantity for item ITEM-A. Ordered: 10, Already received: 8, Requested: 3, Remaining: 2",
         });
-        expect(prismaMock.purchase_order_item.update).not.toHaveBeenCalled();
+        expect(prismaMock.purchase_order_item.updateMany).not.toHaveBeenCalled();
         expect(prismaMock.item.update).not.toHaveBeenCalled();
         expect(prismaMock.stock_transaction.create).not.toHaveBeenCalled();
       });
@@ -407,20 +528,53 @@ describe("POST /api/v1/purchase_order/received_items", () => {
             poItem({ id: "poi-b", item_id: "ITEM-B", quantity: 2 }),
           ],
         });
-        prismaMock.item.findUnique.mockImplementation(async ({ where }) => ({
-          item_id: where.item_id,
-        }));
 
-        const res = await post({
-          purchase_order_id: PO_ID,
-          items: [
-            { item_id: "ITEM-A", quantity: 1 },
-            { item_id: "ITEM-B", quantity: 5 }, // over-receive
-          ],
-        });
+        const res = await receive([
+          { item_id: "ITEM-A", quantity: 1 },
+          { item_id: "ITEM-B", quantity: 5 }, // over-receive
+        ]);
 
         expect(res.status).toBe(400);
-        expect(prismaMock.purchase_order_item.update).not.toHaveBeenCalled();
+        expect(prismaMock.purchase_order_item.updateMany).not.toHaveBeenCalled();
+      });
+
+      it("returns 409 when a line was changed since it was read", async () => {
+        mockReceive({ claims: false });
+
+        const res = await post();
+
+        expect(res.status).toBe(409);
+        expect(await res.json()).toEqual({
+          status: false,
+          message:
+            "Received quantity was changed by someone else. Reload and try again.",
+        });
+        expect(prismaMock.item.update).not.toHaveBeenCalled();
+        expect(prismaMock.stock_transaction.create).not.toHaveBeenCalled();
+        expect(prismaMock.logs.create).not.toHaveBeenCalled();
+      });
+
+      it("does not over-receive when two deliveries race for the last units", async () => {
+        // Both read a line with 10 ordered and 0 received; only one guarded
+        // write can win.
+        let received = 0;
+        prismaMock.purchase_order_item.updateMany.mockImplementation(
+          async ({ where, data }) => {
+            if (received <= where.quantity_received.lte) {
+              received += data.quantity_received.increment;
+              return { count: 1 };
+            }
+            return { count: 0 };
+          },
+        );
+
+        const [a, b] = await Promise.all([
+          receive([{ item_id: "ITEM-A", quantity: 10 }]),
+          receive([{ item_id: "ITEM-A", quantity: 10 }]),
+        ]);
+
+        expect([a.status, b.status].sort()).toEqual([200, 409]);
+        expect(received).toBe(10);
       });
     });
 
@@ -450,7 +604,7 @@ describe("POST /api/v1/purchase_order/received_items", () => {
         );
       });
 
-      it("returns 500 with the error message when a write fails", async () => {
+      it("returns a generic 500 without the database error when a write fails", async () => {
         prismaMock.item.update.mockRejectedValue(new Error("DB down"));
 
         const res = await post();
@@ -459,18 +613,20 @@ describe("POST /api/v1/purchase_order/received_items", () => {
         expect(await res.json()).toEqual({
           status: false,
           message: "Failed to process received items",
-          error: "DB down",
         });
         expect(prismaMock.logs.create).not.toHaveBeenCalled();
       });
 
       it("returns 500 when the row lock fails", async () => {
-        prismaMock.$executeRaw.mockRejectedValue(new Error("lock timeout"));
+        prismaMock.$queryRaw.mockRejectedValue(new Error("lock timeout"));
 
         const res = await post();
 
         expect(res.status).toBe(500);
-        expect((await res.json()).error).toBe("lock timeout");
+        expect(await res.json()).toEqual({
+          status: false,
+          message: "Failed to process received items",
+        });
       });
 
       it("returns 500 for a malformed JSON body", async () => {

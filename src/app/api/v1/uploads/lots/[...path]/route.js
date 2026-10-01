@@ -7,7 +7,14 @@ import {
   canAccessLotFile,
 } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
-import { uploadFile, validateMultipartRequest } from "@/lib/fileHandler";
+import {
+  uploadFile,
+  validateMultipartRequest,
+  MAX_LOT_BODY,
+  MAX_LOT_FILE_SIZE,
+  uploadLimitResponse,
+  MAX_FILES_PER_REQUEST,
+} from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 import { serveMediaFile } from "@/lib/serveMedia";
 
@@ -107,8 +114,11 @@ export async function POST(request, { params }) {
     // Validate and parse multipart/form-data
     let form;
     try {
-      form = await validateMultipartRequest(request);
+      form = await validateMultipartRequest(request, MAX_LOT_BODY);
     } catch (parseError) {
+      const tooLarge = uploadLimitResponse(parseError);
+      if (tooLarge) return tooLarge;
+
       console.error("FormData parse error:", parseError);
       return NextResponse.json(
         {
@@ -124,6 +134,16 @@ export async function POST(request, { params }) {
       if (value instanceof File) {
         fileEntries.push({ field, file: value });
       }
+    }
+
+    if (fileEntries.length > MAX_FILES_PER_REQUEST) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: `Too many files: at most ${MAX_FILES_PER_REQUEST} per request`,
+        },
+        { status: 400 },
+      );
     }
     if (fileEntries.length === 0) {
       return NextResponse.json(
@@ -165,6 +185,20 @@ export async function POST(request, { params }) {
       );
     }
 
+    // The project in the URL must be the lot's real project; the folder is
+    // always built from the DB value, never from raw URL segments.
+    if (lot.project.project_id.toLowerCase() !== projectId.toLowerCase()) {
+      return NextResponse.json(
+        {
+          status: false,
+          message: `Lot ${lotId} does not belong to project ${projectId}`,
+        },
+        { status: 404 },
+      );
+    }
+    const folderProjectId = lot.project.project_id;
+    const folderLotId = lot.lot_id;
+
     // Get or create lot_tab
     let lotTab = await prisma.lot_tab.findUnique({
       where: {
@@ -189,8 +223,10 @@ export async function POST(request, { params }) {
       // Upload file using original filename strategy
       const uploadResult = await uploadFile(file, {
         uploadDir: "mediauploads",
-        subDir: `${projectId}/${lotId}/${tabKind}`,
+        subDir: `${folderProjectId}/${folderLotId}/${tabKind}`,
         filenameStrategy: "original",
+        allowedGroups: ["image", "pdf", "video", "office", "cad"],
+        maxSize: MAX_LOT_FILE_SIZE,
       });
 
       const fileKind = getFileKind(file.type);
@@ -235,14 +271,16 @@ export async function POST(request, { params }) {
 
     const hasLoggingFailures = logged.some((log) => !log);
     if (hasLoggingFailures) {
-      console.error(`Failed to log some file uploads for lot tab: ${tab.id}`);
+      console.error(
+        `Failed to log some file uploads for lot tab: ${lotTab.id}`,
+      );
     }
     return NextResponse.json(
       {
         status: true,
         message: "File uploaded",
-        projectId,
-        lotId,
+        projectId: folderProjectId,
+        lotId: folderLotId,
         tabKind,
         files: saved,
         ...(hasLoggingFailures

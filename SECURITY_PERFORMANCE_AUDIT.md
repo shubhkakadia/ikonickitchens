@@ -44,13 +44,19 @@ Performance problems come mostly from **unbounded queries** (no pagination anywh
 
 Re-checked every finding against the current working tree (uncommitted changes included). This was a static read of the code; nothing was run.
 
-| Status          | Count | Findings                                                |
-| --------------- | ----- | ------------------------------------------------------- |
-| ✅ Fixed        | 17    | C1–C6, C8–C11, H1, H8, H11, H23, M2, L5, L18            |
-| 🟡 Partly fixed | 13    | C7, H3, H6, H9, H18, H22, M8, M9, M13, M20, M23, L1, L3 |
-| ⬜ Open         | 49    | everything else                                         |
+| Status          | Count | Findings                                                                |
+| --------------- | ----- | ----------------------------------------------------------------------- |
+| ✅ Fixed        | 31    | C1–C6, C8–C11, H1, H5–H8, H11, H13–H23, M2, M14, L5, L18               |
+| 🟡 Partly fixed | 13    | C7, H2, H3, H9, H10, H24, M8, M9, M13, M20, M23, L1, L3                 |
+| ⬜ Open         | 35    | everything else                                                         |
 
 Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes `quantity`), **C9** (PO PATCH receive branch refuses and points to `received_items`), **C10** (reservation delete restores only `quantity - used_quantity`), **L18** (one lower-cased `user_type` source). The partly-fixed items are annotated in the checklist below.
+
+**Update (C7 and H2, verified against a throwaway MySQL and in the browser):**
+
+- **C7:** the migration `prisma/migrations/20261001000000_employee_image_set_null` now exists and applies cleanly, switching `employees_image_id_fkey` from `CASCADE` to `SET NULL`. It is **not yet committed or deployed**, so a real database keeps the cascade FK until `npx prisma migrate deploy` runs.
+- **H2:** employee reads now go through a shared `EMPLOYEE_PUBLIC_SELECT` (`src/lib/employeeData.js`). TFN, bank account number, and super member ID are masked (`***1234`) for every role, and master-admin can reveal them one at a time through `GET /api/v1/employee/:id/reveal?field=…` (audit-logged; the page caches each revealed value, so hide/re-reveal makes no second call). DOB, address, BSB, bank/fund names, and ABN are returned to master-admin only, and only master-admin can write any of these fields. `tfn_number`, `bank_account_number`, and `supper_account_number` are encrypted at rest (AES-256-GCM, `EMPLOYEE_DATA_KEY`).
+- **Still open for H2:** rows saved before this change stay plaintext until re-saved (there is no backfill script); if `EMPLOYEE_DATA_KEY` is unset, values are stored unencrypted with only a console warning; and the master-admin reveal returns the full value over the API, so protect that account accordingly.
 
 ---
 
@@ -170,6 +176,7 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
   - Change the relation to `onDelete: SetNull` and create a migration.
   - Clear `image_id` when an employee is soft-deleted.
   - Make `deletedrecords/recover` un-delete the employee's media too.
+- **Status (2026-10-01): 🟡 Partly fixed.** `schema.prisma` is `SetNull`, and recover restores the soft-deleted photo. The migration `20261001000000_employee_image_set_null` is written and was applied to a test database, but it is untracked and not deployed. `image_id` is deliberately **kept** on soft-delete (not cleared) so that recover can find and restore the photo; a later purge nulls it via `SetNull` and leaves the employee intact.
 
 ### C8. Editing an item overwrites stock quantity with a stale value
 
@@ -265,6 +272,12 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
   - Use a shared `EMPLOYEE_PUBLIC_SELECT` that excludes the financial fields.
   - Serve financials only from a dedicated master-admin endpoint, masked (`***1234`).
   - Encrypt `tfn_number` and `bank_account_number` at rest.
+- **Status (2026-10-01): 🟡 Partly fixed.**
+  - **Done:** `employee/all`, `all_inactive`, `[id]` (GET, PATCH, DELETE), `create`, and `deletedrecords/recover` use `EMPLOYEE_PUBLIC_SELECT` / `presentEmployee`. The number fields are masked for all roles, and the hidden fields are master-admin only. Writes to these fields are master-admin only, and masked or blank values echoed back by a form are ignored, so a save cannot overwrite a stored value.
+  - **Done:** `GET /api/v1/employee/[id]/reveal?field=tfn_number|bank_account_number|supper_account_number` is master-admin only, restricted to those three fields, and writes an audit log entry per reveal (it refuses to reveal if the log write fails). Tests are in `tests/api/v1/employee/`.
+  - **Done:** AES-256-GCM encryption at rest for those three fields.
+  - **Open:** no backfill for existing plaintext rows; encryption silently falls back to plaintext if `EMPLOYEE_DATA_KEY` is not set; key rotation is not supported; other relations that include `employees` (for example stage and lot installer includes) were not audited for these columns.
+  - **Behaviour change:** the employees list "Export to Excel" now contains masked or blank values for these fields.
 
 #### H3. Sessions survive deactivation, password change, and role change for 30 days
 
@@ -294,6 +307,9 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 
 #### H5. Arbitrary file write through path traversal in upload file names
 
+- **Status (2026-10-01): ✅ Fixed.** `uploadFile` now sanitises `idPrefix` and the original file name (`[^A-Za-z0-9_-]` → `_`, max 100 characters), and resolves both the target directory and the final path, throwing `Invalid path` unless they stay inside `<cwd>/<uploadDir>`. `subDir` is not character-sanitised (callers pass nested paths such as `lots/<id>/<tab>`), but the containment check rejects any escape. `employee/create` and `purchase_order/create` return 400 unless `employee_id` / `order_no` match `^[A-Za-z0-9_-]{1,100}$`. Covered by `tests/lib/fileHandler.test.js` and new cases in the two create route tests.
+  - **Behaviour change:** order numbers or employee ids containing spaces, dots, or slashes are now rejected on create.
+  - **Not covered:** the `[id]` PATCH routes for employees and purchase orders are protected by the `uploadFile` sanitising but have no API-layer regex. Rows already stored with a bad `url` (see M3) are not cleaned up.
 - **Location:**
   - `src/lib/fileHandler.js:161-163, 176` (`baseName = idPrefix`, then `path.join(targetDir, targetName)` with no sanitising)
   - Callers: `employee/create/route.js:28, 135-140` (`employee_id`), `purchase_order/create/route.js:19, 120-125` (`order_no`)
@@ -311,6 +327,14 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 
 #### H6. No file-type allowlist, and SVG is served inline (stored XSS leading to token theft)
 
+- **Status (2026-10-01): ✅ Fixed.**
+  - **Upload:** `uploadFile` now detects the real type from the file's leading bytes (`src/lib/fileSignature.js`) and ignores the client `file.type`. The stored extension must belong to the detected type. SVG, HTML, scripts, plain zips, and executables are never recognised, so they are rejected everywhere. Callers pass `allowedGroups`: `["image"]` for employee and item photos, `["pdf","image","office"]` for purchase orders, `["pdf","image"]` for supplier statements, and `["image","pdf","video","office","cad"]` for lot files. The default, when a caller passes nothing, is all groups except the rejected types above.
+  - **Serving (`src/lib/serveMedia.js`):** `.svg` is no longer mapped to `image/svg+xml`. Only images (not SVG), PDF, and video render inline; everything else, including any SVG or HTML already on disk, is sent as `Content-Disposition: attachment` with `application/octet-stream`. All responses keep `X-Content-Type-Options: nosniff` and, except PDFs, add `Content-Security-Policy: default-src 'none'; sandbox`.
+  - **Deviations from the suggested fix:** magic bytes are checked by a small in-repo detector instead of the `file-type` package, to avoid a new dependency for a fixed list of types. PDFs are served without the sandbox CSP because Chrome's PDF viewer does not work under it.
+  - **Behaviour change:** uploads of any type outside the lists above, such as `.csv`, `.txt`, `.zip`, `.svg`, and `.dxf`, are now rejected with "File type is not allowed". CSV and TXT are detected but not enabled on any route. A file whose extension does not match its content is also rejected, for example a PNG named `.jpg.exe`.
+  - **Not covered:** files already stored are not re-checked (they are only forced to download if their extension is not safe), and the client `accept=` attributes were not changed. HEIC photos are accepted but, if `sharp` cannot convert them, are stored as the original bytes under a `.webp` name, which was already the case.
+  - Covered by `tests/lib/fileHandler.test.js` and `tests/lib/serveMedia.test.js`.
+
 - **Location:**
   - `src/lib/fileHandler.js:116-118` (`allowedTypes` and `allowedExtensions` default to `null`, and no caller sets them) and `:48` (SVG kept as-is)
   - Served inline as `image/svg+xml` by `mediauploads/[...path]/route.js:23-24, 93` and `uploads/lots/[...path]/route.js:67-68`
@@ -322,6 +346,10 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 
 #### H7. Lot upload does not validate the `projectId` path segment (Needs verification)
 
+- **Status (2026-10-01): ✅ Fixed.** The POST handler now compares the `projectId` in the URL with `lot.project.project_id` (case-insensitively, since MySQL lookups are) and returns 404 on a mismatch, before any tab or file is created. The upload folder, and the `projectId` / `lotId` in the response, are built from the stored `lot.project.project_id` and `lot.lot_id`, never from raw URL segments. A `..` or `/` in the URL can no longer match a real project id, and the containment check from H5 in `uploadFile` still backs this up. While there, I fixed the logging-failure branch, which referenced an undefined `tab` and would have thrown instead of logging; it now uses `lotTab.id`. Covered by new cases in `tests/api/v1/uploads/lots-upload.test.js`.
+  - **Behaviour change:** a client that posts a lot under the wrong project id now gets 404 instead of the file being filed under the wrong folder.
+  - **Not verified:** whether Next decodes `%2F` or `..` inside catch-all segments. The fix does not depend on the answer.
+
 - **Location:** `src/app/api/v1/uploads/lots/[...path]/route.js:213, 311-315` (`subDir: \`${projectId}/${lotId}/${tabKind}\``)
 - **Cause:** `tabKind` is whitelisted and `lotId` must exist in the DB, but `projectId` is never validated or compared with `lot.project.project_id`. POST has no containment check.
 - **Impact:** Files can be filed under the wrong project folder. If Next decodes `%2F` or `..` inside catch-all segments, this is also a path traversal write.
@@ -329,11 +357,21 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 
 #### H8. IDOR: any installer can read another installer's lots
 
+- **Status (2026-10-01): ✅ Fixed.** Non-admins are filtered by the session user's own `employee_id`; the `id` in the URL is ignored, and a non-admin with no employee record gets an empty list. Admins and master-admins still see every active lot. A stray `f` on its own line before the admin check, committed earlier, threw a ReferenceError and made this route return 500 for every request, so the fix could not run; it is removed. Covered by `tests/api/v1/lot/installer.test.js`, including the "ignores the id in the URL" case.
+
 - **Location:** `src/app/api/v1/lot/installer/[id]/route.js:24-39`
 - **Cause:** For non-admins, the route filters by `installer_id: id` from the URL instead of the caller's own `employee_id`.
 - **Fix:** For non-admins, derive `employee_id` from the session user and ignore the path parameter.
 
 #### H9. High-severity vulnerable dependencies
+
+- **Status (2026-10-01): 🟡 Partly fixed.** `npm audit` went from 22 findings to 6 (1 moderate, 5 high).
+  - **Done:** `@tiptap/*` ^3.31.4 (was 3.13), `sharp` ^0.35.5, `axios` ^1.20.0, and `npm audit fix` for the transitive packages (`undici`, `qs`, `fast-uri`, `dompurify`, `fflate`, `js-yaml`, `brace-expansion`, and others). `package.json` now has `"overrides": { "mariadb": "$mariadb", "mysql2": "^3.24.5" }`, so `npm ls mariadb` shows 3.5.4 everywhere (including under `@prisma/adapter-mariadb`) and `prisma`'s `mysql2` is 3.24.5.
+  - **Checked:** all unit tests give the same results as before (the same 69 tests that already failed), `sharp` 0.35.5 still converts PNG to WebP, and the upgraded tiptap loads with `mergeAttributes` no longer polluting `Object.prototype`. I did **not** run `next build` or load the editor in a browser, so check the rich-text editor and an image upload before deploying.
+  - **Still open:**
+    - `xlsx` 0.18.5: no fix on npm. The vendor build (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`) was deliberately not installed, so `StockTally.jsx` still parses uploads with the vulnerable library.
+    - `postcss` ≤ 8.5.22 under `next` 15.5.x (build-time CSS handling); `npm audit` only offers a jump to `next` 16.3.8.
+    - `deepmerge-ts` < 8 under `prisma` / `@prisma/config` (the Prisma CLI, used when loading `prisma.config.ts`, not at request time); the audit's suggested fix is a Prisma downgrade, and an override would be a major bump.
 
 - **Location:** `package.json`
 - **Details and fixes:**
@@ -350,6 +388,19 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 
 #### H10. Uploads have no size limit, and whole bodies are buffered in memory (DoS)
 
+- **Status (2026-10-01): 🟡 Partly fixed.**
+  - **Done:**
+    - **Body cap:** every route that reads a form body now goes through `readFormData(request, maxBytes)` in `src/lib/fileHandler.js` (or `validateMultipartRequest`, which uses it). It rejects on a declared `Content-Length` over the limit, and it also counts the bytes actually received, so chunked or understated bodies can't get past. Over-limit requests get 413 (`uploadLimitResponse`). Limits: images 10 MB (employee, item, user), documents 25 MB (purchase orders, supplier statements), lot files, materials-to-order and material-selection 200 MB, each plus 1–10 MB for fields.
+    - **`maxSize`:** passed at every `uploadFile` and `uploadMultipleFiles` call site, at the same per-file values.
+    - **File count:** at most 10 files per request on the lot, materials-to-order and material-selection upload routes (400 beyond that).
+    - **Pixel limit:** `sharp` runs with `limitInputPixels: 50e6`. An image over the limit is rejected with "Image dimensions are too large" rather than falling back to storing the original bytes.
+  - **Still open:**
+    - The body is still fully buffered in memory up to the cap (`formData()` and `arrayBuffer()`). Several 200 MB video uploads at once can still use a lot of RAM. Streaming to disk (busboy into `fs.createWriteStream`) was not done.
+    - `client_max_body_size` (or the equivalent) at the reverse proxy: there is no proxy config in this repo, so it still needs setting at deploy time, to the 210 MB the largest route allows.
+    - `sharp` input is still decoded in-process; no `sharp.concurrency` or total-upload throttling.
+  - **Behaviour change:** uploads over the limits above now fail with 413 (body) or "exceeds maximum allowed size" (file). Large phone videos over 200 MB are rejected.
+  - Covered by `tests/lib/uploadLimits.test.js` (declared and streamed overflow, `maxSize`, a 61-megapixel PNG bomb) and two new cases in `tests/api/v1/uploads/lots-upload.test.js`.
+
 - **Location:**
   - `src/lib/fileHandler.js:282` (`request.formData()`) and `:16-17, 181-183` (`arrayBuffer()`, `Buffer.from`, plus sharp output)
   - `uploads/lots` POST `:244-248` (any number of files per request)
@@ -363,6 +414,8 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 
 #### H11. `/mediauploads` reads whole files into memory and has no Range support
 
+- **Status (2026-10-01): ✅ Fixed.** `/mediauploads/[...path]` and `uploads/lots/[...path]` GET now share one handler, `serveMediaFile` in `src/lib/serveMedia.js`. It streams with `fs.createReadStream` + `Readable.toWeb` (no `readFile` anywhere in either route) and answers `Range` requests with 206 / `Content-Range`, covering `bytes=a-b`, `a-`, and `-n`, and 416 for unsatisfiable or malformed ranges. Verified by new tests in `tests/lib/serveMedia.test.js` that check the exact bytes returned for each range form. Not tested: behaviour under real concurrent load, or a client aborting mid-stream.
+
 - **Location:** `src/app/mediauploads/[...path]/route.js:88` (`await fs.promises.readFile(normalized)`)
 - **Impact:** Every request loads the entire file (videos included) into the heap, and seeking a video re-downloads it in full. A few concurrent views of a large video can cause an OOM.
 - **Fix:** Stream with `fs.createReadStream` plus `Readable.toWeb`, and support `Range` requests (reuse the logic in `uploads/lots` GET). Better still, merge the two routes into one hardened handler.
@@ -375,6 +428,12 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 
 #### H13. About 20 MB of unoptimized hero images on the public homepage
 
+- **Status (2026-10-01): ✅ Fixed.**
+  - **Logo:** `public/logo2.png` went from 5.4 MB (2752×1536) to 18 KB (600×335, 16-colour palette PNG). It is still PNG because jsPDF can't embed WebP. The PDF draws it at most 50 mm wide, so the output size is unchanged (600 px is about 300 dpi at that width). I checked the result by eye.
+  - **Gallery:** `public/Gallery/1.png`, `2.png`, `3.png` (19.7 MB in total) are replaced by `1.webp` (92 KB), `2.webp` (69 KB) and `3.webp` (217 KB) at 1920 px wide. The PNGs are deleted; they stay in git history.
+  - **Found stale:** the homepage has since been redesigned. `src/app/page.jsx` no longer renders a CSS `backgroundImage` hero, and nothing in `src/` references `Gallery/1-3` (the marketing pages use the `Gallery/<Category>/*.webp` files), so those three images were already off the homepage's critical path and are now just smaller dead assets. The `<Image fill priority>` part of the suggested fix does not apply.
+  - **Not done:** the other WebP images in `public/` were not audited or resized (`public/` is about 66 MB in total, mostly project photo folders).
+
 - **Location:**
   - `public/Gallery/3.png` (7.4 MB), `1.png` (6.3 MB), `2.png` (6.1 MB), and `public/logo2.png` (5.4 MB)
   - Rendered as a CSS `backgroundImage` in `src/app/page.jsx:23-26, 275`, which bypasses `next/image`
@@ -386,6 +445,12 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 
 #### H14. Public marketing pages don't server-render (a global `PersistGate` plus `"use client"` everywhere)
 
+- **Status (2026-10-01): ✅ Fixed (the providers part fully; the Server Component split only for the static pages).**
+  - **Providers:** `Providers` (Redux, redux-persist `PersistGate`, toasts) and `AuthProvider`, plus the `react-toastify` CSS, moved from `src/app/layout.jsx` into a new `src/app/admin/layout.jsx`. The root layout now only sets up fonts, global CSS and `<html>`. Nothing outside `/admin` used Redux, auth or toasts, so no public page changed behaviour.
+  - **Server Components:** `ServicesPage`, `ProcessPage`, `WorkshopPage` and `BlogIndexPage` moved out of the `"use client"` file `MarketingPages.jsx` into `MarketingStaticPages.jsx`, which has no directive, and `ImageFrame` into its own shared file. The `/services`, `/process`, `/workshop` and `/blogs` routes import from there. `FaqList` (accordion), the home hero carousel, the portfolio filter, the collection image modal and the quote form stay client components, since they hold state.
+  - **Verified** on a local dev server by fetching the raw HTML (no JavaScript): `/`, `/services`, `/kitchens`, `/portfolio`, `/process`, `/workshop`, `/blogs`, `/inquiries` and `/privacy-policy` each return their real `<h1>` and 870–10,500 characters of text, where before the HTML was only the loader. In the browser, `/services` renders correctly, the FAQ accordion on `/process` still opens and closes, and `/admin/login` still renders its form with the toast container and auth.
+  - **Not done:** `HomePage`, `PortfolioPage`, `CollectionPage` and `QuotePage` are still client components, so their JavaScript still ships (they are server-rendered to HTML, but not split into server pages with small client islands). The admin `/admin` routes now show the loader until redux-persist rehydrates, as before. I did not measure LCP, bundle size or run a Lighthouse audit.
+
 - **Location:** `src/app/providers.jsx:24` (`<PersistGate loading={<Loader/>}>` wraps every route via `src/app/layout.jsx:29`). All public pages start with `"use client"`.
 - **Impact:** The SSR HTML for the homepage, kitchens, bathrooms, portfolio, and other public pages is just a loader. That hurts SEO and LCP, and the admin Redux and auth bundle ships to every marketing visitor.
 - **Fix:** Move `Providers` and `AuthProvider` into `src/app/admin/layout.jsx`. Make public pages Server Components with small client islands for the carousels and accordions.
@@ -393,6 +458,15 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 ### Data integrity / correctness
 
 #### H15. Stock tally is broken (dropped column), and it would lose updates once fixed
+
+- **Status (2026-10-01): ✅ Fixed in code; not run against a real database.**
+  - **Dropped column:** the `supplier_reference` select on `item` is gone. Every field the route now reads or writes was checked against `prisma/schema.prisma`. The supplier reference text in the response is built only from `itemSuppliers`, and is `null` when the item has none.
+  - **Lost updates:** one `findMany` reads every item, then each changed item is written with `updateMany({ where: { item_id, quantity: <value just read> } })`. If `count === 0`, the row is reported as a conflict and skipped, with no ledger row. The client's `current_quantity` (the number on the exported sheet) is now honoured: if stock moved by 1 or more since the export, that row is a conflict ("export a fresh sheet and count again"). Before, it was ignored. A sheet that dropped decimals (5 against 5.5) is tolerated.
+  - **Batching:** the whole tally is one transaction (30 s timeout) with one read and one `createMany` for the ledger, instead of three queries and a transaction per row. An unexpected database error rolls the whole tally back.
+  - **Quantities:** `Math.floor` is gone. New quantities are stored to 2 decimal places, matching `Decimal(10,2)`. `NaN`, empty and `Infinity` are rejected with 400 (before, `"abc"` wrote `NaN`), and so are duplicate `item_id`s. The ledger column `stock_transaction.quantity` is an integer, so it gets `max(1, round(|difference|))` and the exact old and new values are in `notes`. Soft-deleted items are treated as not found.
+  - **Status and errors:** if no row was applied and something failed, the response is `status: false` (409 if all were conflicts, 422 otherwise) instead of `status: true`. Database error text is no longer returned; unexpected failures give a generic 500. The UI now shows a warning when some rows were skipped.
+  - **Behaviour changes:** a stale sheet is rejected for the rows that moved; fractional counts are kept instead of truncated; one database failure now fails the whole tally rather than just that row.
+  - **Not verified:** all tests use the in-memory Prisma mock (53 tests, rewritten in `tests/api/v1/stock_tally/stock_tally.test.js`), which could not have caught the original bug. I checked the field names against the schema by hand, but the route has not run against MySQL, so run a small tally in a test database before relying on it. The UI itself still computes `current_quantity` with `parseInt` and floors the new quantity before sending, so decimal counts from the sheet are still floored client-side.
 
 - **Location:** `src/app/api/v1/stock_tally/route.js:72-162`
 - **Cause:**
@@ -408,6 +482,9 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
 - **Location:** `src/app/api/v1/materials_to_order_item/[id]/route.js:49, 73, 123, 148, 220` (`item.supplier`). Also latent in `item/[id]/route.js:242-243` (`price`).
 - **Impact:** `quantity_ordered` can never be updated.
 - **Fix:** Take supplier data from `itemSuppliers`, and remove `price`.
+- **Status:** Fixed.
+  - `materials_to_order_item/[id]/route.js` no longer includes `item.supplier`; every include goes through one shared `itemSuppliers` select. The "supplier fully ordered" notification takes the supplier from the edited item's first `itemSuppliers` entry. The before and after checks now use the same `itemSuppliers` match, so the notification fires for items that only have `itemSuppliers` (before, it never did).
+  - `item/[id]/route.js` no longer reads `price` or writes it to `item`. Price is only set per supplier through `suppliers[].price`.
 
 #### H17. Reservations can over-reserve and push stock negative (check-then-act race)
 
@@ -425,12 +502,25 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
   });
   if (r.count === 0) throw new Error("INSUFFICIENT_STOCK");
   ```
+- **Status:** Fixed.
+  - **Create:** The stock check and decrement now run inside one transaction, after a `SELECT … FOR UPDATE` on the `materials_to_order_item` row. The decrement is conditional (`updateMany` with `quantity >= qty` and `is_deleted: false`), so a request that loses the race gets the 400 "Not enough stock available" response and stock can't go below zero. Inside the same transaction, total reservations for the MTO line may not exceed its `quantity` (400 with `required` / `already_reserved` / `requested`).
+  - **Validation:** A reservation must be for the MTO line's own item (400 otherwise). Soft-deleted items are treated as not found. Quantities must be whole numbers greater than 0. `parseInt` truncation and `NaN` pass-through are gone (fractions and non-numbers get a 400).
+  - **PATCH:** The same pattern applies. The reservation is re-read after the lock and written with a guard on its `quantity` and `used_quantity` (409 if stock usage changed it in between). Growing a reservation uses the conditional decrement, and growing or moving it re-checks the target line's total. Moving to an MTO line for a different item is rejected. Shrinking is always allowed.
+  - **Also fixed (M14):** `GET` and `PATCH` read `authResult.authenticated` and so always returned 500; they now use `requireAuth` correctly. `create` no longer throws a `ReferenceError` (`employee`) when the log write fails (the M15 item for this file).
+  - **Not covered:** none open here; `stock_transaction/create` now takes the same MTO lock (H18).
 
 #### H18. USED stock transactions: `quantity_used` loses updates and allows over-use
 
 - **Location:** `src/app/api/v1/stock_transaction/create/route.js:50-62, 150-153` (and a mislabelled error split at `:205`)
 - **Cause:** The value is read outside the transaction and written back as an absolute.
 - **Fix:** Use a conditional `updateMany` with `{ quantity_used: { lte: max - qty } }` and `increment` inside the transaction. Fix the `split(":")` indices.
+- **Status:** Fixed.
+  - **Lock and re-read:** `handleUsedTransaction` now starts its transaction with `SELECT … FOR UPDATE` on the `materials_to_order_item` row, the same lock used by reservation create, PATCH and (now) DELETE. It re-reads `quantity` and `quantity_used` under that lock, so the over-use check no longer relies on the stale read from before the transaction.
+  - **Guarded increment:** `quantity_used` is claimed with `updateMany({ where: { id, quantity_used: { lte: total - qty } }, data: { quantity_used: { increment: qty } } })` instead of an absolute write. If the guard fails it returns 409 and the whole transaction rolls back.
+  - **Error message:** The "Not enough quantity in inventory" message is thrown as a `TransactionError` (`src/lib/transactionError.js`, renamed from `reservationError.js`) instead of being parsed from a colon-separated string. It now shows the real available and requested figures (before: requested as "Available", item id as "Requested").
+  - **Validation:** MTO usage quantities must be positive whole numbers (400 otherwise). The usage page sends `parseFloat`, and `quantity_used` is an `Int`, so a fractional value used to reach Prisma and return 500.
+  - **Reservation DELETE:** It now takes the same MTO-line lock, so a concurrent usage can't consume part of a reservation while it is being deleted and returned to stock. If usage consumed the whole reservation between DELETE's lookup and its delete, the delete now returns 404 "Stock reservation not found" instead of 500 (Prisma `P2025`, confirmed against the real client). A browser test with concurrent DELETE and usage found no lost or double-counted stock.
+  - **Not covered:** The manual USED and WASTED paths are unchanged. ADDED was fixed under H19.
 
 #### H19. Receiving goods can over-receive, receive a CANCELLED PO, and bypass guards
 
@@ -442,6 +532,13 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
   - Aggregate the request by line before checking, and key the map by PO line ID.
   - Reject CANCELLED and DRAFT POs.
   - Make ADDED go through the same locked logic as `received_items`.
+- **Status:** Fixed.
+  - **Shared logic:** `receivePurchaseOrderItems` (`src/lib/receivePurchaseOrder.js`) now does the work for both `purchase_order/received_items` and the ADDED branch of `stock_transaction/create`, so the two can't drift apart again.
+  - **Lock and status guard:** It locks the PO row (`SELECT … FOR UPDATE`), then rejects CANCELLED and DRAFT purchase orders with 400.
+  - **Duplicates:** The request is totalled per item before any check, and then spread over that item's PO lines, oldest first. `[{A,10},{A,10}]` against a line of 10 is now refused as a single request for 20. If a PO lists the same item on several lines, the delivery fills them in order. Stock still goes up once per item, and each request entry keeps its own ledger row and note.
+  - **Guarded write:** Each line is claimed with `updateMany` where `quantity_received <= ordered - qty`, using `increment` (a line whose value is NULL is set directly, because an increment on NULL stays NULL). If the guard fails it returns 409 and the whole transaction rolls back.
+  - **Quantities:** They must be positive whole numbers (400 otherwise). The purchase order page sends `parseFloat`, and the columns are `Int`, so a fractional value used to reach Prisma and return 500.
+  - **Other changes:** Soft-deleted inventory items now count as not found. `received_items` no longer returns the raw database error text on a 500, only a generic message. The ADDED 404 for a missing PO line now reads "Item X not found in purchase order Y".
 
 #### H20. PO create: lost update on `quantity_ordered_po`, and the client controls status, totals, and `orderedBy`
 
@@ -457,6 +554,14 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
   - Compute totals on the server with Decimal.
   - Validate quantities as positive numbers.
   - Create the file record inside the transaction.
+- **Status:** Fixed, with one deliberate difference from the fix as written (status).
+  - **Increments:** The MTO line update is now `quantity_ordered_po: { increment }`, inside the same transaction as the PO. Lines are matched by `mto_item_id`, or by item when none is sent. All lines for the same item are added together, so two lines for one item no longer keep only the last quantity.
+  - **Ordered by:** `orderedBy_id` always comes from the session (401 if the session can't be re-read). The form field is ignored.
+  - **Status:** A client may now send only `DRAFT` or `ORDERED` (400 otherwise); no status means DRAFT. The audit said to force DRAFT, but both create forms always send `ORDERED` and the UI has no "mark as ordered" action (it can only cancel). Forcing DRAFT would leave every UI-created PO stuck as DRAFT, and since H19 receiving is refused on DRAFT. What matters is that a client can no longer create a PO that is already `PARTIALLY_RECEIVED`, `FULLY_RECEIVED` or `CANCELLED`.
+  - **Totals:** Each line total is `quantity × unit_price` and the PO total is the sum of line totals plus GST. They are computed with `Prisma.Decimal` (`src/lib/money.js`), rounded half up to cents, and bound to Decimal(10,2). The submitted `total_amount` is ignored. The line total is taken from the client only when there is no `unit_price`. GST per line is still taken from the client (validated non-negative), because the server defines no tax rate.
+  - **Validation:** Line quantities must be positive whole numbers (the column is `Int`; the forms send `parseFloat`). Amounts and `delivery_charge` must be finite, non-negative and fit the column, and `invoice_date` must be a real date. `items` that are sent but are not valid JSON now return 400 instead of silently creating an empty PO. The supplier and every item must exist (404 instead of a foreign-key 500), and an `mto_item_id` must belong to the PO's MTO (400).
+  - **Invoice file:** The `supplier_file` record is created inside the transaction. The file has to be on disk first, so if anything fails the uploaded file is deleted again. A duplicate `order_no` created in the meantime returns 409. The upload uses the `unique` filename strategy (`<order_no>-<timestamp>-<random>.<ext>`) instead of `id-based` (`<order_no>.<ext>`). With `id-based`, concurrent requests for the same order number (for example a double-click) picked the same path, overwrote each other, and, with the new cleanup, the losing requests deleted the winner's file. A browser test caught this, and after the change 20 racing requests left one file per PO and no orphans.
+  - **Also:** The MTO status is re-checked after creating a PO even when lines were matched by item (before, it only ran when a line carried `mto_item_id`).
 
 #### H21. PO PATCH and DELETE are hard deletes that desynchronise MTOs and received stock
 
@@ -470,6 +575,15 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
   - Soft-delete (or CANCEL) POs.
   - Recompute `quantity_ordered_po` in the same transaction.
   - Lock line edits once anything has been received, and disallow manual receive statuses.
+- **Status:** Fixed, using the "CANCEL" option for DELETE and a guarded (rather than total) line lock.
+  - **DELETE cancels:** `purchase_order` has no `is_deleted` column, so a true soft delete would need a schema migration and a filter in every PO listing. DELETE now sets the status to `CANCELLED`; the PO and its lines stay for the audit trail, and it is refused with 409 once anything has been received. Deleting an already-cancelled PO is a no-op, and a missing PO is a 404 (was a 500). The UI's delete button therefore moves the PO to the Cancelled tab (its toast still says "deleted"). Say if you want a real `is_deleted` column instead.
+  - **MTO quantities:** Cancelling, deleting, and editing, adding or removing lines now adjust `materials_to_order_item.quantity_ordered_po` by exact deltas in the same transaction (atomic increment, or a guarded decrement that never goes below zero). Cancelling a part-received PO gives back only the unreceived remainder. A line counts against its stored `mto_item_id`, or the PO's MTO line for the same item. The create route now stores that link when it matches by item, so the deltas are exact.
+  - **One transaction under the PO lock:** PATCH now does everything (line edits, MTO adjustments, header fields, invoice record, status) inside one transaction that first takes the same `SELECT … FOR UPDATE` on the PO as `received_items`, so edits and deliveries can't interleave. Before, line edits and the PO update were separate writes.
+  - **Statuses:** `PARTIALLY_RECEIVED` and `FULLY_RECEIVED` can no longer be set by hand (400); only `DRAFT`, `ORDERED` and `CANCELLED` can. Once anything has been received, the status can't go back to DRAFT or ORDERED, a fully received PO can't be cancelled, and a cancelled PO can't be reopened (409).
+  - **Lines with received stock:** They can't be removed, can't change item, and can't go below the received quantity (409). Price and notes stay editable, because invoices often correct prices after delivery. This is deliberately narrower than "lock line edits": the UI has no line editor today, but a full lock would also block price corrections. New lines can't be added to a fully received PO, and the lines of a cancelled PO are frozen. Lowering a quantity to what has arrived moves the PO to FULLY_RECEIVED.
+  - **Input:** `items` that is `null` or not an array returns 400 instead of deleting every line. Quantities must be positive whole numbers, `unit_price`, `total_amount` and `delivery_charge` valid non-negative amounts, dates real dates, and items must exist (404). Lines are matched by id, then by item to a line not already matched, so two lines for the same item are no longer merged. `quantity_received` is never written by PATCH.
+  - **Invoice upload:** It now uses the unique filename strategy and creates its record inside the transaction, and the file is removed again if the request fails or is refused (same fix as H20).
+  - **Not covered:** Editing a line's quantity or price still doesn't recompute that line's GST or total, or the PO total (the UI never edits lines). A multipart PATCH that omits `invoice_url` still unlinks the invoice (existing behaviour).
 
 #### H22. Marking an MTO "used material completed" can run twice (double stock decrement)
 
@@ -483,6 +597,11 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
   });
   if (r.count === 0) return; // already done
   ```
+- **Status:** Fixed.
+  - **Atomic claim:** Marking completion now claims the flag with `updateMany({ where: { id, used_material_completed: false }, data: { used_material_completed: true } })`, and only the request whose claim changes a row (`count === 1`) goes on to decrement stock and write the USED ledger rows. A double click or retry finds the flag already set and does nothing further. The flag is no longer written by the general update.
+  - **Locks first, then read:** When a request sends `items` or `used_material_completed: true`, the transaction first takes `SELECT … FOR UPDATE` on the MTO's lines (ordered by id) and then on the MTO row. This is the same line-then-MTO order that stock usage (H18) and reservations (H17) use, so they can't deadlock. The flag and each line's `quantity_used` are read only after the locks are held, so they can't be stale snapshots. Plain notes or status updates take no extra locks.
+  - **Validation:** `status` must be one of the `MTOStatus` values (`DRAFT`, `PARTIALLY_ORDERED`, `FULLY_ORDERED`, `CLOSED`), else 400. `used_material_completed` must be a real boolean (400 for `"true"`, `1`, `null` and the like); `false` is still refused as before.
+  - **Reserved stock (found in the browser test, also fixed):** Completion used to decrement `item.quantity` for every unused line without touching that line's reservations, unlike stock usage (H18). Reserved units had already left stock when they were reserved, so they were taken out a second time and the reservation rows were left behind (a line with 1 reserved unit and 80 still needed took 81 units out of stock). Completion now consumes each line's reservations first, oldest first, and takes only the rest from stock. The USED ledger row still records the full quantity used. Reserved units that turn out not to be needed go back to stock, and every reservation on the line is removed, including those on lines that were already fully used, so none is left stranded on a completed MTO. This all happens inside the same locked transaction and only for the request that wins the completion claim.
 
 #### H23. User PATCH is not atomic, crashes on a password-only update, and returns 404 after committing
 
@@ -507,6 +626,12 @@ Newly confirmed fixed since the last update: **C8** (item PATCH no longer writes
   - Deactivate users instead of deleting them.
   - Set `logs.user` to `onDelete: Restrict`.
   - For photo replacement, upload the new file first, then swap, then soft-delete the old one.
+- **Status:** Partly fixed (the parts that need no schema change).
+  - **Done: users.** `DELETE /user/[id]` no longer deletes the row. It deactivates the account (`is_active = false`), revokes its sessions, and releases `employee_id`, all in one transaction. The user row stays, so every log entry keeps its author (`logs.user` is `SET NULL` on delete, which is why a hard delete stripped authorship). Releasing the employee link lets a new account be created for that employee, as the "remove user account" screen expects; the old username stays reserved. Removing your own account keeps your current session so the log entry can still be written. A repeat delete is a no-op and a missing user is a 404 (was a 500).
+  - **Done: item suppliers.** `PATCH /item/[id]` no longer deletes every `item_suppliers` row and recreates them. Links are matched by supplier and updated in place, new ones are created, and only suppliers taken off the item are removed (this also cleans up duplicate rows for the same supplier). The supplier list is validated first (an array, one entry per supplier, each with a `supplier_id`, price a non-negative amount).
+  - **Done: photos.** Item and employee photos are soft deleted (`media.is_deleted`), never hard deleted, and the file stays on disk for the deleted-media screen. The new photo is uploaded first, then the media record, the link and the soft delete of the old one happen in one transaction. A failed upload used to lose the employee's photo because the old one was deleted before the upload; now it is left untouched. Uploads use the `unique` filename strategy so the cleanup of a failed request can't touch another request's file (same fix as H20 and H21).
+  - **Still open (needs a migration):** `is_deleted` columns for `contact`, `stage`, `meeting`, `constants_config`, `supplier_statement` (a financial record) and `item_suppliers` (so removing a supplier from an item keeps its price), with read filters, plus `logs.user` `onDelete: Restrict`. These routes still hard delete: `contact/[id]`, `stage/[id]`, `meeting/[id]`, `config/[id]` and `supplier/[id]/statements/[statementId]`.
+  - **Left as is, deliberately:** `stock_transaction/create` deletes fully consumed reservations. They are transient working rows (the USED ledger row records the usage), and `mtoStatusHelper` sums reservation quantities as coverage, so keeping consumed rows would double count.
 
 ---
 
@@ -905,7 +1030,7 @@ Tick each box when its fix is merged and verified.
 - [x] **C4** — Any user can reset any password or change any role
 - [x] **C5** — Uploaded files served without auth and publicly cached
 - [x] **C6** — Next.js 15.5.9 (Windows RCE and others) and jsPDF critical CVEs
-- [ ] **C7** — Media purge cascade hard-deletes employees _(Partial: schema is now `SetNull`, and recover restores the photo, but no migration exists yet, so the DB still has the cascade FK.)_
+- [ ] **C7** — Media purge cascade hard-deletes employees _(Partial: schema is `SetNull`, recover restores the photo, and the migration is written, but it is not yet committed or deployed, so a live DB still has the cascade FK.)_
 - [x] **C8** — Item edit overwrites stock with a stale quantity
 - [x] **C9** — PO PATCH receive branch corrupts other POs and allows negative stock
 - [x] **C10** — Deleting a partially used reservation inflates stock
@@ -914,29 +1039,29 @@ Tick each box when its fix is merged and verified.
 ### 🟠 High
 
 - [x] **H1** — Password hashes returned by user, employee, and PO endpoints
-- [ ] **H2** — Employee TFN, bank, and personal data exposed to all users
+- [ ] **H2** — Employee TFN, bank, and personal data exposed to all users _(Partial: shared public select, masked numbers, master-admin-only reveal endpoint with audit log, and encryption at rest are done; existing rows are not backfilled and encryption falls back to plaintext without `EMPLOYEE_DATA_KEY`.)_
 - [ ] **H3** — Sessions survive deactivation, password change, and role change _(Partial: live `is_active`/role check and session revocation are done; sessions are still 30 days with no sliding renewal.)_
 - [ ] **H4** — Session token readable by JS (cookie and localStorage)
-- [ ] **H5** — Path traversal file write via `employee_id` / `order_no`
-- [ ] **H6** — No file-type allowlist; SVG stored XSS _(Partial: `nosniff` and attachment downloads added; SVG is still served inline, with no allowlist, magic-byte check, or CSP sandbox.)_
-- [ ] **H7** — Lot upload `projectId` not validated (needs verification)
+- [x] **H5** — Path traversal file write via `employee_id` / `order_no`
+- [x] **H6** — No file-type allowlist; SVG stored XSS
+- [x] **H7** — Lot upload `projectId` not validated
 - [x] **H8** — Installer lots IDOR
-- [ ] **H9** — High-severity dependency CVEs (xlsx, tiptap, sharp, mariadb, …) _(Partial: `next`, `jspdf`, postcss, etc. upgraded; `xlsx`, `@tiptap/*`, `sharp`, and `mariadb` (no override) are still vulnerable.)_
-- [ ] **H10** — No upload size limit; full in-memory buffering (DoS)
+- [ ] **H9** — High-severity dependency CVEs (xlsx, tiptap, sharp, mariadb, …) _(Partial: tiptap, sharp, axios, mariadb, mysql2 and the transitive packages are fixed; `xlsx`, `postcss` under `next`, and `deepmerge-ts` under `prisma` are still open.)_
+- [ ] **H10** — No upload size limit; full in-memory buffering (DoS) _(Partial: body, per-file, file-count, and pixel limits added; still fully buffered in memory, and no reverse-proxy limit in this repo.)_
 - [x] **H11** — `/mediauploads` buffers whole files; no Range support
 - [ ] **H12** — `/logs` returns the entire audit table
-- [ ] **H13** — About 20 MB of unoptimized homepage images
-- [ ] **H14** — Public pages don't SSR (global PersistGate)
-- [ ] **H15** — Stock tally broken, with lost update
-- [ ] **H16** — `materials_to_order_item` PATCH always 500s
-- [ ] **H17** — Reservation over-reserve / negative stock race
-- [ ] **H18** — USED transaction `quantity_used` lost update _(Partial: item stock decrement is now conditional; `quantity_used` is still an absolute write and the error split is still wrong.)_
-- [ ] **H19** — Over-receive via duplicates/ADDED path; CANCELLED POs receivable
-- [ ] **H20** — PO create lost update; client-controlled status, totals, orderedBy
-- [ ] **H21** — PO PATCH/DELETE hard deletes desync MTOs
-- [ ] **H22** — MTO "used material completed" can run twice _(Partial: item decrement is guarded, but the completed flag is still not claimed atomically and `status` is not validated.)_
+- [x] **H13** — About 20 MB of unoptimized homepage images
+- [x] **H14** — Public pages don't SSR (global PersistGate)
+- [x] **H15** — Stock tally broken, with lost update
+- [x] **H16** — `materials_to_order_item` PATCH always 500s
+- [x] **H17** — Reservation over-reserve / negative stock race
+- [x] **H18** — USED transaction `quantity_used` lost update
+- [x] **H19** — Over-receive via duplicates/ADDED path; CANCELLED POs receivable
+- [x] **H20** — PO create lost update; client-controlled status, totals, orderedBy
+- [x] **H21** — PO PATCH/DELETE hard deletes desync MTOs
+- [x] **H22** — MTO "used material completed" can run twice
 - [x] **H23** — User PATCH non-atomic and crashes after commit
-- [ ] **H24** — Hard deletes break soft-delete policy and audit attribution
+- [ ] **H24** — Hard deletes break soft-delete policy and audit attribution _(Partial: user delete, item supplier links and item/employee photos are done; the models that need an `is_deleted` column are still hard deleted.)_
 
 ### 🟡 Medium
 
@@ -953,7 +1078,7 @@ Tick each box when its fix is merged and verified.
 - [ ] **M11** — Invalid dates stored as NULL or cause 500s
 - [ ] **M12** — Decimal vs Int quantity mismatch
 - [ ] **M13** — Weak numeric validation (and WhatsApp spam) _(Partial: MTO quantity validation added; other routes still accept zero, NaN, and negative values.)_
-- [ ] **M14** — `reserve_item_stock/[id]` GET/PATCH always 500
+- [x] **M14** — `reserve_item_stock/[id]` GET/PATCH always 500
 - [ ] **M15** — ReferenceErrors after commit cause duplicate retries
 - [ ] **M16** — Meeting overlap check global, racy, leaky
 - [ ] **M17** — Orphaned files and records in upload flows

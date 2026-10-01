@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, ListChecks } from "lucide-react";
 import SectionCard, { EmptyState } from "./SectionCard";
 import {
+  BADGE,
+  BADGE_TONES,
   STATUS_COLORS,
   daysLeftBadge,
   daysUntil,
@@ -41,14 +43,14 @@ export function MyStages({ stages }) {
                     {titleCase(stage.name)}
                   </p>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${badge.className}`}
+                    className={`${BADGE} shrink-0 ${badge.className}`}
                   >
                     {badge.label}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[stage.status] ?? "bg-slate-100 text-slate-800"}`}
+                    className={`${BADGE} ${STATUS_COLORS[stage.status] ?? BADGE_TONES.neutral}`}
                   >
                     {titleCase(stage.status)}
                   </span>

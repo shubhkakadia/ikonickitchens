@@ -345,7 +345,8 @@ async function getUsersToNotify(templateName, record = {}) {
       },
       include: {
         user: {
-          include: {
+          select: {
+            is_active: true,
             employee: {
               select: {
                 phone: true,

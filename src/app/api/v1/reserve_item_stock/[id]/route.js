@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { withLogging } from "@/lib/withLogging";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
 export async function GET(request, { params }) {
   try {
     // Verify authentication
-    const authResult = await validateAdminAuth(request);
+    const authResult = await requireAuth(request, {
+      modules: ["materialstoorder"],
+    });
     if (!authResult.authenticated) {
       return NextResponse.json(authResult.response, { status: 401 });
     }
@@ -53,7 +55,9 @@ export async function GET(request, { params }) {
 export async function PATCH(request, { params }) {
   try {
     // Verify authentication
-    const authResult = await validateAdminAuth(request);
+    const authResult = await requireAuth(request, {
+      modules: ["materialstoorder"],
+    });
     if (!authResult.authenticated) {
       return NextResponse.json(authResult.response, { status: 401 });
     }
@@ -103,6 +107,20 @@ export async function PATCH(request, { params }) {
       const newQty = parseInt(quantity);
       const oldQty = existingReservation.quantity;
       const qtyDifference = newQty - oldQty;
+
+      // Can't shrink a reservation below what has already been consumed,
+      // otherwise the consumed units would be returned to stock
+      const usedQty = existingReservation.used_quantity || 0;
+      if (newQty < usedQty) {
+        return NextResponse.json(
+          {
+            status: false,
+            message: `Quantity cannot be less than the already used quantity (${usedQty})`,
+            data: { used_quantity: usedQty },
+          },
+          { status: 400 },
+        );
+      }
 
       // If increasing quantity, check stock availability
       if (qtyDifference > 0) {
@@ -194,7 +212,9 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     // Verify authentication
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["materialstoorder"],
+    });
     if (authError) return authError;
     const { id } = await params;
 
@@ -242,20 +262,29 @@ export async function DELETE(request, { params }) {
 
     // Delete the reservation and restore item quantity in a transaction
     await prisma.$transaction(async (tx) => {
-      // Delete the reservation
-      await tx.reserve_item_stock.delete({
+      // Delete the reservation, reading used_quantity at delete time so a
+      // concurrent stock usage can't slip in between the read and the restore
+      const deleted = await tx.reserve_item_stock.delete({
         where: { id },
       });
 
-      // Return the quantity back to the item
-      await tx.item.update({
-        where: { item_id: existingReservation.item_id },
-        data: {
-          quantity: {
-            increment: existingReservation.quantity,
+      // Only the unused part of the reservation is still physically in stock;
+      // the used part was consumed and must not be returned to the item
+      const unusedQuantity = Math.max(
+        deleted.quantity - (deleted.used_quantity || 0),
+        0,
+      );
+
+      if (unusedQuantity > 0) {
+        await tx.item.update({
+          where: { item_id: deleted.item_id },
+          data: {
+            quantity: {
+              increment: unusedQuantity,
+            },
           },
-        },
-      });
+        });
+      }
     });
 
     const logged = await withLogging(

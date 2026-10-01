@@ -1,17 +1,16 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  validateAdminAuth,
-  getUserFromToken,
-} from "@/lib/validators/authFromToken";
+import { ALL_ROLES, authorizeRequest } from "@/lib/validators/authFromToken";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+      modules: ["site_photos"],
+    });
+    if (error) return error;
     const { id } = await params;
-    const session = await getUserFromToken(request);
-    const userType = session?.user_type;
+    const userType = auth.userType;
 
     if (!id) {
       return NextResponse.json(
@@ -20,11 +19,25 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Build the where clause based on user type
+    const isAdminUser = userType === "master-admin" || userType === "admin";
+f
+    // Non-admins only ever see their own installer lots, regardless of the
+    // id in the URL
+    if (!isAdminUser && !auth.user.employee_id) {
+      return NextResponse.json(
+        {
+          status: true,
+          message: "Installer lots fetched successfully",
+          data: [],
+        },
+        { status: 200 },
+      );
+    }
+
     let installerWhereClause = {
       status: "ACTIVE",
       is_deleted: false,
-      installer_id: id,
+      installer_id: auth.user.employee_id,
     };
 
     let adminWhereClause = {
@@ -33,10 +46,7 @@ export async function GET(request, { params }) {
     };
 
     const activeLots = await prisma.lot.findMany({
-      where:
-        userType === "master-admin" || userType === "admin"
-          ? adminWhereClause
-          : installerWhereClause,
+      where: isAdminUser ? adminWhereClause : installerWhereClause,
       include: {
         project: {
           select: {
@@ -75,10 +85,9 @@ export async function GET(request, { params }) {
     return NextResponse.json(
       {
         status: true,
-        message:
-          userType === "master-admin" || userType === "admin"
-            ? "All active lots fetched successfully"
-            : "Installer lots fetched successfully",
+        message: isAdminUser
+          ? "All active lots fetched successfully"
+          : "Installer lots fetched successfully",
         data: activeLots,
       },
       { status: 200 },

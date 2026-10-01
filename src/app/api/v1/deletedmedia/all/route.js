@@ -2,12 +2,12 @@ import fs from "fs";
 import path from "path";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 
 export async function GET(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["delete_media"] });
     if (authError) return authError;
     // get lot details for each deleted media
     const lotFilesDeletedMedia = await prisma.lot_file.findMany({
@@ -55,7 +55,7 @@ export async function GET(request) {
 // batch delete deleted media
 export async function DELETE(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["delete_media"] });
     if (authError) return authError;
 
     // Get filenames from request body

@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  validateAdminAuth,
-  getUserFromToken,
-} from "@/lib/validators/authFromToken";
+import { requireAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "materialstoorder"],
+    });
     if (authError) return authError;
 
     // Get user_id from session token (more secure than relying on frontend)

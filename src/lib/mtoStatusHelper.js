@@ -31,7 +31,7 @@ export async function checkAndUpdateMTOStatus(mtoItemId) {
       },
     });
 
-    if (!mto || !mto.items || mto.items.length === 0) {
+    if (!mto || mto.is_deleted || !mto.items || mto.items.length === 0) {
       return false;
     }
 

@@ -1,11 +1,14 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { authorizeRequest } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { presentEmployee } from "@/lib/employeeData";
 
 export async function PATCH(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const { error: authError, auth } = await authorizeRequest(request, {
+      modules: ["delete_media"],
+    });
     if (authError) return authError;
 
     const body = await request.json();
@@ -33,9 +36,19 @@ export async function PATCH(request) {
             { status: 404 },
           );
         }
-        recoveredRecord = await prisma.employees.update({
-          where: { id },
-          data: { is_deleted: false },
+        // Restore the profile photo that was soft-deleted with the employee.
+        // If it was purged since, image_id is already null (onDelete: SetNull).
+        recoveredRecord = await prisma.$transaction(async (tx) => {
+          if (employee.image_id) {
+            await tx.media.updateMany({
+              where: { id: employee.image_id, is_deleted: true },
+              data: { is_deleted: false },
+            });
+          }
+          return tx.employees.update({
+            where: { id },
+            data: { is_deleted: false },
+          });
         });
         entityId = employee.employee_id;
         break;
@@ -149,7 +162,10 @@ export async function PATCH(request) {
       {
         status: true,
         message: `${entity_type} recovered successfully`,
-        data: recoveredRecord,
+        data:
+          entity_type === "employee"
+            ? presentEmployee(recoveredRecord, auth)
+            : recoveredRecord,
         ...(logged
           ? {}
           : { warning: "Note: Recovery succeeded but logging failed" }),

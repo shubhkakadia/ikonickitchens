@@ -111,7 +111,7 @@ model employees {
   abn_number              String?
   is_active               Boolean          @default(true)
   is_deleted              Boolean          @default(false)
-  image                   media?           @relation(fields: [image_id], references: [id], onDelete: Cascade)
+  image                   media?           @relation(fields: [image_id], references: [id], onDelete: SetNull)
   stages                  stage_employee[]
   user                    users?
   lot                     lot[]
@@ -614,6 +614,7 @@ model materials_to_order {
   updatedAt               DateTime                  @updatedAt
   media_id                String?
   used_material_completed Boolean                   @default(false)
+  is_deleted              Boolean                   @default(false)
   lots                    lot[]
   createdBy               users?                    @relation("MaterialsToBeOrderedCreatedBy", fields: [createdBy_id], references: [id], onDelete: SetNull)
   project                 project?                  @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
@@ -624,6 +625,7 @@ model materials_to_order {
 
   @@index([project_id])
   @@index([status])
+  @@index([is_deleted])
   @@index([createdBy_id], map: "materials_to_order_createdBy_id_fkey")
 }
 

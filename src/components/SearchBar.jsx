@@ -42,7 +42,7 @@ export default function SearchBar() {
         setSearchLoading(true);
         const token = getToken();
         const response = await axios.post(
-          "/api/search",
+          "/api/v1/search",
           { search: debouncedSearch },
           {
             headers: {

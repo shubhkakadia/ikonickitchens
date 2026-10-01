@@ -1,16 +1,36 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import {
+  ALL_ROLES,
+  MASTER_ADMIN_ONLY,
+  USER_TYPES,
+  authorizeRequest,
+  requireAuth,
+} from "@/lib/validators/authFromToken";
+import { pickModuleFlags, validatePassword } from "@/lib/userAccounts";
 import bcrypt from "bcrypt";
 import { withLogging } from "@/lib/withLogging";
 
+function jsonError(message, status) {
+  return NextResponse.json({ status: false, message }, { status });
+}
+
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+    });
+    if (error) return error;
     const { id } = await params;
+    if (auth.user.id !== id && auth.userType !== "master-admin") {
+      return NextResponse.json(
+        { status: false, message: "Insufficient permissions" },
+        { status: 403 },
+      );
+    }
     const user = await prisma.users.findUnique({
       where: { id: id },
+      omit: { password: true },
       include: {
         employee: {
           include: {
@@ -41,8 +61,10 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+    });
+    if (error) return error;
     let body;
     const contentType = request.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
@@ -51,110 +73,142 @@ export async function PATCH(request, { params }) {
       const formData = await request.formData();
       body = Object.fromEntries(formData.entries());
     }
-    const { user_type, is_active, module_access, password, old_password } =
-      body;
+    const { user_type, is_active, password, old_password } = body;
+    let { module_access } = body;
+    if (typeof module_access === "string") {
+      try {
+        module_access = JSON.parse(module_access);
+      } catch {
+        return jsonError("Invalid module access", 400);
+      }
+    }
 
     const { id } = await params;
+    const isSelf = auth.user.id === id;
+    const isMasterAdmin = auth.userType === "master-admin";
 
-    // Try to find user by employee_id first, then by user id
-    let existingUser;
-    try {
-      existingUser = await prisma.users.findUnique({
-        where: { id: id },
-      });
-    } catch (secondError) {
-      // If both fail, return error
+    // Only a master-admin may edit other users
+    if (!isSelf && !isMasterAdmin) {
+      return jsonError("Insufficient permissions", 403);
+    }
+
+    const existingUser = await prisma.users.findUnique({
+      where: { id: id },
+      omit: { password: false },
+      include: { module_access: true },
+    });
+    if (!existingUser) {
       return NextResponse.json(
         { status: false, message: "User not found" },
         { status: 404 },
       );
     }
 
-    // If old_password is provided, verify it before updating password
-    if (old_password && password) {
-      const isValidPassword = await bcrypt.compare(
-        old_password,
-        existingUser.password,
+    // Work out which fields actually change
+    const nextUserType =
+      user_type === undefined ? undefined : String(user_type).toLowerCase();
+    if (nextUserType !== undefined && !USER_TYPES.includes(nextUserType)) {
+      return jsonError("Invalid user type", 400);
+    }
+    const userTypeChanged =
+      nextUserType !== undefined &&
+      nextUserType !== existingUser.user_type.toLowerCase();
+
+    const nextIsActive =
+      is_active === undefined
+        ? undefined
+        : is_active === true || is_active === "true";
+    const isActiveChanged =
+      nextIsActive !== undefined && nextIsActive !== existingUser.is_active;
+
+    const moduleFlags =
+      module_access === undefined || module_access === null
+        ? {}
+        : pickModuleFlags(module_access, { partial: true });
+    const moduleAccessChanged = Object.entries(moduleFlags).some(
+      ([key, value]) => existingUser.module_access?.[key] !== value,
+    );
+
+    const passwordChanged =
+      typeof password === "string" && password.trim() !== "";
+
+    // Nobody, master-admins included, may change their own role, status or
+    // permissions; that has to be done by another master-admin
+    if (isSelf && (userTypeChanged || isActiveChanged || moduleAccessChanged)) {
+      return jsonError(
+        "You cannot change your own role, status or permissions",
+        403,
       );
-      if (!isValidPassword) {
-        return NextResponse.json(
-          { status: false, message: "Current password is incorrect" },
-          { status: 401 },
+    }
+
+    let hashedPassword;
+    if (passwordChanged) {
+      // Changing your own password always needs the current one
+      if (isSelf) {
+        if (!old_password) {
+          return jsonError("Current password is required", 400);
+        }
+        const isValidPassword = await bcrypt.compare(
+          old_password,
+          existingUser.password,
         );
+        if (!isValidPassword) {
+          return NextResponse.json(
+            { status: false, message: "Current password is incorrect" },
+            { status: 401 },
+          );
+        }
       }
-    }
-
-    // Build update data object
-    const updateData = {};
-
-    // Only include fields that are provided (for password reset, only password is sent)
-    if (user_type !== undefined) {
-      updateData.user_type = user_type;
-    }
-    if (is_active !== undefined) {
-      updateData.is_active = is_active;
-    }
-    if (module_access !== undefined) {
-      updateData.module_access = module_access;
-    }
-
-    // Only update password if it's provided and not empty
-    if (password && password.trim() !== "") {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updateData.password = hashedPassword;
+      const passwordError = validatePassword(password, existingUser.username);
+      if (passwordError) {
+        return jsonError(passwordError, 400);
+      }
+      hashedPassword = await bcrypt.hash(password, 10);
     }
 
     let user;
     try {
-      user = await prisma.users.update({
-        where: { id: id },
-        data: {
-          user_type: updateData.user_type,
-          is_active: updateData.is_active,
-          password: updateData.password,
-        },
+      user = await prisma.$transaction(async (tx) => {
+        const updatedUser = await tx.users.update({
+          where: { id: id },
+          omit: { password: true },
+          data: {
+            user_type: userTypeChanged ? nextUserType : undefined,
+            is_active: isActiveChanged ? nextIsActive : undefined,
+            password: hashedPassword,
+          },
+          include: {
+            employee: { select: { first_name: true, last_name: true } },
+          },
+        });
+
+        let moduleAccess = existingUser.module_access;
+        if (moduleAccessChanged) {
+          moduleAccess = await tx.module_access.upsert({
+            where: { user_id: id },
+            update: moduleFlags,
+            create: { user_id: id, ...moduleFlags },
+          });
+        }
+
+        // Log the user out everywhere after a credential, role or status
+        // change. When changing your own password, keep the current session.
+        if (passwordChanged || userTypeChanged || isActiveChanged) {
+          await tx.sessions.deleteMany({
+            where: {
+              user_id: id,
+              ...(isSelf ? { NOT: { id: auth.session.id } } : {}),
+            },
+          });
+        }
+
+        return { ...updatedUser, module_access: moduleAccess };
       });
-      const moduleAccess = await prisma.module_access.update({
-        where: { user_id: id },
-        data: {
-          all_clients: updateData.module_access.all_clients,
-          add_clients: updateData.module_access.add_clients,
-          client_details: updateData.module_access.client_details,
-          dashboard: updateData.module_access.dashboard,
-          delete_media: updateData.module_access.delete_media,
-          all_employees: updateData.module_access.all_employees,
-          add_employees: updateData.module_access.add_employees,
-          employee_details: updateData.module_access.employee_details,
-          all_projects: updateData.module_access.all_projects,
-          add_projects: updateData.module_access.add_projects,
-          project_details: updateData.module_access.project_details,
-          all_suppliers: updateData.module_access.all_suppliers,
-          add_suppliers: updateData.module_access.add_suppliers,
-          supplier_details: updateData.module_access.supplier_details,
-          all_items: updateData.module_access.all_items,
-          add_items: updateData.module_access.add_items,
-          item_details: updateData.module_access.item_details,
-          usedmaterial: updateData.module_access.usedmaterial,
-          logs: updateData.module_access.logs,
-          lotatglance: updateData.module_access.lotatglance,
-          materialstoorder: updateData.module_access.materialstoorder,
-          purchaseorder: updateData.module_access.purchaseorder,
-          statements: updateData.module_access.statements,
-          site_photos: updateData.module_access.site_photos,
-          site_measurements: updateData.module_access.site_measurements,
-          config: updateData.module_access.config,
-          calendar: updateData.module_access.calendar,
-        },
-      });
-      user = {
-        ...user,
-        module_access: moduleAccess,
-      };
     } catch (error) {
       console.error("Error updating user:", error);
       return NextResponse.json(
         { status: false, message: "User not updated" },
-        { status: 404 },
+        { status: 500 },
       );
     }
 
@@ -190,11 +244,12 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { roles: MASTER_ADMIN_ONLY });
     if (authError) return authError;
     const { id } = await params;
     const user = await prisma.users.delete({
       where: { id: id },
+      omit: { password: true },
       include: {
         employee: {
           select: {

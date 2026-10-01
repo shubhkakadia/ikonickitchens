@@ -1,38 +1,38 @@
-import "server-only"
+import "server-only";
 
-import bcrypt from "bcrypt"
-import crypto from "crypto"
-import { NextResponse } from "next/server"
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/db"
-import { apiError, apiSuccess } from "@/lib/api/response"
-import { rateLimit } from "@/lib/rateLimit"
+import { prisma } from "@/lib/db";
+import { apiError, apiSuccess } from "@/lib/api/response";
+import { rateLimit } from "@/lib/rateLimit";
 
 const signinRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: "Too many signin attempts, please try again later.",
   keyGenerator: (request) => {
-    const forwarded = request.headers.get("x-forwarded-for")
+    const forwarded = request.headers.get("x-forwarded-for");
     const ip = forwarded
       ? forwarded.split(",")[0].trim()
-      : request.headers.get("x-real-ip") || "unknown"
+      : request.headers.get("x-real-ip") || "unknown";
 
-    return `signin:${ip}`
+    return `signin:${ip}`;
   },
-})
+});
 
 function rateLimitHeaders(rateLimitResult) {
   return {
     "X-RateLimit-Limit": "5",
     "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
     "X-RateLimit-Reset": new Date(rateLimitResult.resetTime).toISOString(),
-  }
+  };
 }
 
 export async function signin(request) {
   try {
-    const rateLimitResult = await signinRateLimit(request)
+    const rateLimitResult = await signinRateLimit(request);
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
@@ -52,33 +52,36 @@ export async function signin(request) {
             ).toISOString(),
           },
         },
-      )
+      );
     }
 
-    const { username, password } = await request.json()
-    const user = await prisma.users.findUnique({ where: { username } })
-    const headers = rateLimitHeaders(rateLimitResult)
+    const { username, password } = await request.json();
+    const user = await prisma.users.findUnique({
+      where: { username },
+      omit: { password: false },
+    });
+    const headers = rateLimitHeaders(rateLimitResult);
 
-    let isValidPassword = false
+    let isValidPassword = false;
     if (user) {
-      isValidPassword = await bcrypt.compare(password, user.password)
+      isValidPassword = await bcrypt.compare(password, user.password);
 
       if (!user.is_active) {
-        return apiError("User account is not active", 403, undefined, headers)
+        return apiError("User account is not active", 403, undefined, headers);
       }
     } else {
       const dummyHash =
-        "$2b$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuv"
-      await bcrypt.compare(password, dummyHash)
+        "$2b$10$abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuv";
+      await bcrypt.compare(password, dummyHash);
     }
 
     if (!user || !isValidPassword) {
-      return apiError("Invalid username or password", 401, undefined, headers)
+      return apiError("Invalid username or password", 401, undefined, headers);
     }
 
-    const sessionToken = crypto.randomBytes(32).toString("hex")
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 30)
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
     const session = await prisma.sessions.create({
       data: {
@@ -87,7 +90,7 @@ export async function signin(request) {
         user_type: user.user_type,
         expires_at: expiresAt,
       },
-    })
+    });
 
     return apiSuccess(
       {
@@ -105,9 +108,9 @@ export async function signin(request) {
       "Login successful",
       200,
       headers,
-    )
+    );
   } catch (error) {
-    console.error("Signin error:", error)
-    return apiError("Internal server error")
+    console.error("Signin error:", error);
+    return apiError("Internal server error");
   }
 }

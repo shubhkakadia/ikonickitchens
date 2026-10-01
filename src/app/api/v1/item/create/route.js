@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import {
   uploadFile,
@@ -12,7 +12,15 @@ const CATEGORIES = ["sheet", "handle", "hardware", "accessory", "edging_tape"];
 
 export async function POST(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: [
+        "add_items",
+        "purchaseorder",
+        "supplier_details",
+        "materialstoorder",
+        "project_details",
+      ],
+    });
     if (authError) return authError;
 
     // Validate and parse multipart/form-data

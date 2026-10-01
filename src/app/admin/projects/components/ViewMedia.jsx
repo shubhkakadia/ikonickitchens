@@ -267,16 +267,18 @@ export default function ViewMedia({
             onClick={(e) => e.stopPropagation()}
           >
             {selectedFile.type?.includes("image") ? (
-              <div className="transition-transform duration-300 ease-out">
+              <div
+                className="relative w-full h-full transition-transform duration-300 ease-out"
+                style={{
+                  transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
+                }}
+              >
                 <Image
-                  width={1920}
-                  height={1080}
+                  fill
+                  sizes="100vw"
                   src={imageSrc}
                   alt={selectedFile.name}
-                  style={{
-                    transform: `scale(${imageScale}) rotate(${imageRotation}deg)`,
-                  }}
-                  className="max-w-screen max-h-screen object-contain p-6"
+                  className="object-contain p-6"
                   draggable={false}
                   priority
                 />
@@ -341,8 +343,12 @@ export default function ViewMedia({
                   handlePrevious();
                 }}
                 disabled={!canNavigatePrevious}
-                className={`absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
-                  showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+                className={`absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
+                  !showControls
+                    ? "opacity-0 pointer-events-none"
+                    : canNavigatePrevious
+                      ? "opacity-100"
+                      : "opacity-30"
                 }`}
                 title="Previous (←)"
               >
@@ -354,8 +360,12 @@ export default function ViewMedia({
                   handleNext();
                 }}
                 disabled={!canNavigateNext}
-                className={`absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
-                  showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+                className={`absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-300 disabled:cursor-not-allowed cursor-pointer border border-white/10 shadow-lg ${
+                  !showControls
+                    ? "opacity-0 pointer-events-none"
+                    : canNavigateNext
+                      ? "opacity-100"
+                      : "opacity-30"
                 }`}
                 title="Next (→)"
               >

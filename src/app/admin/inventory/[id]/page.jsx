@@ -1020,7 +1020,6 @@ export default function page() {
 
       const editFormData = {
         description: item.description || "",
-        quantity: item.quantity || "",
         measurement_unit: item.measurement_unit || "",
       };
       // Initialize measuring unit search term
@@ -2207,28 +2206,17 @@ export default function page() {
                                 </p>
                               </div>
                               <div className="text-right">
-                                {isEditing ? (
-                                  <input
-                                    type="number"
-                                    value={formData.quantity || ""}
-                                    onChange={(e) =>
-                                      handleInputChange(
-                                        "quantity",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder={formatValue(item.quantity)}
-                                    className="w-full text-lg text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-right"
-                                    step="0.1"
-                                  />
-                                ) : (
-                                  <p className="text-2xl font-bold text-emerald-600">
-                                    {formatValue(item.quantity)}
-                                    {item.measurement_unit && (
-                                      <span className="ml-1 text-sm font-normal">
-                                        {item.measurement_unit}
-                                      </span>
-                                    )}
+                                <p className="text-2xl font-bold text-emerald-600">
+                                  {formatValue(item.quantity)}
+                                  {item.measurement_unit && (
+                                    <span className="ml-1 text-sm font-normal">
+                                      {item.measurement_unit}
+                                    </span>
+                                  )}
+                                </p>
+                                {isEditing && (
+                                  <p className="text-xs text-slate-500">
+                                    Adjust stock via Stock Tally
                                   </p>
                                 )}
                               </div>

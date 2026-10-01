@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
@@ -7,7 +7,9 @@ import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["purchaseorder", "supplier_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const po = await prisma.purchase_order.findUnique({
@@ -57,7 +59,9 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["purchaseorder", "supplier_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
 
@@ -180,6 +184,23 @@ export async function PATCH(request, { params }) {
       items = body.items;
     }
 
+    // Receiving stock is handled exclusively by POST /purchase_order/received_items,
+    // which scopes lines to the PO, locks the row, rejects over-receives and writes
+    // stock_transaction rows. Refuse it here so it can't bypass those checks.
+    if (
+      body.received_items !== undefined ||
+      body.items_received !== undefined
+    ) {
+      return NextResponse.json(
+        {
+          status: false,
+          message:
+            "Receiving items is not supported on this endpoint. Use POST /api/v1/purchase_order/received_items",
+        },
+        { status: 400 },
+      );
+    }
+
     // Build update payload (only include provided allowed fields)
     const updateData = {};
 
@@ -197,199 +218,6 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    // Check if this is a receive operation (updating quantity_received)
-    const receivedItems = body.received_items || body.items_received;
-    if (receivedItems && Array.isArray(receivedItems)) {
-      // This is a receive operation - update quantity_received for items and inventory
-      // Filter out items with no updates (either new_delivery > 0 or quantity_received provided)
-      const itemsToUpdate = receivedItems.filter(
-        (item) =>
-          (item.new_delivery !== undefined &&
-            item.new_delivery !== null &&
-            parseFloat(item.new_delivery || 0) > 0) ||
-          (item.quantity_received !== undefined &&
-            item.quantity_received !== null),
-      );
-
-      if (itemsToUpdate.length > 0) {
-        // Fetch existing items to get current quantity_received and item_id
-        const itemIds = itemsToUpdate.map((item) => item.id);
-        const existingItems = await prisma.purchase_order_item.findMany({
-          where: { id: { in: itemIds } },
-          include: {
-            item: {
-              select: {
-                item_id: true,
-                quantity: true,
-              },
-            },
-          },
-        });
-
-        // Create a map for quick lookup
-        const existingItemsMap = new Map(
-          existingItems.map((item) => [item.id, item]),
-        );
-
-        // Update purchase_order_item and item inventory
-        const updatePromises = itemsToUpdate.map(async (itemUpdate) => {
-          const existingItem = existingItemsMap.get(itemUpdate.id);
-          if (!existingItem) {
-            throw new Error(`Purchase order item ${itemUpdate.id} not found`);
-          }
-
-          const currentReceived = parseInt(
-            existingItem.quantity_received || 0,
-            10,
-          );
-
-          // Support both formats: quantity_received (total) or new_delivery (incremental)
-          let newTotalReceived;
-          let newDelivery;
-
-          if (
-            itemUpdate.quantity_received !== undefined &&
-            itemUpdate.quantity_received !== null
-          ) {
-            // Frontend sends total quantity_received
-            newTotalReceived = Math.floor(
-              parseFloat(itemUpdate.quantity_received || 0),
-            );
-            newDelivery = newTotalReceived - currentReceived;
-          } else if (
-            itemUpdate.new_delivery !== undefined &&
-            itemUpdate.new_delivery !== null
-          ) {
-            // Frontend sends incremental new_delivery
-            newDelivery = Math.floor(parseFloat(itemUpdate.new_delivery || 0));
-            newTotalReceived = currentReceived + newDelivery;
-          } else {
-            // Skip if neither is provided
-            return null;
-          }
-
-          // Only update if there's actually a change
-          if (newDelivery === 0) {
-            return null;
-          }
-
-          // Update purchase_order_item quantity_received
-          const poItemUpdate = prisma.purchase_order_item.update({
-            where: { id: itemUpdate.id },
-            data: {
-              quantity_received: newTotalReceived,
-            },
-          });
-
-          // Update item inventory quantity atomically (add new delivery to existing quantity)
-          const itemUpdateOp = prisma.item.update({
-            where: { item_id: existingItem.item_id },
-            data: {
-              quantity: {
-                increment: newDelivery,
-              },
-            },
-          });
-
-          return Promise.all([poItemUpdate, itemUpdateOp]);
-        });
-
-        // Filter out null values (skipped items) before awaiting
-        const validPromises = updatePromises.filter((p) => p !== null);
-        if (validPromises.length > 0) {
-          await Promise.all(validPromises);
-        }
-      }
-
-      // Check if all items are fully received to update PO status
-      const updatedPO = await prisma.purchase_order.findUnique({
-        where: { id },
-        include: {
-          items: true,
-        },
-      });
-
-      const allItemsReceived = updatedPO.items.every(
-        (item) => (item.quantity_received || 0) >= item.quantity,
-      );
-      const someItemsReceived = updatedPO.items.some(
-        (item) => (item.quantity_received || 0) > 0,
-      );
-
-      let newStatus = existing.status;
-      if (allItemsReceived && existing.status !== "CANCELLED") {
-        newStatus = "FULLY_RECEIVED";
-      } else if (
-        someItemsReceived &&
-        !allItemsReceived &&
-        existing.status !== "CANCELLED"
-      ) {
-        newStatus = "PARTIALLY_RECEIVED";
-      }
-
-      // Fetch updated PO with all relations for return
-      const finalPO = await prisma.purchase_order.findUnique({
-        where: { id },
-        include: {
-          supplier: true,
-          mto: {
-            select: {
-              project: { select: { project_id: true, name: true } },
-              status: true,
-            },
-          },
-          items: {
-            include: {
-              item: {
-                include: {
-                  sheet: true,
-                  handle: true,
-                  hardware: true,
-                  accessory: true,
-                },
-              },
-            },
-          },
-          orderedBy: {
-            select: {
-              employee: {
-                select: {
-                  employee_id: true,
-                  first_name: true,
-                  last_name: true,
-                },
-              },
-            },
-          },
-          invoice_url: true,
-          mto: {
-            select: {
-              project: { select: { project_id: true, name: true } },
-              status: true,
-            },
-          },
-        },
-      });
-
-      // Apply status update if needed
-      if (newStatus !== existing.status) {
-        await prisma.purchase_order.update({
-          where: { id },
-          data: { status: newStatus },
-        });
-        // Update finalPO status for response
-        finalPO.status = newStatus;
-      }
-
-      return NextResponse.json(
-        {
-          status: true,
-          message: "Received quantities updated successfully",
-          data: finalPO,
-        },
-        { status: 200 },
-      );
-    }
     if (body.status !== undefined) {
       // Validate status value
       const validStatuses = [
@@ -595,7 +423,9 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["purchaseorder", "supplier_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const po = await prisma.purchase_order.delete({

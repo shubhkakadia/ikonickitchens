@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  validateAdminAuth,
+  requireAuth,
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
@@ -9,7 +9,9 @@ import { sendNotification } from "@/lib/notification";
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "lotatglance", "site_measurements"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const { name, status, notes, startDate, endDate, assigned_to } =
@@ -191,7 +193,9 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const stage = await prisma.stage.delete({

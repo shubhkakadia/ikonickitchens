@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  validateAdminAuth,
+  requireAuth,
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
@@ -9,7 +9,9 @@ import { sendNotification } from "@/lib/notification";
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "lotatglance", "site_measurements"],
+    });
     if (authError) return authError;
     const { lot_id, name, status, notes, startDate, endDate, assigned_to } =
       await request.json();

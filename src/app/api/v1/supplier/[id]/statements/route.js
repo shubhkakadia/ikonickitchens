@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import {
   uploadFile,
   validateMultipartRequest,
@@ -13,7 +13,9 @@ import { sendNotification } from "@/lib/notification";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["statements", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -68,7 +70,9 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["statements", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;

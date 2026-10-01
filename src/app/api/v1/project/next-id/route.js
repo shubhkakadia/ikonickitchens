@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { formatProjectId, getNextProjectSequence } from "@/lib/projectId";
 
 export async function GET(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["add_projects", "client_details"],
+    });
     if (authError) return authError;
     const clientId = new URL(request.url).searchParams.get("client_id");
     if (!clientId)

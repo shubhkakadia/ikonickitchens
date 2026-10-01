@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import {
-  validateAdminAuth,
+  ALL_ROLES,
+  authorizeRequest,
+  hasModule,
   processDateTimeField,
+  requireAuth,
 } from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import {
@@ -11,6 +14,11 @@ import {
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
+import {
+  employeeQueryArgs,
+  presentEmployee,
+  sanitizeSensitiveInput,
+} from "@/lib/employeeData";
 
 const formatPhone = (phone) => (phone ? formatPhoneToNational(phone) : phone);
 
@@ -40,26 +48,55 @@ async function detachAndDeleteMedia(tx, { employeeId, mediaId, mediaUrl }) {
   await deleteFileByRelativePath(mediaUrl);
 }
 
+// Never expose the password hash
+const USER_SELECT = {
+  select: {
+    id: true,
+    username: true,
+    user_type: true,
+    is_active: true,
+    employee_id: true,
+    createdAt: true,
+    updatedAt: true,
+    module_access: true,
+  },
+};
+
+function withUser(args) {
+  return args.select
+    ? { select: { ...args.select, user: USER_SELECT } }
+    : { include: { ...args.include, user: USER_SELECT } };
+}
+
 // Fetch a single employee for the employee detail page.
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+    });
+    if (error) return error;
 
     const { id } = await params;
+
+    // Anyone may read their own record; other records need employee_details
+    const isSelf =
+      Boolean(auth.user.employee_id) && auth.user.employee_id === id;
+    if (
+      !isSelf &&
+      (auth.userType === "employee" || !hasModule(auth, "employee_details"))
+    ) {
+      return NextResponse.json(
+        { status: false, message: "Insufficient permissions" },
+        { status: 403 },
+      );
+    }
+
     const employee = await prisma.employees.findFirst({
       where: {
         employee_id: id,
         is_deleted: false,
       },
-      include: {
-        image: true,
-        user: {
-          include: {
-            module_access: true,
-          },
-        },
-      },
+      ...withUser(employeeQueryArgs(auth)),
     });
 
     if (!employee) {
@@ -73,7 +110,7 @@ export async function GET(request, { params }) {
       {
         status: true,
         message: "Employee fetched successfully",
-        data: employee,
+        data: presentEmployee(employee, auth),
       },
       { status: 200 },
     );
@@ -88,7 +125,9 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const { error: authError, auth } = await authorizeRequest(request, {
+      modules: ["employee_details"],
+    });
     if (authError) return authError;
 
     // Handle both FormData and JSON requests
@@ -202,7 +241,7 @@ export async function PATCH(request, { params }) {
     // Update employee first (without touching image_id)
     const employee = await prisma.employees.update({
       where: { employee_id: id },
-      data: updateData,
+      data: sanitizeSensitiveInput(updateData, auth),
     });
 
     let imageWarning = null;
@@ -279,7 +318,7 @@ export async function PATCH(request, { params }) {
     // to avoid pulling the linked user's password hash into the response)
     const updatedEmployee = await prisma.employees.findUnique({
       where: { id: employee.id },
-      include: { image: true },
+      ...employeeQueryArgs(auth),
     });
 
     const logged = await withLogging(
@@ -299,7 +338,7 @@ export async function PATCH(request, { params }) {
       {
         status: true,
         message: "Employee updated successfully",
-        data: updatedEmployee,
+        data: presentEmployee(updatedEmployee, auth),
         ...(logged
           ? {}
           : { warning: "Note: Update succeeded but logging failed" }),
@@ -327,7 +366,9 @@ export async function PATCH(request, { params }) {
 // Soft-delete an employee and its linked profile image.
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const { error: authError, auth } = await authorizeRequest(request, {
+      modules: ["employee_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -379,7 +420,7 @@ export async function DELETE(request, { params }) {
       {
         status: true,
         message: "Employee deleted successfully",
-        data: employee,
+        data: presentEmployee(employee, auth),
         ...(logged
           ? {}
           : { warning: "Note: Deletion succeeded but logging failed" }),

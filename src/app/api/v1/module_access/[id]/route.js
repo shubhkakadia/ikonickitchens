@@ -1,13 +1,28 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import {
+  ALL_ROLES,
+  MASTER_ADMIN_ONLY,
+  authorizeRequest,
+  requireAuth,
+} from "@/lib/validators/authFromToken";
+import { pickModuleFlags } from "@/lib/userAccounts";
 import { withLogging } from "@/lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    // Every user loads their own permissions on each admin page
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+    });
+    if (error) return error;
     const { id } = await params;
+    if (auth.user.id !== id && auth.userType !== "master-admin") {
+      return NextResponse.json(
+        { status: false, message: "Insufficient permissions" },
+        { status: 403 },
+      );
+    }
     const moduleAccess = await prisma.module_access.findUnique({
       where: { user_id: id },
     });
@@ -30,7 +45,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { roles: MASTER_ADMIN_ONLY });
     if (authError) return authError;
     const { id } = await params;
     const data = await request.json();
@@ -38,35 +53,8 @@ export async function PATCH(request, { params }) {
     try {
       moduleAccess = await prisma.module_access.update({
         where: { user_id: id },
-        data: {
-          all_clients: data.all_clients,
-          add_clients: data.add_clients,
-          client_details: data.client_details,
-          dashboard: data.dashboard,
-          delete_media: data.delete_media,
-          all_employees: data.all_employees,
-          add_employees: data.add_employees,
-          employee_details: data.employee_details,
-          all_projects: data.all_projects,
-          add_projects: data.add_projects,
-          project_details: data.project_details,
-          all_suppliers: data.all_suppliers,
-          add_suppliers: data.add_suppliers,
-          supplier_details: data.supplier_details,
-          all_items: data.all_items,
-          add_items: data.add_items,
-          item_details: data.item_details,
-          usedmaterial: data.usedmaterial,
-          logs: data.logs,
-          lotatglance: data.lotatglance,
-          materialstoorder: data.materialstoorder,
-          purchaseorder: data.purchaseorder,
-          statements: data.statements,
-          site_photos: data.site_photos,
-          site_measurements: data.site_measurements,
-          config: data.config,
-          calendar: data.calendar,
-        },
+        // Omitted flags stay unchanged; unknown keys are ignored
+        data: pickModuleFlags(data, { partial: true }),
       });
     } catch (error) {
       console.error("Error updating module access:", error);

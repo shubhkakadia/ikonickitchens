@@ -48,7 +48,7 @@ import { useUploadProgress } from "@/hooks/useUploadProgress";
 export default function EmployeeDetailPage() {
   const router = useRouter();
   const { id } = useParams();
-  const { getToken, isAdmin, isMasterAdmin } = useAuth();
+  const { getToken, isMasterAdmin } = useAuth();
   const {
     showProgressToast,
     completeUpload,
@@ -557,11 +557,12 @@ export default function EmployeeDetailPage() {
         emergency_contact_name: employee.emergency_contact_name || "",
         emergency_contact_phone: employee.emergency_contact_phone || "",
         bank_account_name: employee.bank_account_name || "",
-        bank_account_number: employee.bank_account_number || "",
+        // Masked by the API; leave blank to keep the stored value
+        bank_account_number: "",
         bank_account_bsb: employee.bank_account_bsb || "",
         supper_account_name: employee.supper_account_name || "",
-        supper_account_number: employee.supper_account_number || "",
-        tfn_number: employee.tfn_number || "",
+        supper_account_number: "",
+        tfn_number: "",
         abn_number: employee.abn_number || "",
         education: employee.education || "",
         availability: formattedAvailability,
@@ -943,7 +944,7 @@ export default function EmployeeDetailPage() {
       }
     } catch (error) {
       console.error("Error creating user:", error);
-      toast.error("Failed to create user");
+      toast.error(error.response?.data?.message || "Failed to create user");
     } finally {
       setIsUpdating(false);
     }
@@ -1164,7 +1165,7 @@ export default function EmployeeDetailPage() {
                                 <Edit className="w-4 h-4" />
                                 Edit Employee Details
                               </button>
-                              {isAdmin() && (
+                              {isMasterAdmin() && (
                                 <>
                                   {user && Object.keys(user).length > 0 ? (
                                     <button

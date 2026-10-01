@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import {
   uploadMultipleFiles,
   validateMultipartRequest,
@@ -11,7 +11,9 @@ import { withLogging } from "@/lib/withLogging";
 // Upload media files to MTO
 export async function POST(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "materialstoorder", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -21,7 +23,7 @@ export async function POST(request, { params }) {
       where: { id },
     });
 
-    if (!mto) {
+    if (!mto || mto.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Materials to order not found" },
         { status: 404 },
@@ -111,7 +113,9 @@ export async function POST(request, { params }) {
 // Delete media file from MTO
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "materialstoorder", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -138,7 +142,7 @@ export async function DELETE(request, { params }) {
       },
     });
 
-    if (!mto) {
+    if (!mto || mto.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Materials to order not found" },
         { status: 404 },

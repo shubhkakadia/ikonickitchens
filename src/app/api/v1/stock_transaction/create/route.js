@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 
@@ -25,7 +25,7 @@ async function handleUsedTransaction(data) {
     },
   });
 
-  if (!mtoItem) {
+  if (!mtoItem || mtoItem.mto?.is_deleted) {
     return {
       status: false,
       message: "Materials to order item not found",
@@ -581,7 +581,7 @@ async function handleWastedTransaction(data) {
  */
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["usedmaterial"] });
     if (authError) return authError;
 
     const body = await request.json();

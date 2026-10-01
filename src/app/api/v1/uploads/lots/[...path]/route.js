@@ -1,10 +1,15 @@
 import path from "path";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import {
+  ALL_ROLES,
+  authorizeRequest,
+  canAccessLot,
+  canAccessLotFile,
+} from "@/lib/validators/authFromToken";
 import { prisma } from "@/lib/db";
 import { uploadFile, validateMultipartRequest } from "@/lib/fileHandler";
-import fs from "fs";
 import { withLogging } from "@/lib/withLogging";
+import { serveMediaFile } from "@/lib/serveMedia";
 
 function ensureArray(value) {
   if (!value) return [];
@@ -50,140 +55,10 @@ function getFileKind(mimeType) {
   return "OTHER";
 }
 
-// Function to get MIME type from file path based on extension
-function getMimeType(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  switch (ext) {
-    // Images
-    case ".png":
-      return "image/png";
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".webp":
-      return "image/webp";
-    case ".gif":
-      return "image/gif";
-    case ".svg":
-      return "image/svg+xml";
-
-    // PDF
-    case ".pdf":
-      return "application/pdf";
-
-    // Videos
-    case ".mp4":
-      return "video/mp4";
-    case ".webm":
-      return "video/webm";
-    case ".ogg":
-      return "video/ogg";
-    case ".mov":
-      return "video/quicktime";
-    case ".avi":
-      return "video/x-msvideo";
-    case ".mkv":
-      return "video/x-matroska";
-
-    default:
-      return "application/octet-stream";
-  }
-}
-
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
-    const segments = ensureArray(resolvedParams?.path);
-    if (segments.length === 0) {
-      return NextResponse.json(
-        { status: false, message: "Missing path" },
-        { status: 404 },
-      );
-    }
-    const targetPath = path.join(process.cwd(), "mediauploads", ...segments);
-
-    // Prevent path traversal
-    const uploadsRoot = path.join(process.cwd(), "mediauploads");
-    const normalized = path.normalize(targetPath);
-    if (!normalized.startsWith(uploadsRoot)) {
-      return NextResponse.json(
-        { status: false, message: "Not found" },
-        { status: 404 },
-      );
-    }
-
-    let stat;
-    try {
-      stat = await fs.promises.stat(normalized);
-    } catch {
-      return NextResponse.json(
-        { status: false, message: "Not found" },
-        { status: 404 },
-      );
-    }
-    if (!stat.isFile()) {
-      return NextResponse.json(
-        { status: false, message: "Not found" },
-        { status: 404 },
-      );
-    }
-
-    // Check if file is marked as deleted in database
-    const relativePath = path
-      .relative(process.cwd(), normalized)
-      .replaceAll("\\", "/");
-    const fileRecord = await prisma.lot_file.findFirst({
-      where: {
-        url: relativePath,
-      },
-    });
-
-    // If file exists in DB and is marked as deleted, return 404
-    if (fileRecord && fileRecord.is_deleted) {
-      return NextResponse.json(
-        { status: false, message: "Not found" },
-        { status: 404 },
-      );
-    }
-
-    const mimeType = getMimeType(normalized);
-    const fileSize = stat.size;
-    const range = request.headers.get("range");
-
-    // Check if download query parameter is present
-    const url = new URL(request.url);
-    const forceDownload = url.searchParams.get("download") === "true";
-    const filename = path.basename(normalized);
-
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunksize = end - start + 1;
-      const file = fs.createReadStream(normalized, { start, end });
-      const head = {
-        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-        "Accept-Ranges": "bytes",
-        "Content-Length": chunksize.toString(),
-        "Content-Type": mimeType,
-        "Cache-Control": "public, max-age=31536000, immutable",
-      };
-      if (forceDownload) {
-        head["Content-Disposition"] = `attachment; filename="${filename}"`;
-      }
-      return new NextResponse(file, { status: 206, headers: head });
-    } else {
-      const head = {
-        "Content-Length": fileSize.toString(),
-        "Content-Type": mimeType,
-        "Cache-Control": "public, max-age=31536000, immutable",
-      };
-      if (forceDownload) {
-        head["Content-Disposition"] = `attachment; filename="${filename}"`;
-      }
-      const file = fs.createReadStream(normalized);
-      return new NextResponse(file, { status: 200, headers: head });
-    }
+    return await serveMediaFile(request, ensureArray(resolvedParams?.path));
   } catch (error) {
     console.error("Error in GET /api/uploads/lots/[...path]:", error);
     return NextResponse.json(
@@ -195,8 +70,12 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    // Site photos uploads here too; employees are limited to their own lots
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+      modules: ["project_details", "site_photos"],
+    });
+    if (error) return error;
 
     const resolvedParams = await params;
     const segments = ensureArray(resolvedParams?.path);
@@ -279,7 +158,7 @@ export async function POST(request, { params }) {
       },
     });
 
-    if (!lot) {
+    if (!lot || !canAccessLot(auth, lot)) {
       return NextResponse.json(
         { status: false, message: `Lot with ID ${lotId} not found` },
         { status: 404 },
@@ -383,8 +262,12 @@ export async function POST(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
-    if (authError) return authError;
+    // Site photos uploads here too; employees are limited to their own lots
+    const { error, auth } = await authorizeRequest(request, {
+      roles: ALL_ROLES,
+      modules: ["project_details", "site_photos"],
+    });
+    if (error) return error;
 
     const resolvedParams = await params;
     const segments = ensureArray(resolvedParams?.path);
@@ -448,7 +331,7 @@ export async function DELETE(request, { params }) {
       }
     }
 
-    if (!fileRecord) {
+    if (!fileRecord || !(await canAccessLotFile(auth, fileRecord.id))) {
       return NextResponse.json(
         {
           status: false,

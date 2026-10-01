@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { uploadFile, getFileFromFormData } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["purchaseorder", "supplier_details", "materialstoorder"],
+    });
     if (authError) return authError;
 
     // Parse FormData
@@ -57,6 +59,19 @@ export async function POST(request) {
         { status: false, message: "order_no is required" },
         { status: 400 },
       );
+    }
+
+    if (mto_id) {
+      const mto = await prisma.materials_to_order.findUnique({
+        where: { id: mto_id },
+        select: { is_deleted: true },
+      });
+      if (!mto || mto.is_deleted) {
+        return NextResponse.json(
+          { status: false, message: "Materials to order not found" },
+          { status: 404 },
+        );
+      }
     }
 
     // Check if order_no already exists

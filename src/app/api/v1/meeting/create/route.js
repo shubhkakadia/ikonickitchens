@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  validateAdminAuth,
-  getUserFromToken,
-} from "@/lib/validators/authFromToken";
+import { requireAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 import dayjs from "dayjs";
@@ -22,7 +19,7 @@ function adelaideLocalToUTC(dateString) {
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["calendar"] });
     if (authError) return authError;
 
     const body = await request.json();

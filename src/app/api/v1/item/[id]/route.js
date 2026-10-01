@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import {
   uploadFile,
   deleteFileByRelativePath,
@@ -10,7 +10,7 @@ import { withLogging } from "@/lib/withLogging";
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["item_details"] });
     if (authError) return authError;
     const { id } = await params;
     const item = await prisma.item.findFirst({
@@ -129,7 +129,7 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["item_details"] });
     if (authError) return authError;
     let formData;
     try {
@@ -149,7 +149,8 @@ export async function PATCH(request, { params }) {
 
     const description = formData.get("description");
     const price = formData.get("price");
-    const quantity = formData.get("quantity");
+    // quantity is intentionally not read here: stock only changes through
+    // stock_transaction / stock_tally so the ledger stays consistent.
     const imageFile = getFileFromFormData(formData, "image");
     const brand = formData.get("brand");
     const color = formData.get("color");
@@ -241,8 +242,6 @@ export async function PATCH(request, { params }) {
       updateData.description = description;
     if (price !== null && price !== undefined)
       updateData.price = parseFloat(price);
-    if (quantity !== null && quantity !== undefined)
-      updateData.quantity = parseFloat(quantity);
     if (measurement_unit !== null && measurement_unit !== undefined)
       updateData.measurement_unit = measurement_unit;
 
@@ -578,7 +577,7 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, { modules: ["item_details"] });
     if (authError) return authError;
     const { id } = await params;
 

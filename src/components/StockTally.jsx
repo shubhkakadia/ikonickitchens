@@ -361,7 +361,7 @@ export default function StockTally({
       }));
 
       const response = await axios.post(
-        "/api/stock_tally",
+        "/api/v1/stock_tally",
         { items: itemsToSend },
         {
           headers: {

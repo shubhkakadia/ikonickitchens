@@ -1,10 +1,21 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 
 export async function GET(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: [
+        "all_suppliers",
+        "statements",
+        "add_items",
+        "item_details",
+        "purchaseorder",
+        "supplier_details",
+        "materialstoorder",
+        "project_details",
+      ],
+    });
     if (authError) return authError;
     // include total statements amount for each supplier and number of purchase orders
     const suppliers = await prisma.supplier.findMany({

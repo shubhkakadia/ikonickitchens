@@ -1,12 +1,158 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
+
+// Errors thrown inside the transaction that should reach the client as a 400
+function mtoEditError(message) {
+  return Object.assign(new Error(message), { isClientError: true });
+}
+
+// Delete reservations and return their unused part to item stock. The used
+// part was already consumed, so only quantity - used_quantity goes back.
+async function releaseReservations(tx, reservationIds) {
+  for (const reservationId of reservationIds) {
+    const deleted = await tx.reserve_item_stock.delete({
+      where: { id: reservationId },
+    });
+
+    const unusedQuantity = Math.max(
+      deleted.quantity - (deleted.used_quantity || 0),
+      0,
+    );
+
+    if (unusedQuantity > 0) {
+      await tx.item.update({
+        where: { item_id: deleted.item_id },
+        data: { quantity: { increment: unusedQuantity } },
+      });
+    }
+  }
+}
+
+// Diff the submitted items against the existing MTO items instead of
+// delete-and-recreate, so reservations, quantity_used, quantity_ordered_po and
+// purchase_order_item.mto_item_id links survive an edit. When locked, an
+// unchanged item list is accepted (autosave) but any change is rejected.
+async function syncMtoItems(tx, mtoId, items, { locked = false } = {}) {
+  const existing = await tx.materials_to_order_item.findMany({
+    where: { mto_id: mtoId },
+    select: {
+      id: true,
+      item_id: true,
+      quantity: true,
+      notes: true,
+      quantity_used: true,
+      _count: { select: { ordered_items: true } },
+    },
+  });
+
+  const unclaimed = new Map(existing.map((row) => [row.id, row]));
+  const toUpdate = [];
+  const toCreate = [];
+  const withoutMatch = [];
+
+  // Match by MTO item id first; a row whose item was swapped is treated as a
+  // removal plus a new row
+  for (const incoming of items) {
+    const row = incoming.id ? unclaimed.get(incoming.id) : undefined;
+    if (row && row.item_id === incoming.item_id) {
+      unclaimed.delete(row.id);
+      toUpdate.push({ row, incoming });
+    } else {
+      withoutMatch.push(incoming);
+    }
+  }
+
+  // Rows sent without an id (e.g. added since the editor last loaded) fall
+  // back to matching an unclaimed existing row for the same item
+  for (const incoming of withoutMatch) {
+    const row = [...unclaimed.values()].find(
+      (r) => r.item_id === incoming.item_id,
+    );
+    if (row) {
+      unclaimed.delete(row.id);
+      toUpdate.push({ row, incoming });
+    } else {
+      toCreate.push(incoming);
+    }
+  }
+
+  const removed = [...unclaimed.values()];
+  const changedUpdates = toUpdate.filter(
+    ({ row, incoming }) =>
+      row.quantity !== incoming.quantity ||
+      (row.notes ?? null) !== (incoming.notes ?? null),
+  );
+
+  if (!removed.length && !toCreate.length && !changedUpdates.length) {
+    return;
+  }
+
+  if (locked) {
+    throw mtoEditError(
+      "Items cannot be edited after used material has been completed for this MTO.",
+    );
+  }
+
+  for (const { row, incoming } of changedUpdates) {
+    const used = row.quantity_used || 0;
+    if (incoming.quantity < used) {
+      throw mtoEditError(
+        `Quantity for item ${row.item_id} cannot be less than the already used quantity (${used})`,
+      );
+    }
+  }
+
+  for (const row of removed) {
+    if ((row.quantity_used || 0) > 0 || row._count.ordered_items > 0) {
+      throw mtoEditError(
+        `Item ${row.item_id} cannot be removed because it has already been used or added to a purchase order`,
+      );
+    }
+  }
+
+  if (removed.length > 0) {
+    const removedIds = removed.map((row) => row.id);
+    const reservations = await tx.reserve_item_stock.findMany({
+      where: { mto_id: { in: removedIds } },
+      select: { id: true },
+    });
+    await releaseReservations(
+      tx,
+      reservations.map((r) => r.id),
+    );
+    await tx.materials_to_order_item.deleteMany({
+      where: { id: { in: removedIds } },
+    });
+  }
+
+  for (const { row, incoming } of changedUpdates) {
+    await tx.materials_to_order_item.update({
+      where: { id: row.id },
+      data: { quantity: incoming.quantity, notes: incoming.notes ?? null },
+    });
+  }
+
+  if (toCreate.length > 0) {
+    await tx.materials_to_order_item.createMany({
+      data: toCreate.map((incoming) => ({
+        mto_id: mtoId,
+        item_id: incoming.item_id,
+        quantity: incoming.quantity,
+        notes: incoming.notes ?? null,
+      })),
+    });
+  }
+}
 
 export async function GET(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
     const { id } = await params;
     const mto = await prisma.materials_to_order.findUnique({
@@ -45,6 +191,13 @@ export async function GET(request, { params }) {
       },
     });
 
+    if (!mto || mto.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Materials to order not found" },
+        { status: 404 },
+      );
+    }
+
     // Fetch media separately to avoid Prisma client issues
     const media = await prisma.media.findMany({
       where: {
@@ -78,7 +231,9 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "usedmaterial"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -93,17 +248,33 @@ export async function PATCH(request, { params }) {
       updateData.used_material_completed = used_material_completed;
     }
 
-    // Handle items updates
+    // Validate items; they are applied by diffing inside the transaction below
+    let normalizedItems;
     if (items !== undefined) {
-      updateData.items = {
-        // Delete all existing items first, then create new ones
-        deleteMany: {},
-        create: items.map((item) => ({
-          item_id: item.item_id,
-          quantity: item.quantity,
-          notes: item.notes,
-        })),
-      };
+      const invalid =
+        !Array.isArray(items) ||
+        items.some(
+          (item) =>
+            !item?.item_id ||
+            !Number.isInteger(Number(item.quantity)) ||
+            Number(item.quantity) <= 0,
+        );
+      if (invalid) {
+        return NextResponse.json(
+          {
+            status: false,
+            message:
+              "items must be an array of { item_id, quantity > 0 } entries",
+          },
+          { status: 400 },
+        );
+      }
+      normalizedItems = items.map((item) => ({
+        id: item.id,
+        item_id: item.item_id,
+        quantity: Number(item.quantity),
+        notes: item.notes,
+      }));
     }
 
     const includeMto = {
@@ -155,10 +326,10 @@ export async function PATCH(request, { params }) {
     await prisma.$transaction(async (tx) => {
       const prev = await tx.materials_to_order.findUnique({
         where: { id },
-        select: { used_material_completed: true },
+        select: { used_material_completed: true, is_deleted: true },
       });
 
-      if (!prev) {
+      if (!prev || prev.is_deleted) {
         throw new Error("Materials to order not found");
       }
 
@@ -167,7 +338,14 @@ export async function PATCH(request, { params }) {
         throw new Error("USED_MATERIAL_COMPLETION_CANNOT_BE_REVERTED");
       }
 
-      // Update MTO (including optional items update)
+      if (normalizedItems) {
+        // Completion has already consumed the stock for every item
+        await syncMtoItems(tx, id, normalizedItems, {
+          locked: prev.used_material_completed,
+        });
+      }
+
+      // Update MTO
       mto = await tx.materials_to_order.update({
         where: { id },
         data: updateData,
@@ -240,6 +418,17 @@ export async function PATCH(request, { params }) {
         });
       }
     });
+
+    // Removing rows releases reservations, which can change order coverage
+    if (normalizedItems && mto.items.length > 0) {
+      const statusChanged = await checkAndUpdateMTOStatus(mto.items[0].id);
+      if (statusChanged) {
+        mto = await prisma.materials_to_order.findUnique({
+          where: { id },
+          include: includeMto,
+        });
+      }
+    }
 
     // Fetch media separately
     const media = await prisma.media.findMany({
@@ -341,6 +530,13 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    if (error?.isClientError) {
+      return NextResponse.json(
+        { status: false, message: msg },
+        { status: 400 },
+      );
+    }
+
     console.error("Error in PATCH /api/materials_to_order/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
@@ -351,7 +547,9 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details", "materialstoorder"],
+    });
     if (authError) return authError;
     const { id } = await params;
 
@@ -363,20 +561,41 @@ export async function DELETE(request, { params }) {
       },
     });
 
-    // Update lots to remove reference to this MTO
-    await prisma.lot.updateMany({
-      where: { materials_to_orders_id: id },
-      data: { materials_to_orders_id: null },
-    });
+    if (!mtoForLogging || mtoForLogging.is_deleted) {
+      return NextResponse.json(
+        { status: false, message: "Materials to order not found" },
+        { status: 404 },
+      );
+    }
 
-    // Mark media as deleted (soft delete)
-    await prisma.media.updateMany({
-      where: { materials_to_orderId: id },
-      data: { is_deleted: true },
-    });
+    // Soft delete: items, purchase order links and stock history are kept.
+    // Reservations are released so their unused stock goes back to inventory.
+    const mto = await prisma.$transaction(async (tx) => {
+      const reservations = await tx.reserve_item_stock.findMany({
+        where: { mto: { mto_id: id } },
+        select: { id: true },
+      });
+      await releaseReservations(
+        tx,
+        reservations.map((r) => r.id),
+      );
 
-    const mto = await prisma.materials_to_order.delete({
-      where: { id },
+      // Update lots to remove reference to this MTO so they can get a new one
+      await tx.lot.updateMany({
+        where: { materials_to_orders_id: id },
+        data: { materials_to_orders_id: null },
+      });
+
+      // Mark media as deleted (soft delete)
+      await tx.media.updateMany({
+        where: { materials_to_orderId: id },
+        data: { is_deleted: true },
+      });
+
+      return tx.materials_to_order.update({
+        where: { id },
+        data: { is_deleted: true },
+      });
     });
 
     const logged = await withLogging(

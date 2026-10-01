@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { withLogging } from "@/lib/withLogging";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import { getUserFromToken } from "@/lib/validators/authFromToken";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
 export async function POST(request) {
   try {
     // Verify authentication
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["materialstoorder"],
+    });
     if (authError) return authError;
 
     const session = await getUserFromToken(request);
@@ -57,9 +59,10 @@ export async function POST(request) {
     // If mto_id is provided, verify it exists
     const mto = await prisma.materials_to_order_item.findUnique({
       where: { id: mto_id },
+      include: { mto: { select: { is_deleted: true } } },
     });
 
-    if (!mto) {
+    if (!mto || mto.mto?.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Materials to order item not found" },
         { status: 404 },

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import {
-  validateAdminAuth,
+  authorizeRequest,
   processDateTimeField,
 } from "@/lib/validators/authFromToken";
 import {
@@ -11,6 +11,11 @@ import {
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 import { formatPhoneToNational } from "@/components/validators";
+import {
+  employeeQueryArgs,
+  presentEmployee,
+  sanitizeSensitiveInput,
+} from "@/lib/employeeData";
 
 const REQUIRED_FIELDS = ["employee_id", "first_name", "role", "email", "phone"];
 
@@ -18,7 +23,9 @@ const formatPhone = (phone) => (phone ? formatPhoneToNational(phone) : phone);
 
 export async function POST(request) {
   try {
-    const authError = await validateAdminAuth(request);
+    const { error: authError, auth } = await authorizeRequest(request, {
+      modules: ["add_employees"],
+    });
     if (authError) return authError;
 
     const formData = await validateMultipartRequest(request);
@@ -90,31 +97,34 @@ export async function POST(request) {
     let employee;
     try {
       employee = await prisma.employees.create({
-        data: {
-          employee_id,
-          first_name,
-          last_name,
-          role,
-          email,
-          phone: formatPhone(phone),
-          phone_secondary: formatPhone(phone_secondary),
-          dob: processDateTimeField(dob),
-          join_date: processDateTimeField(join_date),
-          address,
-          emergency_contact_name,
-          emergency_contact_phone: formatPhone(emergency_contact_phone),
-          bank_account_name,
-          bank_account_number,
-          bank_account_bsb,
-          supper_account_name,
-          supper_account_number,
-          tfn_number,
-          abn_number,
-          education,
-          availability: availabilityString,
-          notes,
-          is_active: isActiveValue,
-        },
+        data: sanitizeSensitiveInput(
+          {
+            employee_id,
+            first_name,
+            last_name,
+            role,
+            email,
+            phone: formatPhone(phone),
+            phone_secondary: formatPhone(phone_secondary),
+            dob: processDateTimeField(dob),
+            join_date: processDateTimeField(join_date),
+            address,
+            emergency_contact_name,
+            emergency_contact_phone: formatPhone(emergency_contact_phone),
+            bank_account_name,
+            bank_account_number,
+            bank_account_bsb,
+            supper_account_name,
+            supper_account_number,
+            tfn_number,
+            abn_number,
+            education,
+            availability: availabilityString,
+            notes,
+            is_active: isActiveValue,
+          },
+          auth,
+        ),
       });
     } catch (error) {
       if (error.code === "P2002") {
@@ -165,7 +175,7 @@ export async function POST(request) {
 
     const updatedEmployee = await prisma.employees.findUnique({
       where: { id: employee.id },
-      include: { image: true },
+      ...employeeQueryArgs(auth),
     });
 
     const logged = await withLogging(
@@ -189,7 +199,7 @@ export async function POST(request) {
           ? {}
           : { warning: "Note: Creation succeeded but logging failed" }),
         ...(imageUploadWarning ? { imageWarning: imageUploadWarning } : {}),
-        data: updatedEmployee,
+        data: presentEmployee(updatedEmployee, auth),
       },
       { status: 201 },
     );

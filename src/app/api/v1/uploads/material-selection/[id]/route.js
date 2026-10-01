@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import {
   uploadMultipleFiles,
   validateMultipartRequest,
@@ -11,7 +11,9 @@ import { withLogging } from "@/lib/withLogging";
 // Upload media files to Material Selection
 export async function POST(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;
@@ -121,7 +123,9 @@ export async function POST(request, { params }) {
 // Delete media file from Material Selection
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["project_details"],
+    });
     if (authError) return authError;
 
     const { id } = await params;

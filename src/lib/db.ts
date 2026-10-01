@@ -16,7 +16,12 @@ declare global {
   var __prisma: PrismaClient | undefined;
 }
 
-export const prisma = globalThis.__prisma ?? new PrismaClient({ adapter });
+// Password hashes are never loaded unless a query opts in with
+// `omit: { password: false }` (sign-in and password change only). This also
+// covers users rows pulled in through `include` on any relation.
+export const prisma =
+  globalThis.__prisma ??
+  new PrismaClient({ adapter, omit: { users: { password: true } } });
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.__prisma = prisma;

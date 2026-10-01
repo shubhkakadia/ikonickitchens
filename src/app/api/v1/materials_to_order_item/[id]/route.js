@@ -1,16 +1,15 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  validateAdminAuth,
-  getUserFromToken,
-} from "@/lib/validators/authFromToken";
+import { requireAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["materialstoorder", "supplier_details"],
+    });
     if (authError) return authError;
 
     // Get user_id from session
@@ -95,7 +94,7 @@ export async function PATCH(request, { params }) {
       },
     });
 
-    if (!mtoItem) {
+    if (!mtoItem || mtoItem.mto?.is_deleted) {
       return NextResponse.json(
         { status: false, message: "Materials to order item not found" },
         { status: 404 },

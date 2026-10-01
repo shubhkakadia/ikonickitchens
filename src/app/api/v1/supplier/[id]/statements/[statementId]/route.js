@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { validateAdminAuth } from "@/lib/validators/authFromToken";
+import { requireAuth } from "@/lib/validators/authFromToken";
 import {
   uploadFile,
   deleteFileByRelativePath,
@@ -11,7 +11,9 @@ import { withLogging } from "@/lib/withLogging";
 
 export async function PATCH(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["statements", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id, statementId } = await params;
@@ -205,7 +207,9 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const authError = await validateAdminAuth(request);
+    const authError = await requireAuth(request, {
+      modules: ["statements", "supplier_details"],
+    });
     if (authError) return authError;
 
     const { id, statementId } = await params;

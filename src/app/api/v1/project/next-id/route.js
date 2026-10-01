@@ -56,7 +56,7 @@ export async function GET(request) {
       },
     });
   } catch (error) {
-    console.error("Error in GET /api/project/next-id:", error);
+    console.error("Error in GET /api/v1/project/next-id:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

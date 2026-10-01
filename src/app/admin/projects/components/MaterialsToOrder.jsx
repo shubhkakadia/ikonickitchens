@@ -1442,7 +1442,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
     <div>
       {/* Title and Action Buttons */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">
+        <h2 className="text-2xl font-semibold text-slate-800">
           Materials to Order
         </h2>
         <div className="flex gap-3">
@@ -1450,7 +1450,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
             <>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200"
               >
                 <Trash className="w-4 h-4" />
                 Delete Materials to Order
@@ -1461,7 +1461,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
           <button
             onClick={handleExportToExcel}
             disabled={!hasItems}
-            className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
             Export to Excel
@@ -1469,7 +1469,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
           <button
             onClick={handleSaveMaterials}
             disabled={saveStatus === "saving" || !canSave}
-            className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saveStatus === "saving" ? (
               <>
@@ -1702,10 +1702,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                           )
                         }
                         placeholder="Search for sheet items..."
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
                       />
                       {showSearchDropdown.sheet?.[rowIndex] && (
-                        <div className="absolute z-10 mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-80 overflow-y-auto w-full">
+                        <div className="absolute z-10 mt-1 bg-white border border-slate-200 rounded-md max-h-80 overflow-y-auto w-full">
                           {getFilteredSearchResults("sheet").length > 0 ? (
                             getFilteredSearchResults("sheet").map((item) => (
                               <button
@@ -1920,10 +1920,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                           )
                         }
                         placeholder="Search for edging tape items..."
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
                       />
                       {showSearchDropdown.edging_tape?.[rowIndex] && (
-                        <div className="absolute mt-1 z-10 bg-white border border-slate-200 rounded-md shadow-lg max-h-80 overflow-y-auto w-full">
+                        <div className="absolute mt-1 z-10 bg-white border border-slate-200 rounded-md max-h-80 overflow-y-auto w-full">
                           {getFilteredSearchResults("edging_tape").length >
                           0 ? (
                             getFilteredSearchResults("edging_tape").map(
@@ -2144,10 +2144,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                           )
                         }
                         placeholder="Search for handle items..."
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
                       />
                       {showSearchDropdown.handle?.[rowIndex] && (
-                        <div className="absolute z-10 mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-80 overflow-y-auto w-full">
+                        <div className="absolute z-10 mt-1 bg-white border border-slate-200 rounded-md max-h-80 overflow-y-auto w-full">
                           {getFilteredSearchResults("handle").length > 0 ? (
                             getFilteredSearchResults("handle").map((item) => (
                               <button
@@ -2360,10 +2360,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                           )
                         }
                         placeholder="Search for hardware items..."
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
                       />
                       {showSearchDropdown.hardware?.[rowIndex] && (
-                        <div className="absolute mt-1 z-10 bg-white border border-slate-200 rounded-md shadow-lg max-h-80 overflow-y-auto w-full">
+                        <div className="absolute mt-1 z-10 bg-white border border-slate-200 rounded-md max-h-80 overflow-y-auto w-full">
                           {getFilteredSearchResults("hardware").length > 0 ? (
                             getFilteredSearchResults("hardware").map((item) => (
                               <button
@@ -2559,10 +2559,10 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                           )
                         }
                         placeholder="Search for accessory items..."
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
                       />
                       {showSearchDropdown.accessory?.[rowIndex] && (
-                        <div className="absolute mt-1 z-10 bg-white border border-slate-200 rounded-md shadow-lg max-h-80 overflow-y-auto w-full">
+                        <div className="absolute mt-1 z-10 bg-white border border-slate-200 rounded-md max-h-80 overflow-y-auto w-full">
                           {getFilteredSearchResults("accessory").length > 0 ? (
                             getFilteredSearchResults("accessory").map(
                               (item) => (
@@ -2757,7 +2757,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                         key={file.id}
                         onClick={() => handleViewExistingFile(file)}
                         title="Click to view file"
-                        className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
+                        className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 transition-colors group ${
                           isSmall ? "w-32" : "w-40"
                         }`}
                       >
@@ -2834,11 +2834,11 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                               handleDeleteMedia(file.id);
                             }}
                             disabled={deletingMediaId === file.id}
-                            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                             title="Delete file"
                           >
                             {deletingMediaId === file.id ? (
-                              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+                              <div className="animate-spin rounded-full w-4 h-4 border-b-2 border-white"></div>
                             ) : (
                               <Trash className="w-3.5 h-3.5" />
                             )}
@@ -2894,7 +2894,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
                 </div>
               ) : (
                 <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-                  <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                  <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-600">No files uploaded yet</p>
                 </div>
               )}
@@ -2914,7 +2914,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
               Select Files {uploadingMedia && "(Uploading...)"}
             </label>
             <div
-              className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+              className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-colors duration-200 bg-slate-50 hover:bg-slate-100 ${
                 uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
@@ -2930,7 +2930,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
               <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                 {uploadingMedia ? (
                   <>
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-3"></div>
+                    <div className="animate-spin rounded-full w-8 h-8 border-b-2 border-secondary mx-auto mb-3"></div>
                     <p className="text-sm font-medium text-slate-700 mb-1">
                       Uploading files...
                     </p>
@@ -2964,7 +2964,7 @@ export default function MaterialsToOrder({ project, selectedLot }) {
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Add any notes related to this materials to order..."
           rows="4"
-          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-secondary bg-white"
+          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary bg-white"
         />
       </div>
 

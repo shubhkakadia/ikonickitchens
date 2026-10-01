@@ -3,6 +3,8 @@ import { sendNotification } from "@/lib/notification";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { processPushNotificationReceipts } from "@/lib/pushNotifications";
+import { processBreakReminders } from "@/lib/breakReminders";
 
 // Extend dayjs with timezone support
 dayjs.extend(utc);
@@ -168,4 +170,48 @@ export function initializeMeetingReminderCron() {
   });
 
   console.log("✓ Cron job initialized: Meeting reminder (1h before)");
+}
+
+/**
+ * Expo recommends checking push receipts after tickets have had time to be
+ * delivered. This worker also disables devices reported as unregistered.
+ */
+export function initializePushReceiptCron() {
+  cron.schedule("*/15 * * * *", async () => {
+    try {
+      const result = await processPushNotificationReceipts();
+      if (result.checked > 0) {
+        console.log(
+          `[Cron] Processed ${result.checked} Expo push receipt(s): ${result.delivered} delivered, ${result.failed} failed, ${result.expired} expired`,
+        );
+      }
+    } catch (error) {
+      console.error("[Cron] Expo push receipt processing failed:", error);
+    }
+  });
+
+  console.log("✓ Cron job initialized: Expo push receipts");
+}
+
+/**
+ * Break Reminder Cron Job
+ * Runs every minute because the "5 minutes left" heads-up is only useful if it
+ * lands close to the minute it is due. The worker itself is idempotent, so a
+ * missed or duplicated run costs nothing.
+ */
+export function initializeBreakReminderCron() {
+  cron.schedule("* * * * *", async () => {
+    try {
+      const result = await processBreakReminders();
+      if (result.warned > 0 || result.expired > 0) {
+        console.log(
+          `[Cron] Break reminders sent: ${result.warned} ending-soon, ${result.expired} break-over (from ${result.candidates} candidate punch(es))`,
+        );
+      }
+    } catch (error) {
+      console.error("[Cron] Break reminder processing failed:", error);
+    }
+  });
+
+  console.log("✓ Cron job initialized: Break reminders");
 }

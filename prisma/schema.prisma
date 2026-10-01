@@ -22,64 +22,124 @@ model users {
   module_access            module_access?
   purchase_order           purchase_order[]          @relation("PurchaseOrderOrderedBy")
   sessions                 sessions[]
+  push_tokens              push_tokens[]
   employee                 employees?                @relation(fields: [employee_id], references: [employee_id], onDelete: SetNull)
   notification_config      notification_config?
   materials_to_order_items materials_to_order_item[]
   meetingParticipants      meeting[]
+  clock_punches            clock_punch[]             @relation("ClockPunchUser")
+  reviewed_clock_punches   clock_punch[]             @relation("ClockPunchReviewer")
 
   @@index([employee_id])
 }
 
 model module_access {
-  id                String   @id @default(uuid())
-  user_id           String   @unique
-  all_clients       Boolean  @default(false)
-  add_clients       Boolean  @default(false)
-  client_details    Boolean  @default(false)
-  dashboard         Boolean  @default(false)
-  delete_media      Boolean  @default(false)
-  all_employees     Boolean  @default(false)
-  add_employees     Boolean  @default(false)
-  employee_details  Boolean  @default(false)
-  all_projects      Boolean  @default(false)
-  add_projects      Boolean  @default(false)
-  project_details   Boolean  @default(false)
-  all_suppliers     Boolean  @default(false)
-  add_suppliers     Boolean  @default(false)
-  supplier_details  Boolean  @default(false)
-  all_items         Boolean  @default(false)
-  add_items         Boolean  @default(false)
-  item_details      Boolean  @default(false)
-  logs              Boolean  @default(false)
-  lotatglance       Boolean  @default(false)
-  materialstoorder  Boolean  @default(false)
-  purchaseorder     Boolean  @default(false)
-  statements        Boolean  @default(false)
-  site_photos       Boolean  @default(false)
-  config            Boolean  @default(false)
-  site_measurements Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  usedmaterial      Boolean  @default(false)
-  calendar          Boolean  @default(false)
-  user              users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id                  String   @id @default(uuid())
+  user_id             String   @unique
+  all_clients         Boolean  @default(false)
+  add_clients         Boolean  @default(false)
+  client_details      Boolean  @default(false)
+  dashboard           Boolean  @default(false)
+  delete_media        Boolean  @default(false)
+  all_employees       Boolean  @default(false)
+  add_employees       Boolean  @default(false)
+  employee_details    Boolean  @default(false)
+  all_projects        Boolean  @default(false)
+  add_projects        Boolean  @default(false)
+  project_details     Boolean  @default(false)
+  all_suppliers       Boolean  @default(false)
+  add_suppliers       Boolean  @default(false)
+  supplier_details    Boolean  @default(false)
+  all_items           Boolean  @default(false)
+  add_items           Boolean  @default(false)
+  item_details        Boolean  @default(false)
+  logs                Boolean  @default(false)
+  lotatglance         Boolean  @default(false)
+  materialstoorder    Boolean  @default(false)
+  purchaseorder       Boolean  @default(false)
+  statements          Boolean  @default(false)
+  site_photos         Boolean  @default(false)
+  config              Boolean  @default(false)
+  site_measurements   Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  usedmaterial        Boolean  @default(false)
+  calendar            Boolean  @default(false)
+  add_clock_punch     Boolean  @default(false)
+  clock_punch_details Boolean  @default(false)
+  all_clock_punches   Boolean  @default(false)
+  user                users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
 }
 
 model sessions {
-  id         String   @id @default(uuid())
-  user_id    String
-  token      String   @unique
-  user_type  String
-  expires_at DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  user       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id          String        @id @default(uuid())
+  user_id     String
+  token       String        @unique
+  user_type   String
+  expires_at  DateTime
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        users         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  push_tokens push_tokens[]
 
   @@index([user_id])
   @@index([user_type])
   @@index([expires_at])
+}
+
+model push_tokens {
+  id                     String                      @id @default(uuid())
+  user_id                String
+  session_id             String?
+  expo_push_token        String                      @unique
+  platform               String
+  build_profile          String?
+  enabled                Boolean                     @default(true)
+  revocation_handle_hash String?
+  consented_at           DateTime?
+  disabled_at            DateTime?
+  disabled_reason        String?
+  last_registered_at     DateTime                    @default(now())
+  last_error_code        String?
+  last_error             String?                     @db.LongText
+  last_error_at          DateTime?
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+  user                   users                       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  session                sessions?                   @relation(fields: [session_id], references: [id], onDelete: SetNull)
+  notification_tickets   push_notification_tickets[]
+
+  @@index([user_id])
+  @@index([session_id])
+  @@index([enabled])
+  @@index([enabled, build_profile])
+}
+
+model push_notification_tickets {
+  id                 String      @id @default(uuid())
+  event_id           String
+  expo_ticket_id     String      @unique
+  push_token_id      String
+  lot_id             String?
+  status             String      @default("PENDING")
+  attempt_count      Int         @default(0)
+  next_attempt_at    DateTime?
+  receipt_result     String?     @db.LongText
+  error_code         String?
+  error_message      String?     @db.LongText
+  receipt_checked_at DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  push_token         push_tokens @relation(fields: [push_token_id], references: [id], onDelete: Cascade)
+  lot                lot?        @relation(fields: [lot_id], references: [lot_id], onDelete: SetNull)
+
+  @@index([push_token_id])
+  @@index([lot_id])
+  @@index([event_id])
+  @@index([status, next_attempt_at])
+  @@index([status, createdAt])
 }
 
 model employees {
@@ -115,6 +175,7 @@ model employees {
   stages                  stage_employee[]
   user                    users?
   lot                     lot[]
+  clock_punches           clock_punch[]
 
   @@unique([employee_id, is_deleted])
   @@index([employee_id])
@@ -205,32 +266,33 @@ model project {
 }
 
 model lot {
-  id                     String              @id @default(uuid())
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  lot_id                 String              @unique
-  project_id             String
-  name                   String
-  status                 LotStatus           @default(ACTIVE)
-  startDate              DateTime?
-  installationDueDate    DateTime?
-  notes                  String?             @db.LongText
-  installer              employees?          @relation(fields: [installer_id], references: [employee_id], onDelete: SetNull)
-  installer_id           String?
-  installer_notes        String?             @db.LongText
-  materials_to_orders_id String?
-  material_selection_id  String?             @unique
-  is_deleted             Boolean             @default(false)
-  materials_to_orders    materials_to_order? @relation(fields: [materials_to_orders_id], references: [id], onDelete: SetNull)
+  id                        String                      @id @default(uuid())
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  lot_id                    String                      @unique
+  project_id                String
+  name                      String
+  status                    LotStatus                   @default(ACTIVE)
+  startDate                 DateTime?
+  installationDueDate       DateTime?
+  notes                     String?                     @db.LongText
+  installer                 employees?                  @relation(fields: [installer_id], references: [employee_id], onDelete: SetNull)
+  installer_id              String?
+  installer_notes           String?                     @db.LongText
+  materials_to_orders_id    String?
+  material_selection_id     String?                     @unique
+  is_deleted                Boolean                     @default(false)
+  materials_to_orders       materials_to_order?         @relation(fields: [materials_to_orders_id], references: [id], onDelete: SetNull)
   //   contract_amount         Decimal?            @db.Decimal(10, 2)
   // revised_contract_amount Decimal?            @db.Decimal(10, 2)
   // total_paid_amount       Decimal?            @db.Decimal(10, 2)
-  project                project             @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
-  tabs                   lot_tab[]
-  material_selection     material_selection?
-  stages                 stage[]
-  meetingLots            meeting[]
-  stock_transactions     stock_transaction[]
+  project                   project                     @relation(fields: [project_id], references: [project_id], onDelete: Cascade)
+  tabs                      lot_tab[]
+  material_selection        material_selection?
+  stages                    stage[]
+  meetingLots               meeting[]
+  stock_transactions        stock_transaction[]
+  push_notification_tickets push_notification_tickets[]
   //   variations              variation[]
   // customer_invoices       customer_invoice[]
 
@@ -460,6 +522,7 @@ model item {
   category                 Category
   description              String?
   quantity                 Decimal?                  @default(0) @db.Decimal(10, 2)
+  minimum_stock            Decimal?                  @db.Decimal(10, 2)
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   measurement_unit         String?
@@ -662,6 +725,7 @@ model purchase_order {
   total_amount       Decimal?              @db.Decimal(10, 2)
   delivery_charge    Decimal?              @db.Decimal(10, 2)
   invoice_date       DateTime?
+  expected_delivery_date DateTime?
   notes              String?               @db.LongText
   status             PurchaseOrderStatus   @default(DRAFT)
   createdAt          DateTime              @default(now())
@@ -733,7 +797,7 @@ model logs {
   entity_type String
   entity_id   String
   action      LogAction
-  description String?
+  description String?   @db.LongText
   createdAt   DateTime  @default(now())
   user        users?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
 
@@ -742,6 +806,55 @@ model logs {
   @@index([entity_type])
   @@index([entity_id])
   @@index([action])
+}
+
+model clock_punch {
+  id                    String                 @id @default(uuid())
+  employee_id           String
+  user_id               String
+  action                ClockPunchAction
+  punch_type            ClockPunchType         @default(EMPLOYEE)
+  punched_at            DateTime               @default(now())
+  review_status         ClockPunchReviewStatus @default(PENDING)
+  reviewed_by_id        String?
+  reviewed_at           DateTime?
+  review_notes          String?                @db.LongText
+  nfc_tag_id            String?
+  idempotency_key       String?                @unique @db.VarChar(128)
+  // Break reminder bookkeeping, set on the BREAK_IN punch so each reminder is
+  // sent once even if the cron runs late or twice.
+  break_warning_sent_at DateTime?
+  break_over_sent_at    DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  employee              employees              @relation(fields: [employee_id], references: [employee_id], onDelete: Restrict)
+  user                  users                  @relation("ClockPunchUser", fields: [user_id], references: [id], onDelete: Restrict)
+  reviewed_by           users?                 @relation("ClockPunchReviewer", fields: [reviewed_by_id], references: [id], onDelete: SetNull)
+  nfc_tag               nfc_punch_tag?         @relation(fields: [nfc_tag_id], references: [id], onDelete: SetNull)
+
+  @@index([employee_id, punched_at])
+  @@index([user_id])
+  @@index([review_status, punched_at])
+  @@index([action, punched_at])
+  @@index([reviewed_by_id])
+  @@index([nfc_tag_id])
+}
+
+model nfc_punch_tag {
+  id                      String        @id @default(uuid())
+  name                    String
+  location                String
+  token_hash              String?       @unique @db.Char(64)
+  pending_token_hash      String?       @unique @db.Char(64)
+  provisioning_expires_at DateTime?
+  is_active               Boolean       @default(false)
+  is_deleted              Boolean       @default(false)
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  clock_punches           clock_punch[]
+
+  @@index([is_active, is_deleted])
+  @@index([provisioning_expires_at])
 }
 
 model constants_config {
@@ -824,6 +937,25 @@ enum LogAction {
   ASSIGN
   UPLOAD
   OTHER
+}
+
+enum ClockPunchAction {
+  CLOCK_IN
+  BREAK_IN
+  BREAK_OUT
+  CLOCK_OUT
+}
+
+enum ClockPunchType {
+  EMPLOYEE
+  MANUAL
+  NFC
+}
+
+enum ClockPunchReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum StageStatus {

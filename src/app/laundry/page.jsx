@@ -1,18 +1,16 @@
-"use client";
-import React from "react";
-import GalleryPage from "@/components/gallerypage";
+import MarketingShell from "@/components/marketing/MarketingShell";
+import { CollectionPage } from "@/components/marketing/MarketingPages";
+import { collectionBySlug } from "@/data/marketing";
 
-export default function page() {
-  const laundryimages = [
-    "/Gallery/Laundry/1.webp",
-    "/Gallery/Laundry/2.webp",
-    "/Gallery/Laundry/3.webp",
-  ];
+export const metadata = {
+  title: "Custom Laundries | Ikonic Kitchens & Cabinets",
+  description: collectionBySlug.laundry.description,
+};
+
+export default function LaundryPage() {
   return (
-    <GalleryPage
-      title="Laundry"
-      description="Transform your laundry into a personal sanctuary with our expertly crafted designs. From modern minimalism to traditional elegance, we create spaces that inspire and rejuvenate."
-      images={laundryimages}
-    />
+    <MarketingShell>
+      <CollectionPage collection={collectionBySlug.laundry} />
+    </MarketingShell>
   );
 }

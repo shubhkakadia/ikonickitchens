@@ -44,7 +44,7 @@ export async function GET(request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/deletedmedia/all:", error);
+    console.error("Error in GET /api/v1/deletedmedia/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -219,7 +219,7 @@ export async function DELETE(request) {
       { status: hasSuccess ? 200 : hasFailures ? 207 : 200 }, // 207 Multi-Status if partial success
     );
   } catch (error) {
-    console.error("Error in DELETE /api/deletedmedia/all:", error);
+    console.error("Error in DELETE /api/v1/deletedmedia/all:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

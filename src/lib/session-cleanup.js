@@ -17,7 +17,7 @@ export async function performSessionCleanup() {
 
 /**
  * API route for manual session cleanup (for testing or manual triggers)
- * POST /api/admin/cleanup-sessions
+ * POST /api/v1/admin/cleanup-sessions
  */
 export async function cleanupSessionsAPI(request) {
   try {

@@ -1037,12 +1037,12 @@ export default function SitePhotosPage() {
           /* LIST VIEW */
           <>
             {/* Mobile Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+            <div className="sticky top-0 z-10 bg-white border-b border-slate-200 shadow-sm">
               <div className="px-4 py-3 space-y-3">
                 {/* Welcome Message */}
                 {getUserData()?.user?.username && (
-                  <div className="pb-2 border-b border-gray-100">
-                    <p className="text-sm text-gray-700">
+                  <div className="pb-2 border-b border-slate-100">
+                    <p className="text-sm text-slate-700">
                       Welcome,{" "}
                       <span className="font-semibold text-primary">
                         {getUserData().user.username}
@@ -1054,10 +1054,10 @@ export default function SitePhotosPage() {
                 {/* Header Row */}
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <h1 className="text-xl font-bold text-gray-900">
+                    <h1 className="text-xl font-bold text-slate-900">
                       Site Photos
                     </h1>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-slate-600 mt-1">
                       {lots.length} assigned lot{lots.length !== 1 ? "s" : ""}
                     </p>
                   </div>
@@ -1068,28 +1068,28 @@ export default function SitePhotosPage() {
                         onClick={() =>
                           setShowSupportDropdown(!showSupportDropdown)
                         }
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors relative"
                         title="Contact Support"
                       >
-                        <HelpCircle className="w-5 h-5 text-gray-700" />
+                        <HelpCircle className="w-5 h-5 text-slate-700" />
                       </button>
                       {showSupportDropdown && (
-                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-50 overflow-hidden">
                           <button
                             onClick={handleCallSupport}
-                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
                           >
-                            <Phone className="w-5 h-5 text-gray-700" />
-                            <span className="text-sm text-gray-700">
+                            <Phone className="w-5 h-5 text-slate-700" />
+                            <span className="text-sm text-slate-700">
                               Call Support
                             </span>
                           </button>
                           <button
                             onClick={handleWhatsAppSupport}
-                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-t border-gray-200"
+                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-t border-slate-200"
                           >
-                            <MessageSquare className="w-5 h-5 text-gray-700" />
-                            <span className="text-sm text-gray-700">
+                            <MessageSquare className="w-5 h-5 text-slate-700" />
+                            <span className="text-sm text-slate-700">
                               WhatsApp
                             </span>
                           </button>
@@ -1102,24 +1102,24 @@ export default function SitePhotosPage() {
                         onClick={() =>
                           setShowSettingsDropdown(!showSettingsDropdown)
                         }
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors relative"
                         title="Settings"
                       >
-                        <Settings className="w-5 h-5 text-gray-700" />
+                        <Settings className="w-5 h-5 text-slate-700" />
                       </button>
                       {showSettingsDropdown && (
-                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 z-50 overflow-hidden">
                           <div className="px-4 py-3 flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-gray-800">
+                              <p className="text-sm font-medium text-slate-800">
                                 Notifications
                               </p>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-slate-500">
                                 Installer updates
                               </p>
                             </div>
                             {notificationLoading ? (
-                              <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                              <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
                             ) : (
                               <label className="relative inline-flex items-center cursor-pointer">
                                 <input
@@ -1138,23 +1138,23 @@ export default function SitePhotosPage() {
                     </div>
                     <button
                       onClick={handleLogout}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                       title="Logout"
                     >
-                      <LogOut className="w-5 h-5 text-gray-700" />
+                      <LogOut className="w-5 h-5 text-slate-700" />
                     </button>
                   </div>
                 </div>
 
                 {/* Search Input */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
                     placeholder="Search by client, project, or ID..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                   />
                 </div>
               </div>
@@ -1164,8 +1164,8 @@ export default function SitePhotosPage() {
             <div className="px-4 py-4 space-y-3">
               {lots.length === 0 ? (
                 <div className="text-center py-12">
-                  <ImageIcon className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-600">No active lots found</p>
+                  <ImageIcon className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+                  <p className="text-slate-600">No active lots found</p>
                 </div>
               ) : (
                 lots.map((lot) => {
@@ -1173,7 +1173,7 @@ export default function SitePhotosPage() {
                     <button
                       key={lot.id}
                       onClick={() => selectLot(lot)}
-                      className="w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md hover:border-primary/30 transition-all"
+                      className="w-full bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden hover:shadow-md hover:border-primary/30 transition-all"
                     >
                       <div className="px-4 py-3 flex items-center justify-between">
                         <div className="flex-1 text-left">
@@ -1183,16 +1183,16 @@ export default function SitePhotosPage() {
                                 {lot.project.client.client_name}
                               </p>
                             )}
-                          <h3 className="font-semibold text-gray-900">
+                          <h3 className="font-semibold text-slate-900">
                             {lot.project?.project_name ||
                               lot.project?.name ||
                               "No project"}
                           </h3>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-slate-600 mt-1">
                             Lot ID: {lot.lot_id || lot.id}
                           </p>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                        <ChevronRight className="w-5 h-5 text-slate-400" />
                       </div>
                     </button>
                   );
@@ -1204,19 +1204,19 @@ export default function SitePhotosPage() {
           /* DETAIL VIEW */
           <>
             {/* Detail Screen Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+            <div className="sticky top-0 z-10 bg-white border-b border-slate-200 shadow-sm">
               <div className="px-4 py-3">
                 {/* Back Button and Title */}
                 <div className="flex items-center gap-3 mb-3">
                   <button
                     onClick={goBackToList}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                     title="Back to list"
                   >
-                    <ChevronLeft className="w-5 h-5 text-gray-700" />
+                    <ChevronLeft className="w-5 h-5 text-slate-700" />
                   </button>
                   <div className="flex-1">
-                    <h1 className="text-lg font-bold text-gray-900">
+                    <h1 className="text-lg font-bold text-slate-900">
                       {selectedLot.project?.project_name ||
                         selectedLot.project?.name ||
                         "No project"}
@@ -1235,21 +1235,21 @@ export default function SitePhotosPage() {
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-3">
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className="text-xs text-gray-600 mb-1">Project ID</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-xs text-slate-600 mb-1">Project ID</p>
+                      <p className="font-medium text-slate-900">
                         {selectedLot.project?.project_id || "N/A"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600 mb-1">Lot ID</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-xs text-slate-600 mb-1">Lot ID</p>
+                      <p className="font-medium text-slate-900">
                         {selectedLot.lot_id || selectedLot.id}
                       </p>
                     </div>
                     {selectedLot.project?.client?.client_name &&
                       getUserType() !== "employee" && (
                         <div className="col-span-2">
-                          <p className="text-xs text-gray-600 mb-1">Client</p>
+                          <p className="text-xs text-slate-600 mb-1">Client</p>
                           <p className="font-medium text-primary">
                             {selectedLot.project.client.client_name}
                           </p>
@@ -1260,7 +1260,7 @@ export default function SitePhotosPage() {
 
                 {/* Photo Type Selector */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Photo Type
                   </label>
                   <div className="relative" ref={photoTypeDropdownRef}>
@@ -1268,17 +1268,17 @@ export default function SitePhotosPage() {
                       onClick={() =>
                         setShowPhotoTypeDropdown(!showPhotoTypeDropdown)
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm bg-white flex items-center justify-between hover:bg-slate-50 transition-colors"
                     >
-                      <span className="text-gray-900">
+                      <span className="text-slate-900">
                         {TAB_LABELS[selectedPhotoType]}
                       </span>
                       <ChevronDown
-                        className={`w-4 h-4 text-gray-500 transition-transform ${showPhotoTypeDropdown ? "rotate-180" : ""}`}
+                        className={`w-4 h-4 text-slate-500 transition-transform ${showPhotoTypeDropdown ? "rotate-180" : ""}`}
                       />
                     </button>
                     {showPhotoTypeDropdown && (
-                      <div className="absolute top-full mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                      <div className="absolute top-full mt-1 w-full bg-white rounded-lg shadow-lg border border-slate-200 z-50 overflow-hidden">
                         {getAllowedTabs().map((tabKind, index) => (
                           <button
                             key={`${tabKind}-${index}`}
@@ -1286,14 +1286,14 @@ export default function SitePhotosPage() {
                               setSelectedPhotoType(tabKind);
                               setShowPhotoTypeDropdown(false);
                             }}
-                            className={`w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors text-left ${
+                            className={`w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left ${
                               selectedPhotoType === tabKind
                                 ? "bg-primary/5"
                                 : ""
                             }`}
                           >
                             <span
-                              className={`text-sm ${selectedPhotoType === tabKind ? "text-primary font-medium" : "text-gray-700"}`}
+                              className={`text-sm ${selectedPhotoType === tabKind ? "text-primary font-medium" : "text-slate-700"}`}
                             >
                               {TAB_LABELS[tabKind]}
                             </span>
@@ -1314,12 +1314,12 @@ export default function SitePhotosPage() {
               {loadingLot === selectedLot.id ? (
                 <div className="p-8 flex flex-col items-center justify-center">
                   <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
-                  <p className="text-sm text-gray-600">Loading photos...</p>
+                  <p className="text-sm text-slate-600">Loading photos...</p>
                 </div>
               ) : (
                 <>
                   {/* Tab Switcher */}
-                  <div className="flex border-b border-gray-200 bg-white">
+                  <div className="flex border-b border-slate-200 bg-white">
                     <button
                       onClick={() =>
                         setActiveLotTab((prev) => ({
@@ -1331,7 +1331,7 @@ export default function SitePhotosPage() {
                         activeLotTab[selectedLot.id] === "cabinetry" ||
                         !activeLotTab[selectedLot.id]
                           ? "text-primary border-b-2 border-primary bg-primary/5"
-                          : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                          : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
                       }`}
                     >
                       Cabinetry Drawings
@@ -1346,7 +1346,7 @@ export default function SitePhotosPage() {
                       className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                         activeLotTab[selectedLot.id] === "upload"
                           ? "text-primary border-b-2 border-primary bg-primary/5"
-                          : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                          : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
                       }`}
                     >
                       Upload
@@ -1362,7 +1362,7 @@ export default function SitePhotosPage() {
                           getCabinetryDrawings(selectedLot);
                         if (cabinetryDrawings.length === 0) {
                           return (
-                            <div className="text-center py-12 text-gray-500">
+                            <div className="text-center py-12 text-slate-500">
                               <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
                               <p className="text-sm font-medium">
                                 No cabinetry drawings available
@@ -1383,19 +1383,19 @@ export default function SitePhotosPage() {
                               return (
                                 <div
                                   key={file.id}
-                                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                                  className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200"
                                 >
                                   {/* File Icon */}
-                                  <div className="shrink-0 w-10 h-10 bg-white rounded-lg border border-gray-300 flex items-center justify-center">
+                                  <div className="shrink-0 w-10 h-10 bg-white rounded-lg border border-slate-300 flex items-center justify-center">
                                     {getFileIcon(file.file_kind)}
                                   </div>
 
                                   {/* File Info */}
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                    <p className="text-sm font-medium text-slate-900 truncate">
                                       {file.filename}
                                     </p>
-                                    <p className="text-xs text-gray-500">
+                                    <p className="text-xs text-slate-500">
                                       {file.file_kind} •{" "}
                                       {file.size
                                         ? `${(file.size / 1024).toFixed(1)} KB`
@@ -1415,7 +1415,7 @@ export default function SitePhotosPage() {
                                     </button>
                                     <button
                                       onClick={() => handleDownloadFile(file)}
-                                      className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                                      className="px-3 py-1.5 text-xs font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors"
                                     >
                                       Download
                                     </button>
@@ -1437,7 +1437,7 @@ export default function SitePhotosPage() {
                         <label
                           className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
                             uploading[`${selectedLot.id}_${selectedPhotoType}`]
-                              ? "border-gray-300 bg-gray-50 cursor-not-allowed pointer-events-none"
+                              ? "border-slate-300 bg-slate-50 cursor-not-allowed pointer-events-none"
                               : "border-primary hover:border-primary/70 hover:bg-primary/5"
                           }`}
                         >
@@ -1473,8 +1473,8 @@ export default function SitePhotosPage() {
                           ] ? (
                             <div className="flex flex-col items-center justify-center w-full px-4">
                               <div className="flex items-center gap-2 mb-1">
-                                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                                <span className="text-sm text-gray-500">
+                                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                                <span className="text-sm text-slate-500">
                                   Uploading...{" "}
                                   {uploadProgressState[
                                     `${selectedLot.id}_${selectedPhotoType}`
@@ -1482,7 +1482,7 @@ export default function SitePhotosPage() {
                                   %
                                 </span>
                               </div>
-                              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-primary transition-all duration-300 ease-out"
                                   style={{
@@ -1510,7 +1510,7 @@ export default function SitePhotosPage() {
                         );
                         if (files.length === 0) {
                           return (
-                            <div className="text-center py-8 text-gray-500">
+                            <div className="text-center py-8 text-slate-500">
                               <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
                               <p className="text-sm">No files uploaded yet</p>
                             </div>
@@ -1530,12 +1530,12 @@ export default function SitePhotosPage() {
                                   onClick={() =>
                                     openFileModal(file, selectedLot)
                                   }
-                                  className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group cursor-pointer"
+                                  className="relative aspect-square bg-slate-100 rounded-lg overflow-hidden group cursor-pointer"
                                 >
                                   {file.file_kind === "PHOTO" && fileUrl ? (
                                     <div className="relative w-full h-full">
                                       {loadingImages[file.id] !== false && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                                        <div className="absolute inset-0 flex items-center justify-center bg-slate-200">
                                           <Loader2 className="w-6 h-6 animate-spin text-primary" />
                                         </div>
                                       )}
@@ -1565,7 +1565,7 @@ export default function SitePhotosPage() {
                                       playsInline
                                     />
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                    <div className="w-full h-full flex items-center justify-center bg-slate-200">
                                       {getFileIcon(file.file_kind)}
                                     </div>
                                   )}
@@ -1605,8 +1605,8 @@ export default function SitePhotosPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900 truncate flex-1 mr-2">
+              <div className="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900 truncate flex-1 mr-2">
                   {selectedFile.filename}
                 </h3>
                 <div className="flex items-center gap-2">
@@ -1615,7 +1615,7 @@ export default function SitePhotosPage() {
                     download
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 hover:bg-gray-100 rounded-full transition-colors text-gray-500 hover:text-gray-700"
+                    className="p-1.5 hover:bg-slate-100 rounded-full transition-colors text-slate-500 hover:text-slate-700"
                     title="Download file"
                   >
                     <Download className="w-5 h-5" />
@@ -1634,9 +1634,9 @@ export default function SitePhotosPage() {
                   </button>
                   <button
                     onClick={closeFileModal}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-1 hover:bg-slate-100 rounded-full transition-colors"
                   >
-                    <X className="w-5 h-5 text-gray-500" />
+                    <X className="w-5 h-5 text-slate-500" />
                   </button>
                 </div>
               </div>
@@ -1647,7 +1647,7 @@ export default function SitePhotosPage() {
                 getFileUrl(selectedFile) ? (
                   <div className="relative w-full mb-4">
                     {loadingImages[`modal-${selectedFile.id}`] !== false && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg min-h-[300px]">
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg min-h-[300px]">
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
                       </div>
                     )}
@@ -1680,14 +1680,14 @@ export default function SitePhotosPage() {
                     Your browser does not support the video tag.
                   </video>
                 ) : (
-                  <div className="w-full aspect-video bg-gray-200 rounded-lg mb-4 flex items-center justify-center">
+                  <div className="w-full aspect-video bg-slate-200 rounded-lg mb-4 flex items-center justify-center">
                     {getFileIcon(selectedFile.file_kind)}
                   </div>
                 )}
 
                 {/* Notes Section */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Notes
                   </label>
                   <textarea
@@ -1701,7 +1701,7 @@ export default function SitePhotosPage() {
                     }
                     placeholder="Add notes for this file..."
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none text-sm"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none text-sm"
                   />
                   <button
                     onClick={() =>
@@ -1743,12 +1743,12 @@ export default function SitePhotosPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-10">
+              <div className="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between z-10">
                 <div>
-                  <h3 className="font-semibold text-gray-900">
+                  <h3 className="font-semibold text-slate-900">
                     Add Notes & Upload
                   </h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     {pendingUploads.files.length} file(s) -{" "}
                     {pendingUploads.currentIndex + 1} of{" "}
                     {pendingUploads.files.length}
@@ -1756,9 +1756,9 @@ export default function SitePhotosPage() {
                 </div>
                 <button
                   onClick={() => setPendingUploads(null)}
-                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-1 hover:bg-slate-100 rounded-full transition-colors"
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
 
@@ -1770,13 +1770,13 @@ export default function SitePhotosPage() {
                       onClick={() => navigatePreview("prev")}
                       className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-colors"
                     >
-                      <ChevronLeft className="w-5 h-5 text-gray-700" />
+                      <ChevronLeft className="w-5 h-5 text-slate-700" />
                     </button>
                     <button
                       onClick={() => navigatePreview("next")}
                       className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-colors"
                     >
-                      <ChevronRight className="w-5 h-5 text-gray-700" />
+                      <ChevronRight className="w-5 h-5 text-slate-700" />
                     </button>
                   </>
                 )}
@@ -1788,12 +1788,12 @@ export default function SitePhotosPage() {
                     return (
                       <div key={fileItem.id} className="space-y-4">
                         {/* Image Preview */}
-                        <div className="relative w-full aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                        <div className="relative w-full aspect-square bg-slate-100 rounded-lg overflow-hidden">
                           {fileItem.preview ? (
                             <>
                               {loadingImages[`preview-${fileItem.id}`] !==
                                 false && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                                <div className="absolute inset-0 flex items-center justify-center bg-slate-200">
                                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
                                 </div>
                               )}
@@ -1820,23 +1820,23 @@ export default function SitePhotosPage() {
                               .toLowerCase()
                               .endsWith(".pdf") ? (
                             <div className="w-full h-full flex items-center justify-center">
-                              <FileText className="w-16 h-16 text-gray-400" />
+                              <FileText className="w-16 h-16 text-slate-400" />
                             </div>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <ImageIcon className="w-16 h-16 text-gray-400" />
+                              <ImageIcon className="w-16 h-16 text-slate-400" />
                             </div>
                           )}
                         </div>
 
                         {/* File Name */}
-                        <div className="text-sm text-gray-600 truncate">
+                        <div className="text-sm text-slate-600 truncate">
                           {fileItem.file.name}
                         </div>
 
                         {/* Notes Input */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
                             Notes
                           </label>
                           <textarea
@@ -1849,7 +1849,7 @@ export default function SitePhotosPage() {
                             }
                             placeholder="Add notes for this photo..."
                             rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none text-sm"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none text-sm"
                             autoFocus
                           />
                         </div>
@@ -1858,7 +1858,7 @@ export default function SitePhotosPage() {
                         {uploading[
                           `${pendingUploads.lot.id}_${pendingUploads.tabKind}`
                         ] && (
-                          <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mb-3">
+                          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mb-3">
                             <div
                               className="h-full bg-primary transition-all duration-300 ease-out"
                               style={{
@@ -1880,7 +1880,7 @@ export default function SitePhotosPage() {
                                   `${pendingUploads.lot.id}_${pendingUploads.tabKind}`
                                 ]
                               }
-                              className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              className="flex-1 px-4 py-2 bg-slate-600 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                               {uploading[
                                 `${pendingUploads.lot.id}_${pendingUploads.tabKind}`
@@ -1951,29 +1951,29 @@ export default function SitePhotosPage() {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                <h2 className="text-lg font-semibold text-slate-900">
                   Installer Notes
                 </h2>
                 <button
                   onClick={() => setShowNotesPopup(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                   title="Close"
                 >
-                  <X className="w-5 h-5 text-gray-700" />
+                  <X className="w-5 h-5 text-slate-700" />
                 </button>
               </div>
 
               {/* Modal Content */}
               <div className="flex-1 overflow-y-auto p-4">
                 {selectedLot.installer_notes ? (
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans">
                       {selectedLot.installer_notes}
                     </pre>
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-slate-500">
                     <StickyNote className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p className="text-sm font-medium">
                       No installer notes available

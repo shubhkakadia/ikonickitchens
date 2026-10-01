@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { sendProjectUpdate } from "@/lib/pushNotifications";
+import { getUserFromToken } from "@/lib/validators/authFromToken";
 
 export async function GET(request, { params }) {
   try {
@@ -64,7 +66,7 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/project/[id]:", error);
+    console.error("Error in GET /api/v1/project/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -132,6 +134,33 @@ export async function PATCH(request, { params }) {
     if (!logged) {
       console.error(`Failed to log project update: ${id} - ${project.name}`);
     }
+
+    try {
+      const [session, projectLots] = await Promise.all([
+        getUserFromToken(request),
+        prisma.lot.findMany({
+          where: {
+            project_id: project.project_id,
+            is_deleted: false,
+          },
+          select: { lot_id: true },
+        }),
+      ]);
+
+      for (const projectLot of projectLots) {
+        await sendProjectUpdate({
+          lotId: projectLot.lot_id,
+          actorUserId: session?.user_id,
+        });
+      }
+    } catch (pushError) {
+      console.error(
+        "Failed to send project update push notification:",
+        pushError,
+      );
+      // The project update must not fail when the push provider is unavailable.
+    }
+
     return NextResponse.json(
       {
         status: true,
@@ -144,7 +173,7 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/project/[id]:", error);
+    console.error("Error in PATCH /api/v1/project/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -209,7 +238,7 @@ export async function DELETE(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in DELETE /api/project/[id]:", error);
+    console.error("Error in DELETE /api/v1/project/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

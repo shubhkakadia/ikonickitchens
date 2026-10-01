@@ -6,6 +6,8 @@ import {
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { sendProjectUpdate } from "@/lib/pushNotifications";
+import { getUserFromToken } from "@/lib/validators/authFromToken";
 
 export async function PATCH(request, { params }) {
   try {
@@ -168,6 +170,20 @@ export async function PATCH(request, { params }) {
       }
     }
 
+    try {
+      const session = await getUserFromToken(request);
+      await sendProjectUpdate({
+        lotId: updatedStage.lot_id,
+        actorUserId: session?.user_id,
+      });
+    } catch (pushError) {
+      console.error(
+        "Failed to send project update push notification:",
+        pushError,
+      );
+      // The stage update must not fail when the push provider is unavailable.
+    }
+
     if (!logged) {
       console.error(`Failed to log stage update: ${id} - ${updatedStage.name}`);
     }
@@ -183,7 +199,7 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/stage/[id]:", error);
+    console.error("Error in PATCH /api/v1/stage/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -232,7 +248,7 @@ export async function DELETE(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in DELETE /api/stage/[id]:", error);
+    console.error("Error in DELETE /api/v1/stage/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

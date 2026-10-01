@@ -123,7 +123,7 @@ export default function UsedMaterials({ projectId, getToken }) {
 
       {transactions.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-300 py-14 text-center">
-          <Box className="mx-auto mb-3 h-10 w-10 text-slate-400" />
+          <Box className="mx-auto mb-3 w-8 h-8 text-slate-300" />
           <h3 className="font-medium text-slate-700">
             No used materials recorded
           </h3>

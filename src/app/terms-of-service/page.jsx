@@ -1,10 +1,11 @@
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/footer";
+import MarketingShell from "@/components/marketing/MarketingShell";
+import LegalPage from "@/components/marketing/LegalPage";
 
 export const metadata = {
   title: "Terms of Service | Ikonic Kitchens and Cabinets",
-  description: "Terms governing use of the Ikonic Kitchens and Cabinets website.",
+  description:
+    "Terms governing use of the Ikonic Kitchens and Cabinets website.",
 };
 
 const sections = [
@@ -12,10 +13,10 @@ const sections = [
     title: "Acceptance of these terms",
     content: (
       <p>
-        By accessing or using this website, you agree to these Terms of
-        Service. If you do not agree, please do not use the website. These
-        terms apply to website browsing, portfolio viewing, enquiries and
-        newsletter subscriptions.
+        By accessing or using this website, you agree to these Terms of Service.
+        If you do not agree, please do not use the website. These terms apply to
+        website browsing, portfolio viewing, enquiries and newsletter
+        subscriptions.
       </p>
     ),
   },
@@ -35,12 +36,12 @@ const sections = [
     title: "Project agreements",
     content: (
       <p>
-        Quotes, scopes of work, payment arrangements, manufacture,
-        installation, warranties, variations and project timelines are governed
-        by the separately agreed written quote, contract or other project
-        documentation between you and Ikonic Kitchens and Cabinets. If there
-        is any inconsistency, that written project documentation prevails over
-        these website terms.
+        Quotes, scopes of work, payment arrangements, manufacture, installation,
+        warranties, variations and project timelines are governed by the
+        separately agreed written quote, contract or other project documentation
+        between you and Ikonic Kitchens and Cabinets. If there is any
+        inconsistency, that written project documentation prevails over these
+        website terms.
       </p>
     ),
   },
@@ -51,9 +52,18 @@ const sections = [
         <p>You must not use this website in a way that:</p>
         <ul>
           <li>is unlawful, fraudulent, harmful or misleading;</li>
-          <li>interferes with the website, its security or another person&apos;s use of it;</li>
-          <li>attempts to gain unauthorised access to systems, accounts or data; or</li>
-          <li>uses automated means to copy, scrape or collect website content without our permission.</li>
+          <li>
+            interferes with the website, its security or another person&apos;s
+            use of it;
+          </li>
+          <li>
+            attempts to gain unauthorised access to systems, accounts or data;
+            or
+          </li>
+          <li>
+            uses automated means to copy, scrape or collect website content
+            without our permission.
+          </li>
         </ul>
       </>
     ),
@@ -63,11 +73,10 @@ const sections = [
     content: (
       <p>
         Unless otherwise stated, this website and its content—including text,
-        photographs, project images, designs, logos and branding—are owned by
-        or licensed to Ikonic Kitchens and Cabinets. You may view the content
-        for personal, non-commercial use only. You must not reproduce,
-        distribute, modify or use it commercially without our prior written
-        permission.
+        photographs, project images, designs, logos and branding—are owned by or
+        licensed to Ikonic Kitchens and Cabinets. You may view the content for
+        personal, non-commercial use only. You must not reproduce, distribute,
+        modify or use it commercially without our prior written permission.
       </p>
     ),
   },
@@ -78,8 +87,8 @@ const sections = [
         This website may link to or embed third-party services, including Google
         Maps and social-media platforms. We do not control and are not
         responsible for their content, availability or privacy practices. Your
-        use of a third-party service is subject to that provider&apos;s terms and
-        privacy policy.
+        use of a third-party service is subject to that provider&apos;s terms
+        and privacy policy.
       </p>
     ),
   },
@@ -101,8 +110,8 @@ const sections = [
     content: (
       <p>
         To the extent permitted by law, you indemnify Ikonic Kitchens and
-        Cabinets against losses, claims and costs arising from your unlawful
-        use of this website or breach of these terms.
+        Cabinets against losses, claims and costs arising from your unlawful use
+        of this website or breach of these terms.
       </p>
     ),
   },
@@ -122,53 +131,33 @@ const sections = [
 
 export default function TermsOfServicePage() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
-      <Navbar bar={true} />
-      <main className="px-4 pb-16 pt-32 sm:px-6 lg:px-8">
-        <article className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-xl sm:p-10 lg:p-12">
-          <div className="mb-10 border-b border-slate-200 pb-8">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#B92F34]">
+    <MarketingShell>
+      <LegalPage
+        title="Terms of service"
+        updated="Effective 6 August 2026"
+        intro="These terms govern use of the Ikonic Kitchens and Cabinets website. Project-specific quotes, scopes, payment arrangements and timelines are governed by the separately agreed project documents."
+        sections={sections}
+      >
+        <>
+          <section className="marketing-legal__section">
+            <h2>Contact us</h2>
+            <address className="marketing-legal__contact">
               Ikonic Kitchens and Cabinets
-            </p>
-            <h1 className="mb-4 text-4xl font-bold text-slate-900 sm:text-5xl">
-              Terms of Service
-            </h1>
-            <p className="text-slate-600">Effective date: 6 August 2026</p>
-          </div>
-
-          <div className="space-y-9 text-base leading-relaxed text-slate-700">
-            {sections.map((section) => (
-              <section key={section.title}>
-                <h2 className="mb-3 text-2xl font-bold text-slate-900">
-                  {section.title}
-                </h2>
-                <div className="space-y-4 [&_li]:ml-5 [&_li]:list-disc [&_li]:pl-1">
-                  {section.content}
-                </div>
-              </section>
-            ))}
-
-            <section>
-              <h2 className="mb-3 text-2xl font-bold text-slate-900">Contact us</h2>
-              <address className="not-italic">
-                Ikonic Kitchens and Cabinets<br />
-                5 Dundee Avenue, Holden Hill, South Australia 5088, Australia<br />
-                <a
-                  href="mailto:info@ikonickitchens.com.au"
-                  className="font-medium text-[#B92F34] underline underline-offset-4"
-                >
-                  info@ikonickitchens.com.au
-                </a>
-              </address>
-            </section>
-
-            <p className="border-t border-slate-200 pt-6 text-sm text-slate-500">
-              Please also read our <Link href="/privacy-policy">Privacy Policy</Link> to understand how we handle personal information.
-            </p>
-          </div>
-        </article>
-      </main>
-      <Footer />
-    </div>
+              <br />
+              5 Dundee Avenue, Holden Hill, South Australia 5088, Australia
+              <br />
+              <a href="mailto:info@ikonickitchens.com.au">
+                info@ikonickitchens.com.au
+              </a>
+            </address>
+          </section>
+          <p className="marketing-legal__afterword">
+            Please also read our{" "}
+            <Link href="/privacy-policy">Privacy Policy</Link> to understand how
+            we handle personal information.
+          </p>
+        </>
+      </LegalPage>
+    </MarketingShell>
   );
 }

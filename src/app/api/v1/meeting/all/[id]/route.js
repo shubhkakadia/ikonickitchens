@@ -56,7 +56,7 @@ export async function GET(request, { params }) {
       data: meetings,
     });
   } catch (error) {
-    console.error("Error in GET /api/meeting/all/[id]:", error);
+    console.error("Error in GET /api/v1/meeting/all/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

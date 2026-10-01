@@ -60,7 +60,7 @@ export async function GET(request, { params }) {
     const resolvedParams = await params;
     return await serveMediaFile(request, ensureArray(resolvedParams?.path));
   } catch (error) {
-    console.error("Error in GET /api/uploads/lots/[...path]:", error);
+    console.error("Error in GET /api/v1/uploads/lots/[...path]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -84,7 +84,7 @@ export async function POST(request, { params }) {
         {
           status: false,
           message:
-            "Path must be /api/uploads/[project_id]/[lot_id]/[tabkind]/[filename?]",
+            "Path must be /api/v1/uploads/[project_id]/[lot_id]/[tabkind]/[filename?]",
         },
         { status: 400 },
       );
@@ -252,7 +252,7 @@ export async function POST(request, { params }) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error in POST /api/uploads/lots/[...path]:", error);
+    console.error("Error in POST /api/v1/uploads/lots/[...path]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -367,7 +367,7 @@ export async function DELETE(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in DELETE /api/uploads/lots/[...path]:", error);
+    console.error("Error in DELETE /api/v1/uploads/lots/[...path]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

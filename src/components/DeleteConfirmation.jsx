@@ -13,6 +13,9 @@ export default function DeleteConfirmation({
   isDeleting = false,
   cancelButtonText = "Cancel",
   entityType = null, // e.g., "employees", "client", "project", etc.
+  title = null, // defaults to "Delete {heading}"
+  confirmButtonText = null, // defaults to "Delete {heading}"
+  confirmingText = "Deleting...",
 }) {
   const [confirmationInput, setConfirmationInput] = useState("");
 
@@ -69,7 +72,7 @@ export default function DeleteConfirmation({
         <div className="flex items-center justify-between p-6 border-b border-slate-200">
           <h2 className="text-xl font-bold text-red-800 flex items-center gap-2">
             <Trash2 className="w-5 h-5" />
-            Delete {heading}
+            {title || `Delete ${heading}`}
           </h2>
           <button
             onClick={handleClose}
@@ -133,7 +136,7 @@ export default function DeleteConfirmation({
               onClick={handleClose}
               className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
             >
-              Cancel
+              {cancelButtonText}
             </button>
             <button
               onClick={handleConfirm}
@@ -141,7 +144,9 @@ export default function DeleteConfirmation({
               className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
-              {isDeleting ? "Deleting..." : `Delete ${heading}`}
+              {isDeleting
+                ? confirmingText
+                : confirmButtonText || `Delete ${heading}`}
             </button>
           </div>
         </div>

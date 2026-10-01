@@ -225,22 +225,22 @@ const GroupedItemsTable = ({
               <table className="w-full border border-slate-200 rounded-lg">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Image
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Details
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Quantity
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Qty Ordered
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Status
                     </th>
                   </tr>
@@ -280,7 +280,7 @@ const GroupedItemsTable = ({
                         </span>
                       </td>
                       <td className="px-3 py-2">
-                        <div className="text-xs text-gray-600 space-y-1">
+                        <div className="text-xs text-slate-600 space-y-1">
                           {item.item?.sheet && (
                             <>
                               <div>
@@ -386,9 +386,9 @@ const GroupedItemsTable = ({
                         </div>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-slate-600">
                           <div className="flex items-center gap-1.5 mb-1">
-                            <Package className="w-4 h-4 text-gray-500" />
+                            <Package className="w-4 h-4 text-slate-500" />
                             <span>
                               <span className="font-medium">Qty:</span>{" "}
                               {item.quantity} {item.item?.measurement_unit}
@@ -850,7 +850,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
             className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
               mtoActiveTab === "active"
                 ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             }`}
           >
             Active
@@ -860,7 +860,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
             className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
               mtoActiveTab === "completed"
                 ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             }`}
           >
             Completed
@@ -933,7 +933,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
                     >
                       <td className="px-4 py-3">
                         <div className="flex flex-row items-center gap-3">
-                          <span className="text-sm font-semibold text-gray-800 truncate">
+                          <span className="text-sm font-semibold text-slate-800 truncate">
                             {mto.project?.name || "Project"}
                           </span>
                           <div className="flex flex-wrap gap-1 mt-1 md:mt-0">
@@ -969,7 +969,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
                                 ? "bg-blue-100 text-blue-800"
                                 : mto.status === "FULLY_ORDERED"
                                   ? "bg-green-100 text-green-800"
-                                  : "bg-gray-100 text-gray-800"
+                                  : "bg-slate-100 text-slate-800"
                           }`}
                         >
                           {mto.status}
@@ -993,7 +993,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
                         >
                           <div id={`mto-${mto.id}`} className="mt-2">
                             <div className="mb-2 p-2 bg-slate-50 rounded-lg">
-                              <div className="flex items-center gap-4 text-xs text-gray-600">
+                              <div className="flex items-center gap-4 text-xs text-slate-600">
                                 <div className="flex items-center gap-1.5">
                                   <Calendar className="w-4 h-4" />
                                   <span>

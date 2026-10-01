@@ -5,9 +5,9 @@
 This guide describes how to migrate the Ikoniq Kitchens API from unversioned routes such as:
 
 ```text
-/api/client/all
-/api/project/123
-/api/signin
+/api/v1/client/all
+/api/v1/project/123
+/api/v1/signin
 ```
 
 to explicit, URL-based API versions:
@@ -25,7 +25,7 @@ The recommended approach is a staged migration:
 1. Freeze and document the current API contract as `v1`.
 2. Extract route logic into reusable server handlers.
 3. Expose the handlers at `/api/v1/...`.
-4. Keep temporary legacy `/api/...` compatibility routes.
+4. Keep temporary legacy `/api/v1/...` compatibility routes.
 5. Move the web frontend to a centralized API client configured for `v1`.
 6. Build the mobile client against `v1` from the beginning.
 7. Monitor legacy traffic, announce a removal date, and then remove the old routes.
@@ -38,13 +38,13 @@ This is an API routing change. It does **not** require a Prisma schema or databa
 
 The routing and web-call migration is complete:
 
-- [x] All 88 current API route files are now under `src/app/api/v1`.
+- [x] All 88 current API route files are now under `src/app/api`.
 - [x] The frontend application calls have been updated to use the `/api/v1/...` prefix.
-- [x] A repository scan found 212 frontend references to `/api/v1/` and no remaining direct unversioned `/api/...` application calls outside API route implementations.
-- [x] Added shared API version and JSON response helpers in `src/lib/api/`.
+- [x] A repository scan found 212 frontend references to `/api/v1/` and no remaining direct unversioned `/api/v1/...` application calls outside API route implementations.
+- [x] Added shared API version and JSON response helpers in `src/lib/api/v1/`.
 - [x] Extracted the `health`, `signin`, `signout`, and `signup` v1 operations into server-only handlers; their App Router files are now thin adapters.
 
-The unversioned route entry points are no longer present in the repository. This means deployed clients must use `/api/v1`; add temporary legacy adapters before release if an older web deployment or another installed client still needs `/api/...` URLs. The following work is still required before the migration can be considered fully complete:
+The unversioned route entry points are no longer present in the repository. This means deployed clients must use `/api`; add temporary legacy adapters before release if an older web deployment or another installed client still needs `/api/v1/...` URLs. The following work is still required before the migration can be considered fully complete:
 
 - [ ] Decide whether legacy compatibility routes are required and, if so, add thin adapters that delegate to the v1 implementation.
 - [ ] Document the remaining public v1 endpoints in `docs/openapi/v1.yaml` (health and authentication are complete).
@@ -92,13 +92,13 @@ Mobile releases can remain installed for months, so old API versions must contin
 
 ### 1.3 Keep v1 behavior stable during this migration
 
-The existing API uses action-oriented paths such as `/all`, `/create`, and `/upsert`. Do not combine versioning with a full REST redesign. First preserve the existing paths and payloads under `/api/v1`. A later `v2` can introduce resource-oriented routes if the benefit justifies the client migration.
+The existing API uses action-oriented paths such as `/all`, `/create`, and `/upsert`. Do not combine versioning with a full REST redesign. First preserve the existing paths and payloads under `/api`. A later `v2` can introduce resource-oriented routes if the benefit justifies the client migration.
 
 ---
 
 ## 2. Current repository assessment
 
-The backend has 88 Next.js App Router route files, all under `src/app/api/v1`. Frontend application calls have been migrated to `/api/v1/...`.
+The backend has 88 Next.js App Router route files, all under `src/app/api`. Frontend application calls have been migrated to `/api/v1/...`.
 
 Authentication is already suitable for native mobile clients:
 
@@ -106,7 +106,7 @@ Authentication is already suitable for native mobile clients:
 Authorization: Bearer <session-token>
 ```
 
-`POST /api/signin` returns the token in `data.token`, and protected endpoints validate it against the `sessions` table. The token currently expires after 30 days.
+`POST /api/v1/signin` returns the token in `data.token`, and protected endpoints validate it against the `sessions` table. The token currently expires after 30 days.
 
 Important current characteristics to retain in v1:
 
@@ -163,7 +163,7 @@ src/
         └── version.js
 ```
 
-The files under `src/app/api/v1` should be thin routing adapters. Database queries, validation, authentication, logging, and business rules belong in reusable server-only handler modules. This prevents copying hundreds of route files and later fixing bugs in only one copy.
+The files under `src/app/api` should be thin routing adapters. Database queries, validation, authentication, logging, and business rules belong in reusable server-only handler modules. This prevents copying hundreds of route files and later fixing bugs in only one copy.
 
 Add `import "server-only"` to extracted backend modules where appropriate, so client components cannot accidentally import database code.
 
@@ -190,18 +190,18 @@ Do not expose Prisma records indiscriminately. Explicit response selections are 
 
 ### Step 2: Add version constants
 
-Create `src/lib/api/version.js`:
+Create `src/lib/api/v1/version.js`:
 
 ```js
 export const CURRENT_API_VERSION = "v1";
-export const CURRENT_API_PREFIX = `/api/${CURRENT_API_VERSION}`;
+export const CURRENT_API_PREFIX = `/api/v1/${CURRENT_API_VERSION}`;
 ```
 
 The server does not need this constant to discover routes, but clients, tests, logs, and deprecation helpers should share it.
 
 ### Step 3: Standardize JSON responses
 
-Create `src/lib/api/response.js`:
+Create `src/lib/api/v1/response.js`:
 
 ```js
 import { NextResponse } from "next/server";
@@ -243,7 +243,7 @@ If an existing endpoint returns a different success code and clients depend on i
 
 ### Step 4: Extract one endpoint as the migration pattern
 
-Start with a low-risk read endpoint, then sign-in, then one complete CRUD domain. For example, move the implementation of `src/app/api/client/[id]/route.js` to:
+Start with a low-risk read endpoint, then sign-in, then one complete CRUD domain. For example, move the implementation of `src/app/api/v1/client/[id]/route.js` to:
 
 ```js
 // src/server/api/v1/clients/clientById.js
@@ -252,7 +252,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { validateAdminAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
-import { apiError, apiSuccess } from "@/lib/api/response";
+import { apiError, apiSuccess } from "@/lib/api/v1/response";
 
 export async function getClient(request, { params }) {
   const authError = await validateAdminAuth(request);
@@ -291,7 +291,7 @@ export {
 During the compatibility period, replace the old route implementation with another thin adapter:
 
 ```js
-// src/app/api/client/[id]/route.js
+// src/app/api/v1/client/[id]/route.js
 export {
   getClient as GET,
   updateClient as PATCH,
@@ -328,15 +328,15 @@ For each route:
 
 Example mappings:
 
-| Old                                      | Versioned v1                                |
-| ---------------------------------------- | ------------------------------------------- |
-| `POST /api/signin`                       | `POST /api/v1/signin`                       |
-| `POST /api/signout`                      | `POST /api/v1/signout`                      |
-| `GET /api/client/all`                    | `GET /api/v1/client/all`                    |
-| `GET/PATCH/DELETE /api/client/:id`       | `GET/PATCH/DELETE /api/v1/client/:id`       |
-| `GET /api/project/:id/used-materials`    | `GET /api/v1/project/:id/used-materials`    |
-| `POST /api/maintenance_checklist/upsert` | `POST /api/v1/maintenance_checklist/upsert` |
-| `POST /api/uploads/lots/:path*`          | `POST /api/v1/uploads/lots/:path*`          |
+| Old                                         | Versioned v1                                |
+| ------------------------------------------- | ------------------------------------------- |
+| `POST /api/v1/signin`                       | `POST /api/v1/signin`                       |
+| `POST /api/v1/signout`                      | `POST /api/v1/signout`                      |
+| `GET /api/v1/client/all`                    | `GET /api/v1/client/all`                    |
+| `GET/PATCH/DELETE /api/v1/client/:id`       | `GET/PATCH/DELETE /api/v1/client/:id`       |
+| `GET /api/v1/project/:id/used-materials`    | `GET /api/v1/project/:id/used-materials`    |
+| `POST /api/v1/maintenance_checklist/upsert` | `POST /api/v1/maintenance_checklist/upsert` |
+| `POST /api/v1/uploads/lots/:path*`          | `POST /api/v1/uploads/lots/:path*`          |
 
 ### Step 6: Treat authentication as a public mobile contract
 
@@ -432,11 +432,11 @@ Choose a real removal date only after deployed clients are migrated. Track legac
 
 ### Step 1: Centralize the Axios client
 
-The current web app embeds `/api/...` strings throughout components. Create `src/lib/api/client.js`:
+The current web app embeds `/api/v1/...` strings throughout components. Create `src/lib/api/v1/client.js`:
 
 ```js
 import axios from "axios";
-import { CURRENT_API_PREFIX } from "@/lib/api/version";
+import { CURRENT_API_PREFIX } from "@/lib/api/v1/version";
 
 export const apiClient = axios.create({
   baseURL: CURRENT_API_PREFIX,
@@ -472,17 +472,17 @@ apiClient.interceptors.response.use(
 
 Import the real token getter and clear-session functions used by this project; do not create competing authentication storage.
 
-For browser requests on the same origin, `baseURL: "/api/v1"` is correct. If the web frontend and API become separate deployments, use a validated environment value:
+For browser requests on the same origin, `baseURL: "/api"` is correct. If the web frontend and API become separate deployments, use a validated environment value:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=https://api.example.com/api/v1
+NEXT_PUBLIC_API_BASE_URL=https://api.example.com/api
 ```
 
 Do not include secrets in any `NEXT_PUBLIC_*` variable.
 
 ### Step 2: Create domain-level API functions
 
-Components should not construct endpoint paths. Add modules such as `src/lib/api/clients.js`:
+Components should not construct endpoint paths. Add modules such as `src/lib/api/v1/clients.js`:
 
 ```js
 import { apiClient } from "./client";
@@ -513,7 +513,9 @@ This produces `/api/v1/client/...` because the Axios instance owns the prefix.
 Replace:
 
 ```js
-axios.get("/api/client/all", { headers: { Authorization: `Bearer ${token}` } });
+axios.get("/api/v1/client/all", {
+  headers: { Authorization: `Bearer ${token}` },
+});
 ```
 
 with:
@@ -527,8 +529,8 @@ Start with authentication and shared components (`SearchBar`, `ProtectedRoute`, 
 Use searches as completion gates:
 
 ```bash
-rg -n '["`]/api/' src --glob '!src/app/api/**'
-rg -n 'axios\.(get|post|put|patch|delete)|axios\.request|fetch\(' src --glob '!src/app/api/**'
+rg -n '["`]/api/v1/' src --glob '!src/app/api/v1/**'
+rg -n 'axios\.(get|post|put|patch|delete)|axios\.request|fetch\(' src --glob '!src/app/api/v1/**'
 ```
 
 Review every remaining match. Some file URLs and external integrations are intentionally different, but ordinary application requests should go through the centralized client.
@@ -550,9 +552,9 @@ The mobile app should never use the temporary unversioned endpoints.
 Use a complete absolute base URL because native apps have no same-origin `/api` host:
 
 ```text
-development: http://<LAN-IP>:3000/api/v1
-staging:     https://staging-api.example.com/api/v1
-production:  https://api.example.com/api/v1
+development: http://<LAN-IP>:3000/api
+staging:     https://staging-api.example.com/api
+production:  https://api.example.com/api
 ```
 
 `localhost` from a physical phone refers to the phone, not the development computer. Use the computer's reachable LAN address for local device testing. Android emulators commonly use `10.0.2.2` for the host; iOS Simulator can usually reach the Mac through `localhost`, but an explicit environment configuration is clearer.
@@ -656,7 +658,7 @@ Test upload success and rejection, path traversal attempts, deleted files, downl
 
 Verify:
 
-- The base URL contains exactly one `/api/v1` prefix.
+- The base URL contains exactly one `/api` prefix.
 - The bearer token is attached once.
 - `401` clears the session.
 - `403` does not sign the user out.
@@ -683,7 +685,7 @@ Use a staging database and upload directory for destructive integration tests. N
 
 Deploy in this order:
 
-1. Deploy shared handlers plus `/api/v1` routes while keeping legacy routes.
+1. Deploy shared handlers plus `/api` routes while keeping legacy routes.
 2. Smoke-test v1 in staging.
 3. Deploy backend v1 to production.
 4. Confirm monitoring, authorization, logging, and uploads.
@@ -704,7 +706,7 @@ For a future `v2`, keep `v1` handlers intact and add new `v2` handlers only wher
 
 The migration is complete when:
 
-- [x] Every current endpoint has an inventoried `/api/v1` equivalent.
+- [x] Every current endpoint has an inventoried `/api` equivalent.
 - [ ] One server handler owns each v1 operation; route files do not duplicate business logic.
 - [ ] Authentication, authorization, rate limits, activity logging, and soft deletion still work.
 - [ ] Upload, download, and range-request behavior is preserved.

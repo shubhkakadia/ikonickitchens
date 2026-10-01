@@ -115,7 +115,7 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/employee/[id]:", error);
+    console.error("Error in GET /api/v1/employee/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 },
@@ -347,7 +347,7 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/employee/[id]:", error);
+    console.error("Error in PATCH /api/v1/employee/[id]:", error);
 
     if (error.code === "P2025") {
       return NextResponse.json(
@@ -428,7 +428,7 @@ export async function DELETE(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in DELETE /api/employee/[id]:", error);
+    console.error("Error in DELETE /api/v1/employee/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal Server Error" },
       { status: 500 },

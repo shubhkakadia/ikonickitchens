@@ -221,7 +221,7 @@ async function handler(req) {
     console.error("Error:", error);
     return NextResponse.json(
       { status: false, message: "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -305,21 +305,18 @@ npx prisma migrate reset
 ### Adding a New Feature
 
 1. **Database Changes**
-
    - Update `prisma/schema.prisma`
    - Run `npx prisma migrate dev --name feature_name`
    - Generate client: `npx prisma generate`
 
 2. **API Routes**
-
-   - Create route in `src/app/api/[feature]/`
+   - Create route in `src/app/api/v1/[feature]/`
    - Use standard response format
    - Add authentication via `verifyAuth`
    - Add logging via `withLogging`
    - Update module access if needed
 
 3. **Frontend Pages/Components**
-
    - Create page in `src/app/admin/[feature]/`
    - Use `ProtectedRoute` or `AdminRoute` wrapper
    - Follow component patterns
@@ -343,12 +340,11 @@ npx prisma migrate reset
 - Use `fileHandler.js` utility for all file operations
 - Files organized by entity type in root `uploads/` or `mediauploads/`
 - Soft delete: Set `is_deleted` flag, move to deleted media management
-- Serve files via `/api/uploads/lots/[...path]` route
+- Serve files via `/api/v1/uploads/lots/[...path]` route
 
 ### Testing Workflow
 
 1. **Manual Testing**
-
    - Start dev server
    - Test CRUD operations on affected entities
    - Verify access control (try as different user types)
@@ -429,26 +425,22 @@ import { validateEmail, validatePhone } from "@/lib/validators";
 ### 🚨 Critical Warnings
 
 1. **Never hard delete data**
-
    - Use `is_deleted` flags for soft deletes
    - Exception: Session cleanup for expired sessions
 
 2. **Prisma Client Import**
-
    - Always import from `@/lib/db` (or `@/lib/db.ts`)
    - Never instantiate `new PrismaClient()` directly
    - Custom output path: `generated/prisma`
 
 3. **File Paths**
-
    - File uploads go to root-level directories (`uploads/`, `mediauploads/`)
    - Use `fileHandler.js` for all file operations
    - Never hardcode file paths
 
 4. **Session Management**
-
    - Sessions expire after a set time
-   - Clean up expired sessions via `/api/admin/cleanup-sessions`
+   - Clean up expired sessions via `/api/v1/admin/cleanup-sessions`
    - Always verify session in protected routes
 
 5. **Module Access**
@@ -470,7 +462,7 @@ import { validateEmail, validatePhone } from "@/lib/validators";
 
 **File upload returns 404**
 
-- Check file serving route `/api/uploads/lots/[...path]`
+- Check file serving route `/api/v1/uploads/lots/[...path]`
 - Verify file exists in uploads directory
 - Check file permissions
 

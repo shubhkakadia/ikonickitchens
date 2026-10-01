@@ -153,11 +153,11 @@ const FileItemWithNotes = ({
               openDeleteFileConfirmation(file);
             }}
             disabled={isDeletingFile === file.id}
-            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+            className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
             title="Delete file"
           >
             {isDeletingFile === file.id ? (
-              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+              <div className="animate-spin rounded-full w-4 h-4 border-b-2 border-white"></div>
             ) : (
               <Trash className="w-3.5 h-3.5" />
             )}
@@ -507,7 +507,7 @@ export default function SiteMeasurementsSection({
           Select Files {isUploading && "(Uploading...)"}
         </label>
         <div
-          className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+          className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-colors duration-200 bg-slate-50 hover:bg-slate-100 ${
             isUploading ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
@@ -566,7 +566,7 @@ export default function SiteMeasurementsSection({
                 />
               ) : (
                 <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-                  <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                  <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-600">No site photos uploaded yet</p>
                 </div>
               )}
@@ -597,7 +597,7 @@ export default function SiteMeasurementsSection({
                 />
               ) : (
                 <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-                  <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                  <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-600">
                     No measurement photos uploaded yet
                   </p>

@@ -310,7 +310,7 @@ npx prisma migrate reset
    - Generate client: `npx prisma generate`
 
 2. **API Routes**
-   - Create route in `src/app/api/[feature]/`
+   - Create route in `src/app/api/v1/[feature]/`
    - Use standard response format
    - Add authentication via `verifyAuth`
    - Add logging via `withLogging`
@@ -340,7 +340,7 @@ npx prisma migrate reset
 - Use `fileHandler.js` utility for all file operations
 - Files organized by entity type in root `uploads/` or `mediauploads/`
 - Soft delete: Set `is_deleted` flag, move to deleted media management
-- Serve files via `/api/uploads/lots/[...path]` route
+- Serve files via `/api/v1/uploads/lots/[...path]` route
 
 ### Testing Workflow
 
@@ -440,7 +440,7 @@ import { validateEmail, validatePhone } from "@/lib/validators";
 
 4. **Session Management**
    - Sessions expire after a set time
-   - Clean up expired sessions via `/api/admin/cleanup-sessions`
+   - Clean up expired sessions via `/api/v1/admin/cleanup-sessions`
    - Always verify session in protected routes
 
 5. **Module Access**
@@ -462,7 +462,7 @@ import { validateEmail, validatePhone } from "@/lib/validators";
 
 **File upload returns 404**
 
-- Check file serving route `/api/uploads/lots/[...path]`
+- Check file serving route `/api/v1/uploads/lots/[...path]`
 - Verify file exists in uploads directory
 - Check file permissions
 

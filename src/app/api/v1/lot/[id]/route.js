@@ -9,6 +9,8 @@ import {
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { sendProjectUpdate } from "@/lib/pushNotifications";
+import { getUserFromToken } from "@/lib/validators/authFromToken";
 
 export async function GET(request, { params }) {
   try {
@@ -84,7 +86,7 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in GET /api/lot/[id]:", error);
+    console.error("Error in GET /api/v1/lot/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -215,6 +217,20 @@ export async function PATCH(request, { params }) {
       }
     }
 
+    try {
+      const session = await getUserFromToken(request);
+      await sendProjectUpdate({
+        lotId: lot.lot_id,
+        actorUserId: session?.user_id,
+      });
+    } catch (pushError) {
+      console.error(
+        "Failed to send project update push notification:",
+        pushError,
+      );
+      // The business update must not fail when the push provider is unavailable.
+    }
+
     if (!logged) {
       console.error(`Failed to log lot update: ${id} - ${lot.name}`);
     }
@@ -230,7 +246,7 @@ export async function PATCH(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in PATCH /api/lot/[id]:", error);
+    console.error("Error in PATCH /api/v1/lot/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },
@@ -298,7 +314,7 @@ export async function DELETE(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error in DELETE /api/lot/[id]:", error);
+    console.error("Error in DELETE /api/v1/lot/[id]:", error);
     return NextResponse.json(
       { status: false, message: "Internal server error" },
       { status: 500 },

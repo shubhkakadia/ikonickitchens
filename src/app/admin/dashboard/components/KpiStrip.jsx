@@ -3,22 +3,76 @@
 import { useRouter } from "next/navigation";
 import {
   ClipboardList,
+  DollarSign,
   FolderKanban,
   Layers,
   ShoppingCart,
   Target,
 } from "lucide-react";
-import { formatQty } from "../lib/format";
+import {
+  formatCompactCurrency,
+  formatCurrency,
+  formatQty,
+} from "../lib/format";
+
+// Month-to-date PO spend against the whole of last month. Plain text, no
+// up/down colour: more spend is not inherently good or bad.
+const spendSub = (kpis) => {
+  const last = Number(kpis.spendLastMonth) || 0;
+  return last > 0
+    ? `This month · last ${formatCompactCurrency(last)}`
+    : "This month";
+};
 
 // Always-on scale counts: how much work is in flight, regardless of whether
 // anything is wrong. The attention strip below answers the separate question
 // of what needs action today.
 const CARDS = [
-  { key: "activeProjects", label: "Active projects", icon: FolderKanban, href: "/admin/projects", gate: "projects" },
-  { key: "activeLots", label: "Active lots", icon: Layers, href: "/admin/projects/lotatglance", gate: "projects" },
-  { key: "openMtoCount", label: "Open MTOs", icon: ClipboardList, href: "/admin/suppliers/materialstoorder", gate: "materialsToOrder" },
-  { key: "openPoCount", label: "Open POs", icon: ShoppingCart, href: "/admin/suppliers/purchaseorder", gate: "purchaseOrders" },
-  { key: "completedThisMonth", label: "Lots completed", sub: "This month", icon: Target, href: "/admin/projects", gate: "projects" },
+  {
+    key: "activeProjects",
+    label: "Active projects",
+    icon: FolderKanban,
+    href: "/admin/projects",
+    gate: "projects",
+  },
+  {
+    key: "activeLots",
+    label: "Active lots",
+    icon: Layers,
+    href: "/admin/projects/lotatglance",
+    gate: "projects",
+  },
+  {
+    key: "openMtoCount",
+    label: "Open MTOs",
+    icon: ClipboardList,
+    href: "/admin/suppliers/materialstoorder",
+    gate: "materialsToOrder",
+  },
+  {
+    key: "openPoCount",
+    label: "Open POs",
+    icon: ShoppingCart,
+    href: "/admin/suppliers/purchaseorder",
+    gate: "purchaseOrders",
+  },
+  {
+    key: "completedThisMonth",
+    label: "Lots completed",
+    sub: "This month",
+    icon: Target,
+    href: "/admin/projects",
+    gate: "projects",
+  },
+  {
+    key: "spendThisMonth",
+    label: "PO spend",
+    sub: spendSub,
+    format: formatCurrency,
+    icon: DollarSign,
+    href: "/admin/suppliers/purchaseorder",
+    gate: "purchaseOrders",
+  },
 ];
 
 export default function KpiStrip({ kpis, permissions }) {
@@ -29,7 +83,7 @@ export default function KpiStrip({ kpis, permissions }) {
   if (visible.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {visible.map((card) => (
         <button
           key={card.key}
@@ -40,13 +94,15 @@ export default function KpiStrip({ kpis, permissions }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-2xl font-semibold text-primary leading-none tabular-nums">
-                {formatQty(kpis[card.key])}
+                {(card.format ?? formatQty)(kpis[card.key])}
               </p>
               <p className="text-xs font-semibold text-slate-600 mt-1.5 leading-tight">
                 {card.label}
               </p>
               {card.sub && (
-                <p className="text-xs text-slate-500 mt-0.5">{card.sub}</p>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">
+                  {typeof card.sub === "function" ? card.sub(kpis) : card.sub}
+                </p>
               )}
             </div>
             <span className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0">

@@ -1,9 +1,12 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import React, { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import TabsController from "@/components/tabscontroller";
 import {
   ChevronLeft,
+  ChevronDown,
+  ChevronRight,
   Edit,
   User,
   Mail,
@@ -14,16 +17,15 @@ import {
   MapPin,
   Trash2,
   Plus,
+  Check,
   AlertTriangle,
-  Calendar,
   Building,
   Search,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   RotateCcw,
-  ChevronRight,
-  Layers,
+  MoreVertical,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -31,7 +33,8 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ContactSection from "@/components/ContactSection";
-import { CiMenuKebab } from "react-icons/ci";
+import CustomDropdown from "@/components/CustomDropdown";
+import PaginationFooter from "@/components/PaginationFooter";
 import AdminShell from "@/components/AdminShell";
 import { validatePhone, formatPhoneToNational } from "@/components/validators";
 import { generateClientSlug, normalizeClientSlug } from "@/lib/clientSlug";
@@ -39,8 +42,130 @@ import {
   usePersistedTableFilter,
   useTableFilterActions,
 } from "@/hooks/usePersistedTableFilter";
+import useModalFocus from "@/hooks/useModalFocus";
+import {
+  BADGE,
+  BADGE_TONES,
+  COUNT_BADGE,
+  STATUS_COLORS,
+} from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
 
-export default function page() {
+const EMPTY = "—";
+
+// Form-field rules (DESIGN.md 9.2): 14px, slate-300 border, primary focus ring.
+// Error state swaps the border and ring to red and is paired with a message.
+// Padding matches CustomDropdown (px-4 py-3) so fields line up in a row.
+const FIELD =
+  "w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-200";
+const fieldTone = (hasError) =>
+  hasError
+    ? "border-red-500 focus:ring-red-500"
+    : "border-slate-300 focus:ring-primary";
+
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 transition-colors flex items-center gap-2";
+
+const CLIENT_TYPE_OPTIONS = [
+  { value: "private", label: "Private" },
+  { value: "builder", label: "Builder" },
+  { value: "other", label: "Other" },
+];
+
+const SORT_OPTIONS = [
+  { field: "project_id", label: "Project ID" },
+  { field: "name", label: "Name" },
+  { field: "createdAt", label: "Created date" },
+  { field: "number_of_lots", label: "Number of lots" },
+];
+
+const EMPTY_NEW_PROJECT = {
+  name: "",
+  project_id: "",
+  startDate: "",
+  sync_all_lots: false,
+};
+
+function FieldError({ id, message }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="text-xs text-red-600 mt-1">
+      {message}
+    </p>
+  );
+}
+
+function Spinner() {
+  return (
+    <span
+      className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+      aria-hidden="true"
+    />
+  );
+}
+
+// Records show the year (a created or due date without one is ambiguous), so
+// this stays local rather than using the compact shared formatDate.
+const formatDate = (value) => {
+  if (!value) return EMPTY;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return EMPTY;
+  return date.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatValue = (value) => {
+  if (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    value === "null"
+  ) {
+    return EMPTY;
+  }
+  if (typeof value === "string" && value.trim() === "") {
+    return EMPTY;
+  }
+  return value;
+};
+
+const getInitials = (name) => {
+  if (!name) return "?";
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
+  return `${parts[0][0] || ""}${
+    parts[parts.length - 1][0] || ""
+  }`.toUpperCase();
+};
+
+const isInstallationDueSoon = (installationDate) => {
+  if (!installationDate) return false;
+  const today = new Date();
+  const dueDate = new Date(installationDate);
+  const diffTime = dueDate - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays <= 7 && diffDays >= 0;
+};
+
+// The most recently created stage stands for the lot's progress.
+const getLatestStage = (stages) => {
+  if (!stages || stages.length === 0) return null;
+  const sortedStages = [...stages].sort((a, b) => {
+    const dateA = new Date(a.createdAt || 0);
+    const dateB = new Date(b.createdAt || 0);
+    return dateB - dateA; // Most recent first
+  });
+  return sortedStages[0];
+};
+
+export default function ClientDetailPage() {
   const { id } = useParams();
   const tableKey = `client-projects:${id}`;
   const router = useRouter();
@@ -72,18 +197,22 @@ export default function page() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState(new Set());
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
-  const [newProject, setNewProject] = useState({
-    name: "",
-    project_id: "",
-    startDate: "",
-    sync_all_lots: false,
-  });
+  const [newProject, setNewProject] = useState(EMPTY_NEW_PROJECT);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [activeTab, setActiveTab] = useState("ACTIVE");
   const [numberOfLots, setNumberOfLots] = useState("");
   const [lots, setLots] = useState([]);
   const [slugTouched, setSlugTouched] = useState(false);
   const [slugAvailability, setSlugAvailability] = useState(null);
+  // Inline validation messages (DESIGN.md 11, 15.3).
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [projectErrors, setProjectErrors] = useState({});
+  const [lotErrors, setLotErrors] = useState({});
+  const moreMenuRef = useRef(null);
+  const sortMenuRef = useRef(null);
+  const addProjectModalRef = useRef(null);
+
+  useModalFocus(addProjectModalRef, showAddProjectModal);
 
   useEffect(() => {
     fetchClient(id);
@@ -104,20 +233,29 @@ export default function page() {
           }));
       } catch (error) {
         toast.error(
-          error.response?.data?.message || "Unable to generate project ID",
+          error.response?.data?.message ||
+            "Couldn't generate a project ID. Close this dialog and try again.",
         );
       }
     };
     loadNextProjectId();
   }, [showAddProjectModal, client?.client_id, getToken]);
 
-  // Close dropdown when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showDropdown && !event.target.closest(".dropdown-container")) {
+      if (
+        showDropdown &&
+        moreMenuRef.current &&
+        !moreMenuRef.current.contains(event.target)
+      ) {
         setShowDropdown(false);
       }
-      if (showSortDropdown && !event.target.closest(".dropdown-container")) {
+      if (
+        showSortDropdown &&
+        sortMenuRef.current &&
+        !sortMenuRef.current.contains(event.target)
+      ) {
         setShowSortDropdown(false);
       }
     };
@@ -128,17 +266,31 @@ export default function page() {
     };
   }, [showDropdown, showSortDropdown]);
 
+  // Menus and the add-project modal close on Escape (DESIGN.md 9.4). The
+  // delete confirmation is destructive and needs an explicit button.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      if (showDeleteClientModal) return;
+      if (showAddProjectModal) {
+        if (!isCreatingProject) closeAddProjectModal();
+      } else if (showDropdown) {
+        setShowDropdown(false);
+      } else if (showSortDropdown) {
+        setShowSortDropdown(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  });
+
   const fetchClient = async (id) => {
     try {
       setLoading(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
 
@@ -152,14 +304,17 @@ export default function page() {
         setClient(response.data.data);
         setContacts(response.data.data.contacts || []);
       } else {
-        setError(response.data.message || "Failed to fetch client data");
+        setError(
+          response.data.message ||
+            "Couldn't load this client. Check your connection and try again.",
+        );
       }
     } catch (err) {
       console.error("API Error:", err);
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-          "An error occurred while fetching client data",
+          "Couldn't load this client. Check your connection and try again.",
       );
     } finally {
       setLoading(false);
@@ -200,22 +355,36 @@ export default function page() {
         client_website: client.client_website || "",
         client_notes: client.client_notes || "",
       });
+      setFieldErrors({});
       setIsEditing(true);
       setSlugTouched(false);
     }
   };
 
   const handleSave = async () => {
+    if (isUpdating) return;
+
+    // Validate on submit, then focus the first invalid field (DESIGN.md 15.3).
+    const slug = editData.client_slug || "";
+    if (!/^[A-Z]{4}$/.test(slug) || slugAvailability === false) {
+      setFieldErrors({
+        client_slug:
+          slugAvailability === false && /^[A-Z]{4}$/.test(slug)
+            ? "This client slug is already taken."
+            : "Enter exactly 4 letters.",
+      });
+      setTimeout(() => {
+        document.getElementById("client-slug")?.focus();
+      }, 0);
+      return;
+    }
+
     try {
       setIsUpdating(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
 
@@ -228,18 +397,6 @@ export default function page() {
         client_phone: formatPhone(editData.client_phone),
       };
 
-      if (
-        !/^[A-Z]{4}$/.test(dataToSend.client_slug || "") ||
-        slugAvailability === false
-      ) {
-        toast.error(
-          slugAvailability === false
-            ? "This client slug is already taken"
-            : "Client slug must be exactly 4 letters",
-        );
-        return;
-      }
-
       const response = await axios.patch(`/api/v1/client/${id}`, dataToSend, {
         headers: {
           Authorization: `Bearer ${sessionToken}`,
@@ -249,35 +406,20 @@ export default function page() {
 
       if (response.data.status) {
         setClient(response.data.data);
-        toast.success("Client updated successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        });
+        toast.success("Client updated.");
         setIsEditing(false);
+        setFieldErrors({});
       } else {
-        toast.error(response.data.message || "Failed to update client", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't save the client. Check the details and try again.",
+        );
       }
     } catch (error) {
       console.error("Error updating client:", error);
       toast.error(
         error.response?.data?.message ||
-          "Failed to update client. Please try again.",
-        {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        },
+          "Couldn't save the client. Check your connection and try again.",
       );
     } finally {
       setIsUpdating(false);
@@ -287,6 +429,7 @@ export default function page() {
   const handleCancel = () => {
     setIsEditing(false);
     setEditData({});
+    setFieldErrors({});
   };
 
   const handleInputChange = (field, value) => {
@@ -298,95 +441,19 @@ export default function page() {
         : {}),
     }));
     if (field === "client_slug") setSlugTouched(true);
-  };
-
-  const formatValue = (value) => {
+    // Validate on submit, then clear each message as the field is edited.
     if (
-      value === null ||
-      value === undefined ||
-      value === "" ||
-      value === "null"
+      fieldErrors[field] ||
+      (field === "client_name" && fieldErrors.client_slug && !slugTouched)
     ) {
-      return "-";
+      setFieldErrors((prev) => ({
+        ...prev,
+        [field]: null,
+        ...(field === "client_name" && !slugTouched
+          ? { client_slug: null }
+          : {}),
+      }));
     }
-    if (typeof value === "string" && value.trim() === "") {
-      return "-";
-    }
-    return value;
-  };
-
-  const getInitials = (name) => {
-    if (!name) return "?";
-    const parts = name.trim().split(" ");
-    if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
-    return `${parts[0][0] || ""}${
-      parts[parts.length - 1][0] || ""
-    }`.toUpperCase();
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "-";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-AU", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch (error) {
-      return "-";
-    }
-  };
-
-  const isInstallationDueSoon = (installationDate) => {
-    if (!installationDate) return false;
-    const today = new Date();
-    const dueDate = new Date(installationDate);
-    const diffTime = dueDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 7 && diffDays >= 0;
-  };
-
-  const getStageStatusSummary = (stages) => {
-    if (!stages || stages.length === 0) {
-      return { text: "No stages", color: "text-slate-500" };
-    }
-
-    // Sort stages by createdAt to get the last/most recent stage
-    const sortedStages = [...stages].sort((a, b) => {
-      const dateA = new Date(a.createdAt || 0);
-      const dateB = new Date(b.createdAt || 0);
-      return dateB - dateA; // Most recent first
-    });
-
-    const lastStage = sortedStages[0];
-
-    // If last stage is DONE, show stage name and "Done"
-    if (lastStage.status === "DONE") {
-      return {
-        text: `${lastStage.name} - Done`,
-        color: "text-green-600",
-      };
-    }
-
-    // If last stage is IN_PROGRESS, show stage name and "In Progress"
-    if (lastStage.status === "IN_PROGRESS") {
-      return {
-        text: `${lastStage.name} - In Progress`,
-        color: "text-blue-600",
-      };
-    }
-
-    // For other statuses (NOT_STARTED, NA), show stage name and status
-    const statusText = lastStage.status
-      .split("_")
-      .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-      .join(" ");
-
-    return {
-      text: `${lastStage.name} - ${statusText}`,
-      color: "text-slate-500",
-    };
   };
 
   // Calculate counts for active and completed projects
@@ -493,12 +560,16 @@ export default function page() {
       setSortField(field);
       setSortOrder("asc");
     }
+    setCurrentPage(1);
   };
 
   const getSortIcon = (field) => {
-    if (sortField !== field) return <ArrowUpDown className="h-4 w-4" />;
-    if (sortOrder === "asc") return <ArrowUp className="h-4 w-4" />;
-    if (sortOrder === "desc") return <ArrowDown className="h-4 w-4" />;
+    if (sortField !== field)
+      return <ArrowUpDown className="w-4 h-4" aria-hidden="true" />;
+    if (sortOrder === "asc")
+      return <ArrowUp className="w-4 h-4" aria-hidden="true" />;
+    if (sortOrder === "desc")
+      return <ArrowDown className="w-4 h-4" aria-hidden="true" />;
     return null;
   };
 
@@ -508,6 +579,7 @@ export default function page() {
 
   const handleReset = () => {
     resetFilters();
+    setCurrentPage(1);
   };
 
   const toggleProjectExpansion = (projectId) => {
@@ -527,7 +599,7 @@ export default function page() {
       setIsDeletingClient(true);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
       const response = await axios.delete(
@@ -537,16 +609,21 @@ export default function page() {
         },
       );
       if (!response?.data?.status) {
-        toast.error(response?.data?.message || "Failed to delete client");
+        toast.error(
+          response?.data?.message || "Couldn't delete the client. Try again.",
+        );
         return;
       }
-      toast.success("Client deleted successfully");
+      toast.success("Client deleted.");
       setShowDeleteClientModal(false);
       // Navigate back to clients list
       router.push("/admin/clients");
     } catch (err) {
       console.error("Delete client failed", err);
-      toast.error(err?.response?.data?.message || "An error occurred");
+      toast.error(
+        err?.response?.data?.message ||
+          "Couldn't delete the client. Check your connection and try again.",
+      );
     } finally {
       setIsDeletingClient(false);
     }
@@ -584,15 +661,69 @@ export default function page() {
       [field]: value,
     };
     setLots(updatedLots);
+    if (lotErrors[index]?.[field]) {
+      setLotErrors((prev) => ({
+        ...prev,
+        [index]: { ...prev[index], [field]: null },
+      }));
+    }
   };
 
+  const handleNewProjectChange = (field, value) => {
+    setNewProject((prev) => ({ ...prev, [field]: value }));
+    if (projectErrors[field]) {
+      setProjectErrors((prev) => ({ ...prev, [field]: null }));
+    }
+  };
+
+  const closeAddProjectModal = () => {
+    setShowAddProjectModal(false);
+    setNewProject(EMPTY_NEW_PROJECT);
+    setNumberOfLots("");
+    setLots([]);
+    setProjectErrors({});
+    setLotErrors({});
+  };
+
+  // The generated project ID is not user input, so it does not count as dirty.
+  const addProjectDirty = Boolean(
+    newProject.name ||
+    newProject.startDate ||
+    newProject.sync_all_lots ||
+    numberOfLots ||
+    lots.length > 0,
+  );
+
   const handleCreateProject = async () => {
-    if (!newProject.name || !client?.client_id) {
-      toast.error("Project name and client are required", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+    if (isCreatingProject || !client?.client_id) return;
+
+    // Validate on submit, then focus the first invalid field (DESIGN.md 15.3).
+    const nextProjectErrors = {};
+    if (!newProject.name.trim()) {
+      nextProjectErrors.name = "Enter a project name.";
+    }
+    const nextLotErrors = {};
+    let firstInvalidId = nextProjectErrors.name ? "project-name" : null;
+    lots.forEach((lot, index) => {
+      const errors = {};
+      if (!lot.lotId || !lot.lotId.trim()) errors.lotId = "Enter a lot ID.";
+      if (!lot.clientName || !lot.clientName.trim())
+        errors.clientName = "Enter a client name.";
+      if (Object.keys(errors).length > 0) {
+        nextLotErrors[index] = errors;
+        if (!firstInvalidId) {
+          firstInvalidId = errors.lotId
+            ? `lot-${index}-lotId`
+            : `lot-${index}-clientName`;
+        }
+      }
+    });
+    setProjectErrors(nextProjectErrors);
+    setLotErrors(nextLotErrors);
+    if (firstInvalidId) {
+      setTimeout(() => {
+        document.getElementById(firstInvalidId)?.focus();
+      }, 0);
       return;
     }
 
@@ -600,11 +731,7 @@ export default function page() {
       setIsCreatingProject(true);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
 
@@ -646,30 +773,17 @@ export default function page() {
       });
 
       if (response?.data?.status !== true) {
-        toast.error(response?.data?.message || "Failed to create project", {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-        });
+        toast.error(
+          response?.data?.message ||
+            "Couldn't create the project. Check the details and try again.",
+        );
         return;
       }
 
-      toast.success("Project created successfully!", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.success("Project created.");
 
       // Reset form and close modal
-      setNewProject({
-        name: "",
-        project_id: "",
-        startDate: "",
-        sync_all_lots: false,
-      });
-      setNumberOfLots("");
-      setLots([]);
-      setShowAddProjectModal(false);
+      closeAddProjectModal();
 
       // Refresh client data to show the new project
       await fetchClient(id);
@@ -677,95 +791,136 @@ export default function page() {
       console.error("Create project failed", err);
       toast.error(
         err?.response?.data?.message ||
-          "An error occurred while creating the project",
-        {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-        },
+          "Couldn't create the project. Check your connection and try again.",
       );
     } finally {
       setIsCreatingProject(false);
     }
   };
 
+  const phoneError =
+    editData.client_phone && !validatePhone(editData.client_phone)
+      ? "Enter a valid Australian phone number."
+      : null;
+  const slugError =
+    fieldErrors.client_slug ||
+    (slugAvailability === false ? "This client slug is already taken." : null);
+  const hasNoProjects = !client?.projects || client.projects.length === 0;
+
+  const tabClass = (tab) =>
+    `cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+      activeTab === tab
+        ? "border-primary text-primary"
+        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+    }`;
+
   return (
     <AdminShell>
       <main className="h-full overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
+          <div
+            className="flex items-center justify-center h-full"
+            role="status"
+          >
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-              <p className="text-slate-600">Loading client details...</p>
+              <div
+                className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-slate-600">
+                Loading client details...
+              </p>
             </div>
           </div>
         ) : error ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-red-600 mb-4">{error}</p>
+              <AlertTriangle
+                className="w-8 h-8 text-red-500 mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-red-600 mb-4" role="alert">
+                {error}
+              </p>
               <button
+                type="button"
                 onClick={() => window.location.reload()}
-                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                className={`${BTN_PRIMARY} mx-auto`}
               >
-                Try Again
+                Try again
               </button>
             </div>
           </div>
         ) : !client ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <User className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600">Client not found</p>
+              <User
+                className="w-8 h-8 text-slate-300 mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-slate-600">
+                This client could not be found. They may have been deleted.
+              </p>
             </div>
           </div>
         ) : (
           <div className="p-3">
-            {/* Header */}
+            {/* Header: back, record name, record actions */}
             <div className="flex items-center gap-3 mb-4">
               <TabsController back={true}>
-                <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                  <ChevronLeft className="w-6 h-6 text-slate-600" />
-                </div>
+                <span className="cursor-pointer flex p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200">
+                  <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+                  <span className="sr-only">Back</span>
+                </span>
               </TabsController>
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-slate-600">
+              <div className="flex-1 flex flex-wrap items-center gap-3 min-w-0">
+                <h1 className="text-xl font-semibold text-slate-800 truncate">
                   {client.client_name}
                 </h1>
               </div>
               <div className="flex gap-2">
                 {!isEditing ? (
-                  <div className="relative dropdown-container">
+                  <div className="relative" ref={moreMenuRef}>
                     <button
+                      type="button"
                       onClick={() => setShowDropdown(!showDropdown)}
-                      className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                      aria-haspopup="menu"
+                      aria-expanded={showDropdown}
+                      className={BTN_SECONDARY}
                     >
-                      <CiMenuKebab className="w-4 h-4 text-slate-600" />
-                      <span className="text-slate-600">More Actions</span>
+                      <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                      <span>More actions</span>
                     </button>
 
                     {showDropdown && (
-                      <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                      <div
+                        role="menu"
+                        className="absolute right-0 mt-1 w-56 bg-white border border-slate-300 rounded-lg z-40"
+                      >
                         <div className="py-1">
                           <button
+                            type="button"
+                            role="menuitem"
                             onClick={() => {
                               handleEdit();
                               setShowDropdown(false);
                             }}
-                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                            className={`${MENU_ITEM} text-slate-700`}
                           >
-                            <Edit className="w-4 h-4" />
-                            Edit Client Details
+                            <Edit className="w-4 h-4" aria-hidden="true" />
+                            Edit client details
                           </button>
                           <button
+                            type="button"
+                            role="menuitem"
                             onClick={() => {
                               setShowDeleteClientModal(true);
                               setShowDropdown(false);
                             }}
-                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
+                            className={`${MENU_ITEM} text-red-700 hover:bg-red-50`}
                           >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Client
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                            Delete client
                           </button>
                         </div>
                       </div>
@@ -774,18 +929,25 @@ export default function page() {
                 ) : (
                   <>
                     <button
-                      onClick={handleSave}
-                      disabled={isUpdating}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Edit className="w-4 h-4" />
-                      {isUpdating ? "Saving..." : "Save"}
-                    </button>
-                    <button
+                      type="button"
                       onClick={handleCancel}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                      disabled={isUpdating}
+                      className={BTN_SECONDARY}
                     >
                       Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      form="client-edit-form"
+                      disabled={isUpdating}
+                      className={BTN_PRIMARY}
+                    >
+                      {isUpdating ? (
+                        <Spinner />
+                      ) : (
+                        <Check className="w-4 h-4" aria-hidden="true" />
+                      )}
+                      Save changes
                     </button>
                   </>
                 )}
@@ -797,74 +959,123 @@ export default function page() {
               <div className="grid grid-cols-10 gap-4">
                 {/* Basic Information - 70% width */}
                 <div className="col-span-7">
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
                     <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-linear-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
+                      <div
+                        className="w-16 h-16 shrink-0 bg-slate-100 border border-slate-200 rounded-full flex items-center justify-center text-slate-700 text-lg font-semibold"
+                        aria-hidden="true"
+                      >
                         {getInitials(client.client_name)}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         {isEditing ? (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={editData.client_name || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "client_name",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder={client.client_name}
-                                className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              />
-                              <input
-                                type="text"
-                                value={editData.client_slug || ""}
-                                maxLength={4}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "client_slug",
-                                    e.target.value,
-                                  )
-                                }
-                                aria-label="Client slug"
-                                className={`w-20 text-sm font-semibold tracking-widest text-slate-800 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${slugAvailability === false ? "border-red-500" : "border-slate-300"}`}
-                              />
-                              <select
-                                value={editData.client_type || ""}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "client_type",
-                                    e.target.value,
-                                  )
-                                }
-                                className="cursor-pointer px-2 py-1 text-xs font-medium border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                              >
-                                <option value="">Select Type</option>
-                                <option value="private">Private</option>
-                                <option value="builder">Builder</option>
-                                <option value="other">Other</option>
-                              </select>
-                            </div>
-                            <p className="text-sm text-slate-500">
-                              Client ID: {client.client_id}
-                            </p>
-                            <p
-                              className={`text-xs ${slugAvailability === false ? "text-red-500" : "text-slate-500"}`}
-                            >
-                              {slugAvailability === false
-                                ? "Client slug is already taken"
-                                : "Client slug (4 letters)"}
-                            </p>
+                          <form
+                            id="client-edit-form"
+                            noValidate
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleSave();
+                            }}
+                            className="space-y-4"
+                          >
                             <p className="text-xs text-slate-500">
-                              This slug is used to generate automated project
-                              IDs.
+                              Client ID:{" "}
+                              <span className="font-mono">
+                                {client.client_id}
+                              </span>
                             </p>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Mail className="w-4 h-4 text-slate-600" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label
+                                  htmlFor="client-name"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Client name
+                                </label>
                                 <input
+                                  id="client-name"
+                                  type="text"
+                                  value={editData.client_name || ""}
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      "client_name",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="e.g. Smith Constructions"
+                                  className={`${FIELD} ${fieldTone(false)}`}
+                                />
+                              </div>
+                              <div>
+                                <label
+                                  htmlFor="client-slug"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Client slug{" "}
+                                  <span className="text-red-600">*</span>
+                                </label>
+                                <input
+                                  id="client-slug"
+                                  type="text"
+                                  value={editData.client_slug || ""}
+                                  maxLength={4}
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      "client_slug",
+                                      e.target.value,
+                                    )
+                                  }
+                                  aria-invalid={!!slugError}
+                                  aria-describedby={
+                                    slugError
+                                      ? "client-slug-error"
+                                      : "client-slug-hint"
+                                  }
+                                  className={`${FIELD} font-mono tracking-widest ${fieldTone(
+                                    slugError,
+                                  )}`}
+                                />
+                                {slugError ? (
+                                  <FieldError
+                                    id="client-slug-error"
+                                    message={slugError}
+                                  />
+                                ) : (
+                                  <p
+                                    id="client-slug-hint"
+                                    className="text-xs text-slate-500 mt-1"
+                                  >
+                                    4 letters. Used to generate automated
+                                    project IDs.
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <label
+                                  htmlFor="client-type"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Client type
+                                </label>
+                                <CustomDropdown
+                                  id="client-type"
+                                  options={CLIENT_TYPE_OPTIONS}
+                                  value={editData.client_type || ""}
+                                  onChange={(value) =>
+                                    handleInputChange("client_type", value)
+                                  }
+                                  placeholder="Select a type"
+                                />
+                              </div>
+                              <div>
+                                <label
+                                  htmlFor="client-email"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Email
+                                </label>
+                                <input
+                                  id="client-email"
                                   type="email"
                                   value={editData.client_email || ""}
                                   onChange={(e) =>
@@ -873,42 +1084,50 @@ export default function page() {
                                       e.target.value,
                                     )
                                   }
-                                  placeholder={client.client_email || "Email"}
-                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  placeholder="e.g. accounts@example.com"
+                                  className={`${FIELD} ${fieldTone(false)}`}
                                 />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Phone className="w-4 h-4 text-slate-600" />
-                                <div className="flex-1">
-                                  <input
-                                    type="tel"
-                                    value={editData.client_phone || ""}
-                                    onChange={(e) =>
-                                      handleInputChange(
-                                        "client_phone",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                                    className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
-                                      editData.client_phone &&
-                                      !validatePhone(editData.client_phone)
-                                        ? "border-red-500"
-                                        : "border-slate-300"
-                                    }`}
-                                  />
-                                  {editData.client_phone &&
-                                    !validatePhone(editData.client_phone) && (
-                                      <p className="mt-1 text-xs text-red-500">
-                                        Please enter a valid Australian phone
-                                        number
-                                      </p>
-                                    )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Link2 className="w-4 h-4 text-slate-600" />
+                              <div>
+                                <label
+                                  htmlFor="client-phone"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Phone
+                                </label>
                                 <input
+                                  id="client-phone"
+                                  type="tel"
+                                  value={editData.client_phone || ""}
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      "client_phone",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="e.g. 0400 123 456 or +61 400 123 456"
+                                  aria-invalid={!!phoneError}
+                                  aria-describedby={
+                                    phoneError
+                                      ? "client-phone-error"
+                                      : undefined
+                                  }
+                                  className={`${FIELD} ${fieldTone(phoneError)}`}
+                                />
+                                <FieldError
+                                  id="client-phone-error"
+                                  message={phoneError}
+                                />
+                              </div>
+                              <div>
+                                <label
+                                  htmlFor="client-website"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Website
+                                </label>
+                                <input
+                                  id="client-website"
                                   type="url"
                                   value={editData.client_website || ""}
                                   onChange={(e) =>
@@ -917,15 +1136,19 @@ export default function page() {
                                       e.target.value,
                                     )
                                   }
-                                  placeholder={
-                                    client.client_website || "Website"
-                                  }
-                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  placeholder="e.g. https://example.com"
+                                  className={`${FIELD} ${fieldTone(false)}`}
                                 />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-slate-600" />
+                              <div className="md:col-span-2">
+                                <label
+                                  htmlFor="client-address"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Address
+                                </label>
                                 <input
+                                  id="client-address"
                                   type="text"
                                   value={editData.client_address || ""}
                                   onChange={(e) =>
@@ -934,15 +1157,19 @@ export default function page() {
                                       e.target.value,
                                     )
                                   }
-                                  placeholder={
-                                    client.client_address || "Address"
-                                  }
-                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  placeholder="e.g. 5 Dundee Ave, Holden Hill SA 5088"
+                                  className={`${FIELD} ${fieldTone(false)}`}
                                 />
                               </div>
-                              <div className="flex items-start gap-2">
-                                <NotebookText className="w-4 h-4 text-slate-600 mt-1" />
+                              <div className="md:col-span-2">
+                                <label
+                                  htmlFor="client-notes"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Notes
+                                </label>
                                 <textarea
+                                  id="client-notes"
                                   value={editData.client_notes || ""}
                                   onChange={(e) =>
                                     handleInputChange(
@@ -950,40 +1177,66 @@ export default function page() {
                                       e.target.value,
                                     )
                                   }
-                                  placeholder={formatValue(client.client_notes)}
                                   rows={3}
-                                  className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  className={`${FIELD} ${fieldTone(false)}`}
                                 />
                               </div>
                             </div>
-                          </div>
+                          </form>
                         ) : (
                           <>
-                            <div className="flex items-center gap-2 mb-2">
-                              <h2 className="text-lg font-bold text-slate-800">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <h2 className="text-lg font-semibold text-slate-800">
                                 {client.client_name}
                               </h2>
-                              <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
-                                {client.client_type}
-                              </span>
+                              {client.client_type && (
+                                <span
+                                  className={`${BADGE} ${BADGE_TONES.neutral}`}
+                                >
+                                  {formatLabel(client.client_type)}
+                                </span>
+                              )}
                             </div>
                             <p className="text-xs text-slate-500 mb-3">
-                              ID: {client.client_id}
+                              ID:{" "}
+                              <span className="font-mono">
+                                {client.client_id}
+                              </span>
                             </p>
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                               <div className="flex flex-wrap gap-3 text-sm">
-                                <a href={`mailto:${client.client_email}`}>
-                                  <div className="flex items-center gap-1.5 text-slate-600 hover:text-slate-800">
-                                    <Mail className="w-3.5 h-3.5" />
-                                    {formatValue(client.client_email)}
+                                {client.client_email ? (
+                                  <a
+                                    href={`mailto:${client.client_email}`}
+                                    className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors duration-200"
+                                  >
+                                    <Mail
+                                      className="w-4 h-4"
+                                      aria-hidden="true"
+                                    />
+                                    {client.client_email}
+                                  </a>
+                                ) : (
+                                  <div className="flex items-center gap-2 text-slate-600">
+                                    <Mail
+                                      className="w-4 h-4"
+                                      aria-hidden="true"
+                                    />
+                                    {EMPTY}
                                   </div>
-                                </a>
-                                <div className="flex items-center gap-1.5 text-slate-600">
-                                  <Phone className="w-3.5 h-3.5" />
+                                )}
+                                <div className="flex items-center gap-2 text-slate-600">
+                                  <Phone
+                                    className="w-4 h-4"
+                                    aria-hidden="true"
+                                  />
                                   {formatValue(client.client_phone)}
                                 </div>
-                                <div className="flex items-center gap-1.5 text-slate-600">
-                                  <Link2 className="w-3.5 h-3.5" />
+                                <div className="flex items-center gap-2 text-slate-600">
+                                  <Link2
+                                    className="w-4 h-4"
+                                    aria-hidden="true"
+                                  />
                                   {client.client_website ? (
                                     <a
                                       className="text-primary hover:underline"
@@ -994,17 +1247,23 @@ export default function page() {
                                       {client.client_website}
                                     </a>
                                   ) : (
-                                    <span>-</span>
+                                    <span>{EMPTY}</span>
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1.5 text-slate-600 text-sm">
-                                <MapPin className="w-3.5 h-3.5" />
+                              <div className="flex items-center gap-2 text-slate-600 text-sm">
+                                <MapPin
+                                  className="w-4 h-4"
+                                  aria-hidden="true"
+                                />
                                 {formatValue(client.client_address)}
                               </div>
-                              <div className="flex items-start gap-1.5 text-slate-600">
-                                <NotebookText className="w-3.5 h-3.5 mt-0.5" />
-                                <div className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
+                              <div className="flex items-start gap-2 text-slate-600">
+                                <NotebookText
+                                  className="w-4 h-4 mt-3 shrink-0"
+                                  aria-hidden="true"
+                                />
+                                <div className="flex-1 text-sm text-slate-700 bg-slate-50 border border-slate-200 p-3 rounded-lg">
                                   {formatValue(client.client_notes)}
                                 </div>
                               </div>
@@ -1027,65 +1286,73 @@ export default function page() {
               </div>
 
               {/* Projects Table - Full Width */}
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200">
-                <div className="flex items-center justify-between p-4 border-b border-slate-100">
-                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <Building className="w-4 h-4" />
+              <div className="bg-white rounded-lg border border-slate-200">
+                <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                  <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                    <Building className="w-5 h-5" aria-hidden="true" />
                     Jobs
-                  </h3>
+                  </h2>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-500">
                       {filteredAndSortedProjects.length} of{" "}
                       {client?.projects?.length || 0} total
                     </span>
+                    {/* Save changes is the primary action while editing */}
                     <button
+                      type="button"
                       onClick={() => setShowAddProjectModal(true)}
-                      className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                      className={isEditing ? BTN_SECONDARY : BTN_PRIMARY}
                     >
-                      <Plus className="w-4 h-4" />
-                      Add Project
+                      <Plus className="w-4 h-4" aria-hidden="true" />
+                      Add project
                     </button>
                   </div>
                 </div>
 
                 {/* Tabs */}
                 <div className="border-b border-slate-200">
-                  <nav className="flex space-x-8 px-4">
+                  <nav
+                    className="flex space-x-8 px-4"
+                    role="tablist"
+                    aria-label="Job status"
+                  >
                     <button
+                      type="button"
+                      role="tab"
+                      id="jobs-tab-active"
+                      aria-selected={activeTab === "ACTIVE"}
+                      aria-controls="jobs-panel"
                       onClick={() => {
                         setActiveTab("ACTIVE");
                         setCurrentPage(1);
                       }}
-                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "ACTIVE"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
+                      className={tabClass("ACTIVE")}
                     >
                       <div className="flex items-center gap-2">
                         Active
                         {projectCounts.active > 0 && (
-                          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                          <span className={COUNT_BADGE}>
                             {projectCounts.active}
                           </span>
                         )}
                       </div>
                     </button>
                     <button
+                      type="button"
+                      role="tab"
+                      id="jobs-tab-completed"
+                      aria-selected={activeTab === "COMPLETED"}
+                      aria-controls="jobs-panel"
                       onClick={() => {
                         setActiveTab("COMPLETED");
                         setCurrentPage(1);
                       }}
-                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "COMPLETED"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
+                      className={tabClass("COMPLETED")}
                     >
                       <div className="flex items-center gap-2">
                         Completed
                         {projectCounts.completed > 0 && (
-                          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                          <span className={COUNT_BADGE}>
                             {projectCounts.completed}
                           </span>
                         )}
@@ -1094,339 +1361,414 @@ export default function page() {
                   </nav>
                 </div>
 
-                {/* Search and Sort Controls */}
-                <div className="p-4 border-b border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 w-[350px] relative">
-                      <Search className="h-4 w-4 absolute left-2.5 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search projects..."
-                        className="w-full text-slate-800 p-2 pl-8 rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
+                <div
+                  id="jobs-panel"
+                  role="tabpanel"
+                  aria-labelledby={
+                    activeTab === "ACTIVE"
+                      ? "jobs-tab-active"
+                      : "jobs-tab-completed"
+                  }
+                >
+                  {/* Search and Sort Controls */}
+                  <div className="p-4 border-b border-slate-200">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 w-full max-w-sm relative">
+                        <Search
+                          className="w-4 h-4 absolute left-3 text-slate-500"
+                          aria-hidden="true"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Search projects..."
+                          aria-label="Search projects"
+                          className="w-full text-sm text-slate-800 pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                          value={search}
+                          onChange={(e) => {
+                            setSearch(e.target.value);
+                            setCurrentPage(1);
+                          }}
+                        />
+                      </div>
 
-                    <div className="flex items-center gap-2">
-                      {isAnyFilterActive() && (
-                        <button
-                          onClick={handleReset}
-                          className="flex items-center gap-1.5 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-1.5 rounded text-xs font-medium"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          Reset
-                        </button>
-                      )}
-
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() => setShowSortDropdown(!showSortDropdown)}
-                          className="flex items-center gap-1.5 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-600 border border-slate-300 px-3 py-1.5 rounded text-xs font-medium"
-                        >
-                          <ArrowUpDown className="h-3.5 w-3.5" />
-                          <span>Sort</span>
-                        </button>
-                        {showSortDropdown && (
-                          <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                            <div className="py-1">
-                              <button
-                                onClick={() => handleSort("project_id")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Project ID {getSortIcon("project_id")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("name")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Name {getSortIcon("name")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("createdAt")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Created Date {getSortIcon("createdAt")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("number_of_lots")}
-                                className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Number of Lots {getSortIcon("number_of_lots")}
-                              </button>
-                            </div>
-                          </div>
+                      <div className="flex items-center gap-3">
+                        {isAnyFilterActive() && (
+                          <button
+                            type="button"
+                            onClick={handleReset}
+                            className="cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                          >
+                            <RotateCcw className="w-4 h-4" aria-hidden="true" />
+                            Reset
+                          </button>
                         )}
+
+                        <div className="relative" ref={sortMenuRef}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowSortDropdown(!showSortDropdown)
+                            }
+                            aria-haspopup="menu"
+                            aria-expanded={showSortDropdown}
+                            className="cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+                          >
+                            <ArrowUpDown
+                              className="w-4 h-4"
+                              aria-hidden="true"
+                            />
+                            <span>Sort</span>
+                          </button>
+                          {showSortDropdown && (
+                            <div
+                              role="menu"
+                              aria-label="Sort projects"
+                              className="absolute top-full right-0 mt-1 w-56 bg-white border border-slate-300 rounded-lg z-40"
+                            >
+                              <div className="py-1">
+                                {SORT_OPTIONS.map(({ field, label }) => (
+                                  <button
+                                    key={field}
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => handleSort(field)}
+                                    className={`${MENU_ITEM} text-slate-700 justify-between`}
+                                  >
+                                    <span>
+                                      {label}
+                                      {sortField === field && (
+                                        <span className="sr-only">
+                                          , sorted{" "}
+                                          {sortOrder === "asc"
+                                            ? "ascending"
+                                            : "descending"}
+                                        </span>
+                                      )}
+                                    </span>
+                                    {getSortIcon(field)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {!client?.projects ||
-                client.projects.length === 0 ||
-                filteredAndSortedProjects.length === 0 ? (
-                  <div className="text-center py-8 text-slate-500">
-                    <Building className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                    <p>
-                      {activeTab === "ACTIVE"
-                        ? "No active jobs found for this client"
-                        : "No completed jobs found for this client"}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-slate-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                              Project ID
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                              Name
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                              Created Date
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                              Number of Lots
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-200">
-                          {currentProjects.map((project) => {
-                            const isExpanded = expandedProjects.has(
-                              project.project_id,
-                            );
-                            const allLots = project.lots || [];
-                            // Filter lots based on active tab
-                            const filteredLots = allLots.filter(
-                              (lot) => lot.status === activeTab,
-                            );
-                            // For display in table row, show count of filtered lots
-                            const lots = filteredLots;
-                            return (
-                              <React.Fragment key={project.id}>
-                                <tr className="hover:bg-slate-50 transition-colors">
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleProjectExpansion(
-                                          project.project_id,
-                                        );
-                                      }}
-                                      className="flex items-center gap-2 text-xs font-medium text-slate-900 hover:text-primary transition-colors"
-                                    >
-                                      {isExpanded ? (
-                                        <ChevronRight className="w-4 h-4 rotate-90" />
-                                      ) : (
-                                        <ChevronRight className="w-4 h-4" />
-                                      )}
-                                      {project.project_id}
-                                    </button>
-                                  </td>
-                                  <td
-                                    className="px-4 py-2 whitespace-nowrap text-xs text-slate-600 cursor-pointer"
-                                    onClick={() =>
-                                      router.push(
-                                        `/admin/projects/${project.project_id}`,
-                                      )
-                                    }
-                                  >
-                                    <div className="flex items-center gap-1.5">
-                                      {project.name}
-                                    </div>
-                                  </td>
-                                  <td
-                                    className="px-4 py-2 whitespace-nowrap text-xs text-slate-600 cursor-pointer"
-                                    onClick={() =>
-                                      router.push(
-                                        `/admin/projects/${project.project_id}`,
-                                      )
-                                    }
-                                  >
-                                    <div className="flex items-center gap-1.5">
-                                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                      {formatDate(project.createdAt)}
-                                    </div>
-                                  </td>
-                                  <td
-                                    className="px-4 py-2 whitespace-nowrap text-xs text-slate-600 cursor-pointer"
-                                    onClick={() =>
-                                      router.push(
-                                        `/admin/projects/${project.project_id}`,
-                                      )
-                                    }
-                                  >
-                                    <div className="flex items-center gap-1.5">
-                                      <Building className="w-3.5 h-3.5 text-slate-400" />
-                                      {lots.length}
-                                    </div>
-                                  </td>
-                                </tr>
-                                {isExpanded && (
-                                  <tr>
-                                    <td
-                                      colSpan={4}
-                                      className="px-4 py-4 bg-slate-50"
-                                    >
-                                      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                                        <div className="px-4 py-2 bg-slate-100 border-b border-slate-200">
-                                          <h4 className="text-xs font-semibold text-slate-700">
-                                            Lots ({lots.length})
-                                          </h4>
-                                        </div>
-                                        {lots.length === 0 ? (
-                                          <div className="px-4 py-6 text-center text-xs text-slate-500">
-                                            No lots found for this project
-                                          </div>
+                  {hasNoProjects || filteredAndSortedProjects.length === 0 ? (
+                    <div className="flex flex-col items-center text-center py-12">
+                      <Building
+                        className="w-8 h-8 text-slate-300 mb-2"
+                        aria-hidden="true"
+                      />
+                      <p className="text-sm text-slate-600">
+                        {hasNoProjects
+                          ? "No jobs yet for this client. Add a project to get started."
+                          : search
+                            ? "No jobs match your search."
+                            : activeTab === "ACTIVE"
+                              ? "No active jobs for this client."
+                              : "No completed jobs for this client."}
+                      </p>
+                      {!hasNoProjects && isAnyFilterActive() && (
+                        <button
+                          type="button"
+                          onClick={handleReset}
+                          className={`${BTN_SECONDARY} mt-4`}
+                        >
+                          <RotateCcw className="w-4 h-4" aria-hidden="true" />
+                          Clear filters
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <th
+                                scope="col"
+                                className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                              >
+                                Project ID
+                              </th>
+                              <th
+                                scope="col"
+                                className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                              >
+                                Name
+                              </th>
+                              <th
+                                scope="col"
+                                className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                              >
+                                Created
+                              </th>
+                              <th
+                                scope="col"
+                                className="px-4 py-2 text-right text-xs font-medium text-slate-500 uppercase tracking-wider"
+                              >
+                                Lots
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {currentProjects.map((project) => {
+                              const isExpanded = expandedProjects.has(
+                                project.project_id,
+                              );
+                              const allLots = project.lots || [];
+                              // Filter lots based on active tab
+                              const projectLots = allLots.filter(
+                                (lot) => lot.status === activeTab,
+                              );
+                              const projectHref = `/admin/projects/${project.project_id}`;
+                              return (
+                                <React.Fragment key={project.id}>
+                                  <tr className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleProjectExpansion(
+                                            project.project_id,
+                                          );
+                                        }}
+                                        aria-expanded={isExpanded}
+                                        aria-controls={`lots-${project.id}`}
+                                        className="cursor-pointer flex items-center gap-2 text-sm font-medium text-slate-800 transition-colors duration-200"
+                                      >
+                                        {isExpanded ? (
+                                          <ChevronDown
+                                            className="w-4 h-4"
+                                            aria-hidden="true"
+                                          />
                                         ) : (
-                                          <div className="overflow-x-auto">
-                                            <table className="w-full">
-                                              <thead className="bg-slate-50">
-                                                <tr>
-                                                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                    Lot ID
-                                                  </th>
-                                                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                    Name
-                                                  </th>
-                                                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                    Start Date
-                                                  </th>
-                                                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                    Installation Due
-                                                  </th>
-                                                  <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                    Stage Status
-                                                  </th>
-                                                </tr>
-                                              </thead>
-                                              <tbody className="bg-white divide-y divide-slate-100">
-                                                {lots.map((lot) => {
-                                                  const stageStatus =
-                                                    getStageStatusSummary(
-                                                      lot.stages,
-                                                    );
-                                                  return (
-                                                    <tr
-                                                      key={lot.id}
-                                                      onClick={() =>
-                                                        router.push(
-                                                          `/admin/projects/${project.project_id}`,
-                                                        )
-                                                      }
-                                                      className="cursor-pointer hover:bg-slate-50 transition-colors"
+                                          <ChevronRight
+                                            className="w-4 h-4"
+                                            aria-hidden="true"
+                                          />
+                                        )}
+                                        <span className="font-mono">
+                                          {project.project_id}
+                                        </span>
+                                        <span className="sr-only">
+                                          , show lots
+                                        </span>
+                                      </button>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-700">
+                                      <Link
+                                        href={projectHref}
+                                        title={project.name}
+                                        className="block truncate max-w-md transition-colors duration-200"
+                                      >
+                                        {formatValue(project.name)}
+                                      </Link>
+                                    </td>
+                                    <td
+                                      className="px-4 py-3 whitespace-nowrap text-sm text-slate-700 cursor-pointer"
+                                      onClick={() => router.push(projectHref)}
+                                    >
+                                      {formatDate(project.createdAt)}
+                                    </td>
+                                    <td
+                                      className="px-4 py-3 whitespace-nowrap text-sm text-slate-700 text-right font-mono cursor-pointer"
+                                      onClick={() => router.push(projectHref)}
+                                    >
+                                      {projectLots.length}
+                                    </td>
+                                  </tr>
+                                  {isExpanded && (
+                                    <tr id={`lots-${project.id}`}>
+                                      <td
+                                        colSpan={4}
+                                        className="px-4 py-4 bg-slate-50"
+                                      >
+                                        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                                          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
+                                            <h3 className="text-sm font-semibold text-slate-700">
+                                              Lots ({projectLots.length})
+                                            </h3>
+                                          </div>
+                                          {projectLots.length === 0 ? (
+                                            <div className="flex flex-col items-center text-center py-12">
+                                              <Building
+                                                className="w-8 h-8 text-slate-300 mb-2"
+                                                aria-hidden="true"
+                                              />
+                                              <p className="text-sm text-slate-600">
+                                                No lots for this project.
+                                              </p>
+                                            </div>
+                                          ) : (
+                                            <div className="overflow-x-auto">
+                                              <table className="w-full">
+                                                <thead className="bg-slate-50">
+                                                  <tr>
+                                                    <th
+                                                      scope="col"
+                                                      className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
                                                     >
-                                                      <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-slate-900">
-                                                        {lot.lot_id}
-                                                      </td>
-                                                      <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-600">
-                                                        {lot.name}
-                                                      </td>
-                                                      <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-600">
-                                                        <div className="flex items-center gap-1.5">
-                                                          <Calendar className="w-3 h-3 text-slate-400" />
+                                                      Lot ID
+                                                    </th>
+                                                    <th
+                                                      scope="col"
+                                                      className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                                                    >
+                                                      Name
+                                                    </th>
+                                                    <th
+                                                      scope="col"
+                                                      className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                                                    >
+                                                      Start date
+                                                    </th>
+                                                    <th
+                                                      scope="col"
+                                                      className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                                                    >
+                                                      Installation due
+                                                    </th>
+                                                    <th
+                                                      scope="col"
+                                                      className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                                                    >
+                                                      Latest stage
+                                                    </th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-200">
+                                                  {projectLots.map((lot) => {
+                                                    const latestStage =
+                                                      getLatestStage(
+                                                        lot.stages,
+                                                      );
+                                                    return (
+                                                      <tr
+                                                        key={lot.id}
+                                                        onClick={() =>
+                                                          router.push(
+                                                            projectHref,
+                                                          )
+                                                        }
+                                                        className="cursor-pointer hover:bg-slate-50 transition-colors"
+                                                      >
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-800">
+                                                          <Link
+                                                            href={projectHref}
+                                                            onClick={(e) =>
+                                                              e.stopPropagation()
+                                                            }
+                                                            className="font-mono transition-colors duration-200"
+                                                          >
+                                                            {lot.lot_id}
+                                                          </Link>
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+                                                          {formatValue(
+                                                            lot.name,
+                                                          )}
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
                                                           {formatDate(
                                                             lot.startDate,
                                                           )}
-                                                        </div>
-                                                      </td>
-                                                      <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-600">
-                                                        <div className="flex items-center gap-1.5">
+                                                        </td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
                                                           {isInstallationDueSoon(
                                                             lot.installationDueDate,
                                                           ) ? (
-                                                            <>
-                                                              <AlertTriangle className="w-3 h-3 text-yellow-500" />
-                                                              <span className="text-yellow-600 font-medium">
-                                                                {formatDate(
-                                                                  lot.installationDueDate,
-                                                                )}
-                                                              </span>
-                                                            </>
-                                                          ) : (
-                                                            <>
-                                                              <Calendar className="w-3 h-3 text-slate-400" />
+                                                            <span
+                                                              className={`${BADGE} ${BADGE_TONES.warning}`}
+                                                            >
+                                                              <AlertTriangle
+                                                                className="w-3 h-3"
+                                                                aria-hidden="true"
+                                                              />
                                                               {formatDate(
                                                                 lot.installationDueDate,
                                                               )}
-                                                            </>
+                                                              <span className="sr-only">
+                                                                , due within 7
+                                                                days
+                                                              </span>
+                                                            </span>
+                                                          ) : (
+                                                            formatDate(
+                                                              lot.installationDueDate,
+                                                            )
                                                           )}
-                                                        </div>
-                                                      </td>
-                                                      <td className="px-3 py-2 whitespace-nowrap">
-                                                        <span
-                                                          className={`text-xs font-medium ${stageStatus.color}`}
-                                                        >
-                                                          {stageStatus.text}
-                                                        </span>
-                                                      </td>
-                                                    </tr>
-                                                  );
-                                                })}
-                                              </tbody>
-                                            </table>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                )}
-                              </React.Fragment>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
-                        <div className="text-xs text-slate-500">
-                          Showing {startIndex + 1} to{" "}
-                          {Math.min(endIndex, filteredAndSortedProjects.length)}{" "}
-                          of {filteredAndSortedProjects.length} results
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className="px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Previous
-                          </button>
-                          <div className="flex items-center gap-1">
-                            {Array.from(
-                              { length: totalPages },
-                              (_, i) => i + 1,
-                            ).map((page) => (
-                              <button
-                                key={page}
-                                onClick={() => handlePageChange(page)}
-                                className={`px-2 py-1 text-xs font-medium rounded ${
-                                  currentPage === page
-                                    ? "bg-primary text-white"
-                                    : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
-                                }`}
-                              >
-                                {page}
-                              </button>
-                            ))}
-                          </div>
-                          <button
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
-                            className="px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Next
-                          </button>
-                        </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-slate-700">
+                                                          {latestStage ? (
+                                                            <div className="flex items-center gap-2">
+                                                              <span
+                                                                className="truncate max-w-48"
+                                                                title={
+                                                                  latestStage.name
+                                                                }
+                                                              >
+                                                                {
+                                                                  latestStage.name
+                                                                }
+                                                              </span>
+                                                              <span
+                                                                className={`${BADGE} ${
+                                                                  STATUS_COLORS[
+                                                                    latestStage
+                                                                      .status
+                                                                  ] ||
+                                                                  BADGE_TONES.neutral
+                                                                }`}
+                                                              >
+                                                                {formatLabel(
+                                                                  latestStage.status,
+                                                                )}
+                                                              </span>
+                                                            </div>
+                                                          ) : (
+                                                            <span
+                                                              className={`${BADGE} ${BADGE_TONES.muted}`}
+                                                            >
+                                                              No stages
+                                                            </span>
+                                                          )}
+                                                        </td>
+                                                      </tr>
+                                                    );
+                                                  })}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                    )}
-                  </>
-                )}
+
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <PaginationFooter
+                          totalItems={filteredAndSortedProjects.length}
+                          itemsPerPage={itemsPerPage}
+                          currentPage={currentPage}
+                          onPageChange={handlePageChange}
+                          showItemsPerPage={false}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1440,7 +1782,14 @@ export default function page() {
         onConfirm={handleDeleteClientConfirm}
         deleteWithInput={true}
         heading="Client"
-        message="This will remove the client and all associated contacts. This action cannot be undone."
+        title={client ? `Delete ${client.client_name}?` : "Delete client?"}
+        warningHeading="This removes the client record"
+        message={
+          client
+            ? `${client.client_name} (${client.client_id}) and all of its contacts will be deleted.`
+            : "The client and all of its contacts will be deleted."
+        }
+        confirmButtonText="Delete client"
         comparingName={client?.client_name || ""}
         isDeleting={isDeletingClient}
         entityType="client"
@@ -1448,128 +1797,158 @@ export default function page() {
 
       {/* Add Project Modal */}
       {showAddProjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+          onClick={() => {
+            // Keep typed-in work on a stray backdrop click (DESIGN.md 15.1).
+            if (!addProjectDirty && !isCreatingProject) closeAddProjectModal();
+          }}
+        >
           <div
-            className="absolute inset-0 bg-slate-900/40"
-            onClick={() => setShowAddProjectModal(false)}
-          />
-          <div className="relative bg-white w-full max-w-4xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Building className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-lg font-semibold text-slate-700">
-                    Add New Project
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Client: {client?.client_name || ""}
-                  </div>
-                </div>
+            ref={addProjectModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-project-title"
+            className="bg-white w-full max-w-2xl rounded-xl border border-slate-200 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+              <div>
+                <h2
+                  id="add-project-title"
+                  className="text-lg font-semibold text-slate-800"
+                >
+                  Add project
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Client: {client?.client_name || EMPTY}
+                </p>
               </div>
               <button
-                onClick={() => {
-                  setShowAddProjectModal(false);
-                  setNewProject({
-                    name: "",
-                    project_id: "",
-                    startDate: "",
-                    sync_all_lots: false,
-                  });
-                  setNumberOfLots("");
-                  setLots([]);
-                }}
-                className="cursor-pointer p-2 rounded-lg hover:bg-slate-100"
+                type="button"
+                onClick={closeAddProjectModal}
+                disabled={isCreatingProject}
+                className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Close"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1">
-              <div className="p-6 space-y-6">
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreateProject();
+              }}
+              className="flex flex-col min-h-0"
+            >
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* Project Information Section */}
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Building className="w-5 h-5 text-primary" />
-                    <h2 className="text-lg font-bold text-slate-800">
-                      Project Information
-                    </h2>
-                  </div>
+                  <h3 className="text-sm font-semibold text-slate-700">
+                    Project information
+                  </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Project Name <span className="text-red-500">*</span>
+                      <label
+                        htmlFor="project-name"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        Project name <span className="text-red-600">*</span>
                       </label>
                       <input
+                        id="project-name"
                         type="text"
+                        data-autofocus
                         value={newProject.name}
                         onChange={(e) =>
-                          setNewProject({
-                            ...newProject,
-                            name: e.target.value,
-                          })
+                          handleNewProjectChange("name", e.target.value)
                         }
-                        placeholder="Eg. 5 Dundee Ave, Holden Hill SA 5088"
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        placeholder="e.g. 5 Dundee Ave, Holden Hill SA 5088"
+                        aria-invalid={!!projectErrors.name}
+                        aria-describedby={
+                          projectErrors.name ? "project-name-error" : undefined
+                        }
+                        className={`${FIELD} ${fieldTone(projectErrors.name)}`}
+                      />
+                      <FieldError
+                        id="project-name-error"
+                        message={projectErrors.name}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Project ID <span className="text-red-500">*</span>
+                      <label
+                        htmlFor="project-id"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        Project ID
                       </label>
                       <input
+                        id="project-id"
                         type="text"
                         value={newProject.project_id}
                         disabled
                         placeholder="Generating..."
-                        className="w-full text-sm text-slate-500 px-4 py-3 border border-slate-300 bg-slate-100 rounded-lg cursor-not-allowed"
+                        className="w-full text-sm font-mono text-slate-600 px-4 py-3 border border-slate-300 bg-slate-50 rounded-lg cursor-not-allowed"
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Start Date
+                      <label
+                        htmlFor="project-start-date"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        Start date
                       </label>
                       <input
+                        id="project-start-date"
                         type="date"
                         value={newProject.startDate}
                         onChange={(e) =>
-                          setNewProject({
-                            ...newProject,
-                            startDate: e.target.value,
-                          })
+                          handleNewProjectChange("startDate", e.target.value)
                         }
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                        className={`${FIELD} ${fieldTone(false)}`}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Number of Lots
+                      <label
+                        htmlFor="project-number-of-lots"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        Number of lots
                       </label>
                       <input
+                        id="project-number-of-lots"
                         type="number"
                         min="0"
                         max="100"
                         value={numberOfLots}
                         onChange={handleNumberOfLotsChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                        placeholder="Enter number of lots"
+                        aria-describedby="project-number-of-lots-hint"
+                        className={`${FIELD} ${fieldTone(false)}`}
+                        placeholder="e.g. 3"
                       />
+                      <p
+                        id="project-number-of-lots-hint"
+                        className="text-xs text-slate-500 mt-1"
+                      >
+                        Up to 100 lots.
+                      </p>
                     </div>
                   </div>
-                  <label className="mt-4 flex items-start gap-2.5 cursor-pointer">
+                  <label className="flex items-start gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={newProject.sync_all_lots}
                       onChange={(e) =>
-                        setNewProject({
-                          ...newProject,
-                          sync_all_lots: e.target.checked,
-                        })
+                        handleNewProjectChange(
+                          "sync_all_lots",
+                          e.target.checked,
+                        )
                       }
-                      className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 accent-primary"
+                      className="mt-0.5 h-4 w-4 cursor-pointer rounded-sm border-slate-300 accent-primary"
                     />
                     <span>
                       <span className="block text-sm font-medium text-slate-700">
@@ -1585,29 +1964,30 @@ export default function page() {
 
                 {/* Lots Section */}
                 {lots.length > 0 && (
-                  <div className="space-y-4 border-t pt-6">
-                    <div className="flex items-center gap-2">
-                      <Layers className="w-5 h-5 text-primary" />
-                      <h2 className="text-lg font-bold text-slate-800">
-                        Lot Information
-                      </h2>
-                    </div>
+                  <div className="space-y-4 border-t border-slate-200 pt-6">
+                    <h3 className="text-sm font-semibold text-slate-700">
+                      Lot information
+                    </h3>
                     <div className="space-y-4">
                       {lots.map((lot, index) => (
                         <div
                           key={index}
                           className="bg-slate-50 rounded-lg p-4 border border-slate-200"
                         >
-                          <h3 className="text-base font-semibold text-slate-700 mb-3">
+                          <h4 className="text-sm font-semibold text-slate-700 mb-3">
                             Lot {index + 1}
-                          </h3>
-                          <div className="space-y-3">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          </h4>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                  Lot ID <span className="text-red-500">*</span>
+                                <label
+                                  htmlFor={`lot-${index}-lotId`}
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Lot ID <span className="text-red-600">*</span>
                                 </label>
                                 <input
+                                  id={`lot-${index}-lotId`}
                                   type="text"
                                   value={lot.lotId}
                                   onChange={(e) =>
@@ -1617,23 +1997,44 @@ export default function page() {
                                       e.target.value,
                                     )
                                   }
-                                  className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                  placeholder="Eg. Lot 1"
-                                  required
+                                  aria-invalid={!!lotErrors[index]?.lotId}
+                                  aria-describedby={`lot-${index}-lotId-${
+                                    lotErrors[index]?.lotId ? "error" : "hint"
+                                  }`}
+                                  className={`${FIELD} ${fieldTone(
+                                    lotErrors[index]?.lotId,
+                                  )}`}
+                                  placeholder="e.g. Lot 1"
                                 />
-                                <p className="text-xs text-slate-500 mt-1">
-                                  Lot ID will be:{" "}
-                                  {newProject.project_id
-                                    ? `${newProject.project_id}-${lot.lotId || "XXX"}`
-                                    : "PROJECT_ID-XXX"}
-                                </p>
+                                {lotErrors[index]?.lotId ? (
+                                  <FieldError
+                                    id={`lot-${index}-lotId-error`}
+                                    message={lotErrors[index].lotId}
+                                  />
+                                ) : (
+                                  <p
+                                    id={`lot-${index}-lotId-hint`}
+                                    className="text-xs text-slate-500 mt-1"
+                                  >
+                                    Lot ID will be:{" "}
+                                    <span className="font-mono">
+                                      {newProject.project_id
+                                        ? `${newProject.project_id}-${lot.lotId || "XXX"}`
+                                        : "PROJECT_ID-XXX"}
+                                    </span>
+                                  </p>
+                                )}
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                  Client Name{" "}
-                                  <span className="text-red-500">*</span>
+                                <label
+                                  htmlFor={`lot-${index}-clientName`}
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Client name{" "}
+                                  <span className="text-red-600">*</span>
                                 </label>
                                 <input
+                                  id={`lot-${index}-clientName`}
                                   type="text"
                                   value={lot.clientName}
                                   onChange={(e) =>
@@ -1643,17 +2044,32 @@ export default function page() {
                                       e.target.value,
                                     )
                                   }
-                                  className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                  placeholder="Enter client name"
-                                  required
+                                  aria-invalid={!!lotErrors[index]?.clientName}
+                                  aria-describedby={
+                                    lotErrors[index]?.clientName
+                                      ? `lot-${index}-clientName-error`
+                                      : undefined
+                                  }
+                                  className={`${FIELD} ${fieldTone(
+                                    lotErrors[index]?.clientName,
+                                  )}`}
+                                  placeholder="e.g. Sam Taylor"
+                                />
+                                <FieldError
+                                  id={`lot-${index}-clientName-error`}
+                                  message={lotErrors[index]?.clientName}
                                 />
                               </div>
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Installation Due Date
+                              <label
+                                htmlFor={`lot-${index}-installationDueDate`}
+                                className="block text-sm font-medium text-slate-700 mb-1.5"
+                              >
+                                Installation due date
                               </label>
                               <input
+                                id={`lot-${index}-installationDueDate`}
                                 type="date"
                                 value={lot.installationDueDate}
                                 onChange={(e) =>
@@ -1663,14 +2079,18 @@ export default function page() {
                                     e.target.value,
                                   )
                                 }
-                                className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
+                                className={`${FIELD} ${fieldTone(false)}`}
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                              <label
+                                htmlFor={`lot-${index}-notes`}
+                                className="block text-sm font-medium text-slate-700 mb-1.5"
+                              >
                                 Notes
                               </label>
                               <textarea
+                                id={`lot-${index}-notes`}
                                 value={lot.notes}
                                 onChange={(e) =>
                                   handleLotChange(
@@ -1680,8 +2100,8 @@ export default function page() {
                                   )
                                 }
                                 rows={2}
-                                className="w-full text-sm text-slate-800 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none resize-none"
-                                placeholder="Enter any additional notes..."
+                                className={`${FIELD} ${fieldTone(false)} resize-none`}
+                                placeholder="e.g. Access via the side gate"
                               />
                             </div>
                           </div>
@@ -1691,34 +2111,30 @@ export default function page() {
                   </div>
                 )}
               </div>
-            </div>
 
-            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 shrink-0">
-              <button
-                onClick={() => {
-                  setShowAddProjectModal(false);
-                  setNewProject({
-                    name: "",
-                    project_id: "",
-                    startDate: "",
-                    sync_all_lots: false,
-                  });
-                  setNumberOfLots("");
-                  setLots([]);
-                }}
-                disabled={isCreatingProject}
-                className="cursor-pointer px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateProject}
-                disabled={isCreatingProject}
-                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCreatingProject ? "Creating..." : "Create Project"}
-              </button>
-            </div>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 shrink-0">
+                <button
+                  type="button"
+                  onClick={closeAddProjectModal}
+                  disabled={isCreatingProject}
+                  className={BTN_SECONDARY}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingProject}
+                  className={BTN_PRIMARY}
+                >
+                  {isCreatingProject ? (
+                    <Spinner />
+                  ) : (
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  Create project
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

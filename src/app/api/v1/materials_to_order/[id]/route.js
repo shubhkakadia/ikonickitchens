@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
+import { publishMtoCreated } from "@/lib/updates";
 
 // Values of the MTOStatus enum (prisma/schema.prisma)
 const MTO_STATUSES = ["DRAFT", "PARTIALLY_ORDERED", "FULLY_ORDERED", "CLOSED"];
@@ -347,6 +348,7 @@ export async function PATCH(request, { params }) {
     };
 
     let mto;
+    let prevItemCount = null;
     await prisma.$transaction(async (tx) => {
       // Completion consumes stock for every unused line, and item edits
       // rewrite lines, so serialise them against each other and against stock
@@ -369,12 +371,17 @@ export async function PATCH(request, { params }) {
 
       const prev = await tx.materials_to_order.findUnique({
         where: { id },
-        select: { used_material_completed: true, is_deleted: true },
+        select: {
+          used_material_completed: true,
+          is_deleted: true,
+          _count: { select: { items: true } },
+        },
       });
 
       if (!prev || prev.is_deleted) {
         throw new Error("Materials to order not found");
       }
+      prevItemCount = prev._count?.items ?? null;
 
       // One-way process: once completed, it cannot be reverted
       if (used_material_completed === false) {
@@ -539,6 +546,16 @@ export async function PATCH(request, { params }) {
       "UPDATE",
       `Materials to order updated successfully for project: ${projectName}`,
     );
+
+    // A draft that had no items and now has some is "created" for the feed
+    if (prevItemCount === 0 && mto.items?.length > 0) {
+      await publishMtoCreated({
+        req: request,
+        mtoId: id,
+        projectName: mto.project?.name,
+        itemCount: mto.items.length,
+      });
+    }
 
     // Send notification for MTO update (only if items or status changed)
     if (data.items !== undefined || data.status !== undefined) {

@@ -1,19 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  Chart as ChartJS,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend,
-} from "chart.js";
 import { Bar } from "react-chartjs-2";
-import { Building2, Layers3, TrendingDown, Wallet } from "lucide-react";
-import SectionCard, { EmptyState } from "./SectionCard";
 import {
-  CHART_COLORS,
+  Building2,
+  Layers3,
+  Shapes,
+  Timer,
+  TrendingDown,
+  Wallet,
+} from "lucide-react";
+import SectionCard, { EmptyState } from "./SectionCard";
+import HBarList from "./HBarList";
+import InsightState from "./InsightState";
+import { barDataset, barOptions } from "../lib/charts";
+import {
   SERIES_1,
   SERIES_2,
   formatCompactCurrency,
@@ -21,8 +22,6 @@ import {
   formatMonthLabel,
   titleCase,
 } from "../lib/format";
-
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 // Two series, one shared unit (AUD) so they share one axis. Colours come from
 // the shared series constants (DESIGN.md 5.6) rather than inline hex.
@@ -40,80 +39,30 @@ const AGEING = [
   { key: "d60plus", label: "60+ days", color: "#b91c1c" }, // red-700
 ];
 
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  interaction: { mode: "index", intersect: false },
-  plugins: {
-    legend: {
-      position: "bottom",
-      labels: {
-        boxWidth: 10,
-        boxHeight: 10,
-        usePointStyle: true,
-        pointStyle: "circle",
-        font: { size: 11 },
-        color: CHART_COLORS.legend,
-      },
-    },
-    tooltip: {
-      backgroundColor: CHART_COLORS.tooltip,
-      padding: 10,
-      cornerRadius: 8,
-      titleFont: { size: 12 },
-      bodyFont: { size: 12 },
-      callbacks: {
-        label: (ctx) =>
-          `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y ?? 0)}`,
-      },
-    },
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      border: { display: false },
-      grid: { color: CHART_COLORS.grid },
-      ticks: {
-        font: { size: 10 },
-        color: CHART_COLORS.tick,
-        callback: (value) => formatCompactCurrency(value),
-      },
-    },
-    x: {
-      border: { display: false },
-      grid: { display: false },
-      ticks: { font: { size: 10 }, color: CHART_COLORS.tick },
-    },
-  },
-};
+const chartOptions = barOptions({
+  format: formatCurrency,
+  tick: formatCompactCurrency,
+});
 
 function StatusBars({ rows, emptyMessage }) {
-  const max = Math.max(1, ...(rows ?? []).map((r) => r.count));
-  if (!rows || rows.length === 0)
-    return <EmptyState message={emptyMessage} className="py-6" />;
   return (
-    <div className="space-y-1.5">
-      {rows.map((row) => (
-        <div key={row.status} className="flex items-center gap-3">
-          <span className="text-xs text-slate-600 w-36 shrink-0 truncate">
-            {titleCase(row.status)}
-          </span>
-          <div className="flex-1 h-4 bg-slate-100 rounded-r overflow-hidden min-w-0">
-            <div
-              className="h-full rounded-r bg-series-1"
-              style={{ width: `${Math.max(2, (row.count / max) * 100)}%` }}
-            />
-          </div>
-          <span className="text-xs font-semibold text-slate-700 w-8 text-right shrink-0 tabular-nums">
-            {row.count}
-          </span>
-        </div>
-      ))}
-    </div>
+    <HBarList
+      rows={rows}
+      label={(row) => titleCase(row.status)}
+      value={(row) => row.count}
+      emptyMessage={emptyMessage}
+      labelWidth="w-36"
+    />
   );
 }
 
-export default function ProcurementPanel({ procurement, permissions }) {
+export default function ProcurementPanel({
+  procurement,
+  permissions,
+  insights,
+  insightsLoading,
+  insightsError,
+}) {
   const spendData = useMemo(() => {
     const rows = procurement?.spendByMonth ?? [];
     if (rows.length === 0) return null;
@@ -124,22 +73,16 @@ export default function ProcurementPanel({ procurement, permissions }) {
     return {
       labels: rows.map((r) => formatMonthLabel(r.month)),
       datasets: [
-        {
-          label: "Purchase orders",
-          data: rows.map((r) => Number(r.poTotal) || 0),
-          backgroundColor: SERIES_PO,
-          borderRadius: 4,
-          borderSkipped: "bottom",
-          maxBarThickness: 18,
-        },
-        {
-          label: "Supplier statements",
-          data: rows.map((r) => Number(r.statementTotal) || 0),
-          backgroundColor: SERIES_STATEMENT,
-          borderRadius: 4,
-          borderSkipped: "bottom",
-          maxBarThickness: 18,
-        },
+        barDataset(
+          "Purchase orders",
+          rows.map((r) => Number(r.poTotal) || 0),
+          SERIES_PO,
+        ),
+        barDataset(
+          "Supplier statements",
+          rows.map((r) => Number(r.statementTotal) || 0),
+          SERIES_STATEMENT,
+        ),
       ],
     };
   }, [procurement]);
@@ -168,14 +111,21 @@ export default function ProcurementPanel({ procurement, permissions }) {
           ) : (
             <EmptyState
               message="No purchase order or statement totals recorded in the last 12 months."
-              className="h-[240px]"
+              className="h-60"
             />
           )}
         </SectionCard>
 
-        <SectionCard title="Top suppliers" subtitle="By spend, last 12 months" icon={Building2}>
+        <SectionCard
+          title="Top suppliers"
+          subtitle="By spend, last 12 months"
+          icon={Building2}
+        >
           {topSuppliers.length === 0 ? (
-            <EmptyState message="No supplier spend recorded." icon={Building2} />
+            <EmptyState
+              message="No supplier spend recorded."
+              icon={Building2}
+            />
           ) : (
             <div className="space-y-3">
               {topSuppliers.map((supplier) => (
@@ -272,6 +222,55 @@ export default function ProcurementPanel({ procurement, permissions }) {
           </SectionCard>
         )}
       </div>
+
+      {permissions?.purchaseOrders && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SectionCard
+            title="Spend by category"
+            subtitle="Purchase order lines, last 12 months"
+            icon={Shapes}
+          >
+            <InsightState loading={insightsLoading} error={insightsError}>
+              <HBarList
+                rows={insights?.spendByCategory}
+                label={(row) => titleCase(row.category)}
+                value={(row) => row.total}
+                format={formatCompactCurrency}
+                detail={(row) => formatCurrency(row.total)}
+                emptyMessage="No priced purchase order lines in the last 12 months."
+                labelWidth="w-28"
+              />
+            </InsightState>
+          </SectionCard>
+
+          <SectionCard
+            title="Supplier lead time"
+            subtitle="Average days from order to first stock receipt, last 12 months"
+            icon={Timer}
+          >
+            <InsightState loading={insightsLoading} error={insightsError}>
+              <HBarList
+                rows={insights?.leadTimes}
+                label={(row) => row.name}
+                value={(row) => row.avgDays}
+                format={(v) => `${v}d`}
+                detail={(row) =>
+                  `${row.orders} order${row.orders === 1 ? "" : "s"} received`
+                }
+                tone={(row) =>
+                  row.avgDays > 21 ? "bg-red-700" : "bg-series-1"
+                }
+                emptyMessage="No purchase orders have been received into stock yet."
+              />
+              {insights?.leadTimes?.some((row) => row.avgDays > 21) && (
+                <p className="text-xs text-slate-500 mt-3">
+                  Red bars average over 21 days, the late-delivery threshold.
+                </p>
+              )}
+            </InsightState>
+          </SectionCard>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
 import path from "path";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { publishUpdate } from "@/lib/updates";
 
 export async function GET(request, { params }) {
   try {
@@ -194,6 +195,16 @@ export async function POST(request, { params }) {
       "CREATE",
       `Statement uploaded successfully: ${statement.month_year} for supplier: ${supplier.name}`,
     );
+
+    await publishUpdate({
+      req: request,
+      type: "SUPPLIER_STATEMENT_ADDED",
+      title: "Supplier statement added",
+      message: `${supplier.name}: ${statement.month_year}${
+        statement.amount ? ` ($${Number(statement.amount).toFixed(2)})` : ""
+      }`,
+      url: `/admin/suppliers/statements?statement=${statement.id}`,
+    });
 
     // Send notification for supplier statement creation
     try {

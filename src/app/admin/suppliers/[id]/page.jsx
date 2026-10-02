@@ -9,11 +9,10 @@ import {
   Phone,
   Link2,
   NotebookText,
-  X,
   MapPin,
   Trash2,
   AlertTriangle,
-  User,
+  Building,
   Package,
   FileText,
   PackagePlus,
@@ -21,6 +20,9 @@ import {
   Receipt,
   BarChart3,
   Boxes,
+  Check,
+  MoreVertical,
+  RotateCcw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
@@ -28,15 +30,147 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import ContactSection from "@/components/ContactSection";
-import { CiMenuKebab } from "react-icons/ci";
 import MaterialsToOrder from "../components/MaterialsToOrder";
 import PurchaseOrder from "../components/PurchaseOrder";
 import Statement from "../components/Statement";
 import Image from "next/image";
 import AdminShell from "@/components/AdminShell";
 import { validatePhone, formatPhoneToNational } from "@/components/validators";
+import {
+  BADGE,
+  BADGE_TONES,
+  COUNT_BADGE,
+} from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
 
-export default function page() {
+const EMPTY = "—";
+
+// Form-field rules (DESIGN.md 9.2): 14px, slate-300 border, primary focus ring.
+// Error state swaps the border and ring to red and is paired with a message.
+const FIELD =
+  "w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-200";
+const fieldTone = (hasError) =>
+  hasError
+    ? "border-red-500 focus:ring-red-500"
+    : "border-slate-300 focus:ring-primary";
+
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 transition-colors flex items-center gap-2";
+const TH =
+  "px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider";
+
+const MAIN_TABS = [
+  { value: "materials-to-order", label: "Materials to order", icon: Package },
+  { value: "purchase-order", label: "Purchase orders", icon: PackagePlus },
+  { value: "statements", label: "Statements", icon: Receipt },
+  { value: "cost-sheet", label: "Cost sheet", icon: FileText },
+  { value: "items", label: "Items", icon: Boxes },
+];
+
+const ITEM_CATEGORIES = [
+  "SHEET",
+  "HANDLE",
+  "HARDWARE",
+  "ACCESSORY",
+  "EDGING_TAPE",
+];
+
+// Currency is AUD and prices carry cents, so this stays local rather than
+// using the whole-dollar shared formatCurrency (DESIGN.md 15.7).
+const PRICE = new Intl.NumberFormat("en-AU", {
+  style: "currency",
+  currency: "AUD",
+});
+
+function FieldError({ id, message }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="text-xs text-red-600 mt-1">
+      {message}
+    </p>
+  );
+}
+
+function Spinner() {
+  return (
+    <span
+      className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+      aria-hidden="true"
+    />
+  );
+}
+
+const formatValue = (value) => {
+  if (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    value === "null"
+  ) {
+    return EMPTY;
+  }
+  if (typeof value === "string" && value.trim() === "") {
+    return EMPTY;
+  }
+  return value;
+};
+
+const getInitials = (name) => {
+  if (!name) return "?";
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
+  return `${parts[0][0] || ""}${
+    parts[parts.length - 1][0] || ""
+  }`.toUpperCase();
+};
+
+// The label/value rows shown in the Details column, by item category.
+const getItemDetails = (item) => {
+  const details = [];
+  if (item.sheet) {
+    details.push(
+      ["Brand", item.sheet.brand],
+      ["Colour", item.sheet.color],
+      ["Finish", item.sheet.finish],
+    );
+    if (item.sheet.face) details.push(["Face", item.sheet.face]);
+    details.push(["Dimensions", item.sheet.dimensions]);
+  }
+  if (item.handle) {
+    details.push(
+      ["Brand", item.handle.brand],
+      ["Colour", item.handle.color],
+      ["Type", item.handle.type],
+      ["Dimensions", item.handle.dimensions],
+    );
+    if (item.handle.material) details.push(["Material", item.handle.material]);
+  }
+  if (item.hardware) {
+    details.push(["Name", item.hardware.name], ["Type", item.hardware.type]);
+    if (item.hardware.dimensions)
+      details.push(["Dimensions", item.hardware.dimensions]);
+    if (item.hardware.sub_category)
+      details.push(["Sub category", item.hardware.sub_category]);
+  }
+  if (item.accessory) {
+    details.push(["Name", item.accessory.name]);
+  }
+  if (item.edging_tape) {
+    details.push(
+      ["Brand", item.edging_tape.brand],
+      ["Colour", item.edging_tape.color],
+      ["Finish", item.edging_tape.finish],
+      ["Dimensions", item.edging_tape.dimensions],
+    );
+  }
+  return details;
+};
+
+export default function SupplierDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const { getToken } = useAuth();
@@ -55,6 +189,8 @@ export default function page() {
   const [poCount, setPoCount] = useState(0);
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [itemsError, setItemsError] = useState(null);
+  const [failedImages, setFailedImages] = useState(() => new Set());
   const [itemsCategoryTab, setItemsCategoryTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef(null);
@@ -87,17 +223,24 @@ export default function page() {
     };
   }, [showDropdown]);
 
+  // The actions menu closes on Escape (DESIGN.md 9.4, 13). The delete
+  // confirmation is destructive and needs an explicit button.
+  useEffect(() => {
+    if (!showDropdown) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setShowDropdown(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showDropdown]);
+
   const fetchSupplier = async () => {
     try {
       setLoading(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
 
@@ -111,14 +254,17 @@ export default function page() {
         setSupplier(response.data.data);
         setContacts(response.data.data.contacts || []);
       } else {
-        setError(response.data.message || "Failed to fetch supplier data");
+        setError(
+          response.data.message ||
+            "Couldn't load this supplier. Check your connection and try again.",
+        );
       }
     } catch (err) {
       console.error("API Error:", err);
       console.error("Error Response:", err.response?.data);
       setError(
         err.response?.data?.message ||
-          "An error occurred while fetching supplier data",
+          "Couldn't load this supplier. Check your connection and try again.",
       );
     } finally {
       setLoading(false);
@@ -128,6 +274,7 @@ export default function page() {
   const fetchItems = async () => {
     try {
       setLoadingItems(true);
+      setItemsError(null);
       const sessionToken = getToken();
 
       if (!sessionToken) {
@@ -145,11 +292,11 @@ export default function page() {
       }
     } catch (err) {
       console.error("Error fetching items:", err);
-      toast.error(err.response?.data?.message || "Failed to fetch items", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      const message =
+        err.response?.data?.message ||
+        "Couldn't load items. Check your connection and try again.";
+      setItemsError(message);
+      toast.error(message);
     } finally {
       setLoadingItems(false);
     }
@@ -171,16 +318,13 @@ export default function page() {
   };
 
   const handleSave = async () => {
+    if (isUpdating) return;
     try {
       setIsUpdating(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
 
@@ -202,35 +346,19 @@ export default function page() {
 
       if (response.data.status) {
         setSupplier(response.data.data);
-        toast.success("Supplier updated successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        });
+        toast.success("Supplier updated.");
         setIsEditing(false);
       } else {
-        toast.error(response.data.message || "Failed to update supplier", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't save the supplier. Check the details and try again.",
+        );
       }
     } catch (error) {
       console.error("Error updating supplier:", error);
       toast.error(
         error.response?.data?.message ||
-          "Failed to update supplier. Please try again.",
-        {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        },
+          "Couldn't save the supplier. Check your connection and try again.",
       );
     } finally {
       setIsUpdating(false);
@@ -249,36 +377,12 @@ export default function page() {
     }));
   };
 
-  const formatValue = (value) => {
-    if (
-      value === null ||
-      value === undefined ||
-      value === "" ||
-      value === "null"
-    ) {
-      return "-";
-    }
-    if (typeof value === "string" && value.trim() === "") {
-      return "-";
-    }
-    return value;
-  };
-
-  const getInitials = (name) => {
-    if (!name) return "?";
-    const parts = name.trim().split(" ");
-    if (parts.length === 1) return parts[0][0]?.toUpperCase() || "?";
-    return `${parts[0][0] || ""}${
-      parts[parts.length - 1][0] || ""
-    }`.toUpperCase();
-  };
-
   const handleDeleteSupplierConfirm = async () => {
     try {
       setIsDeletingSupplier(true);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
       const response = await axios.delete(
@@ -288,16 +392,21 @@ export default function page() {
         },
       );
       if (!response?.data?.status) {
-        toast.error(response?.data?.message || "Failed to delete supplier");
+        toast.error(
+          response?.data?.message || "Couldn't delete the supplier. Try again.",
+        );
         return;
       }
-      toast.success("Supplier deleted successfully");
+      toast.success("Supplier deleted.");
       setShowDeleteSupplierModal(false);
       // Navigate back to suppliers list
       router.push("/admin/suppliers");
     } catch (err) {
       console.error("Delete supplier failed", err);
-      toast.error(err?.response?.data?.message || "An error occurred");
+      toast.error(
+        err?.response?.data?.message ||
+          "Couldn't delete the supplier. Check your connection and try again.",
+      );
     } finally {
       setIsDeletingSupplier(false);
     }
@@ -348,86 +457,135 @@ export default function page() {
     });
   }, [items, itemsCategoryTab, searchQuery]);
 
+  const phoneError =
+    editData.phone && !validatePhone(editData.phone)
+      ? "Enter a valid Australian phone number."
+      : null;
+
+  const mainTabCount = {
+    "materials-to-order": mtoCount,
+    "purchase-order": poCount,
+  };
+
+  const tabClass = (isActive, padding) =>
+    `cursor-pointer ${padding} px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+      isActive
+        ? "border-primary text-primary"
+        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+    }`;
+
+  const clearItemFilters = () => {
+    setSearchQuery("");
+    setItemsCategoryTab("all");
+  };
+
   return (
     <AdminShell>
       <main className="h-full overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
+          <div
+            className="flex items-center justify-center h-full"
+            role="status"
+          >
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-              <p className="text-slate-600">Loading supplier details...</p>
+              <div
+                className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-slate-600">
+                Loading supplier details...
+              </p>
             </div>
           </div>
         ) : error ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-red-600 mb-4">{error}</p>
+              <AlertTriangle
+                className="w-8 h-8 text-red-500 mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-red-600 mb-4" role="alert">
+                {error}
+              </p>
               <button
+                type="button"
                 onClick={() => window.location.reload()}
-                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                className={`${BTN_PRIMARY} mx-auto`}
               >
-                Try Again
+                Try again
               </button>
             </div>
           </div>
         ) : !supplier ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <User className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600">Supplier not found</p>
+              <Building
+                className="w-8 h-8 text-slate-300 mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-slate-600">
+                This supplier could not be found. They may have been deleted.
+              </p>
             </div>
           </div>
         ) : (
           <div className="p-3">
-            {/* Header */}
+            {/* Header: back, record name, record actions */}
             <div className="flex items-center gap-3 mb-4">
               <TabsController back={true}>
-                <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                  <ChevronLeft className="w-6 h-6 text-slate-600" />
-                </div>
+                <span className="cursor-pointer flex p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200">
+                  <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+                  <span className="sr-only">Back</span>
+                </span>
               </TabsController>
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-slate-600">
+              <div className="flex-1 flex flex-wrap items-center gap-3 min-w-0">
+                <h1 className="text-xl font-semibold text-slate-800 truncate">
                   {supplier.name}
                 </h1>
               </div>
               <div className="flex gap-2">
                 {!isEditing ? (
-                  <div
-                    ref={dropdownRef}
-                    className="relative dropdown-container"
-                  >
+                  <div ref={dropdownRef} className="relative">
                     <button
+                      type="button"
                       onClick={() => setShowDropdown(!showDropdown)}
-                      className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                      aria-haspopup="menu"
+                      aria-expanded={showDropdown}
+                      className={BTN_SECONDARY}
                     >
-                      <CiMenuKebab className="w-4 h-4 text-slate-600" />
-                      <span className="text-slate-600">More Actions</span>
+                      <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                      <span>More actions</span>
                     </button>
 
                     {showDropdown && (
-                      <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                      <div
+                        role="menu"
+                        className="absolute right-0 mt-1 w-56 bg-white border border-slate-300 rounded-lg z-40"
+                      >
                         <div className="py-1">
                           <button
+                            type="button"
+                            role="menuitem"
                             onClick={() => {
                               handleEdit();
                               setShowDropdown(false);
                             }}
-                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                            className={`${MENU_ITEM} text-slate-700`}
                           >
-                            <Edit className="w-4 h-4" />
-                            Edit Supplier Details
+                            <Edit className="w-4 h-4" aria-hidden="true" />
+                            Edit supplier details
                           </button>
                           <button
+                            type="button"
+                            role="menuitem"
                             onClick={() => {
                               setShowDeleteSupplierModal(true);
                               setShowDropdown(false);
                             }}
-                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
+                            className={`${MENU_ITEM} text-red-700 hover:bg-red-50`}
                           >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Supplier
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                            Delete supplier
                           </button>
                         </div>
                       </div>
@@ -436,18 +594,25 @@ export default function page() {
                 ) : (
                   <>
                     <button
-                      onClick={handleSave}
-                      disabled={isUpdating}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Edit className="w-4 h-4" />
-                      {isUpdating ? "Saving..." : "Save"}
-                    </button>
-                    <button
+                      type="button"
                       onClick={handleCancel}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                      disabled={isUpdating}
+                      className={BTN_SECONDARY}
                     >
                       Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      form="supplier-edit-form"
+                      disabled={isUpdating}
+                      className={BTN_PRIMARY}
+                    >
+                      {isUpdating ? (
+                        <Spinner />
+                      ) : (
+                        <Check className="w-4 h-4" aria-hidden="true" />
+                      )}
+                      Save changes
                     </button>
                   </>
                 )}
@@ -460,80 +625,59 @@ export default function page() {
               <div className="grid grid-cols-10 gap-4">
                 {/* Basic Information - 70% width */}
                 <div className="col-span-7">
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
                     <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-linear-to-br from-secondary to-primary rounded-full flex items-center justify-center text-white text-lg font-bold">
+                      <div
+                        className="w-16 h-16 shrink-0 bg-slate-100 border border-slate-200 rounded-full flex items-center justify-center text-slate-700 text-lg font-semibold"
+                        aria-hidden="true"
+                      >
                         {getInitials(supplier.name)}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         {isEditing ? (
-                          <div className="space-y-3">
-                            <input
-                              type="text"
-                              value={editData.name || ""}
-                              onChange={(e) =>
-                                handleInputChange("name", e.target.value)
-                              }
-                              placeholder={supplier.name}
-                              className="text-xl font-bold text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                            />
-                            <p className="text-sm text-slate-500">
-                              Supplier ID: {supplier.supplier_id}
+                          <form
+                            id="supplier-edit-form"
+                            noValidate
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleSave();
+                            }}
+                            className="space-y-4"
+                          >
+                            <p className="text-xs text-slate-500">
+                              Supplier ID:{" "}
+                              <span className="font-mono">
+                                {supplier.supplier_id}
+                              </span>
                             </p>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Mail className="w-4 h-4 text-slate-600" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label
+                                  htmlFor="supplier-name"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Supplier name
+                                </label>
                                 <input
-                                  type="email"
-                                  value={editData.email || ""}
+                                  id="supplier-name"
+                                  type="text"
+                                  value={editData.name || ""}
                                   onChange={(e) =>
-                                    handleInputChange("email", e.target.value)
+                                    handleInputChange("name", e.target.value)
                                   }
-                                  placeholder={supplier.email || "Email"}
-                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  placeholder="e.g. Hafele Australia"
+                                  className={`${FIELD} ${fieldTone(false)}`}
                                 />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Phone className="w-4 h-4 text-slate-600" />
-                                <div className="flex-1">
-                                  <input
-                                    type="tel"
-                                    value={editData.phone || ""}
-                                    onChange={(e) =>
-                                      handleInputChange("phone", e.target.value)
-                                    }
-                                    placeholder="Eg. 0400 123 456 or +61 400 123 456"
-                                    className={`text-sm text-slate-600 px-2 py-1 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none w-full ${
-                                      editData.phone &&
-                                      !validatePhone(editData.phone)
-                                        ? "border-red-500"
-                                        : "border-slate-300"
-                                    }`}
-                                  />
-                                  {editData.phone &&
-                                    !validatePhone(editData.phone) && (
-                                      <p className="mt-1 text-xs text-red-500">
-                                        Please enter a valid Australian phone
-                                        number
-                                      </p>
-                                    )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Link2 className="w-4 h-4 text-slate-600" />
+                              <div>
+                                <label
+                                  htmlFor="supplier-abn"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  ABN
+                                </label>
                                 <input
-                                  type="url"
-                                  value={editData.website || ""}
-                                  onChange={(e) =>
-                                    handleInputChange("website", e.target.value)
-                                  }
-                                  placeholder={supplier.website || "Website"}
-                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
-                                />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm text-slate-600">ABN</p>
-                                <input
+                                  id="supplier-abn"
                                   type="text"
                                   value={editData.abn_number || ""}
                                   onChange={(e) =>
@@ -542,62 +686,158 @@ export default function page() {
                                       e.target.value,
                                     )
                                   }
-                                  placeholder={
-                                    supplier.abn_number || "ABN Number"
-                                  }
-                                  className="text-sm text-slate-600 font-mono px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  placeholder="e.g. 12 345 678 901"
+                                  className={`${FIELD} font-mono ${fieldTone(false)}`}
                                 />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-slate-600" />
+                              <div>
+                                <label
+                                  htmlFor="supplier-email"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Email
+                                </label>
                                 <input
+                                  id="supplier-email"
+                                  type="email"
+                                  value={editData.email || ""}
+                                  onChange={(e) =>
+                                    handleInputChange("email", e.target.value)
+                                  }
+                                  placeholder="e.g. orders@example.com"
+                                  className={`${FIELD} ${fieldTone(false)}`}
+                                />
+                              </div>
+                              <div>
+                                <label
+                                  htmlFor="supplier-phone"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Phone
+                                </label>
+                                <input
+                                  id="supplier-phone"
+                                  type="tel"
+                                  value={editData.phone || ""}
+                                  onChange={(e) =>
+                                    handleInputChange("phone", e.target.value)
+                                  }
+                                  placeholder="e.g. 0400 123 456 or +61 400 123 456"
+                                  aria-invalid={!!phoneError}
+                                  aria-describedby={
+                                    phoneError
+                                      ? "supplier-phone-error"
+                                      : undefined
+                                  }
+                                  className={`${FIELD} ${fieldTone(phoneError)}`}
+                                />
+                                <FieldError
+                                  id="supplier-phone-error"
+                                  message={phoneError}
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <label
+                                  htmlFor="supplier-website"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Website
+                                </label>
+                                <input
+                                  id="supplier-website"
+                                  type="url"
+                                  value={editData.website || ""}
+                                  onChange={(e) =>
+                                    handleInputChange("website", e.target.value)
+                                  }
+                                  placeholder="e.g. https://example.com"
+                                  className={`${FIELD} ${fieldTone(false)}`}
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <label
+                                  htmlFor="supplier-address"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Address
+                                </label>
+                                <input
+                                  id="supplier-address"
                                   type="text"
                                   value={editData.address || ""}
                                   onChange={(e) =>
                                     handleInputChange("address", e.target.value)
                                   }
-                                  placeholder={supplier.address || "Address"}
-                                  className="text-sm text-slate-600 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  placeholder="e.g. 5 Dundee Ave, Holden Hill SA 5088"
+                                  className={`${FIELD} ${fieldTone(false)}`}
                                 />
                               </div>
-                              <div className="flex items-start gap-2">
-                                <NotebookText className="w-4 h-4 text-slate-600 mt-1" />
+                              <div className="md:col-span-2">
+                                <label
+                                  htmlFor="supplier-notes"
+                                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                                >
+                                  Notes
+                                </label>
                                 <textarea
+                                  id="supplier-notes"
                                   value={editData.notes || ""}
                                   onChange={(e) =>
                                     handleInputChange("notes", e.target.value)
                                   }
-                                  placeholder={formatValue(supplier.notes)}
                                   rows={3}
-                                  className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none flex-1"
+                                  className={`${FIELD} ${fieldTone(false)}`}
                                 />
                               </div>
                             </div>
-                          </div>
+                          </form>
                         ) : (
                           <>
-                            <div className="flex items-center gap-2 mb-2">
-                              <h2 className="text-lg font-bold text-slate-800">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <h2 className="text-lg font-semibold text-slate-800">
                                 {supplier.name}
                               </h2>
                             </div>
                             <p className="text-xs text-slate-500 mb-3">
-                              ID: {supplier.supplier_id}
+                              ID:{" "}
+                              <span className="font-mono">
+                                {supplier.supplier_id}
+                              </span>
                             </p>
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                               <div className="flex flex-wrap gap-3 text-sm">
-                                <a href={`mailto:${supplier.email}`}>
-                                  <div className="flex items-center gap-1.5 text-slate-600 hover:text-slate-800">
-                                    <Mail className="w-3.5 h-3.5" />
-                                    {formatValue(supplier.email)}
+                                {supplier.email ? (
+                                  <a
+                                    href={`mailto:${supplier.email}`}
+                                    className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors duration-200"
+                                  >
+                                    <Mail
+                                      className="w-4 h-4"
+                                      aria-hidden="true"
+                                    />
+                                    {supplier.email}
+                                  </a>
+                                ) : (
+                                  <div className="flex items-center gap-2 text-slate-600">
+                                    <Mail
+                                      className="w-4 h-4"
+                                      aria-hidden="true"
+                                    />
+                                    {EMPTY}
                                   </div>
-                                </a>
-                                <div className="flex items-center gap-1.5 text-slate-600">
-                                  <Phone className="w-3.5 h-3.5" />
+                                )}
+                                <div className="flex items-center gap-2 text-slate-600">
+                                  <Phone
+                                    className="w-4 h-4"
+                                    aria-hidden="true"
+                                  />
                                   {formatValue(supplier.phone)}
                                 </div>
-                                <div className="flex items-center gap-1.5 text-slate-600">
-                                  <Link2 className="w-3.5 h-3.5" />
+                                <div className="flex items-center gap-2 text-slate-600">
+                                  <Link2
+                                    className="w-4 h-4"
+                                    aria-hidden="true"
+                                  />
                                   {supplier.website ? (
                                     <a
                                       className="text-primary hover:underline"
@@ -608,20 +848,29 @@ export default function page() {
                                       {supplier.website}
                                     </a>
                                   ) : (
-                                    <span>-</span>
+                                    <span>{EMPTY}</span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-1.5 text-slate-600 font-mono">
-                                  ABN: {formatValue(supplier.abn_number)}
+                                <div className="flex items-center gap-2 text-slate-600">
+                                  <span>ABN:</span>
+                                  <span className="font-mono">
+                                    {formatValue(supplier.abn_number)}
+                                  </span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1.5 text-slate-600 text-sm">
-                                <MapPin className="w-3.5 h-3.5" />
+                              <div className="flex items-center gap-2 text-slate-600 text-sm">
+                                <MapPin
+                                  className="w-4 h-4"
+                                  aria-hidden="true"
+                                />
                                 {formatValue(supplier.address)}
                               </div>
-                              <div className="flex items-start gap-1.5 text-slate-600">
-                                <NotebookText className="w-3.5 h-3.5 mt-0.5" />
-                                <div className="text-xs text-slate-700 bg-slate-50 p-2 rounded">
+                              <div className="flex items-start gap-2 text-slate-600">
+                                <NotebookText
+                                  className="w-4 h-4 mt-3 shrink-0"
+                                  aria-hidden="true"
+                                />
+                                <div className="flex-1 text-sm text-slate-700 bg-slate-50 border border-slate-200 p-3 rounded-lg">
                                   {formatValue(supplier.notes)}
                                 </div>
                               </div>
@@ -644,90 +893,46 @@ export default function page() {
               </div>
 
               {/* Main Tab Section */}
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+              <div className="bg-white rounded-lg border border-slate-200">
                 {/* Main Tab Navigation */}
                 <div className="border-b border-slate-200">
-                  <nav className="flex space-x-8 px-4">
-                    <button
-                      onClick={() => setActiveTab("materials-to-order")}
-                      className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "materials-to-order"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4" />
-                        Materials to Order
-                        {mtoCount > 0 && (
-                          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                            {mtoCount}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("purchase-order")}
-                      className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "purchase-order"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <PackagePlus className="w-4 h-4" />
-                        Purchase Order
-                        {poCount > 0 && (
-                          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                            {poCount}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("statements")}
-                      className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "statements"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Receipt className="w-4 h-4" />
-                        Statements
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("cost-sheet")}
-                      className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "cost-sheet"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        Cost Sheet
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("items")}
-                      className={`cursor-pointer py-4 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "items"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        Items
-                      </div>
-                    </button>
+                  <nav
+                    className="flex space-x-8 px-4"
+                    role="tablist"
+                    aria-label="Supplier sections"
+                  >
+                    {MAIN_TABS.map(({ value, label, icon: Icon }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="tab"
+                        id={`supplier-tab-${value}`}
+                        aria-selected={activeTab === value}
+                        aria-controls="supplier-panel"
+                        onClick={() => setActiveTab(value)}
+                        className={tabClass(activeTab === value, "py-4")}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" aria-hidden="true" />
+                          {label}
+                          {mainTabCount[value] > 0 && (
+                            <span className={COUNT_BADGE}>
+                              {mainTabCount[value]}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
                   </nav>
                 </div>
 
                 {/* Tab Content */}
-                <div className="p-4">
+                <div
+                  id="supplier-panel"
+                  role="tabpanel"
+                  aria-labelledby={`supplier-tab-${activeTab}`}
+                  className="p-4"
+                >
                   {/* Materials to Order Tab */}
                   {activeTab === "materials-to-order" && (
                     <MaterialsToOrder
@@ -747,10 +952,13 @@ export default function page() {
 
                   {/* Cost Sheet Tab */}
                   {activeTab === "cost-sheet" && (
-                    <div className="text-center py-8 text-slate-500">
-                      <BarChart3 className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                      <p className="text-sm">
-                        No cost sheet found for this supplier
+                    <div className="flex flex-col items-center text-center py-12">
+                      <BarChart3
+                        className="w-8 h-8 text-slate-300 mb-2"
+                        aria-hidden="true"
+                      />
+                      <p className="text-sm text-slate-600">
+                        No cost sheet found for this supplier.
                       </p>
                     </div>
                   )}
@@ -758,364 +966,258 @@ export default function page() {
                   {/* Items Tab */}
                   {activeTab === "items" && (
                     <div>
-                      {/* Search Bar */}
+                      {/* Search */}
                       <div className="mb-4">
-                        <div className="flex items-center gap-2 w-[350px] relative">
-                          <Search className="h-4 w-4 absolute left-2.5 text-slate-400" />
+                        <div className="flex items-center gap-2 w-full max-w-sm relative">
+                          <Search
+                            className="w-4 h-4 absolute left-3 text-slate-500"
+                            aria-hidden="true"
+                          />
                           <input
                             type="text"
                             placeholder="Search items..."
+                            aria-label="Search items"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full text-slate-800 p-2 pl-8 rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm"
+                            className="w-full text-sm text-slate-800 pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           />
                         </div>
                       </div>
 
                       {/* Category Sub-tabs */}
                       <div className="border-b border-slate-200 mb-4">
-                        <nav className="flex space-x-6">
+                        <nav
+                          className="flex space-x-6"
+                          role="tablist"
+                          aria-label="Item category"
+                        >
                           {/* Always show "All" tab */}
                           <button
+                            type="button"
+                            role="tab"
+                            aria-selected={itemsCategoryTab === "all"}
+                            aria-controls="supplier-items-panel"
                             onClick={() => setItemsCategoryTab("all")}
-                            className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                              itemsCategoryTab === "all"
-                                ? "border-primary text-primary"
-                                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                            }`}
+                            className={tabClass(
+                              itemsCategoryTab === "all",
+                              "py-2",
+                            )}
                           >
                             All
                           </button>
                           {/* Show category tabs only if items exist in that category */}
-                          {availableCategories.SHEET && (
+                          {ITEM_CATEGORIES.filter(
+                            (category) => availableCategories[category],
+                          ).map((category) => (
                             <button
-                              onClick={() => setItemsCategoryTab("SHEET")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                itemsCategoryTab === "SHEET"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                              }`}
+                              key={category}
+                              type="button"
+                              role="tab"
+                              aria-selected={itemsCategoryTab === category}
+                              aria-controls="supplier-items-panel"
+                              onClick={() => setItemsCategoryTab(category)}
+                              className={tabClass(
+                                itemsCategoryTab === category,
+                                "py-2",
+                              )}
                             >
-                              Sheet
+                              {formatLabel(category)}
                             </button>
-                          )}
-                          {availableCategories.HANDLE && (
-                            <button
-                              onClick={() => setItemsCategoryTab("HANDLE")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                itemsCategoryTab === "HANDLE"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                              }`}
-                            >
-                              Handle
-                            </button>
-                          )}
-                          {availableCategories.HARDWARE && (
-                            <button
-                              onClick={() => setItemsCategoryTab("HARDWARE")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                itemsCategoryTab === "HARDWARE"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                              }`}
-                            >
-                              Hardware
-                            </button>
-                          )}
-                          {availableCategories.ACCESSORY && (
-                            <button
-                              onClick={() => setItemsCategoryTab("ACCESSORY")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                itemsCategoryTab === "ACCESSORY"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                              }`}
-                            >
-                              Accessory
-                            </button>
-                          )}
-                          {availableCategories.EDGING_TAPE && (
-                            <button
-                              onClick={() => setItemsCategoryTab("EDGING_TAPE")}
-                              className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                                itemsCategoryTab === "EDGING_TAPE"
-                                  ? "border-primary text-primary"
-                                  : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                              }`}
-                            >
-                              Edging Tape
-                            </button>
-                          )}
+                          ))}
                         </nav>
                       </div>
 
-                      {/* Items Table */}
-                      {loadingItems ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
-                        </div>
-                      ) : items.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500">
-                          <Boxes className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                          <p className="text-sm">
-                            No items found for this supplier
-                          </p>
-                        </div>
-                      ) : filteredItems.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500">
-                          <Search className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                          <p className="text-sm">
-                            No items match your search criteria
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead className="bg-slate-50">
-                              <tr>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                  Image
-                                </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                  Category
-                                </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                  Description
-                                </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                  Details
-                                </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                  Price (including GST)
-                                </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                  Quantity
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-slate-200">
-                              {filteredItems.map((item) => (
-                                <tr
-                                  key={item.item_id}
-                                  className="hover:bg-slate-50 transition-colors"
-                                >
-                                  {/* Image Column */}
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                      {item.image?.url ? (
-                                        <Image
-                                          loading="lazy"
-                                          src={`/${item.image.url}`}
-                                          alt={item.item_id}
-                                          className="w-12 h-12 object-cover rounded border border-slate-200"
-                                          onError={(e) => {
-                                            e.target.style.display = "none";
-                                            e.target.nextSibling.style.display =
-                                              "flex";
-                                          }}
-                                          width={48}
-                                          height={48}
-                                        />
-                                      ) : (
-                                        <div className="w-12 h-12 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                                          <Package className="w-6 h-6 text-slate-400" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-
-                                  {/* Category Column */}
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                      {item.category}
-                                    </span>
-                                  </td>
-
-                                  {/* Description Column */}
-                                  <td className="px-4 py-2">
-                                    <p className="text-xs text-slate-600">
-                                      {item.description || "-"}
-                                    </p>
-                                  </td>
-
-                                  {/* Details Column */}
-                                  <td className="px-4 py-2">
-                                    <div className="text-xs text-slate-600 space-y-1">
-                                      {item.sheet && (
-                                        <>
-                                          <div>
-                                            <span className="font-medium">
-                                              Brand:
-                                            </span>{" "}
-                                            {item.sheet.brand}
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Color:
-                                            </span>{" "}
-                                            {item.sheet.color}
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Finish:
-                                            </span>{" "}
-                                            {item.sheet.finish}
-                                          </div>
-                                          {item.sheet.face && (
-                                            <div>
-                                              <span className="font-medium">
-                                                Face:
-                                              </span>{" "}
-                                              {item.sheet.face}
-                                            </div>
-                                          )}
-                                          <div>
-                                            <span className="font-medium">
-                                              Dimensions:
-                                            </span>{" "}
-                                            {item.sheet.dimensions}
-                                          </div>
-                                        </>
-                                      )}
-                                      {item.handle && (
-                                        <>
-                                          <div>
-                                            <span className="font-medium">
-                                              Brand:
-                                            </span>{" "}
-                                            {item.handle.brand}
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Color:
-                                            </span>{" "}
-                                            {item.handle.color}
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Type:
-                                            </span>{" "}
-                                            {item.handle.type}
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Dimensions:
-                                            </span>{" "}
-                                            {item.handle.dimensions}
-                                          </div>
-                                          {item.handle.material && (
-                                            <div>
-                                              <span className="font-medium">
-                                                Material:
-                                              </span>{" "}
-                                              {item.handle.material}
-                                            </div>
-                                          )}
-                                          {item.handle.brand && (
-                                            <div>
-                                              <span className="font-medium">
-                                                Brand:
-                                              </span>{" "}
-                                              {item.handle.brand}
-                                            </div>
-                                          )}
-                                        </>
-                                      )}
-                                      {item.hardware && (
-                                        <>
-                                          <div>
-                                            <span className="font-medium">
-                                              Name:
-                                            </span>{" "}
-                                            {item.hardware.name}
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Type:
-                                            </span>{" "}
-                                            {item.hardware.type}
-                                          </div>
-                                          {item.hardware.dimensions && (
-                                            <div>
-                                              <span className="font-medium">
-                                                Dimensions:
-                                              </span>{" "}
-                                              {item.hardware.dimensions}
-                                            </div>
-                                          )}
-                                          {item.hardware.sub_category && (
-                                            <div>
-                                              <span className="font-medium">
-                                                Sub Category:
-                                              </span>{" "}
-                                              {item.hardware.sub_category}
-                                            </div>
-                                          )}
-                                        </>
-                                      )}
-                                      {item.accessory && (
-                                        <div>
-                                          <span className="font-medium">
-                                            Name:
-                                          </span>{" "}
-                                          {item.accessory.name}
-                                        </div>
-                                      )}
-                                      {item.edging_tape && (
-                                        <>
-                                          <div>
-                                            <span className="font-medium">
-                                              Brand:
-                                            </span>{" "}
-                                            {item.edging_tape.brand}
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Color:
-                                            </span>{" "}
-                                            {item.edging_tape.color}
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Finish:
-                                            </span>{" "}
-                                            {item.edging_tape.finish}
-                                          </div>
-                                          <div>
-                                            <span className="font-medium">
-                                              Dimensions:
-                                            </span>{" "}
-                                            {item.edging_tape.dimensions}
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
-                                  </td>
-
-                                  {/* Price Column */}
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <p className="text-xs text-slate-900">
-                                      ${parseFloat(item.price || 0).toFixed(2)}
-                                    </p>
-                                  </td>
-
-                                  {/* Quantity Column */}
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="flex items-center gap-1.5">
-                                      <Package className="w-3.5 h-3.5 text-slate-400" />
-                                      <span className="text-xs text-slate-600">
-                                        {item.quantity ?? 0}{" "}
-                                        {item.measurement_unit}
-                                      </span>
-                                    </div>
-                                  </td>
+                      <div id="supplier-items-panel" role="tabpanel">
+                        {/* Items Table */}
+                        {loadingItems ? (
+                          <div
+                            className="flex flex-col items-center py-12"
+                            role="status"
+                          >
+                            <div
+                              className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mb-4"
+                              aria-hidden="true"
+                            />
+                            <p className="text-sm text-slate-600">
+                              Loading items...
+                            </p>
+                          </div>
+                        ) : itemsError ? (
+                          <div className="flex flex-col items-center text-center py-12">
+                            <AlertTriangle
+                              className="w-8 h-8 text-red-500 mb-2"
+                              aria-hidden="true"
+                            />
+                            <p
+                              className="text-sm text-red-600 mb-4"
+                              role="alert"
+                            >
+                              {itemsError}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={fetchItems}
+                              className={BTN_PRIMARY}
+                            >
+                              Try again
+                            </button>
+                          </div>
+                        ) : items.length === 0 ? (
+                          <div className="flex flex-col items-center text-center py-12">
+                            <Boxes
+                              className="w-8 h-8 text-slate-300 mb-2"
+                              aria-hidden="true"
+                            />
+                            <p className="text-sm text-slate-600">
+                              No items found for this supplier.
+                            </p>
+                          </div>
+                        ) : filteredItems.length === 0 ? (
+                          <div className="flex flex-col items-center text-center py-12">
+                            <Search
+                              className="w-8 h-8 text-slate-300 mb-2"
+                              aria-hidden="true"
+                            />
+                            <p className="text-sm text-slate-600">
+                              No items match your search.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={clearItemFilters}
+                              className={`${BTN_SECONDARY} mt-4`}
+                            >
+                              <RotateCcw
+                                className="w-4 h-4"
+                                aria-hidden="true"
+                              />
+                              Clear filters
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-slate-50">
+                                <tr>
+                                  <th scope="col" className={`${TH} text-left`}>
+                                    Image
+                                  </th>
+                                  <th scope="col" className={`${TH} text-left`}>
+                                    Category
+                                  </th>
+                                  <th scope="col" className={`${TH} text-left`}>
+                                    Description
+                                  </th>
+                                  <th scope="col" className={`${TH} text-left`}>
+                                    Details
+                                  </th>
+                                  <th
+                                    scope="col"
+                                    className={`${TH} text-right`}
+                                  >
+                                    Price (incl. GST)
+                                  </th>
+                                  <th
+                                    scope="col"
+                                    className={`${TH} text-right`}
+                                  >
+                                    Quantity
+                                  </th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                {filteredItems.map((item) => (
+                                  <tr
+                                    key={item.item_id}
+                                    className="hover:bg-slate-50 transition-colors"
+                                  >
+                                    {/* Image Column */}
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <div className="flex items-center">
+                                        {item.image?.url &&
+                                        !failedImages.has(item.item_id) ? (
+                                          <Image
+                                            loading="lazy"
+                                            src={`/${item.image.url}`}
+                                            alt={
+                                              item.description || item.item_id
+                                            }
+                                            className="w-12 h-12 object-cover rounded-lg border border-slate-200"
+                                            onError={() =>
+                                              setFailedImages((prev) =>
+                                                new Set(prev).add(item.item_id),
+                                              )
+                                            }
+                                            width={48}
+                                            height={48}
+                                          />
+                                        ) : (
+                                          <div className="w-12 h-12 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center">
+                                            <Package
+                                              className="w-5 h-5 text-slate-400"
+                                              aria-hidden="true"
+                                            />
+                                            <span className="sr-only">
+                                              No image
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+
+                                    {/* Category Column: a category carries no
+                                        meaning, so the badge is neutral */}
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <span
+                                        className={`${BADGE} ${BADGE_TONES.neutral} whitespace-nowrap`}
+                                      >
+                                        {item.category
+                                          ? formatLabel(item.category)
+                                          : EMPTY}
+                                      </span>
+                                    </td>
+
+                                    {/* Description Column */}
+                                    <td className="px-4 py-3 text-sm text-slate-700">
+                                      {formatValue(item.description)}
+                                    </td>
+
+                                    {/* Details Column */}
+                                    <td className="px-4 py-3">
+                                      <dl className="text-xs text-slate-600 space-y-1">
+                                        {getItemDetails(item).map(
+                                          ([label, value], index) => (
+                                            <div key={`${label}-${index}`}>
+                                              <dt className="inline font-medium">
+                                                {label}:
+                                              </dt>{" "}
+                                              <dd className="inline">
+                                                {formatValue(value)}
+                                              </dd>
+                                            </div>
+                                          ),
+                                        )}
+                                      </dl>
+                                    </td>
+
+                                    {/* Price Column */}
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700 text-right font-mono">
+                                      {PRICE.format(
+                                        parseFloat(item.price || 0),
+                                      )}
+                                    </td>
+
+                                    {/* Quantity Column */}
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700 text-right font-mono">
+                                      {item.quantity ?? 0}{" "}
+                                      {item.measurement_unit}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1132,7 +1234,14 @@ export default function page() {
         onConfirm={handleDeleteSupplierConfirm}
         deleteWithInput={true}
         heading="Supplier"
-        message="This will remove the supplier and all associated contacts. This action cannot be undone."
+        title={supplier ? `Delete ${supplier.name}?` : "Delete supplier?"}
+        warningHeading="This removes the supplier record"
+        message={
+          supplier
+            ? `${supplier.name} (${supplier.supplier_id}) and all of its contacts will be deleted.`
+            : "The supplier and all of its contacts will be deleted."
+        }
+        confirmButtonText="Delete supplier"
         comparingName={supplier?.name || ""}
         isDeleting={isDeletingSupplier}
         entityType="supplier"

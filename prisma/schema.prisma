@@ -32,6 +32,8 @@ model users {
   todos_created            todo[]                    @relation("TodoCreator")
   todos_completed          todo[]                    @relation("TodoCompleter")
   todos_tagged             todo[]                    @relation("TodoTagged")
+  updates_acted            update_event[]            @relation("UpdateActor")
+  update_receipts          update_recipient[]
 
   @@index([employee_id])
 }
@@ -719,27 +721,27 @@ model materials_to_order_item {
 }
 
 model purchase_order {
-  id                 String                @id @default(uuid())
-  order_no           String                @unique
-  supplier_id        String
-  mto_id             String?
-  ordered_at         DateTime?
-  orderedBy_id       String?
-  invoice_url_id     String?               @unique
-  total_amount       Decimal?              @db.Decimal(10, 2)
-  delivery_charge    Decimal?              @db.Decimal(10, 2)
-  invoice_date       DateTime?
+  id                     String                @id @default(uuid())
+  order_no               String                @unique
+  supplier_id            String
+  mto_id                 String?
+  ordered_at             DateTime?
+  orderedBy_id           String?
+  invoice_url_id         String?               @unique
+  total_amount           Decimal?              @db.Decimal(10, 2)
+  delivery_charge        Decimal?              @db.Decimal(10, 2)
+  invoice_date           DateTime?
   expected_delivery_date DateTime?
-  notes              String?               @db.LongText
-  status             PurchaseOrderStatus   @default(DRAFT)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  invoice_url        supplier_file?        @relation(fields: [invoice_url_id], references: [id])
-  mto                materials_to_order?   @relation(fields: [mto_id], references: [id], onDelete: SetNull)
-  orderedBy          users?                @relation("PurchaseOrderOrderedBy", fields: [orderedBy_id], references: [id])
-  supplier           supplier              @relation(fields: [supplier_id], references: [supplier_id])
-  items              purchase_order_item[]
-  stock_transactions stock_transaction[]
+  notes                  String?               @db.LongText
+  status                 PurchaseOrderStatus   @default(DRAFT)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  invoice_url            supplier_file?        @relation(fields: [invoice_url_id], references: [id])
+  mto                    materials_to_order?   @relation(fields: [mto_id], references: [id], onDelete: SetNull)
+  orderedBy              users?                @relation("PurchaseOrderOrderedBy", fields: [orderedBy_id], references: [id])
+  supplier               supplier              @relation(fields: [supplier_id], references: [supplier_id])
+  items                  purchase_order_item[]
+  stock_transactions     stock_transaction[]
 
   @@index([mto_id], map: "purchase_order_mto_id_fkey")
   @@index([orderedBy_id], map: "purchase_order_orderedBy_id_fkey")
@@ -953,6 +955,56 @@ model todo {
   @@index([completed_by_id])
   @@index([is_completed, is_deleted])
   @@index([due_date])
+}
+
+// In-app "updates" feed: one event per user action, fanned out to every user
+// whose module access allows the area. read_at on the recipient row is the
+// read receipt.
+model update_event {
+  id         String             @id @default(uuid())
+  type       UpdateType
+  actor_id   String?
+  title      String
+  message    String             @db.Text
+  url        String             @db.VarChar(1024)
+  dedupe_key String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  actor      users?             @relation("UpdateActor", fields: [actor_id], references: [id], onDelete: SetNull)
+  recipients update_recipient[]
+
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([type])
+  @@index([dedupe_key, actor_id])
+  @@index([actor_id])
+}
+
+model update_recipient {
+  id        String       @id @default(uuid())
+  update_id String
+  user_id   String
+  read_at   DateTime?
+  createdAt DateTime     @default(now())
+  update    update_event @relation(fields: [update_id], references: [id], onDelete: Cascade)
+  user      users        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([update_id, user_id])
+  @@index([user_id, read_at])
+  @@index([update_id])
+}
+
+enum UpdateType {
+  CALENDAR_EVENT_CREATED
+  CALENDAR_EVENT_UPDATED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  STAGE_UPDATED
+  LOT_NOTES_UPDATED
+  LOT_FILE_UPLOADED
+  MTO_CREATED
+  MTO_ORDERED
+  SUPPLIER_STATEMENT_ADDED
 }
 
 enum LogAction {

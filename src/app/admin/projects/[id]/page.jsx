@@ -1,7 +1,7 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { Suspense, useEffect, useRef } from "react";
 import AdminShell from "@/components/AdminShell";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import TabsController from "@/components/tabscontroller";
 import {
   ChevronLeft,
@@ -30,7 +30,6 @@ import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import StageTable from "../components/StageTable";
 import MaterialSelection from "../components/MaterialSelection";
-import TextEditor from "@/components/TextEditor/TextEditor";
 import Image from "next/image";
 import SiteMeasurementsSection from "../components/SiteMeasurement";
 import MaterialsToOrder from "../components/MaterialsToOrder";
@@ -40,8 +39,20 @@ import ViewMedia from "../components/ViewMedia";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+const SITE_PHOTO_SUBTABS = ["delivery", "installation", "maintenance"];
+
+// useSearchParams needs a Suspense boundary above it
 export default function ProjectDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProjectDetailContent />
+    </Suspense>
+  );
+}
+
+function ProjectDetailContent() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
   const { getToken } = useAuth();
   const router = useRouter();
   const [project, setProject] = useState(null);
@@ -406,6 +417,32 @@ export default function ProjectDetailPage() {
     }
   }, [id]); // Removed getToken from dependencies to prevent infinite re-renders
 
+  // Deep link from an update: ?lot=<lot_id>&tab=<tab id>&sub=<site photo
+  // subtab>. Applied once per distinct link, after the project has loaded, so
+  // a later refetch can't undo the user's own tab changes.
+  const appliedLinkRef = useRef(null);
+  useEffect(() => {
+    const lotParam = searchParams.get("lot");
+    const tabParam = searchParams.get("tab");
+    const subParam = searchParams.get("sub");
+    if (!project || (!lotParam && !tabParam)) return;
+
+    const linkKey = `${id}?${searchParams.toString()}`;
+    if (appliedLinkRef.current === linkKey) return;
+    appliedLinkRef.current = linkKey;
+
+    const lot = lotParam
+      ? project.lots?.find((l) => l.lot_id === lotParam)
+      : null;
+    if (lot) setSelectedLot(lot);
+    if (tabParam && tabs.some((t) => t.id === tabParam)) {
+      setActiveTab(tabParam);
+    }
+    if (subParam && SITE_PHOTO_SUBTABS.includes(subParam)) {
+      setActiveSitePhotoSubtab(subParam);
+    }
+  }, [project, id, searchParams]);
+
   useEffect(() => {
     if (selectedLot && selectedLot.lot_id) {
       fetchLotData();
@@ -634,9 +671,7 @@ export default function ProjectDetailPage() {
         throw new Error(response.data.message || "Failed to update project");
       }
       toast.success(
-        checked
-          ? "Stage sync enabled for all lots"
-          : "Stage sync disabled",
+        checked ? "Stage sync enabled for all lots" : "Stage sync disabled",
       );
     } catch (error) {
       console.error("Error updating sync setting:", error);
@@ -1372,61 +1407,45 @@ export default function ProjectDetailPage() {
         const scrollY = window.scrollY;
         const scrollX = window.scrollX;
 
-        // Update local state instead of refetching to prevent page reload
-        // Only update if we need to (new tab created) or if ID changed
-        const existingTab = selectedLotData.tabs.find(
-          (tab) => tab.tab.toLowerCase() === tabEnum.toLowerCase(),
-        );
-        const isNewTab = !existingTab;
-        const needsIdUpdate =
-          existingTab &&
-          response.data.data?.id &&
-          existingTab.id !== response.data.data.id;
+        // Update local state instead of refetching to prevent page reload.
+        // Always store the saved notes so the Overview tab's read-only copy
+        // (and a re-opened tab) reflect the latest content.
+        setSelectedLotData((prevData) => {
+          if (!prevData || !prevData.tabs) return prevData;
 
-        if (isNewTab || needsIdUpdate) {
-          setSelectedLotData((prevData) => {
-            if (!prevData || !prevData.tabs) return prevData;
+          const updatedTabs = [...prevData.tabs];
+          const existingTabIndex = updatedTabs.findIndex(
+            (tab) => tab.tab.toLowerCase() === tabEnum.toLowerCase(),
+          );
 
-            const updatedTabs = [...prevData.tabs];
-            const existingTabIndex = updatedTabs.findIndex(
-              (tab) => tab.tab.toLowerCase() === tabEnum.toLowerCase(),
-            );
-
-            if (existingTabIndex >= 0) {
-              // Update existing tab (only if ID changed)
-              if (needsIdUpdate) {
-                updatedTabs[existingTabIndex] = {
-                  ...updatedTabs[existingTabIndex],
-                  notes: content,
-                  id: response.data.data.id,
-                };
-              } else {
-                return prevData; // No change needed
-              }
-            } else {
-              // Add new tab
-              updatedTabs.push({
-                id: response.data.data?.id,
-                lot_id: selectedLotData.lot_id,
-                tab: tabEnum,
-                notes: content,
-              });
-            }
-
-            return {
-              ...prevData,
-              tabs: updatedTabs,
+          if (existingTabIndex >= 0) {
+            updatedTabs[existingTabIndex] = {
+              ...updatedTabs[existingTabIndex],
+              notes: content,
+              id: response.data.data?.id || updatedTabs[existingTabIndex].id,
             };
-          });
+          } else {
+            updatedTabs.push({
+              id: response.data.data?.id,
+              lot_id: prevData.lot_id,
+              tab: tabEnum,
+              notes: content,
+            });
+          }
 
-          // Restore scroll position after state update
-          // Use both requestAnimationFrame and setTimeout to ensure it works after React re-renders
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              window.scrollTo(scrollX, scrollY);
-            }, 0);
-          });
-        }
+          return {
+            ...prevData,
+            tabs: updatedTabs,
+          };
+        });
+
+        // Restore scroll position after state update
+        // Use both requestAnimationFrame and setTimeout to ensure it works after React re-renders
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            window.scrollTo(scrollX, scrollY);
+          }, 0);
+        });
       } else {
         toast.error(response.data.message || "Failed to save notes");
       }
@@ -1950,7 +1969,7 @@ export default function ProjectDetailPage() {
                                         const clientHref = `/admin/clients/${project.client.client_id}`;
                                         router.push(clientHref);
                                       }}
-                                      className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors truncate"
+                                      className="text-sm font-medium text-blue-600 cursor-pointer transition-colors truncate"
                                     >
                                       {project.client.client_name}
                                     </button>
@@ -2043,7 +2062,7 @@ export default function ProjectDetailPage() {
                                         const installerHref = `/admin/employees/${selectedLotData.installer.employee_id}`;
                                         router.push(installerHref);
                                       }}
-                                      className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors truncate"
+                                      className="text-sm font-medium text-blue-600 cursor-pointer transition-colors truncate"
                                     >
                                       {`${selectedLotData.installer.first_name || ""} ${selectedLotData.installer.last_name || ""}`.trim() ||
                                         "Not specified"}
@@ -2154,23 +2173,6 @@ export default function ProjectDetailPage() {
                               </div>
                             )}
                           </div>
-                        </div>
-
-                        {/* Notes */}
-                        <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
-                          <div className="flex items-center justify-between gap-3 mb-2">
-                            <h3 className="text-base font-semibold text-slate-900">
-                              Notes
-                            </h3>
-                          </div>
-                          <TextEditor
-                            initialContent={selectedLotData.notes || ""}
-                            onSave={handleLotNotesSave}
-                            placeholder="Add lot-specific notes (auto-saves)"
-                          />
-                          <p className="text-xs text-slate-500 mt-2">
-                            Notes are saved automatically.
-                          </p>
                         </div>
 
                         {/* Stages Section - Full Width */}

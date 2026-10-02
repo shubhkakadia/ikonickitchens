@@ -14,6 +14,7 @@ import { withLogging } from "@/lib/withLogging";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 import { TransactionError } from "@/lib/transactionError";
 import { parseMoney } from "@/lib/money";
+import { publishMtoOrdered } from "@/lib/updates";
 import {
   addDelta,
   applyMtoOrderedDeltas,
@@ -157,7 +158,7 @@ export async function PATCH(request, { params }) {
     // Fetch existing PO to get defaults (e.g. order_no for file naming)
     const existing = await prisma.purchase_order.findUnique({
       where: { id },
-      select: { order_no: true },
+      select: { order_no: true, status: true, supplier_id: true, mto_id: true },
     });
     if (!existing) {
       return NextResponse.json(
@@ -573,6 +574,17 @@ export async function PATCH(request, { params }) {
       updated.items?.find((item) => item.mto_item_id)?.mto_item_id;
     if (affectedMtoItemId) {
       await checkAndUpdateMTOStatus(affectedMtoItemId);
+    }
+
+    // A draft purchase order being placed counts as materials ordered
+    if (existing.status !== "ORDERED" && updated.status === "ORDERED") {
+      await publishMtoOrdered({
+        req: request,
+        mtoId: existing.mto_id,
+        supplierId: existing.supplier_id,
+        orderNo: existing.order_no,
+        key: `po:${id}`,
+      });
     }
 
     const logged = await withLogging(

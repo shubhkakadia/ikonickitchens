@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendProjectUpdate } from "@/lib/pushNotifications";
+import { publishUpdate } from "@/lib/updates";
 import { getUserFromToken } from "@/lib/validators/authFromToken";
 
 export async function GET(request, { params }) {
@@ -85,7 +86,7 @@ export async function PATCH(request, { params }) {
 
     const existingProject = await prisma.project.findUnique({
       where: { project_id: id },
-      select: { client_id: true },
+      select: { client_id: true, name: true, sync_all_lots: true },
     });
     if (!existingProject) {
       return NextResponse.json(
@@ -137,6 +138,26 @@ export async function PATCH(request, { params }) {
     );
     if (!logged) {
       console.error(`Failed to log project update: ${id} - ${project.name}`);
+    }
+
+    const changes = [];
+    if (project.name !== existingProject.name) {
+      changes.push(`renamed from "${existingProject.name}"`);
+    }
+    if ((project.client_id || null) !== (existingProject.client_id || null)) {
+      changes.push("client changed");
+    }
+    if (project.sync_all_lots !== existingProject.sync_all_lots) {
+      changes.push(`sync all lots ${project.sync_all_lots ? "on" : "off"}`);
+    }
+    if (changes.length) {
+      await publishUpdate({
+        req: request,
+        type: "PROJECT_UPDATED",
+        title: "Project updated",
+        message: `${project.name}: ${changes.join(", ")}`,
+        url: `/admin/projects/${project.project_id}`,
+      });
     }
 
     try {

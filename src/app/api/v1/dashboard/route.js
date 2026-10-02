@@ -4,71 +4,18 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { prisma } from "@/lib/db";
+import {
+  TZ,
+  dec,
+  employeeName,
+  ITEM_SUBTYPES,
+  itemLabel,
+  num,
+  stageRank,
+} from "@/lib/dashboard";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-const TZ = "Australia/Adelaide";
-
-// Canonical workflow order. Stage.name is free text, so we sort the pipeline
-// against this list (mirrored from the stage_* flags on notification_config)
-// instead of letting groupBy return an arbitrary order.
-const STAGE_ORDER = [
-  "quote approve",
-  "material & appliances selection",
-  "drafting",
-  "drafting revision",
-  "final design approval",
-  "site measurements",
-  "final approval for production",
-  "machining out",
-  "material order",
-  "cnc",
-  "assembly",
-  "delivery",
-  "installation",
-  "invoice sent",
-  "maintenance",
-  "job completion",
-];
-
-const stageRank = (name) => {
-  const i = STAGE_ORDER.indexOf((name || "").trim().toLowerCase());
-  return i === -1 ? STAGE_ORDER.length : i;
-};
-
-// Prisma Decimal does not survive NextResponse.json cleanly.
-const dec = (value) => (value == null ? null : value.toString());
-const num = (value) => (value == null ? 0 : Number(value));
-
-// Item has no name column - the label lives on whichever subtype row exists.
-const itemLabel = (item) => {
-  if (!item) return "Unknown item";
-  const parts =
-    (item.sheet && [item.sheet.brand, item.sheet.color, item.sheet.finish]) ||
-    (item.handle && [item.handle.brand, item.handle.color, item.handle.type]) ||
-    (item.hardware && [item.hardware.brand, item.hardware.name]) ||
-    (item.accessory && [item.accessory.name]) ||
-    (item.edging_tape && [
-      item.edging_tape.brand,
-      item.edging_tape.color,
-      item.edging_tape.finish,
-    ]) ||
-    [];
-  const label = parts.filter(Boolean).join(" ").trim();
-  return label || item.description || "Unnamed item";
-};
-
-const ITEM_SUBTYPES = {
-  sheet: { select: { brand: true, color: true, finish: true } },
-  handle: { select: { brand: true, color: true, type: true } },
-  hardware: { select: { brand: true, name: true } },
-  accessory: { select: { name: true } },
-  edging_tape: { select: { brand: true, color: true, finish: true } },
-};
-
-const employeeName = (e) =>
-  e ? [e.first_name, e.last_name].filter(Boolean).join(" ") : null;
 
 export async function GET(request) {
   try {
@@ -122,7 +69,11 @@ export async function GET(request) {
     const days21Ago = nowAdl.subtract(21, "day").startOf("day").utc().toDate();
     // Overdue lots older than this are stale enough to belong on the projects
     // page, not on a 14-day schedule.
-    const overdueFloor = nowAdl.subtract(60, "day").startOf("day").utc().toDate();
+    const overdueFloor = nowAdl
+      .subtract(60, "day")
+      .startOf("day")
+      .utc()
+      .toDate();
     const monthStart = nowAdl.startOf("month").utc().toDate();
     const months12Ago = nowAdl
       .subtract(11, "month")
@@ -274,7 +225,9 @@ export async function GET(request) {
             description: log.description,
             createdAt: log.createdAt,
             user:
-              employeeName(log.user?.employee) || log.user?.username || "System",
+              employeeName(log.user?.employee) ||
+              log.user?.username ||
+              "System",
           })),
         },
       },
@@ -307,53 +260,53 @@ async function buildProjects({
     activeProjects,
     completedThisMonth,
   ] = await Promise.all([
-      prisma.lot.count({
-        where: { ...activeLot, installationDueDate: { lt: todayStart } },
-      }),
-      prisma.stage.count({
-        where: {
-          status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
-          endDate: { lt: todayStart },
-          lot: activeLot,
-        },
-      }),
-      prisma.lot.findMany({
-        where: {
-          ...activeLot,
-          installationDueDate: { gte: overdueFloor, lte: in14Days },
-        },
-        select: {
-          lot_id: true,
-          name: true,
-          installationDueDate: true,
-          project: { select: { name: true, project_id: true } },
-          installer: { select: { first_name: true, last_name: true } },
-          stages: { select: { status: true } },
-        },
-        orderBy: { installationDueDate: "asc" },
-        take: 40,
-      }),
-      prisma.stage.groupBy({
-        by: ["name"],
-        where: { status: "IN_PROGRESS", lot: activeLot },
-        _count: { _all: true },
-      }),
-      prisma.lot.groupBy({
-        by: ["status"],
-        where: { is_deleted: false },
-        _count: { _all: true },
-      }),
-      prisma.project.count({
-        where: { is_deleted: false, lots: { some: activeLot } },
-      }),
-      prisma.lot.count({
-        where: {
-          is_deleted: false,
-          status: "COMPLETED",
-          updatedAt: { gte: monthStart },
-        },
-      }),
-    ]);
+    prisma.lot.count({
+      where: { ...activeLot, installationDueDate: { lt: todayStart } },
+    }),
+    prisma.stage.count({
+      where: {
+        status: { in: ["NOT_STARTED", "IN_PROGRESS"] },
+        endDate: { lt: todayStart },
+        lot: activeLot,
+      },
+    }),
+    prisma.lot.findMany({
+      where: {
+        ...activeLot,
+        installationDueDate: { gte: overdueFloor, lte: in14Days },
+      },
+      select: {
+        lot_id: true,
+        name: true,
+        installationDueDate: true,
+        project: { select: { name: true, project_id: true } },
+        installer: { select: { first_name: true, last_name: true } },
+        stages: { select: { status: true } },
+      },
+      orderBy: { installationDueDate: "asc" },
+      take: 40,
+    }),
+    prisma.stage.groupBy({
+      by: ["name"],
+      where: { status: "IN_PROGRESS", lot: activeLot },
+      _count: { _all: true },
+    }),
+    prisma.lot.groupBy({
+      by: ["status"],
+      where: { is_deleted: false },
+      _count: { _all: true },
+    }),
+    prisma.project.count({
+      where: { is_deleted: false, lots: { some: activeLot } },
+    }),
+    prisma.lot.count({
+      where: {
+        is_deleted: false,
+        status: "COMPLETED",
+        updatedAt: { gte: monthStart },
+      },
+    }),
+  ]);
 
   const startOfToday = nowAdl.startOf("day");
   const schedule = scheduleLots.map((lot) => {
@@ -378,7 +331,8 @@ async function buildProjects({
     overdueStages,
     kpis: {
       activeProjects,
-      activeLots: lotStatus.find((r) => r.status === "ACTIVE")?._count._all ?? 0,
+      activeLots:
+        lotStatus.find((r) => r.status === "ACTIVE")?._count._all ?? 0,
       completedThisMonth,
     },
     schedule,
@@ -485,7 +439,8 @@ async function buildProcurement({
 
   for (const po of recentPos) {
     const key = dayjs(po.ordered_at).tz(TZ).format("YYYY-MM");
-    if (poByMonth.has(key)) poByMonth.set(key, poByMonth.get(key) + num(po.total_amount));
+    if (poByMonth.has(key))
+      poByMonth.set(key, poByMonth.get(key) + num(po.total_amount));
     bySupplier.set(
       po.supplier_id,
       (bySupplier.get(po.supplier_id) ?? 0) + num(po.total_amount),
@@ -493,7 +448,8 @@ async function buildProcurement({
   }
   for (const st of statementSpend) {
     const key = (st.month_year || "").slice(0, 7);
-    if (stByMonth.has(key)) stByMonth.set(key, stByMonth.get(key) + num(st.amount));
+    if (stByMonth.has(key))
+      stByMonth.set(key, stByMonth.get(key) + num(st.amount));
   }
 
   const topSupplierIds = [...bySupplier.entries()]
@@ -614,7 +570,9 @@ async function buildInventory({ days30Ago }) {
         shortfall: mode === "reorder" ? Math.max(0, min - qty) : Math.abs(qty),
       };
     })
-    .filter((row) => (mode === "reorder" ? row.quantity <= row.minimum_stock : true))
+    .filter((row) =>
+      mode === "reorder" ? row.quantity <= row.minimum_stock : true,
+    )
     .sort((a, b) => b.shortfall - a.shortfall)
     .slice(0, 8);
 
@@ -688,7 +646,10 @@ async function buildMyDay({ userId, employeeId, now }) {
         })
       : Promise.resolve([]),
     prisma.meeting.findMany({
-      where: { date_time: { gte: now }, participants: { some: { id: userId } } },
+      where: {
+        date_time: { gte: now },
+        participants: { some: { id: userId } },
+      },
       orderBy: { date_time: "asc" },
       take: 5,
       include: {

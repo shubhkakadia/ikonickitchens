@@ -1,13 +1,13 @@
 "use client";
 import React from "react";
 import AdminShell from "@/components/AdminShell";
-import TabsController from "@/components/tabscontroller";
 import PaginationFooter from "@/components/PaginationFooter";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { setActiveTab } from "@/state/reducer/inventoryTabs";
@@ -23,6 +23,7 @@ import {
   ArrowDown,
   ChevronDown,
   ImageIcon,
+  Package,
   X,
   AlertTriangle,
   ClipboardList,
@@ -30,12 +31,257 @@ import {
 import StockTally from "@/components/StockTally.jsx";
 import MultiSelectDropdown from "./components/MultiSelectDropdown";
 import SearchBar from "@/components/SearchBar";
+import useModalFocus from "@/hooks/useModalFocus";
 import {
   usePersistedTableFilter,
   useTableFilterActions,
 } from "@/hooks/usePersistedTableFilter";
+import {
+  BUTTON_COUNT_BADGE,
+  formatQty,
+} from "@/app/admin/dashboard/lib/format";
 
 const TABLE_KEY = "inventory";
+const EMPTY = "—";
+const SESSION_ERROR = "Your session has expired. Sign in again to continue.";
+const LOAD_ERROR =
+  "Couldn't load inventory. Check your connection and try again.";
+
+const TABS = [
+  { id: "sheet", label: "Sheet" },
+  { id: "sunmica", label: "Sunmica" },
+  { id: "edging_tape", label: "Edging tape" },
+  { id: "handle", label: "Handle" },
+  { id: "hardware", label: "Hardware" },
+  { id: "accessory", label: "Accessory" },
+];
+
+// Button, field, menu and table recipes from DESIGN.md 9.1 / 9.2 / 9.5 / 9.8.
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY_COMPACT =
+  "cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_GHOST =
+  "cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const ICON_BTN =
+  "cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const FIELD_COMPACT =
+  "w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200";
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between";
+const MENU_CHECK_ROW =
+  "cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors";
+const CHECKBOX =
+  "h-4 w-4 accent-primary border-slate-300 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+const TH =
+  "px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider";
+
+// The columns shown for each tab, in display order, and how each is labelled.
+const COLUMN_DEFS = {
+  brand: { label: "Brand", strong: true },
+  color: { label: "Colour" },
+  finish: { label: "Finish" },
+  type: { label: "Type" },
+  material: { label: "Material" },
+  name: { label: "Name", strong: true },
+  sub_category: { label: "Sub-category" },
+  dimensions: { label: "Dimensions", sortable: false },
+};
+const TAB_COLUMNS = {
+  sheet: ["brand", "color", "finish", "dimensions"],
+  sunmica: ["brand", "color", "finish", "dimensions"],
+  edging_tape: ["brand", "color", "finish", "dimensions"],
+  handle: ["brand", "color", "type", "material", "dimensions"],
+  hardware: ["brand", "name", "sub_category", "dimensions"],
+  accessory: ["name"],
+};
+
+// The category-specific filters in the filter dialog: [label, filter key,
+// plural noun for the placeholder].
+const FILTER_FIELDS = {
+  sheet: [
+    ["Brand", "sheet_brand", "brands"],
+    ["Colour", "sheet_color", "colours"],
+    ["Finish", "sheet_finish", "finishes"],
+    ["Face", "sheet_face", "faces"],
+  ],
+  handle: [
+    ["Brand", "handle_brand", "brands"],
+    ["Colour", "handle_color", "colours"],
+    ["Type", "handle_type", "types"],
+    ["Material", "handle_material", "materials"],
+  ],
+  hardware: [
+    ["Brand", "hardware_brand", "brands"],
+    ["Name", "hardware_name", "names"],
+    ["Type", "hardware_type", "types"],
+    ["Sub-category", "hardware_sub_category", "sub-categories"],
+  ],
+  accessory: [["Name", "accessory_name", "names"]],
+  edging_tape: [
+    ["Brand", "edging_tape_brand", "brands"],
+    ["Colour", "edging_tape_color", "colours"],
+    ["Finish", "edging_tape_finish", "finishes"],
+    ["Dimensions", "edging_tape_dimensions", "dimensions"],
+  ],
+};
+
+// On-screen names for the export columns. The keys stay the Excel headers.
+const EXPORT_COLUMN_LABELS = {
+  Color: "Colour",
+  IsSunmica: "Is sunmica",
+  CreatedAt: "Created at",
+  UpdatedAt: "Updated at",
+};
+
+// The value of one sortable / displayable field for an item, whichever
+// category it belongs to.
+const getFieldValue = (item, field) => {
+  if (field === "brand") {
+    return (
+      item.sheet?.brand ||
+      item.handle?.brand ||
+      item.hardware?.brand ||
+      item.edging_tape?.brand ||
+      ""
+    );
+  } else if (field === "color") {
+    return (
+      item.sheet?.color || item.handle?.color || item.edging_tape?.color || ""
+    );
+  } else if (field === "finish") {
+    return item.sheet?.finish || item.edging_tape?.finish || "";
+  } else if (field === "type") {
+    return item.handle?.type || item.hardware?.type || "";
+  } else if (field === "material") {
+    return item.handle?.material || "";
+  } else if (field === "name") {
+    return item.hardware?.name || item.accessory?.name || "";
+  } else if (field === "sub_category") {
+    return item.hardware?.sub_category || "";
+  } else if (field === "dimensions") {
+    return (
+      item.sheet?.dimensions ||
+      item.handle?.dimensions ||
+      item.hardware?.dimensions ||
+      item.edging_tape?.dimensions ||
+      ""
+    );
+  }
+  return item[field] || "";
+};
+
+// Stock level as coloured text plus a label, so colour is never the only
+// signal (DESIGN.md 13.4).
+function StockLevel({ stock, unit }) {
+  const tone =
+    stock <= 0
+      ? "text-red-700"
+      : stock < 10
+        ? "text-amber-700"
+        : "text-green-700";
+  const label = stock <= 0 ? "Out of stock" : stock < 10 ? "Low stock" : null;
+  return (
+    <div>
+      <div className={`text-sm font-mono font-medium ${tone}`}>
+        {formatQty(stock, unit)}
+      </div>
+      {label && <div className="text-xs text-slate-500">{label}</div>}
+    </div>
+  );
+}
+
+// Item thumbnail with a placeholder when there is no image or it fails to
+// load. The row's name link carries the accessible name, so the image is
+// decorative.
+function ItemThumb({ image }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!image?.url || failed) {
+    return (
+      <div className="w-10 h-10 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center">
+        <ImageIcon className="w-5 h-5 text-slate-400" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      loading="lazy"
+      src={`/${image.url}`}
+      alt=""
+      className="w-10 h-10 object-cover rounded-lg border border-slate-200"
+      onError={() => setFailed(true)}
+      width={40}
+      height={40}
+    />
+  );
+}
+
+// Sortable column header. The label is a real button so the sort is reachable
+// by keyboard (DESIGN.md 13.7); the active column carries the only indicator.
+// The "relevance" step of the sort cycle has no direction, so it shows neither.
+function SortHeader({
+  field,
+  label,
+  sortField,
+  sortOrder,
+  onSort,
+  alignRight = false,
+}) {
+  const isActive = sortField === field;
+  const ariaSort =
+    isActive && sortOrder === "asc"
+      ? "ascending"
+      : isActive && sortOrder === "desc"
+        ? "descending"
+        : undefined;
+  const Icon =
+    isActive && sortOrder === "asc"
+      ? ArrowUp
+      : isActive && sortOrder === "desc"
+        ? ArrowDown
+        : ArrowUpDown;
+
+  return (
+    <th
+      scope="col"
+      aria-sort={ariaSort}
+      className={`${TH} ${alignRight ? "text-right" : "text-left"}`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={`cursor-pointer flex items-center gap-2 uppercase tracking-wider hover:text-slate-700 transition-colors duration-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+          alignRight ? "ml-auto" : ""
+        }`}
+      >
+        {label}
+        <Icon
+          className={`w-4 h-4 ${
+            Icon === ArrowUpDown ? "text-slate-400" : "text-primary"
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+    </th>
+  );
+}
+
+// A truncated text cell with the full value in a title (DESIGN.md 15.4).
+function TextCell({ value, strong = false }) {
+  const text = value || EMPTY;
+  return (
+    <span
+      title={value || undefined}
+      className={`block max-w-64 truncate ${strong ? "font-medium" : ""}`}
+    >
+      {text}
+    </span>
+  );
+}
 const DEFAULT_FILTERS = {
   quantity_min: "",
   quantity_max: "",
@@ -58,19 +304,11 @@ const DEFAULT_FILTERS = {
   edging_tape_dimensions: [],
 };
 
-export default function page() {
+export default function InventoryPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { activeTab } = useSelector((state) => state.inventoryTabs);
   const { getToken } = useAuth();
-  const tabs = [
-    { id: "sheet", label: "Sheet" },
-    { id: "sunmica", label: "Sunmica" },
-    { id: "edging_tape", label: "Edging Tape" },
-    { id: "handle", label: "Handle" },
-    { id: "hardware", label: "Hardware" },
-    { id: "accessory", label: "Accessory" },
-  ];
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -88,8 +326,6 @@ export default function page() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [showCategoryFilterDropdown, setShowCategoryFilterDropdown] =
-    useState(false);
   const [selectedCategories, setSelectedCategories] = usePersistedTableFilter(
     TABLE_KEY,
     "selectedCategories",
@@ -99,6 +335,11 @@ export default function page() {
   const previousActiveTab = useRef(activeTab);
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+  const filterModalRef = useRef(null);
+
+  // Focus moves into the filter dialog, stays inside it, and returns to the
+  // trigger on close (DESIGN.md 13.6).
+  useModalFocus(filterModalRef, showFilterPopup);
 
   // Stock Tally states
   const [showStockTallyModal, setShowStockTallyModal] = useState(false);
@@ -233,7 +474,7 @@ export default function page() {
       setError(null);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        setError(SESSION_ERROR);
         return;
       }
       // For sunmica, fetch sheet items and filter client-side
@@ -264,47 +505,40 @@ export default function page() {
         }
         setData(items);
       } else {
-        setError(response.data.message || "Failed to fetch inventory");
+        setError(response.data.message || LOAD_ERROR);
       }
     } catch (error) {
       console.error(error);
-      setError(error.response?.data?.message || "Failed to fetch inventory");
+      setError(error.response?.data?.message || LOAD_ERROR);
     } finally {
       setLoading(false);
     }
   };
 
-  // Close dropdowns when clicking outside
+  // Close the toolbar menus when clicking outside or pressing Escape. Escape
+  // also closes the filter dialog (DESIGN.md 9.4).
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest(".dropdown-container")) {
         setShowSortDropdown(false);
-        setShowCategoryFilterDropdown(false);
         setShowColumnDropdown(false);
       }
     };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Close dropdown when clicking outside the filter popup
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showFilterPopup && !event.target.closest(".filter-popup")) {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setShowSortDropdown(false);
+        setShowColumnDropdown(false);
         setShowFilterPopup(false);
       }
     };
 
-    if (showFilterPopup) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }
-  }, [showFilterPopup]);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     fetchData(activeTab);
@@ -523,46 +757,7 @@ export default function page() {
       return true;
     });
 
-    // Helper function to extract field values for multi-level sorting
-    const getFieldValue = (item, field) => {
-      if (field === "brand") {
-        return (
-          item.sheet?.brand ||
-          item.handle?.brand ||
-          item.hardware?.brand ||
-          item.edging_tape?.brand ||
-          ""
-        );
-      } else if (field === "color") {
-        return (
-          item.sheet?.color ||
-          item.handle?.color ||
-          item.edging_tape?.color ||
-          ""
-        );
-      } else if (field === "finish") {
-        return item.sheet?.finish || item.edging_tape?.finish || "";
-      } else if (field === "type") {
-        return item.handle?.type || item.hardware?.type || "";
-      } else if (field === "material") {
-        return item.handle?.material || "";
-      } else if (field === "name") {
-        return item.hardware?.name || item.accessory?.name || "";
-      } else if (field === "sub_category") {
-        return item.hardware?.sub_category || "";
-      } else if (field === "dimensions") {
-        return (
-          item.sheet?.dimensions ||
-          item.handle?.dimensions ||
-          item.hardware?.dimensions ||
-          item.edging_tape?.dimensions ||
-          ""
-        );
-      }
-      return item[field] || "";
-    };
-
-    // Sort data
+    // Sort data (getFieldValue is declared at module level)
     filtered.sort((a, b) => {
       // Multi-level sorting when default sort is active (brand asc for most categories, name asc for accessory)
       const isDefaultSort =
@@ -837,14 +1032,15 @@ export default function page() {
     }, 0);
   };
 
+  // Only the active field shows a sort indicator in the menu (DESIGN.md 15.4);
+  // the relevance step has no direction, so it shows none.
   const getSortIcon = (field) => {
-    if (sortField !== field)
-      return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
+    if (sortField !== field) return null;
     if (sortOrder === "asc")
-      return <ArrowUp className="h-4 w-4 text-primary" />;
+      return <ArrowUp className="h-4 w-4 text-primary" aria-hidden="true" />;
     if (sortOrder === "desc")
-      return <ArrowDown className="h-4 w-4 text-primary" />;
-    return null; // No icon for relevance
+      return <ArrowDown className="h-4 w-4 text-primary" aria-hidden="true" />;
+    return null;
   };
 
   // Column mapping for Excel export - dynamic based on activeTab
@@ -921,20 +1117,15 @@ export default function page() {
   const handleOpenStockTally = () => {
     setShowStockTallyModal(true);
   };
-  // Compute dynamic column count for table states
-  const columnCount = useMemo(() => {
-    // Base: Image, Quantity
-    if (activeTab === "sheet" || activeTab === "sunmica") return 1 + 4 + 1; // brand,color,finish,dimensions
-    if (activeTab === "handle") return 1 + 5 + 1; // brand,color,type,material,dimensions
-    if (activeTab === "hardware") return 1 + 4 + 1; // brand,name,type,dimensions
-    if (activeTab === "accessory") return 1 + 1 + 1; // name
-    if (activeTab === "edging_tape") return 1 + 4 + 1; // brand,color,finish,dimensions
-    return 6;
-  }, [activeTab]);
+
+  // Table column count for the loading / error / empty rows: image, the
+  // tab's columns, and quantity.
+  const tabColumns = TAB_COLUMNS[activeTab] || [];
+  const columnCount = tabColumns.length + 2;
 
   const getItemTitle = (item) => {
     if (!item) return "";
-    const category = item.category.toLowerCase();
+    const category = (item.category || "").toLowerCase();
     if ((category === "sheet" || activeTab === "sunmica") && item.sheet) {
       return [item.sheet.brand, item.sheet.color, item.sheet.finish]
         .filter(Boolean)
@@ -961,868 +1152,573 @@ export default function page() {
     return "";
   };
 
+  const tabLabel = TABS.find((tab) => tab.id === activeTab)?.label || "";
+  const tabNoun = tabLabel.toLowerCase();
+  const filterFields =
+    FILTER_FIELDS[activeTab === "sunmica" ? "sheet" : activeTab] || [];
+  const activeFilterCount = getActiveFilterCount();
+
+  // Filters that narrow the list (sort does not hide records), used to tell
+  // "no records" apart from "no results for this filter" (DESIGN.md 15.4).
+  const isNarrowingFilterActive = search !== "" || activeFilterCount > 0;
+
+  // The "Sort by" menu offers the sortable columns of the active tab, then
+  // quantity.
+  const sortOptions = [
+    ...tabColumns
+      .filter((key) => COLUMN_DEFS[key].sortable !== false)
+      .map((key) => ({ field: key, label: COLUMN_DEFS[key].label })),
+    { field: "quantity", label: "Quantity" },
+  ];
+
+  // The list can briefly hold the previous tab's rows while a tab loads or
+  // after a failed load, so actions that read it stay off until it is current.
+  const hasCurrentRows = !loading && !error && filteredAndSortedData.length > 0;
+  const exportDisabled =
+    isExporting || !hasCurrentRows || selectedColumns.length === 0;
+  const columnPickerDisabled = isExporting || !hasCurrentRows;
+
+  const tabClass = (tab) =>
+    `cursor-pointer py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary rounded-t-sm ${
+      activeTab === tab
+        ? "border-primary text-primary"
+        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+    }`;
+
+  const sortHeaderProps = { sortField, sortOrder, onSort: handleSort };
+  const goToAddItem = () => router.push("/admin/inventory/additem");
+
   return (
     <AdminShell>
       <main className="flex h-full min-h-0 flex-col overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-              <p className="text-sm text-slate-600 font-medium">
-                Loading inventory details...
-              </p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
+        <div className="px-4 py-2 shrink-0">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-semibold text-slate-800">Inventory</h1>
+            <div className="flex items-center gap-2">
+              <SearchBar />
               <button
-                onClick={() => window.location.reload()}
-                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                type="button"
+                onClick={goToAddItem}
+                className={BTN_PRIMARY}
               >
-                Try Again
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add item
               </button>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="px-4 py-2 shrink-0">
-              <div className="flex justify-between items-center">
-                <h1 className="text-xl font-bold text-slate-700">Inventory</h1>
-                <div className="flex items-center gap-2">
-                  <SearchBar />
-                  <TabsController href="/admin/inventory/additem">
-                    <div className="cursor-pointer hover:bg-primary transition-all duration-200 bg-primary/80 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm">
-                      <Plus className="h-4 w-4" />
-                      Add Item
-                    </div>
-                  </TabsController>
-                </div>
-              </div>
-            </div>
+        </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                {/* Fixed Header Section */}
-                <div className="p-4 shrink-0 border-b border-slate-200">
-                  <div className="flex items-center justify-between gap-3">
-                    {/* search bar */}
-                    <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder={`Search ${
-                          activeTab === "edging_tape"
-                            ? "edging tape"
-                            : activeTab
-                        } items by description, supplier reference, brand, color`}
-                        className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
-                    {/* reset, sort by, filter by, export to excel */}
-                    <div className="flex items-center gap-2">
-                      {isAnyFilterActive() && (
-                        <button
-                          onClick={handleReset}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                          <span>Reset</span>
-                        </button>
-                      )}
-
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() => setShowSortDropdown(!showSortDropdown)}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <ArrowUpDown className="h-4 w-4" />
-                          <span>Sort by</span>
-                        </button>
-                        {showSortDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-                            <div className="py-1">
-                              {activeTab !== "accessory" && (
-                                <button
-                                  onClick={() => handleSort("brand")}
-                                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  Brand {getSortIcon("brand")}
-                                </button>
-                              )}
-                              {activeTab !== "accessory" &&
-                                activeTab !== "hardware" && (
-                                  <button
-                                    onClick={() => handleSort("color")}
-                                    className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                  >
-                                    Color {getSortIcon("color")}
-                                  </button>
-                                )}
-                              {activeTab === "accessory" && (
-                                <button
-                                  onClick={() => handleSort("name")}
-                                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  Name {getSortIcon("name")}
-                                </button>
-                              )}
-                              {(activeTab === "sheet" ||
-                                activeTab === "sunmica") && (
-                                <button
-                                  onClick={() => handleSort("finish")}
-                                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  Finish {getSortIcon("finish")}
-                                </button>
-                              )}
-                              {activeTab === "handle" && (
-                                <button
-                                  onClick={() => handleSort("type")}
-                                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  Type {getSortIcon("type")}
-                                </button>
-                              )}
-                              {activeTab === "hardware" && (
-                                <button
-                                  onClick={() => handleSort("name")}
-                                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  Name {getSortIcon("name")}
-                                </button>
-                              )}
-                              {activeTab === "hardware" && (
-                                <button
-                                  onClick={() => handleSort("sub_category")}
-                                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  Sub Category {getSortIcon("sub_category")}
-                                </button>
-                              )}
-                              {activeTab === "handle" && (
-                                <button
-                                  onClick={() => handleSort("material")}
-                                  className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                                >
-                                  Material {getSortIcon("material")}
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleSort("quantity")}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
-                              >
-                                Quantity {getSortIcon("quantity")}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => setShowFilterPopup(true)}
-                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium relative"
-                      >
-                        <Funnel className="h-4 w-4" />
-                        <span>Filter</span>
-                        {getActiveFilterCount() > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-semibold rounded-full h-5 w-5 flex items-center justify-center">
-                            {getActiveFilterCount()}
-                          </span>
-                        )}
-                      </button>
-
-                      <button
-                        onClick={handleOpenStockTally}
-                        disabled={filteredAndSortedData.length === 0}
-                        className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium relative ${
-                          filteredAndSortedData.length === 0
-                            ? "opacity-50 cursor-not-allowed"
-                            : "cursor-pointer hover:bg-slate-100"
-                        }`}
-                      >
-                        <ClipboardList className="h-4 w-4" />
-                        <span>Stock Tally</span>
-                      </button>
-
-                      <div className="relative dropdown-container flex items-center">
-                        <button
-                          onClick={handleExportToExcel}
-                          disabled={
-                            isExporting ||
-                            filteredAndSortedData.length === 0 ||
-                            selectedColumns.length === 0
-                          }
-                          className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                            isExporting ||
-                            filteredAndSortedData.length === 0 ||
-                            selectedColumns.length === 0
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer hover:bg-slate-100"
-                          }`}
-                        >
-                          <Sheet className="h-4 w-4" />
-                          <span>
-                            {isExporting ? "Exporting..." : "Export to Excel"}
-                          </span>
-                        </button>
-                        <button
-                          onClick={() =>
-                            setShowColumnDropdown(!showColumnDropdown)
-                          }
-                          disabled={
-                            isExporting || filteredAndSortedData.length === 0
-                          }
-                          className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                            isExporting || filteredAndSortedData.length === 0
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer hover:bg-slate-100"
-                          }`}
-                        >
-                          <ChevronDown className="h-5 w-5" />
-                        </button>
-                        {showColumnDropdown && (
-                          <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                            <div className="py-1">
-                              <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                <span className="font-semibold">
-                                  Select All
-                                </span>
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    selectedColumns.length ===
-                                    availableColumns.length
-                                  }
-                                  onChange={() =>
-                                    handleColumnToggle("Select All")
-                                  }
-                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                />
-                              </label>
-                              {availableColumns.map((column) => (
-                                <label
-                                  key={column}
-                                  className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                >
-                                  <span>{column}</span>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedColumns.includes(column)}
-                                    onChange={() => handleColumnToggle(column)}
-                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                  />
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* Tabs Section */}
-                <div className="px-4 shrink-0 border-b border-slate-200">
-                  <nav className="flex space-x-6 overflow-x-auto">
-                    {tabs.map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => dispatch(setActiveTab(tab.id))}
-                        className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                          activeTab === tab.id
-                            ? "border-primary text-primary"
-                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </nav>
-                </div>
-
-                {/* Scrollable Table Section */}
-                <div className="flex-1 overflow-auto">
-                  <div className="min-w-full">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                            Image
-                          </th>
-                          {(activeTab === "sheet" ||
-                            activeTab === "sunmica" ||
-                            activeTab === "handle" ||
-                            activeTab === "hardware" ||
-                            activeTab === "edging_tape") && (
-                            <th
-                              className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("brand")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Brand
-                                {getSortIcon("brand")}
-                              </div>
-                            </th>
-                          )}
-                          {(activeTab === "sheet" ||
-                            activeTab === "sunmica" ||
-                            activeTab === "handle" ||
-                            activeTab === "edging_tape") && (
-                            <th
-                              className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("color")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Color
-                                {getSortIcon("color")}
-                              </div>
-                            </th>
-                          )}
-                          {(activeTab === "sheet" ||
-                            activeTab === "sunmica" ||
-                            activeTab === "edging_tape") && (
-                            <>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("finish")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Finish
-                                  {getSortIcon("finish")}
-                                </div>
-                              </th>
-                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                Dimensions
-                              </th>
-                            </>
-                          )}
-                          {activeTab === "handle" && (
-                            <>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("type")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Type
-                                  {getSortIcon("type")}
-                                </div>
-                              </th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("material")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Material
-                                  {getSortIcon("material")}
-                                </div>
-                              </th>
-                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                Dimensions
-                              </th>
-                            </>
-                          )}
-                          {activeTab === "hardware" && (
-                            <>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("name")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Name
-                                  {getSortIcon("name")}
-                                </div>
-                              </th>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("sub_category")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Sub Category
-                                  {getSortIcon("sub_category")}
-                                </div>
-                              </th>
-                              <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                Dimensions
-                              </th>
-                            </>
-                          )}
-                          {activeTab === "accessory" && (
-                            <>
-                              <th
-                                className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                                onClick={() => handleSort("name")}
-                              >
-                                <div className="flex items-center gap-2">
-                                  Name
-                                  {getSortIcon("name")}
-                                </div>
-                              </th>
-                            </>
-                          )}
-                          <th
-                            className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                            onClick={() => handleSort("quantity")}
-                          >
-                            <div className="flex items-center gap-2">
-                              Quantity
-                              {getSortIcon("quantity")}
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {loading ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-slate-500 text-center"
-                              colSpan={columnCount}
-                            >
-                              Loading {activeTab} items...
-                            </td>
-                          </tr>
-                        ) : error ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-red-600 text-center"
-                              colSpan={columnCount}
-                            >
-                              {error}
-                            </td>
-                          </tr>
-                        ) : paginatedData.length === 0 ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-slate-500 text-center"
-                              colSpan={columnCount}
-                            >
-                              {search
-                                ? `No ${activeTab} items found matching your search`
-                                : `No ${activeTab} items found`}
-                            </td>
-                          </tr>
-                        ) : (
-                          paginatedData.map((item) => (
-                            <tr
-                              key={item.item_id}
-                              onClick={() => {
-                                router.push(`/admin/inventory/${item.item_id}`);
-                              }}
-                              className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
-                            >
-                              <td className="px-4 py-3">
-                                <div className="w-10 h-10">
-                                  {item.image?.url ? (
-                                    <Image
-                                      src={`/${item.image.url}`}
-                                      alt={item.description || "Item"}
-                                      width={40}
-                                      height={40}
-                                      className="w-full h-full object-cover rounded-md"
-                                    />
-                                  ) : (
-                                    <div className="w-10 h-10 bg-slate-200 rounded-md text-center flex items-center justify-center">
-                                      <ImageIcon className="h-4 w-4" />
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              {(activeTab === "sheet" ||
-                                activeTab === "sunmica" ||
-                                activeTab === "handle" ||
-                                activeTab === "hardware" ||
-                                activeTab === "edging_tape") && (
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                  {item.sheet?.brand ||
-                                    item.handle?.brand ||
-                                    item.hardware?.brand ||
-                                    item.edging_tape?.brand ||
-                                    "N/A"}
-                                </td>
-                              )}
-                              {(activeTab === "sheet" ||
-                                activeTab === "sunmica" ||
-                                activeTab === "handle" ||
-                                activeTab === "edging_tape") && (
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                  {item.sheet?.color ||
-                                    item.handle?.color ||
-                                    item.edging_tape?.color ||
-                                    "N/A"}
-                                </td>
-                              )}
-                              {(activeTab === "sheet" ||
-                                activeTab === "sunmica" ||
-                                activeTab === "edging_tape") && (
-                                <>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                    {item.sheet?.finish ||
-                                      item.edging_tape?.finish ||
-                                      "N/A"}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                    {item.sheet?.dimensions ||
-                                      item.edging_tape?.dimensions ||
-                                      "N/A"}
-                                  </td>
-                                </>
-                              )}
-                              {activeTab === "handle" && (
-                                <>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                    {item.handle?.type || "N/A"}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                    {item.handle?.material || "N/A"}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                    {item.handle?.dimensions || "N/A"}
-                                  </td>
-                                </>
-                              )}
-                              {activeTab === "hardware" && (
-                                <>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                    {item.hardware?.name || "N/A"}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                    {item.hardware?.sub_category || "N/A"}
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                    {item.hardware?.dimensions || "N/A"}
-                                  </td>
-                                </>
-                              )}
-                              {activeTab === "accessory" && (
-                                <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                  {item.accessory?.name || "N/A"}
-                                </td>
-                              )}
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800 border border-green-200">
-                                  {item.quantity || 0}
-                                  {item.measurement_unit && (
-                                    <span className="ml-1 text-green-700">
-                                      {item.measurement_unit}
-                                    </span>
-                                  )}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Fixed Pagination Footer */}
-                {!loading && !error && paginatedData.length > 0 && (
-                  <PaginationFooter
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    currentPage={currentPage}
-                    onPageChange={handlePageChange}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                    itemsPerPageOptions={[50, 100, 250, 0]}
-                    showItemsPerPage={true}
+        <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+          <div className="bg-white rounded-lg border border-slate-200 flex flex-col h-full overflow-hidden">
+            {/* Fixed header section */}
+            <div className="p-4 shrink-0 border-b border-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Search */}
+                <div className="flex items-center gap-2 flex-1 min-w-64 max-w-2xl relative">
+                  <Search
+                    className="h-4 w-4 absolute left-3 text-slate-400 pointer-events-none"
+                    aria-hidden="true"
                   />
-                )}
+                  <input
+                    type="text"
+                    aria-label={`Search ${tabNoun} items`}
+                    placeholder="Search by description, supplier reference, brand or colour"
+                    className="w-full text-sm text-slate-800 py-2 pr-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+
+                {/* Reset, sort, filter, stock tally, export */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {isAnyFilterActive() && (
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className={BTN_SECONDARY}
+                    >
+                      <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+
+                  <div className="relative dropdown-container">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowColumnDropdown(false);
+                        setShowSortDropdown(!showSortDropdown);
+                      }}
+                      aria-haspopup="true"
+                      aria-expanded={showSortDropdown}
+                      className={BTN_SECONDARY}
+                    >
+                      <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
+                      <span>Sort by</span>
+                    </button>
+                    {showSortDropdown && (
+                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-300 rounded-lg z-40">
+                        <div className="py-1">
+                          {sortOptions.map(({ field, label }) => (
+                            <button
+                              type="button"
+                              key={field}
+                              onClick={() => handleSort(field)}
+                              className={MENU_ITEM}
+                            >
+                              {label} {getSortIcon(field)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSortDropdown(false);
+                      setShowColumnDropdown(false);
+                      setShowFilterPopup(true);
+                    }}
+                    aria-haspopup="dialog"
+                    className={BTN_SECONDARY}
+                  >
+                    <Funnel className="h-4 w-4" aria-hidden="true" />
+                    <span>Filter</span>
+                    {activeFilterCount > 0 && (
+                      <span className={BUTTON_COUNT_BADGE}>
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenStockTally}
+                    disabled={!hasCurrentRows}
+                    className={BTN_SECONDARY}
+                  >
+                    <ClipboardList className="h-4 w-4" aria-hidden="true" />
+                    <span>Stock tally</span>
+                  </button>
+
+                  <div className="relative dropdown-container flex items-stretch">
+                    <button
+                      type="button"
+                      onClick={handleExportToExcel}
+                      disabled={exportDisabled}
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 border-r-0 hover:bg-slate-100 rounded-l-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Sheet className="h-4 w-4" aria-hidden="true" />
+                      <span>
+                        {isExporting ? "Exporting…" : "Export to Excel"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSortDropdown(false);
+                        setShowColumnDropdown(!showColumnDropdown);
+                      }}
+                      disabled={columnPickerDisabled}
+                      aria-label="Choose columns to export"
+                      aria-haspopup="true"
+                      aria-expanded={showColumnDropdown}
+                      className="cursor-pointer flex items-center px-2 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-r-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    {showColumnDropdown && (
+                      <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
+                        <div className="py-1">
+                          <label
+                            className={`${MENU_CHECK_ROW} sticky top-0 bg-white border-b border-slate-200`}
+                          >
+                            <span className="font-medium">Select all</span>
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedColumns.length ===
+                                availableColumns.length
+                              }
+                              onChange={() => handleColumnToggle("Select All")}
+                              className={CHECKBOX}
+                            />
+                          </label>
+                          {availableColumns.map((column) => (
+                            <label key={column} className={MENU_CHECK_ROW}>
+                              <span>
+                                {EXPORT_COLUMN_LABELS[column] || column}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={selectedColumns.includes(column)}
+                                onChange={() => handleColumnToggle(column)}
+                                className={CHECKBOX}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-          </>
-        )}
+
+            {/* Tabs section */}
+            <div className="px-4 shrink-0 border-b border-slate-200">
+              <div
+                className="flex space-x-6 overflow-x-auto"
+                role="tablist"
+                aria-label="Inventory category"
+              >
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    id={`inventory-tab-${tab.id}`}
+                    aria-selected={activeTab === tab.id}
+                    aria-controls="inventory-panel"
+                    onClick={() => dispatch(setActiveTab(tab.id))}
+                    className={tabClass(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Scrollable table section */}
+            <div
+              id="inventory-panel"
+              role="tabpanel"
+              aria-labelledby={`inventory-tab-${activeTab}`}
+              className="flex-1 overflow-auto"
+            >
+              <div className="min-w-full">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50 sticky top-0 z-10">
+                    <tr>
+                      <th scope="col" className={`${TH} text-left`}>
+                        Image
+                      </th>
+                      {tabColumns.map((key) =>
+                        COLUMN_DEFS[key].sortable === false ? (
+                          <th
+                            key={key}
+                            scope="col"
+                            className={`${TH} text-left`}
+                          >
+                            {COLUMN_DEFS[key].label}
+                          </th>
+                        ) : (
+                          <SortHeader
+                            key={key}
+                            field={key}
+                            label={COLUMN_DEFS[key].label}
+                            {...sortHeaderProps}
+                          />
+                        ),
+                      )}
+                      <SortHeader
+                        field="quantity"
+                        label="Quantity"
+                        alignRight
+                        {...sortHeaderProps}
+                      />
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {loading ? (
+                      <tr>
+                        <td
+                          className="px-4 py-12 text-center"
+                          colSpan={columnCount}
+                        >
+                          <div
+                            className="flex flex-col items-center gap-2"
+                            role="status"
+                          >
+                            <span
+                              className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin"
+                              aria-hidden="true"
+                            />
+                            <p className="text-sm text-slate-600">
+                              Loading {tabNoun} items…
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : error ? (
+                      <tr>
+                        <td
+                          className="px-4 py-12 text-center"
+                          colSpan={columnCount}
+                        >
+                          <div
+                            className="flex flex-col items-center gap-2"
+                            role="alert"
+                          >
+                            <AlertTriangle
+                              className="w-8 h-8 text-red-500"
+                              aria-hidden="true"
+                            />
+                            <p className="text-sm text-red-600">{error}</p>
+                            <button
+                              type="button"
+                              onClick={() => fetchData(activeTab)}
+                              className={BTN_SECONDARY_COMPACT}
+                            >
+                              Try again
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : paginatedData.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-4 py-12 text-center"
+                          colSpan={columnCount}
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            <Package
+                              className="w-8 h-8 text-slate-300"
+                              aria-hidden="true"
+                            />
+                            {data.length > 0 && isNarrowingFilterActive ? (
+                              <>
+                                <p className="text-sm text-slate-600">
+                                  No {tabNoun} items match your filters
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={handleReset}
+                                  className={BTN_SECONDARY_COMPACT}
+                                >
+                                  <RotateCcw
+                                    className="h-4 w-4"
+                                    aria-hidden="true"
+                                  />
+                                  Clear filters
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm text-slate-600">
+                                  No {tabNoun} items yet
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={goToAddItem}
+                                  className={BTN_SECONDARY_COMPACT}
+                                >
+                                  <Plus
+                                    className="h-4 w-4"
+                                    aria-hidden="true"
+                                  />
+                                  Add item
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedData.map((item) => {
+                        const href = `/admin/inventory/${item.item_id}`;
+                        return (
+                          <tr
+                            key={item.item_id}
+                            onClick={() => router.push(href)}
+                            className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                          >
+                            <td className="px-4 py-3">
+                              <ItemThumb image={item.image} />
+                            </td>
+                            {tabColumns.map((key, index) => {
+                              const value = getFieldValue(item, key);
+                              return (
+                                <td
+                                  key={key}
+                                  className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap"
+                                >
+                                  {index === 0 ? (
+                                    <Link
+                                      href={href}
+                                      onClick={(e) => e.stopPropagation()}
+                                      title={getItemTitle(item) || undefined}
+                                      className="block max-w-64 truncate font-medium rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                      {value || EMPTY}
+                                    </Link>
+                                  ) : (
+                                    <TextCell
+                                      value={value}
+                                      strong={COLUMN_DEFS[key].strong}
+                                    />
+                                  )}
+                                </td>
+                              );
+                            })}
+                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                              <StockLevel
+                                stock={Number(item.quantity) || 0}
+                                unit={item.measurement_unit}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Fixed pagination footer */}
+            {!loading && !error && paginatedData.length > 0 && (
+              <PaginationFooter
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                currentPage={currentPage}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                itemsPerPageOptions={[50, 100, 250, 0]}
+                showItemsPerPage={true}
+              />
+            )}
+          </div>
+        </div>
       </main>
 
-      {/* Filter Popup Modal */}
+      {/* Filter dialog. Filters apply as they are chosen, so closing the
+          dialog never discards anything and the backdrop can close it. */}
       {showFilterPopup && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
-          <div className="filter-popup bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] m-4 flex flex-col">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-slate-800">
-                Filter {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}{" "}
-                Items
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+          onClick={() => setShowFilterPopup(false)}
+        >
+          <div
+            ref={filterModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inventory-filter-title"
+            className="bg-white rounded-xl border border-slate-200 w-full max-w-2xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+              <h2
+                id="inventory-filter-title"
+                className="text-lg font-semibold text-slate-800"
+              >
+                Filter {tabNoun} items
               </h2>
               <button
+                type="button"
                 onClick={() => setShowFilterPopup(false)}
-                className="cursor-pointer text-slate-400 hover:text-slate-600 transition-colors"
+                className={ICON_BTN}
+                aria-label="Close"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
             <div className="p-6 space-y-6 overflow-y-auto flex-1">
-              {/* Common Filters */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
+              {/* Common filters */}
+              <fieldset>
+                <legend className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Quantity range
+                </legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Quantity Range
+                    <label
+                      htmlFor="inventory-filter-qty-min"
+                      className="block text-xs text-slate-500 mb-1.5"
+                    >
+                      Minimum
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="number"
-                        value={filters.quantity_min}
-                        onChange={(e) =>
-                          handleFilterChange("quantity_min", e.target.value)
-                        }
-                        placeholder="Min quantity"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                        min="0"
+                    <input
+                      id="inventory-filter-qty-min"
+                      data-autofocus
+                      type="number"
+                      value={filters.quantity_min}
+                      onChange={(e) =>
+                        handleFilterChange("quantity_min", e.target.value)
+                      }
+                      className={FIELD_COMPACT}
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="inventory-filter-qty-max"
+                      className="block text-xs text-slate-500 mb-1.5"
+                    >
+                      Maximum
+                    </label>
+                    <input
+                      id="inventory-filter-qty-max"
+                      type="number"
+                      value={filters.quantity_max}
+                      onChange={(e) =>
+                        handleFilterChange("quantity_max", e.target.value)
+                      }
+                      className={FIELD_COMPACT}
+                      min="0"
+                    />
+                  </div>
+                </div>
+              </fieldset>
+
+              {/* Category-specific filters */}
+              {filterFields.length > 0 && (
+                <div className="space-y-4 pt-6 border-t border-slate-200">
+                  <h3 className="text-sm font-semibold text-slate-700">
+                    {tabLabel} filters
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filterFields.map(([label, field, noun]) => (
+                      <MultiSelectDropdown
+                        key={field}
+                        label={label}
+                        field={field}
+                        options={getDistinctValues(field, data)}
+                        selectedValues={filters[field]}
+                        onSelectionChange={handleFilterChange}
+                        placeholder={`Select ${noun}…`}
                       />
-                      <input
-                        type="number"
-                        value={filters.quantity_max}
-                        onChange={(e) =>
-                          handleFilterChange("quantity_max", e.target.value)
-                        }
-                        placeholder="Max quantity"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sheet Filters */}
-              {(activeTab === "sheet" || activeTab === "sunmica") && (
-                <div className="space-y-4 pt-4 border-t border-slate-200">
-                  <h3 className="font-medium text-slate-700 text-sm tracking-wide">
-                    {activeTab === "sunmica" ? "Sunmica" : "Sheet"} Specific
-                    Filters
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <MultiSelectDropdown
-                      label="Brand"
-                      field="sheet_brand"
-                      options={getDistinctValues("sheet_brand", data)}
-                      selectedValues={filters.sheet_brand}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select brands..."
-                    />
-
-                    <MultiSelectDropdown
-                      label="Color"
-                      field="sheet_color"
-                      options={getDistinctValues("sheet_color", data)}
-                      selectedValues={filters.sheet_color}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select colors..."
-                    />
-
-                    <MultiSelectDropdown
-                      label="Finish"
-                      field="sheet_finish"
-                      options={getDistinctValues("sheet_finish", data)}
-                      selectedValues={filters.sheet_finish}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select finishes..."
-                    />
-
-                    <MultiSelectDropdown
-                      label="Face"
-                      field="sheet_face"
-                      options={getDistinctValues("sheet_face", data)}
-                      selectedValues={filters.sheet_face}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select faces..."
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Handle Filters */}
-              {activeTab === "handle" && (
-                <div className="space-y-4 pt-4 border-t border-slate-200">
-                  <h3 className="font-medium text-slate-700 text-sm uppercase tracking-wide">
-                    Handle Specific Filters
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <MultiSelectDropdown
-                      label="Brand"
-                      field="handle_brand"
-                      options={getDistinctValues("handle_brand", data)}
-                      selectedValues={filters.handle_brand}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select brands..."
-                    />
-
-                    <MultiSelectDropdown
-                      label="Color"
-                      field="handle_color"
-                      options={getDistinctValues("handle_color", data)}
-                      selectedValues={filters.handle_color}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select colors..."
-                    />
-
-                    <MultiSelectDropdown
-                      label="Type"
-                      field="handle_type"
-                      options={getDistinctValues("handle_type", data)}
-                      selectedValues={filters.handle_type}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select types..."
-                    />
-
-                    <MultiSelectDropdown
-                      label="Material"
-                      field="handle_material"
-                      options={getDistinctValues("handle_material", data)}
-                      selectedValues={filters.handle_material}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select materials..."
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Hardware Filters */}
-              {activeTab === "hardware" && (
-                <div className="space-y-4 pt-4 border-t border-slate-200">
-                  <h3 className="font-medium text-slate-700 text-sm uppercase tracking-wide">
-                    Hardware Specific Filters
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <MultiSelectDropdown
-                      label="Brand"
-                      field="hardware_brand"
-                      options={getDistinctValues("hardware_brand", data)}
-                      selectedValues={filters.hardware_brand}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select brands..."
-                    />
-
-                    <MultiSelectDropdown
-                      label="Name"
-                      field="hardware_name"
-                      options={getDistinctValues("hardware_name", data)}
-                      selectedValues={filters.hardware_name}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select names..."
-                    />
-
-                    <MultiSelectDropdown
-                      label="Type"
-                      field="hardware_type"
-                      options={getDistinctValues("hardware_type", data)}
-                      selectedValues={filters.hardware_type}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select types..."
-                    />
-
-                    <MultiSelectDropdown
-                      label="Sub Category"
-                      field="hardware_sub_category"
-                      options={getDistinctValues("hardware_sub_category", data)}
-                      selectedValues={filters.hardware_sub_category}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select sub categories..."
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Accessory Filters */}
-              {activeTab === "accessory" && (
-                <div className="space-y-4 pt-4 border-t border-slate-200">
-                  <h3 className="font-medium text-slate-700 text-sm uppercase tracking-wide">
-                    Accessory Specific Filters
-                  </h3>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <MultiSelectDropdown
-                      label="Name"
-                      field="accessory_name"
-                      options={getDistinctValues("accessory_name", data)}
-                      selectedValues={filters.accessory_name}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select names..."
-                    />
-                  </div>
-                </div>
-              )}
-              {/* Edging Tape Filters */}
-              {activeTab === "edging_tape" && (
-                <div className="space-y-4 pt-4 border-t border-slate-200">
-                  <h3 className="font-medium text-slate-700 text-sm uppercase tracking-wide">
-                    Edging Tape Specific Filters
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <MultiSelectDropdown
-                      label="Brand"
-                      field="edging_tape_brand"
-                      options={getDistinctValues("edging_tape_brand", data)}
-                      selectedValues={filters.edging_tape_brand}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select brands..."
-                    />
-                    <MultiSelectDropdown
-                      label="Color"
-                      field="edging_tape_color"
-                      options={getDistinctValues("edging_tape_color", data)}
-                      selectedValues={filters.edging_tape_color}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select colors..."
-                    />
-                    <MultiSelectDropdown
-                      label="Finish"
-                      field="edging_tape_finish"
-                      options={getDistinctValues("edging_tape_finish", data)}
-                      selectedValues={filters.edging_tape_finish}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select finishes..."
-                    />
-                    <MultiSelectDropdown
-                      label="Dimensions"
-                      field="edging_tape_dimensions"
-                      options={getDistinctValues(
-                        "edging_tape_dimensions",
-                        data,
-                      )}
-                      selectedValues={filters.edging_tape_dimensions}
-                      onSelectionChange={handleFilterChange}
-                      placeholder="Select dimensions..."
-                    />
+                    ))}
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 flex justify-between items-center">
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-200 shrink-0">
               <button
+                type="button"
                 onClick={clearFilters}
-                className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                disabled={activeFilterCount === 0}
+                className={BTN_GHOST}
               >
-                Clear All Filters
+                Clear all filters
               </button>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowFilterPopup(false)}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setShowFilterPopup(false)}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
-                >
-                  Apply Filters
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowFilterPopup(false)}
+                className={BTN_PRIMARY}
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Stock Tally Modal */}
+      {/* Stock tally modal */}
       {showStockTallyModal && (
         <StockTally
           activeTab={activeTab}

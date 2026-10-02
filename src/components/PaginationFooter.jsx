@@ -93,22 +93,34 @@ export default function PaginationFooter({
               </span>
               <div className="relative pagination-dropdown-container">
                 <button
+                  type="button"
                   onClick={() =>
                     setShowItemsPerPageDropdown(!showItemsPerPageDropdown)
                   }
-                  className="cursor-pointer flex items-center gap-2 px-2 py-1 text-sm border border-slate-300 rounded-lg hover:bg-white transition-colors duration-200 bg-white font-medium"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setShowItemsPerPageDropdown(false);
+                  }}
+                  aria-label="Rows per page"
+                  aria-haspopup="listbox"
+                  aria-expanded={showItemsPerPageDropdown}
+                  className="cursor-pointer flex items-center gap-2 px-2 py-1 text-sm border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors duration-200 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <span>{itemsPerPage === 0 ? "All" : itemsPerPage}</span>
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
                 </button>
                 {showItemsPerPageDropdown && (
-                  <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
+                  <div className="absolute bottom-full left-0 mb-1 w-20 bg-white border border-slate-300 rounded-lg z-40">
                     <div className="py-1">
                       {itemsPerPageOptions.map((value) => (
                         <button
+                          type="button"
                           key={value}
                           onClick={() => handleItemsPerPageChange(value)}
-                          className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                          className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors duration-200 ${
+                            value === itemsPerPage
+                              ? "bg-slate-50 font-medium"
+                              : ""
+                          }`}
                         >
                           {value === 0 ? "All" : value}
                         </button>
@@ -137,20 +149,22 @@ export default function PaginationFooter({
         {itemsPerPage > 0 && (
           <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={() => handlePageChange(1)}
               disabled={currentPage === 1}
-              className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              className="cursor-pointer p-2 text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
               aria-label="First page"
             >
-              <ChevronsLeft className="h-4 w-4" />
+              <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
             </button>
             <button
+              type="button"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              className="cursor-pointer p-2 text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
               aria-label="Previous page"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
 
             {/* Page numbers */}
@@ -169,11 +183,12 @@ export default function PaginationFooter({
 
                 return (
                   <button
+                    type="button"
                     key={pageNum}
                     onClick={() => handlePageChange(pageNum)}
-                    className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium ${
+                    className={`cursor-pointer px-3 py-1 text-sm rounded-lg transition-colors duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-primary ${
                       currentPage === pageNum
-                        ? "bg-primary text-white shadow-sm"
+                        ? "bg-primary text-white"
                         : "text-slate-600 hover:bg-white"
                     }`}
                     aria-label={`Page ${pageNum}`}
@@ -186,20 +201,22 @@ export default function PaginationFooter({
             </div>
 
             <button
+              type="button"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              className="cursor-pointer p-2 text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
               aria-label="Next page"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
             <button
+              type="button"
               onClick={() => handlePageChange(totalPages)}
               disabled={currentPage === totalPages}
-              className="cursor-pointer p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              className="cursor-pointer p-2 text-slate-600 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
               aria-label="Last page"
             >
-              <ChevronsRight className="h-4 w-4" />
+              <ChevronsRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         )}

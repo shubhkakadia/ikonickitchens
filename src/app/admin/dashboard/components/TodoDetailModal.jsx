@@ -107,7 +107,7 @@ export default function TodoDetailModal({
           <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-slate-200">
             <div className="min-w-0">
               <h2
-                className={`text-lg font-semibold break-words ${todo.is_completed ? "text-slate-500 line-through" : "text-slate-800"}`}
+                className={`text-lg font-semibold wrap-break-word ${todo.is_completed ? "text-slate-500 line-through" : "text-slate-800"}`}
               >
                 {todo.title}
               </h2>

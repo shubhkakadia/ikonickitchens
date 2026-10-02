@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 /**
  * CustomDropdown Component
@@ -19,6 +19,10 @@ import { ChevronDown } from "lucide-react";
  * @param {string} [props.loadingText] - Text shown while loading
  * @param {string} [props.emptyText] - Text shown when no options match
  * @param {string} [props.className] - Extra classes for the wrapper
+ * @param {string} [props.id] - id for the input, so a <label htmlFor> can point at it
+ * @param {string} [props.ariaLabel] - Accessible name when there is no visible label
+ * @param {boolean} [props.invalid] - Error styling (red border and ring) and aria-invalid
+ * @param {string} [props.describedBy] - id of the element carrying the error / hint text
  */
 export default function CustomDropdown({
   options = [],
@@ -31,6 +35,10 @@ export default function CustomDropdown({
   loadingText = "Loading...",
   emptyText = "No options found",
   className = "",
+  id,
+  ariaLabel,
+  invalid = false,
+  describedBy,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -115,13 +123,29 @@ export default function CustomDropdown({
             setIsOpen(true);
           }}
           onFocus={() => !disabled && setIsOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setIsOpen(false);
+              setSearchTerm("");
+            }
+          }}
+          id={id}
+          role="combobox"
+          aria-label={ariaLabel}
+          aria-expanded={isOpen && !disabled}
+          aria-haspopup="listbox"
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
+          autoComplete="off"
           onClick={() => {
             if (disabled) return;
             if (!searchable) toggleOpen();
           }}
-          className={`w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
+          className={`w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:outline-none ${
+            invalid ? "border-red-500 focus:ring-red-500" : "focus:ring-primary"
+          } focus:border-transparent ${
             disabled
-              ? "bg-slate-100 cursor-not-allowed text-slate-500"
+              ? "bg-slate-50 cursor-not-allowed text-slate-500"
               : searchable
                 ? ""
                 : "cursor-pointer"
@@ -132,18 +156,22 @@ export default function CustomDropdown({
           onClick={toggleOpen}
           disabled={disabled}
           tabIndex={-1}
-          className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:cursor-not-allowed"
+          aria-label={isOpen ? "Close options" : "Open options"}
+          className="cursor-pointer absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700 transition-colors duration-200 disabled:cursor-not-allowed"
         >
-          <ChevronDown
-            className={`w-5 h-5 transition-transform ${
-              isOpen ? "rotate-180" : ""
-            }`}
-          />
+          {isOpen ? (
+            <ChevronUp className="w-4 h-4" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="w-4 h-4" aria-hidden="true" />
+          )}
         </button>
       </div>
 
       {isOpen && !disabled && (
-        <div className="absolute z-20 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+        <div
+          role="listbox"
+          className="absolute z-40 w-full mt-1 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto"
+        >
           {loading ? (
             <div className="px-4 py-3 text-sm text-slate-500 text-center">
               {loadingText}
@@ -159,7 +187,9 @@ export default function CustomDropdown({
                 type="button"
                 onClick={() => handleSelect(option)}
                 disabled={option.disabled}
-                className={`w-full text-left px-4 py-3 text-sm transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                role="option"
+                aria-selected={option.value === value}
+                className={`w-full text-left px-4 py-2.5 text-sm transition-colors duration-200 first:rounded-t-lg last:rounded-b-lg ${
                   option.disabled
                     ? "text-slate-400 cursor-not-allowed"
                     : "cursor-pointer text-slate-800 hover:bg-slate-100"

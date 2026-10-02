@@ -1,4 +1,5 @@
 "use client";
+import { BUTTON_COUNT_BADGE } from "@/app/admin/dashboard/lib/format";
 import React, { useEffect, useState, useMemo } from "react";
 import AdminShell from "@/components/AdminShell";
 import TabsController from "@/components/tabscontroller";
@@ -568,7 +569,7 @@ export default function ProjectsPage() {
                           {distinctClientType.length -
                             selectedClientType.length >
                             0 && (
-                            <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                            <span className={BUTTON_COUNT_BADGE}>
                               {distinctClientType.length -
                                 selectedClientType.length}
                             </span>
@@ -628,7 +629,7 @@ export default function ProjectsPage() {
                           {distinctClientName.length -
                             selectedClientName.length >
                             0 && (
-                            <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                            <span className={BUTTON_COUNT_BADGE}>
                               {distinctClientName.length -
                                 selectedClientName.length}
                             </span>
@@ -713,7 +714,7 @@ export default function ProjectsPage() {
                           </div>
                         )}
                       </div>
-                      <div className="relative dropdown-container flex items-center">
+                      <div className="relative dropdown-container flex items-stretch">
                         <button
                           onClick={handleExportToExcel}
                           disabled={

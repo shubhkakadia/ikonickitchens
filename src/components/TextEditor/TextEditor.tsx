@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TiptapUnderline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
@@ -30,13 +30,13 @@ import {
 const HTML_TAG_PATTERN =
   /<\/?(p|div|br|ul|ol|li|h[1-6]|strong|em|b|i|u|s|mark|span|blockquote|pre|code|a|img|table)\b[^>]*>/i;
 
-const escapeHtml = (value) =>
+const escapeHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 // Notes saved before this editor existed are plain text. Tiptap parses its
 // initial content as HTML, so wrap those in paragraphs to keep line breaks
 // and stop stray characters from being read as markup.
-const normalizeContent = (value) => {
+const normalizeContent = (value?: string) => {
   if (!value) return "";
   if (HTML_TAG_PATTERN.test(value)) return value;
   return value
@@ -45,21 +45,40 @@ const normalizeContent = (value) => {
     .join("");
 };
 
+interface TextEditorProps {
+  initialContent?: string;
+  onSave?: (html: string) => void | Promise<unknown>;
+  onChange?: (html: string) => void;
+  placeholder?: string;
+  readOnly?: boolean;
+}
+
+interface ToolbarButtonProps {
+  onClick: () => void;
+  isActive?: boolean;
+  children: React.ReactNode;
+  title: string;
+  disabled?: boolean;
+}
+
 const TextEditor = ({
   initialContent = "",
   onSave,
   onChange,
   placeholder = "Start typing...",
-}) => {
+  readOnly = false,
+}: TextEditorProps) => {
   const [showHeadingDropdown, setShowHeadingDropdown] = useState(false);
   const [showHighlightDropdown, setShowHighlightDropdown] = useState(false);
   const [showTextColorDropdown, setShowTextColorDropdown] = useState(false);
 
   const [currentHighlightColor, setCurrentHighlightColor] = useState("#d1d5db");
   const [currentTextColor, setCurrentTextColor] = useState("#000000");
-  const debounceTimerRef = useRef(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveStatus, setSaveStatus] = useState("idle"); // "idle" | "saving" | "saved"
-  const saveStatusTimeoutRef = useRef(null);
+  const saveStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const [buttonStates, setButtonStates] = useState({
     bold: false,
@@ -82,6 +101,7 @@ const TextEditor = ({
 
   const editor = useEditor({
     immediatelyRender: false,
+    editable: !readOnly,
     extensions: [
       StarterKit.configure({
         heading: {
@@ -119,7 +139,9 @@ const TextEditor = ({
     content: normalizeContent(initialContent),
     editorProps: {
       attributes: {
-        class: "prose max-w-none focus:outline-none min-h-[300px] p-4",
+        class: readOnly
+          ? "prose max-w-none focus:outline-none p-4"
+          : "prose max-w-none focus:outline-none min-h-[300px] p-4",
       },
     },
     onUpdate: ({ editor }) => {
@@ -172,7 +194,7 @@ const TextEditor = ({
     },
   });
 
-  const updateButtonStates = (editor) => {
+  const updateButtonStates = (editor: Editor) => {
     setButtonStates({
       bold: editor.isActive("bold"),
       italic: editor.isActive("italic"),
@@ -227,8 +249,8 @@ const TextEditor = ({
 
   // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      const target = e.target;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
       if (!target.closest(".dropdown-container")) {
         setShowHeadingDropdown(false);
         setShowHighlightDropdown(false);
@@ -261,7 +283,7 @@ const TextEditor = ({
     children,
     title,
     disabled = false,
-  }) => (
+  }: ToolbarButtonProps) => (
     <button
       type="button"
       onClick={onClick}
@@ -504,366 +526,390 @@ const TextEditor = ({
         }
       `}</style>
 
-      <div className="border border-slate-300 rounded-lg bg-white overflow-hidden">
+      <div
+        className={`rounded-lg bg-white overflow-hidden ${
+          readOnly ? "" : "border border-slate-300"
+        }`}
+      >
         {/* Toolbar */}
-        <div className="border-b-2 border-slate-200 bg-linear-to-b from-slate-50 to-white px-3 py-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Heading Dropdown */}
-            <div className="relative dropdown-container">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowHeadingDropdown(!showHeadingDropdown);
-                  setShowHighlightDropdown(false);
-                  setShowTextColorDropdown(false);
-                }}
-                className={`cursor-pointer px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 min-w-[130px] justify-between border ${
-                  buttonStates.heading
-                    ? "bg-blue-500 border-blue-500 text-white shadow-md"
-                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
-                }`}
-              >
-                <span className="text-sm font-medium">
-                  {getActiveHeading()}
-                </span>
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform ${
-                    showHeadingDropdown ? "rotate-180" : ""
+        {!readOnly && (
+          <div className="border-b-2 border-slate-200 bg-linear-to-b from-slate-50 to-white px-3 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Heading Dropdown */}
+              <div className="relative dropdown-container">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowHeadingDropdown(!showHeadingDropdown);
+                    setShowHighlightDropdown(false);
+                    setShowTextColorDropdown(false);
+                  }}
+                  className={`cursor-pointer px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 min-w-[130px] justify-between border ${
+                    buttonStates.heading
+                      ? "bg-blue-500 border-blue-500 text-white shadow-md"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
                   }`}
-                />
-              </button>
-
-              {showHeadingDropdown && (
-                <div className="absolute top-full left-0 mt-2 bg-white border-2 border-slate-200 rounded-lg shadow-xl z-20 min-w-[180px] overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      editor.chain().focus().setParagraph().run();
-                      setShowHeadingDropdown(false);
-                    }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-sm border-b border-slate-100"
-                  >
-                    Normal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      editor.chain().focus().toggleHeading({ level: 1 }).run();
-                      setShowHeadingDropdown(false);
-                    }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-xl font-bold border-b border-slate-100"
-                  >
-                    Heading 1
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      editor.chain().focus().toggleHeading({ level: 2 }).run();
-                      setShowHeadingDropdown(false);
-                    }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-lg font-bold border-b border-slate-100"
-                  >
-                    Heading 2
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      editor.chain().focus().toggleHeading({ level: 3 }).run();
-                      setShowHeadingDropdown(false);
-                    }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-base font-bold"
-                  >
-                    Heading 3
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="w-px h-8 bg-slate-300"></div>
-
-            {/* Text Formatting */}
-            <div className="flex gap-1">
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleBold().run()}
-                isActive={buttonStates.bold}
-                title="Bold (Ctrl+B)"
-              >
-                <Bold size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-                isActive={buttonStates.italic}
-                title="Italic (Ctrl+I)"
-              >
-                <Italic size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
-                isActive={buttonStates.underline}
-                title="Underline (Ctrl+U)"
-              >
-                <Underline size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleStrike().run()}
-                isActive={buttonStates.strike}
-                title="Strikethrough"
-              >
-                <Strikethrough size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-            </div>
-
-            <div className="w-px h-8 bg-slate-300"></div>
-
-            {/* Text Color Dropdown */}
-            <div className="relative dropdown-container">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowTextColorDropdown(!showTextColorDropdown);
-                  setShowHeadingDropdown(false);
-                  setShowHighlightDropdown(false);
-                }}
-                className={`cursor-pointer px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 border ${
-                  currentTextColor !== "#000000"
-                    ? "bg-blue-50 border-blue-400 text-slate-900 shadow-md"
-                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
-                }`}
-                title="Text Color"
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-sm">A</span>
-                  <div
-                    className="w-5 h-1 rounded-full transition-colors"
-                    style={{ backgroundColor: currentTextColor }}
-                  ></div>
-                </div>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform ${
-                    showTextColorDropdown ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              {showTextColorDropdown && (
-                <div
-                  className="absolute top-full left-0 mt-2 bg-white border-2 border-slate-200 rounded-lg shadow-xl z-20 p-3"
-                  style={{ minWidth: "200px" }}
                 >
-                  <div className="mb-2 px-1 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                    Text Color
+                  <span className="text-sm font-medium">
+                    {getActiveHeading()}
+                  </span>
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform ${
+                      showHeadingDropdown ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {showHeadingDropdown && (
+                  <div className="absolute top-full left-0 mt-2 bg-white border-2 border-slate-200 rounded-lg shadow-xl z-20 min-w-[180px] overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editor.chain().focus().setParagraph().run();
+                        setShowHeadingDropdown(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-sm border-b border-slate-100"
+                    >
+                      Normal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editor
+                          .chain()
+                          .focus()
+                          .toggleHeading({ level: 1 })
+                          .run();
+                        setShowHeadingDropdown(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-xl font-bold border-b border-slate-100"
+                    >
+                      Heading 1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editor
+                          .chain()
+                          .focus()
+                          .toggleHeading({ level: 2 })
+                          .run();
+                        setShowHeadingDropdown(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-lg font-bold border-b border-slate-100"
+                    >
+                      Heading 2
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editor
+                          .chain()
+                          .focus()
+                          .toggleHeading({ level: 3 })
+                          .run();
+                        setShowHeadingDropdown(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors text-base font-bold"
+                    >
+                      Heading 3
+                    </button>
                   </div>
-                  <div className="grid grid-cols-4 gap-2 mb-3">
-                    {textColors.map((item) => (
-                      <button
-                        key={item.color}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          editor.chain().focus().setColor(item.color).run();
-                          setShowTextColorDropdown(false);
-                        }}
-                        className={`w-10 h-10 rounded-lg border-2 hover:border-slate-500 hover:scale-110 transition-all shadow-sm ${
-                          currentTextColor === item.color
-                            ? "border-blue-500 ring-2 ring-blue-300"
-                            : "border-slate-300"
-                        }`}
-                        style={{ backgroundColor: item.color }}
-                        title={item.name}
-                      />
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      editor.chain().focus().unsetColor().run();
-                      setShowTextColorDropdown(false);
-                    }}
-                    className="w-full px-3 py-2 text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors font-medium"
-                  >
-                    Reset to Default
-                  </button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            <div className="w-px h-8 bg-slate-300"></div>
+              <div className="w-px h-8 bg-slate-300"></div>
 
-            {/* Highlight Dropdown */}
-            <div className="relative dropdown-container">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowHighlightDropdown(!showHighlightDropdown);
-                  setShowHeadingDropdown(false);
-                  setShowTextColorDropdown(false);
-                }}
-                className={`cursor-pointer px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 border ${
-                  buttonStates.highlight
-                    ? "bg-slate-200 border-slate-400 text-slate-900 shadow-md"
-                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
-                }`}
-                title="Highlight"
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-sm">A</span>
-                  <div
-                    className="w-4 h-4 rounded border border-slate-300 transition-colors"
-                    style={{ backgroundColor: currentHighlightColor }}
-                  ></div>
-                </div>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform ${
-                    showHighlightDropdown ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              {showHighlightDropdown && (
-                <div
-                  className="absolute top-full left-0 mt-2 bg-white border-2 border-slate-200 rounded-lg shadow-xl z-20 p-3"
-                  style={{ minWidth: "200px" }}
+              {/* Text Formatting */}
+              <div className="flex gap-1">
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().toggleBold().run()}
+                  isActive={buttonStates.bold}
+                  title="Bold (Ctrl+B)"
                 >
-                  <div className="mb-2 px-1 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                    Highlight Color
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 mb-3">
-                    {highlightColors.map((item) => (
-                      <button
-                        key={item.color}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                  <Bold size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().toggleItalic().run()}
+                  isActive={buttonStates.italic}
+                  title="Italic (Ctrl+I)"
+                >
+                  <Italic size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().toggleUnderline().run()}
+                  isActive={buttonStates.underline}
+                  title="Underline (Ctrl+U)"
+                >
+                  <Underline size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().toggleStrike().run()}
+                  isActive={buttonStates.strike}
+                  title="Strikethrough"
+                >
+                  <Strikethrough size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+              </div>
 
-                          // Apply highlight with the selected color
-                          editor
-                            .chain()
-                            .focus()
-                            .setHighlight({ color: item.color })
-                            .run();
+              <div className="w-px h-8 bg-slate-300"></div>
 
-                          setShowHighlightDropdown(false);
-                        }}
-                        className="w-10 h-10 rounded-lg border-2 border-slate-300 hover:border-slate-500 hover:scale-110 transition-all shadow-sm"
-                        style={{ backgroundColor: item.color }}
-                        title={item.name}
-                      />
-                    ))}
+              {/* Text Color Dropdown */}
+              <div className="relative dropdown-container">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTextColorDropdown(!showTextColorDropdown);
+                    setShowHeadingDropdown(false);
+                    setShowHighlightDropdown(false);
+                  }}
+                  className={`cursor-pointer px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 border ${
+                    currentTextColor !== "#000000"
+                      ? "bg-blue-50 border-blue-400 text-slate-900 shadow-md"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                  }`}
+                  title="Text Color"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-sm">A</span>
+                    <div
+                      className="w-5 h-1 rounded-full transition-colors"
+                      style={{ backgroundColor: currentTextColor }}
+                    ></div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      editor.chain().focus().unsetHighlight().run();
-                      setShowHighlightDropdown(false);
-                    }}
-                    className="w-full px-3 py-2 text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors font-medium"
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform ${
+                      showTextColorDropdown ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {showTextColorDropdown && (
+                  <div
+                    className="absolute top-full left-0 mt-2 bg-white border-2 border-slate-200 rounded-lg shadow-xl z-20 p-3"
+                    style={{ minWidth: "200px" }}
                   >
-                    Remove Highlight
-                  </button>
-                </div>
-              )}
-            </div>
+                    <div className="mb-2 px-1 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                      Text Color
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      {textColors.map((item) => (
+                        <button
+                          key={item.color}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editor.chain().focus().setColor(item.color).run();
+                            setShowTextColorDropdown(false);
+                          }}
+                          className={`w-10 h-10 rounded-lg border-2 hover:border-slate-500 hover:scale-110 transition-all shadow-sm ${
+                            currentTextColor === item.color
+                              ? "border-blue-500 ring-2 ring-blue-300"
+                              : "border-slate-300"
+                          }`}
+                          style={{ backgroundColor: item.color }}
+                          title={item.name}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editor.chain().focus().unsetColor().run();
+                        setShowTextColorDropdown(false);
+                      }}
+                      className="w-full px-3 py-2 text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors font-medium"
+                    >
+                      Reset to Default
+                    </button>
+                  </div>
+                )}
+              </div>
 
-            <div className="w-px h-8 bg-slate-300"></div>
+              <div className="w-px h-8 bg-slate-300"></div>
 
-            {/* Lists and Blocks */}
-            <div className="flex gap-1">
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleBulletList().run()}
-                isActive={buttonStates.bulletList}
-                title="Bullet List"
-              >
-                <List size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                isActive={buttonStates.orderedList}
-                title="Numbered List"
-              >
-                <ListOrdered size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleTaskList().run()}
-                isActive={buttonStates.taskList}
-                title="Checklist"
-              >
-                <ListTodo size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-              <ToolbarButton
-                onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                isActive={buttonStates.blockquote}
-                title="Blockquote"
-              >
-                <Quote size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-            </div>
+              {/* Highlight Dropdown */}
+              <div className="relative dropdown-container">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowHighlightDropdown(!showHighlightDropdown);
+                    setShowHeadingDropdown(false);
+                    setShowTextColorDropdown(false);
+                  }}
+                  className={`cursor-pointer px-3 py-2 rounded-md transition-all duration-200 flex items-center gap-2 border ${
+                    buttonStates.highlight
+                      ? "bg-slate-200 border-slate-400 text-slate-900 shadow-md"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+                  }`}
+                  title="Highlight"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-sm">A</span>
+                    <div
+                      className="w-4 h-4 rounded border border-slate-300 transition-colors"
+                      style={{ backgroundColor: currentHighlightColor }}
+                    ></div>
+                  </div>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform ${
+                      showHighlightDropdown ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
 
-            <div className="w-px h-8 bg-slate-300"></div>
+                {showHighlightDropdown && (
+                  <div
+                    className="absolute top-full left-0 mt-2 bg-white border-2 border-slate-200 rounded-lg shadow-xl z-20 p-3"
+                    style={{ minWidth: "200px" }}
+                  >
+                    <div className="mb-2 px-1 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                      Highlight Color
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      {highlightColors.map((item) => (
+                        <button
+                          key={item.color}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
 
-            {/* Alignment */}
-            <div className="flex gap-1">
-              <ToolbarButton
-                onClick={() =>
-                  editor.chain().focus().setTextAlign("left").run()
-                }
-                isActive={buttonStates.alignLeft}
-                title="Align Left"
-              >
-                <AlignLeft size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-              <ToolbarButton
-                onClick={() =>
-                  editor.chain().focus().setTextAlign("center").run()
-                }
-                isActive={buttonStates.alignCenter}
-                title="Align Center"
-              >
-                <AlignCenter size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-              <ToolbarButton
-                onClick={() =>
-                  editor.chain().focus().setTextAlign("right").run()
-                }
-                isActive={buttonStates.alignRight}
-                title="Align Right"
-              >
-                <AlignRight size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-            </div>
+                            // Apply highlight with the selected color
+                            editor
+                              .chain()
+                              .focus()
+                              .setHighlight({ color: item.color })
+                              .run();
 
-            <div className="w-px h-8 bg-slate-300"></div>
+                            setShowHighlightDropdown(false);
+                          }}
+                          className="w-10 h-10 rounded-lg border-2 border-slate-300 hover:border-slate-500 hover:scale-110 transition-all shadow-sm"
+                          style={{ backgroundColor: item.color }}
+                          title={item.name}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        editor.chain().focus().unsetHighlight().run();
+                        setShowHighlightDropdown(false);
+                      }}
+                      className="w-full px-3 py-2 text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors font-medium"
+                    >
+                      Remove Highlight
+                    </button>
+                  </div>
+                )}
+              </div>
 
-            {/* Undo/Redo */}
-            <div className="flex gap-1">
-              <ToolbarButton
-                onClick={() => editor.chain().focus().undo().run()}
-                title="Undo (Ctrl+Z)"
-                disabled={!buttonStates.canUndo}
-              >
-                <Undo size={18} strokeWidth={2.5} />
-              </ToolbarButton>
-              <ToolbarButton
-                onClick={() => editor.chain().focus().redo().run()}
-                title="Redo (Ctrl+Y)"
-                disabled={!buttonStates.canRedo}
-              >
-                <Redo size={18} strokeWidth={2.5} />
-              </ToolbarButton>
+              <div className="w-px h-8 bg-slate-300"></div>
+
+              {/* Lists and Blocks */}
+              <div className="flex gap-1">
+                <ToolbarButton
+                  onClick={() =>
+                    editor.chain().focus().toggleBulletList().run()
+                  }
+                  isActive={buttonStates.bulletList}
+                  title="Bullet List"
+                >
+                  <List size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() =>
+                    editor.chain().focus().toggleOrderedList().run()
+                  }
+                  isActive={buttonStates.orderedList}
+                  title="Numbered List"
+                >
+                  <ListOrdered size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().toggleTaskList().run()}
+                  isActive={buttonStates.taskList}
+                  title="Checklist"
+                >
+                  <ListTodo size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() =>
+                    editor.chain().focus().toggleBlockquote().run()
+                  }
+                  isActive={buttonStates.blockquote}
+                  title="Blockquote"
+                >
+                  <Quote size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+              </div>
+
+              <div className="w-px h-8 bg-slate-300"></div>
+
+              {/* Alignment */}
+              <div className="flex gap-1">
+                <ToolbarButton
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign("left").run()
+                  }
+                  isActive={buttonStates.alignLeft}
+                  title="Align Left"
+                >
+                  <AlignLeft size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign("center").run()
+                  }
+                  isActive={buttonStates.alignCenter}
+                  title="Align Center"
+                >
+                  <AlignCenter size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() =>
+                    editor.chain().focus().setTextAlign("right").run()
+                  }
+                  isActive={buttonStates.alignRight}
+                  title="Align Right"
+                >
+                  <AlignRight size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+              </div>
+
+              <div className="w-px h-8 bg-slate-300"></div>
+
+              {/* Undo/Redo */}
+              <div className="flex gap-1">
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().undo().run()}
+                  title="Undo (Ctrl+Z)"
+                  disabled={!buttonStates.canUndo}
+                >
+                  <Undo size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+                <ToolbarButton
+                  onClick={() => editor.chain().focus().redo().run()}
+                  title="Redo (Ctrl+Y)"
+                  disabled={!buttonStates.canRedo}
+                >
+                  <Redo size={18} strokeWidth={2.5} />
+                </ToolbarButton>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Editor Content */}
         <div className="bg-white">

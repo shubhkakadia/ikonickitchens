@@ -10,6 +10,7 @@ import {
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 import { sendProjectUpdate } from "@/lib/pushNotifications";
+import { publishLotNotesUpdate } from "@/lib/updates";
 import { getUserFromToken } from "@/lib/validators/authFromToken";
 
 export async function GET(request, { params }) {
@@ -169,6 +170,16 @@ export async function PATCH(request, { params }) {
       updateData.installer_notes = installer_notes;
     }
 
+    // The overview autosave resends notes on every save, so remember the old
+    // value to publish a feed update only when the notes really changed
+    const previousLot =
+      notes !== undefined
+        ? await prisma.lot.findUnique({
+            where: { id: id },
+            select: { notes: true },
+          })
+        : null;
+
     // Update the lot only if there are fields to update
     const lot = await prisma.lot.update({
       where: { id: id },
@@ -194,6 +205,9 @@ export async function PATCH(request, { params }) {
       "UPDATE",
       `Lot updated successfully: ${lot.name} for project: ${lot.project.name}`,
     );
+    if (previousLot && (previousLot.notes || "") !== (lot.notes || "")) {
+      await publishLotNotesUpdate({ req: request, lotId: lot.lot_id });
+    }
     // installer assigned notification
     if (lot.installer_id !== null) {
       try {

@@ -67,15 +67,11 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Dependency audit - production dependencies, high severity and above.
-  # Reported but not blocking: deploy does not wait for it, and the job's
-  # failure does not fail the workflow (xlsx has no upstream fix yet).
-  # Remove continue-on-error once the known findings are resolved.
   # ---------------------------------------------------------------------------
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     concurrency:
       group: audit-${{ github.ref }}
       cancel-in-progress: true
@@ -101,7 +97,7 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy:
     name: Deploy ${{ github.ref_name }}
-    needs: ci
+    needs: [ci, audit]
     if: github.event_name == 'push'
     runs-on: self-hosted
     timeout-minutes: 45
